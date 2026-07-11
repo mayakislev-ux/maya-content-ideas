@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>רעיונות לתוכן</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div id="login-screen" class="screen">
+  <div class="login-card">
+    <h1>רעיונות לתוכן</h1>
+    <button id="google-signin-btn" class="btn-primary">התחברות עם Google</button>
+    <p id="login-error" class="error-text" hidden></p>
+  </div>
+</div>
+
+<div id="app-screen" class="screen" hidden>
+  <header class="app-header">
+    <h1>רעיונות לתוכן</h1>
+    <nav class="view-tabs">
+      <button id="tab-board" class="tab-btn active">לוח</button>
+      <button id="tab-archive" class="tab-btn">מאגר וחיפוש</button>
+    </nav>
+    <button id="signout-btn" class="btn-text">התנתקות</button>
+  </header>
+
+  <main id="board-view" class="view">
+    <div class="board-columns" id="board-columns"></div>
+  </main>
+
+  <main id="archive-view" class="view" hidden>
+    <div class="archive-controls">
+      <input id="search-input" type="text" placeholder="חיפוש לפי כותרת או טקסט...">
+      <select id="filter-category">
+        <option value="">כל הקטגוריות</option>
+        <option value="ערכי">ערכי</option>
+        <option value="אישי">אישי</option>
+        <option value="מכירתי">מכירתי</option>
+        <option value="בידורי">בידורי</option>
+      </select>
+      <select id="filter-status">
+        <option value="">כל הסטטוסים</option>
+        <option value="רעיון">רעיון</option>
+        <option value="מתוכנן">מתוכנן</option>
+        <option value="צולם/הוקלט">צולם/הוקלט</option>
+        <option value="פורסם">פורסם</option>
+      </select>
+    </div>
+    <ul class="archive-list" id="archive-list"></ul>
+  </main>
+
+  <button id="add-idea-fab" class="fab">+ הוסיפי רעיון</button>
+</div>
+
+<div id="idea-modal" class="modal" hidden>
+  <div class="modal-content">
+    <h2 id="modal-title">רעיון חדש</h2>
+    <form id="idea-form">
+      <label>כותרת<input id="field-title" type="text" required></label>
+      <label>קטגוריה
+        <select id="field-category" required>
+          <option value="ערכי">ערכי</option>
+          <option value="אישי">אישי</option>
+          <option value="מכירתי">מכירתי</option>
+          <option value="בידורי">בידורי</option>
+        </select>
+      </label>
+      <label>טקסט Hook<textarea id="field-hook" required></textarea></label>
+      <label>לינק מקור (אופציונלי)<input id="field-link" type="url"></label>
+      <label>הערות/טודו (אופציונלי)<textarea id="field-notes"></textarea></label>
+      <label id="field-status-wrap" hidden>סטטוס
+        <select id="field-status">
+          <option value="רעיון">רעיון</option>
+          <option value="מתוכנן">מתוכנן</option>
+          <option value="צולם/הוקלט">צולם/הוקלט</option>
+          <option value="פורסם">פורסם</option>
+        </select>
+      </label>
+      <p id="form-error" class="error-text" hidden></p>
+      <div class="modal-actions">
+        <button type="button" id="delete-idea-btn" class="btn-danger" hidden>מחיקה</button>
+        <button type="button" id="cancel-idea-btn" class="btn-text">ביטול</button>
+        <button type="submit" class="btn-primary">שמירה</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
