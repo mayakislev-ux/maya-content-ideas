@@ -3,12 +3,12 @@ import { getAuth } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-aut
 import { getFirestore, enableIndexedDbPersistence } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 
 const firebaseConfig = {
-  apiKey: 'REPLACE_WITH_REAL_VALUE',
-  authDomain: 'maya-content-ideas.firebaseapp.com',
-  projectId: 'maya-content-ideas',
-  storageBucket: 'maya-content-ideas.appspot.com',
-  messagingSenderId: 'REPLACE_WITH_REAL_VALUE',
-  appId: 'REPLACE_WITH_REAL_VALUE',
+  apiKey: 'AIzaSyC7ctB2m4vRcf4BkVwCtp2s-KXcnPyrK4U',
+  authDomain: 'content-ideas-becd7.firebaseapp.com',
+  projectId: 'content-ideas-becd7',
+  storageBucket: 'content-ideas-becd7.firebasestorage.app',
+  messagingSenderId: '48872680367',
+  appId: '1:48872680367:web:2fc7ca716707f459525d5a',
 };
 
 export const app = initializeApp(firebaseConfig);
