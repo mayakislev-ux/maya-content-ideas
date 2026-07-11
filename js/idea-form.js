@@ -18,9 +18,10 @@ export function openEditModal(idea) {
   document.getElementById('modal-title').textContent = 'עריכת רעיון';
   document.getElementById('field-title').value = idea.title;
   document.getElementById('field-category').value = idea.category;
-  document.getElementById('field-hook').value = idea.hookText;
+  document.getElementById('field-hook').value = idea.hookText || '';
   document.getElementById('field-link').value = idea.sourceLink || '';
-  document.getElementById('field-notes').value = idea.notes || '';
+  document.getElementById('field-persuasion').value = idea.persuasionStage || '';
+  document.getElementById('field-viral').value = idea.viralPotential ? 'כן' : 'לא';
   document.getElementById('field-status').value = idea.status;
   document.getElementById('field-status-wrap').hidden = false;
   document.getElementById('delete-idea-btn').hidden = false;
@@ -51,7 +52,8 @@ export function wireIdeaForm() {
       category: document.getElementById('field-category').value,
       hookText: document.getElementById('field-hook').value,
       sourceLink: document.getElementById('field-link').value,
-      notes: document.getElementById('field-notes').value,
+      persuasionStage: document.getElementById('field-persuasion').value,
+      viralPotential: document.getElementById('field-viral').value === 'כן',
     };
     const errors = validateIdea(data);
     const errorEl = document.getElementById('form-error');

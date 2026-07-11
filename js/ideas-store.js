@@ -24,13 +24,21 @@ export function subscribeToIdeas(callback) {
   });
 }
 
-export async function addIdea({ title, category, hookText, sourceLink = '', notes = '' }) {
+export async function addIdea({
+  title,
+  category,
+  hookText = '',
+  sourceLink = '',
+  persuasionStage = '',
+  viralPotential = false,
+}) {
   return addDoc(ideasCollection(), {
     title,
     category,
     hookText,
     sourceLink,
-    notes,
+    persuasionStage,
+    viralPotential,
     status: 'רעיון',
     ownerUid: auth.currentUser.uid,
     createdAt: serverTimestamp(),

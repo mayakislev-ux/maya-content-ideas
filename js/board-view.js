@@ -1,4 +1,4 @@
-import { STATUSES, nextStatus, prevStatus } from './ideas-logic.js';
+import { STATUSES, nextStatus, prevStatus, categoryColorVar } from './ideas-logic.js';
 import { updateIdea } from './ideas-store.js';
 
 export function renderBoard(ideas, { onCardClick }) {
@@ -21,9 +21,10 @@ export function renderBoard(ideas, { onCardClick }) {
 function renderCard(idea, onCardClick) {
   const card = document.createElement('div');
   card.className = 'idea-card';
-  card.style.setProperty('--card-color', `var(--cat-${idea.category})`);
+  card.style.setProperty('--card-color', categoryColorVar(idea.category));
   card.innerHTML = `
     <span class="card-category-tag">${idea.category}</span>
+    ${idea.viralPotential ? '<span class="viral-badge">🔥 ויראלי</span>' : ''}
     <div class="card-title"></div>
     <div class="card-nav">
       <button type="button" class="prev-btn" ${idea.status === STATUSES[0] ? 'disabled' : ''}>◀</button>

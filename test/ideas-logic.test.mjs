@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import {
   CATEGORIES,
   STATUSES,
+  PERSUASION_STAGES,
+  categoryColorVar,
   nextStatus,
   prevStatus,
   filterIdeas,
@@ -10,17 +12,28 @@ import {
 } from '../js/ideas-logic.js';
 
 test('CATEGORIES has the 4 expected values in order', () => {
-  assert.deepEqual(CATEGORIES, ['ערכי', 'אישי', 'מכירתי', 'בידורי']);
+  assert.deepEqual(CATEGORIES, ['בעל ערך', 'אישי', 'מכירתי', 'בידורי']);
 });
 
-test('STATUSES has the 4 expected stages in order', () => {
-  assert.deepEqual(STATUSES, ['רעיון', 'מתוכנן', 'צולם/הוקלט', 'פורסם']);
+test('STATUSES has the 3 expected stages in order', () => {
+  assert.deepEqual(STATUSES, ['רעיון', 'בתכנון', 'פורסם']);
+});
+
+test('PERSUASION_STAGES has the 3 expected stages', () => {
+  assert.equal(PERSUASION_STAGES.length, 3);
+  assert.match(PERSUASION_STAGES[0], /מודעות לבעיה/);
+});
+
+test('categoryColorVar maps each category to a distinct CSS var', () => {
+  assert.equal(categoryColorVar('בעל ערך'), 'var(--cat-baal-erech)');
+  assert.equal(categoryColorVar('אישי'), 'var(--cat-ishi)');
+  assert.equal(categoryColorVar('מכירתי'), 'var(--cat-mechirti)');
+  assert.equal(categoryColorVar('בידורי'), 'var(--cat-biduri)');
 });
 
 test('nextStatus moves forward one stage', () => {
-  assert.equal(nextStatus('רעיון'), 'מתוכנן');
-  assert.equal(nextStatus('מתוכנן'), 'צולם/הוקלט');
-  assert.equal(nextStatus('צולם/הוקלט'), 'פורסם');
+  assert.equal(nextStatus('רעיון'), 'בתכנון');
+  assert.equal(nextStatus('בתכנון'), 'פורסם');
 });
 
 test('nextStatus is a no-op at the last stage', () => {
@@ -28,8 +41,8 @@ test('nextStatus is a no-op at the last stage', () => {
 });
 
 test('prevStatus moves backward one stage', () => {
-  assert.equal(prevStatus('פורסם'), 'צולם/הוקלט');
-  assert.equal(prevStatus('מתוכנן'), 'רעיון');
+  assert.equal(prevStatus('פורסם'), 'בתכנון');
+  assert.equal(prevStatus('בתכנון'), 'רעיון');
 });
 
 test('prevStatus is a no-op at the first stage', () => {
@@ -38,7 +51,7 @@ test('prevStatus is a no-op at the first stage', () => {
 
 test('filterIdeas matches free text in title or hookText', () => {
   const ideas = [
-    { title: 'טעות נפוצה', hookText: 'בעלי עסקים נתלים במספרים', category: 'ערכי', status: 'פורסם' },
+    { title: 'טעות נפוצה', hookText: 'בעלי עסקים נתלים במספרים', category: 'בעל ערך', status: 'פורסם' },
     { title: 'יום הולדת', hookText: 'רגע כנות', category: 'אישי', status: 'רעיון' },
   ];
   const result = filterIdeas(ideas, { text: 'מספרים' });
@@ -46,9 +59,15 @@ test('filterIdeas matches free text in title or hookText', () => {
   assert.equal(result[0].title, 'טעות נפוצה');
 });
 
+test('filterIdeas works when hookText is missing (now optional)', () => {
+  const ideas = [{ title: 'רעיון בלי הוק', category: 'בעל ערך', status: 'רעיון' }];
+  const result = filterIdeas(ideas, { text: 'רעיון' });
+  assert.equal(result.length, 1);
+});
+
 test('filterIdeas filters by category', () => {
   const ideas = [
-    { title: 'א', hookText: '', category: 'ערכי', status: 'רעיון' },
+    { title: 'א', hookText: '', category: 'בעל ערך', status: 'רעיון' },
     { title: 'ב', hookText: '', category: 'אישי', status: 'רעיון' },
   ];
   const result = filterIdeas(ideas, { category: 'אישי' });
@@ -58,36 +77,47 @@ test('filterIdeas filters by category', () => {
 
 test('filterIdeas filters by status', () => {
   const ideas = [
-    { title: 'א', hookText: '', category: 'ערכי', status: 'רעיון' },
-    { title: 'ב', hookText: '', category: 'ערכי', status: 'פורסם' },
+    { title: 'א', hookText: '', category: 'בעל ערך', status: 'רעיון' },
+    { title: 'ב', hookText: '', category: 'בעל ערך', status: 'פורסם' },
   ];
   const result = filterIdeas(ideas, { status: 'פורסם' });
   assert.equal(result.length, 1);
   assert.equal(result[0].title, 'ב');
 });
 
-test('filterIdeas combines text + category + status', () => {
+test('filterIdeas filters by viral potential', () => {
   const ideas = [
-    { title: 'רעיון טוב', hookText: '', category: 'ערכי', status: 'רעיון' },
-    { title: 'רעיון אחר', hookText: '', category: 'ערכי', status: 'פורסם' },
-    { title: 'רעיון טוב', hookText: '', category: 'אישי', status: 'רעיון' },
+    { title: 'א', hookText: '', category: 'בעל ערך', status: 'רעיון', viralPotential: true },
+    { title: 'ב', hookText: '', category: 'בעל ערך', status: 'רעיון', viralPotential: false },
   ];
-  const result = filterIdeas(ideas, { text: 'רעיון טוב', category: 'ערכי', status: 'רעיון' });
+  assert.equal(filterIdeas(ideas, { viral: 'כן' }).length, 1);
+  assert.equal(filterIdeas(ideas, { viral: 'כן' })[0].title, 'א');
+  assert.equal(filterIdeas(ideas, { viral: 'לא' }).length, 1);
+  assert.equal(filterIdeas(ideas, { viral: 'לא' })[0].title, 'ב');
+});
+
+test('filterIdeas combines text + category + status + viral', () => {
+  const ideas = [
+    { title: 'רעיון טוב', hookText: '', category: 'בעל ערך', status: 'רעיון', viralPotential: true },
+    { title: 'רעיון אחר', hookText: '', category: 'בעל ערך', status: 'פורסם', viralPotential: true },
+    { title: 'רעיון טוב', hookText: '', category: 'אישי', status: 'רעיון', viralPotential: true },
+  ];
+  const result = filterIdeas(ideas, { text: 'רעיון טוב', category: 'בעל ערך', status: 'רעיון', viral: 'כן' });
   assert.equal(result.length, 1);
-  assert.equal(result[0].category, 'ערכי');
+  assert.equal(result[0].category, 'בעל ערך');
 });
 
-test('validateIdea requires title, category, hookText', () => {
-  const errors = validateIdea({ title: '', category: '', hookText: '' });
-  assert.equal(errors.length, 3);
+test('validateIdea requires only title and category (hookText is optional now)', () => {
+  const errors = validateIdea({ title: '', category: '' });
+  assert.equal(errors.length, 2);
 });
 
-test('validateIdea passes with required fields filled', () => {
-  const errors = validateIdea({ title: 'כותרת', category: 'ערכי', hookText: 'טקסט' });
+test('validateIdea passes with just title and category filled', () => {
+  const errors = validateIdea({ title: 'כותרת', category: 'בעל ערך' });
   assert.equal(errors.length, 0);
 });
 
 test('validateIdea rejects an unknown category', () => {
-  const errors = validateIdea({ title: 'כותרת', category: 'לא קיים', hookText: 'טקסט' });
+  const errors = validateIdea({ title: 'כותרת', category: 'לא קיים' });
   assert.equal(errors.length, 1);
 });

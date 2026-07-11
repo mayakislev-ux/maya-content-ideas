@@ -4,10 +4,11 @@
   --text: #f2f2f7;
   --muted: #9a9aab;
   --accent: #ffd166;
-  --cat-ערכי: #2ec4b6;
-  --cat-אישי: #ef476f;
-  --cat-מכירתי: #ffb703;
-  --cat-בידורי: #8338ec;
+  --cat-baal-erech: #2ecc71;
+  --cat-ishi: #ff4d9d;
+  --cat-mechirti: #e63946;
+  --cat-biduri: #3a86ff;
+  --cat-default: var(--accent);
 }
 
 * { box-sizing: border-box; }
@@ -135,6 +136,18 @@ body {
   font-weight: bold;
   margin-bottom: 0.5rem;
   background: var(--card-color, var(--accent));
+}
+
+.viral-badge {
+  display: inline-block;
+  font-size: 0.75rem;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  background: #ff6b35;
+  color: white;
+  font-weight: bold;
+  margin-inline-start: 0.4rem;
+  margin-bottom: 0.5rem;
 }
 
 .card-nav {

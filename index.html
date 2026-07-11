@@ -35,7 +35,7 @@
       <input id="search-input" type="text" placeholder="חיפוש לפי כותרת או טקסט...">
       <select id="filter-category">
         <option value="">כל הקטגוריות</option>
-        <option value="ערכי">ערכי</option>
+        <option value="בעל ערך">בעל ערך</option>
         <option value="אישי">אישי</option>
         <option value="מכירתי">מכירתי</option>
         <option value="בידורי">בידורי</option>
@@ -43,9 +43,13 @@
       <select id="filter-status">
         <option value="">כל הסטטוסים</option>
         <option value="רעיון">רעיון</option>
-        <option value="מתוכנן">מתוכנן</option>
-        <option value="צולם/הוקלט">צולם/הוקלט</option>
+        <option value="בתכנון">בתכנון</option>
         <option value="פורסם">פורסם</option>
+      </select>
+      <select id="filter-viral">
+        <option value="">ויראלי - הכל</option>
+        <option value="כן">ויראלי: כן</option>
+        <option value="לא">ויראלי: לא</option>
       </select>
     </div>
     <ul class="archive-list" id="archive-list"></ul>
@@ -58,23 +62,35 @@
   <div class="modal-content">
     <h2 id="modal-title">רעיון חדש</h2>
     <form id="idea-form">
-      <label>כותרת<input id="field-title" type="text" required></label>
+      <label>הרעיון<input id="field-title" type="text" required></label>
       <label>קטגוריה
         <select id="field-category" required>
-          <option value="ערכי">ערכי</option>
+          <option value="בעל ערך">בעל ערך</option>
           <option value="אישי">אישי</option>
           <option value="מכירתי">מכירתי</option>
           <option value="בידורי">בידורי</option>
         </select>
       </label>
-      <label>טקסט Hook<textarea id="field-hook" required></textarea></label>
-      <label>לינק מקור (אופציונלי)<input id="field-link" type="url"></label>
-      <label>הערות/טודו (אופציונלי)<textarea id="field-notes"></textarea></label>
+      <label>פירוט<textarea id="field-hook"></textarea></label>
+      <label>לינק לסרטון (במידה ויש)<input id="field-link" type="url"></label>
+      <label>שלב שכנוע
+        <select id="field-persuasion">
+          <option value="">בחרי שלב שכנוע</option>
+          <option value="שלב שכנוע 1 - מודעות לבעיה / חומרת הבעיה">שלב שכנוע 1 - מודעות לבעיה / חומרת הבעיה</option>
+          <option value="שלב שכנוע 2 - מודעות לפתרון">שלב שכנוע 2 - מודעות לפתרון</option>
+          <option value="שלב שכנוע 3 - למה דווקא אני">שלב שכנוע 3 - למה דווקא אני</option>
+        </select>
+      </label>
+      <label>פוטנציאל ויראליות
+        <select id="field-viral">
+          <option value="לא">לא</option>
+          <option value="כן">כן</option>
+        </select>
+      </label>
       <label id="field-status-wrap" hidden>סטטוס
         <select id="field-status">
           <option value="רעיון">רעיון</option>
-          <option value="מתוכנן">מתוכנן</option>
-          <option value="צולם/הוקלט">צולם/הוקלט</option>
+          <option value="בתכנון">בתכנון</option>
           <option value="פורסם">פורסם</option>
         </select>
       </label>
