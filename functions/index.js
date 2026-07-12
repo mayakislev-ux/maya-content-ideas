@@ -1,7 +1,7 @@
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { defineSecret } = require('firebase-functions/params');
 const admin = require('firebase-admin');
-const { SYSTEM_PROMPT } = require('./system-prompt');
+const { buildSystemPrompt } = require('./system-prompt');
 
 admin.initializeApp();
 
@@ -17,6 +17,9 @@ exports.checkIdea = onCall({ secrets: [anthropicApiKey], region: 'us-central1' }
     throw new HttpsError('invalid-argument', 'חסרות הודעות בשיחה');
   }
 
+  const profile = (request.data && request.data.profile) || null;
+  const systemPrompt = buildSystemPrompt(profile);
+
   let response;
   try {
     response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -29,7 +32,7 @@ exports.checkIdea = onCall({ secrets: [anthropicApiKey], region: 'us-central1' }
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 1024,
-        system: SYSTEM_PROMPT,
+        system: systemPrompt,
         messages,
       }),
     });

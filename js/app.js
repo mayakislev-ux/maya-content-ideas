@@ -3,7 +3,7 @@ import { subscribeToIdeas } from './ideas-store.js';
 import { renderArchive, wireArchiveControls, getCurrentIdeas } from './archive-view.js';
 import { openAddModal, openEditModal, wireIdeaForm } from './idea-form.js';
 import { wireRandomIdeaModal } from './random-idea-modal.js';
-import { wireIdeaChat } from './idea-chat.js';
+import { wireIdeaChat, startIdeaChat } from './idea-chat.js';
 
 let unsubscribeIdeas = null;
 
@@ -31,7 +31,10 @@ document.getElementById('google-signin-btn').addEventListener('click', async () 
 document.getElementById('signout-btn').addEventListener('click', () => signOutUser());
 document.getElementById('add-idea-fab').addEventListener('click', openAddModal);
 document.getElementById('tab-archive').addEventListener('click', () => showView('archive'));
-document.getElementById('tab-chat').addEventListener('click', () => showView('chat'));
+document.getElementById('tab-chat').addEventListener('click', () => {
+  showView('chat');
+  startIdeaChat();
+});
 
 wireIdeaForm();
 wireArchiveControls((idea) => openEditModal(idea));
