@@ -14,6 +14,7 @@
     <h1>המוח השיווקי<br>שנמצא איתך 24/7</h1>
     <button id="google-signin-btn" class="btn-primary">התחברות עם Google</button>
     <p id="login-error" class="error-text" hidden></p>
+    <button type="button" id="open-policy-btn-login" class="btn-text policy-link">מדיניות פרטיות ותנאי שימוש</button>
   </div>
 </div>
 
@@ -27,6 +28,7 @@
       <button id="tab-inspiration" class="tab-btn">מאגר להשראה</button>
       <button id="tab-feedback" class="tab-btn">חוות דעת</button>
     </nav>
+    <button type="button" id="open-policy-btn-app" class="btn-text policy-link">מדיניות פרטיות</button>
     <button id="signout-btn" class="btn-text">התנתקות</button>
   </header>
 
@@ -244,13 +246,14 @@
         <label class="field-label-row">קטגוריה *
           <button type="button" id="category-info-btn" class="info-btn" aria-label="מה זה אומר?">ⓘ</button>
         </label>
-        <select id="field-category" required>
-          <option value="בעל ערך">בעל ערך</option>
-          <option value="אישי">אישי</option>
-          <option value="מכירתי">מכירתי</option>
-          <option value="בידורי">בידורי</option>
-          <option value="__ai__">🤖 לא בטוחה - תני לי הצעה</option>
-        </select>
+        <div class="category-chips" id="category-chips">
+          <button type="button" class="category-chip" data-value="בעל ערך" style="--chip-color: var(--cat-baal-erech)">בעל ערך</button>
+          <button type="button" class="category-chip" data-value="אישי" style="--chip-color: var(--cat-ishi)">אישי</button>
+          <button type="button" class="category-chip" data-value="מכירתי" style="--chip-color: var(--cat-mechirti)">מכירתי</button>
+          <button type="button" class="category-chip" data-value="בידורי" style="--chip-color: var(--cat-biduri)">בידורי</button>
+          <button type="button" class="category-chip category-chip-ai" data-value="__ai__">🤖 לא בטוחה</button>
+        </div>
+        <input type="hidden" id="field-category">
 
         <label>מקור הרעיון *
           <select id="field-source" required>
@@ -327,6 +330,37 @@
     <div class="modal-actions random-modal-actions">
       <button type="button" id="random-again-btn" class="btn-primary" hidden>רעיון אחר 🎲</button>
       <button type="button" id="random-close-btn" class="btn-text">סגירה</button>
+    </div>
+  </div>
+</div>
+
+<div id="policy-modal" class="modal" hidden>
+  <div class="modal-content policy-modal-content">
+    <h2>מדיניות פרטיות ותנאי שימוש</h2>
+
+    <h3>איזה מידע נשמר</h3>
+    <p>האפליקציה שומרת: שם, תחום עיסוק וקהל היעד שסיפקת בשיחת ההיכרות; הרעיונות לתוכן שהוספת (כותרת, פירוט, קטגוריה וכו'); וההודעות שאת/ה כותב/ת בלשונית "בדיקת רעיון". פידבק שנשלח דרך לשונית "חוות דעת" נשמר בלי כל פרט מזהה - אנונימי לחלוטין.</p>
+
+    <h3>איך המידע משמש</h3>
+    <p>המידע משמש אך ורק להפעלת האפליקציה עבורך: שמירת הרעיונות שלך והצגתם, והפעלת הצ'אט עם ה-AI. כדי לספק את שירות ה-AI, הטקסט ששולח/ת בלשונית "בדיקת רעיון" מועבר לעיבוד אצל חברת Anthropic (ספקית מודל ה-AI Claude) - כמו כל שירות AI, יש לה גישה לטקסט הזה לצורך יצירת התשובה בלבד.</p>
+
+    <h3>איפה המידע נשמר</h3>
+    <p>המידע נשמר בתשתית Google Firebase, עם הרשאות גישה המוגבלות לחשבון Google שלך בלבד. הגישה לאפליקציה כולה מוגבלת לרשימת משתמשים מאושרת מראש.</p>
+
+    <h3>הצהרת אחריות לגבי הצעות ה-AI</h3>
+    <p>הרעיונות, הזוויות והסיווגים שה-AI מציע הם המלצות בלבד, המבוססות על מתודולוגיה כללית - אין בהם התחייבות להצלחה, לחשיפה, למכירות או לכל תוצאה עסקית אחרת. האחריות המלאה על הבחירה אילו רעיונות ליישם, איך לנסח ולפרסם אותם, ועל התאמתם לחוק (זכויות יוצרים, פרסום מטעה וכו') - היא של המשתמש/ת בלבד.</p>
+
+    <h3>הגבלת אחריות</h3>
+    <p>האפליקציה מסופקת "as is" (כמות שהיא), ללא אחריות מכל סוג. מאיה קיסלב ואקדמיית המהלך השיווקי אינן אחראיות לכל נזק ישיר או עקיף שייגרם משימוש באפליקציה, כולל אך לא רק: תוצאות עסקיות, תוכן שפורסם על סמך הצעות האפליקציה, או תקלות זמינות.</p>
+
+    <h3>גישה ושינויים</h3>
+    <p>הגישה לאפליקציה ניתנת לפי שיקול דעת בלבד, ועשויה להשתנות או להיפסק בכל עת. מדיניות זו עשויה להתעדכן מעת לעת.</p>
+
+    <h3>יצירת קשר</h3>
+    <p>שאלות לגבי המידע השמור או המדיניות - יש לפנות ישירות למאיה.</p>
+
+    <div class="modal-actions">
+      <button type="button" id="policy-close-btn" class="btn-primary">סגירה</button>
     </div>
   </div>
 </div>

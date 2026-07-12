@@ -25,7 +25,7 @@ body {
   margin: 0;
   font-family: 'Segoe UI', Arial, sans-serif;
   background:
-    linear-gradient(rgba(255, 255, 255, 0.88), rgba(255, 255, 255, 0.94)),
+    linear-gradient(rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.68)),
     url('../assets/app-background.png');
   background-size: cover;
   background-position: top center;
@@ -391,6 +391,40 @@ h1, h2, h3 {
   max-width: 520px;
 }
 
+.category-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+  margin-bottom: 1rem;
+}
+
+.category-chip {
+  border: 2px solid var(--chip-color, var(--muted));
+  background: white;
+  color: var(--chip-color, var(--text));
+  font-weight: bold;
+  padding: 0.4rem 0.9rem;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.category-chip.active {
+  background: var(--chip-color, var(--accent));
+  color: white;
+}
+
+.category-chip-ai {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.category-chip-ai.active {
+  background: var(--accent);
+  color: white;
+}
+
 .form-section {
   background: var(--surface);
   border-radius: 14px;
@@ -425,6 +459,27 @@ h1, h2, h3 {
 
 .info-modal-content p strong {
   color: var(--accent);
+}
+
+.policy-link {
+  font-size: 0.85rem;
+  margin-top: 1rem;
+}
+
+.policy-modal-content {
+  max-width: 620px;
+  text-align: right;
+}
+
+.policy-modal-content h3 {
+  margin-top: 1.4rem;
+  margin-bottom: 0.4rem;
+  font-size: 1.05rem;
+}
+
+.policy-modal-content p {
+  line-height: 1.65;
+  margin: 0;
 }
 
 .random-modal {

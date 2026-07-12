@@ -8,10 +8,18 @@ const AI_OPTION = '__ai__';
 
 let editingId = null;
 
+function setCategoryChip(value) {
+  document.getElementById('field-category').value = value;
+  document.querySelectorAll('.category-chip').forEach((chip) => {
+    chip.classList.toggle('active', chip.dataset.value === value);
+  });
+}
+
 export function openAddModal() {
   editingId = null;
   document.getElementById('modal-title').textContent = 'רעיון חדש';
   document.getElementById('idea-form').reset();
+  setCategoryChip('');
   document.getElementById('delete-idea-btn').hidden = true;
   document.getElementById('form-error').hidden = true;
   document.getElementById('idea-modal').hidden = false;
@@ -21,7 +29,7 @@ export function openEditModal(idea) {
   editingId = idea.id;
   document.getElementById('modal-title').textContent = 'עריכת רעיון';
   document.getElementById('field-title').value = idea.title;
-  document.getElementById('field-category').value = idea.category;
+  setCategoryChip(idea.category);
   document.getElementById('field-hook').value = idea.hookText || '';
   document.getElementById('field-link').value = idea.sourceLink || '';
   document.getElementById('field-source').value = idea.source || '';
@@ -66,21 +74,19 @@ function wireInfoModal() {
   });
 }
 
-async function runAiClassification(sourceSelectId) {
+async function runAiClassification() {
   const titleEl = document.getElementById('field-title');
   const hookEl = document.getElementById('field-hook');
-  const categorySelect = document.getElementById('field-category');
   const persuasionSelect = document.getElementById('field-persuasion');
 
   if (!titleEl.value.trim()) {
     alert('קודם תכתבי את "הרעיון" (ורצוי גם "פירוט"), ואז אני אוכל להציע.');
-    document.getElementById(sourceSelectId).value = '';
     return;
   }
 
   try {
     const result = await classifyIdea({ title: titleEl.value, hookText: hookEl.value });
-    categorySelect.value = result.data.category;
+    setCategoryChip(result.data.category);
     persuasionSelect.value = result.data.persuasionStage;
     openInfoModal('ה-AI הציע/ה', {
       [result.data.category]: 'קטגוריה מוצעת לפי מה שכתבת.',
@@ -89,7 +95,6 @@ async function runAiClassification(sourceSelectId) {
   } catch (err) {
     console.error('classifyIdea failed:', err);
     alert('משהו השתבש בהצעה האוטומטית, נסי שוב או בחרי ידנית.');
-    document.getElementById(sourceSelectId).value = '';
   }
 }
 
@@ -105,14 +110,20 @@ export function wireIdeaForm() {
     }
   });
 
-  document.getElementById('field-category').addEventListener('change', (e) => {
-    if (e.target.value === AI_OPTION) runAiClassification('field-category');
+  document.querySelectorAll('.category-chip').forEach((chip) => {
+    chip.addEventListener('click', () => {
+      if (chip.dataset.value === AI_OPTION) {
+        runAiClassification();
+      } else {
+        setCategoryChip(chip.dataset.value);
+      }
+    });
   });
 
   document.getElementById('field-persuasion').addEventListener('change', (e) => {
     const stage = e.target.value;
     if (stage === AI_OPTION) {
-      runAiClassification('field-persuasion');
+      runAiClassification();
       return;
     }
     if (stage && PERSUASION_STAGE_DEFINITIONS[stage]) {

@@ -47,6 +47,16 @@ document.getElementById('google-signin-btn').addEventListener('click', async () 
 });
 
 document.getElementById('signout-btn').addEventListener('click', () => signOutUser());
+
+function openPolicyModal() {
+  document.getElementById('policy-modal').hidden = false;
+}
+document.getElementById('open-policy-btn-login').addEventListener('click', openPolicyModal);
+document.getElementById('open-policy-btn-app').addEventListener('click', openPolicyModal);
+document.getElementById('policy-close-btn').addEventListener('click', () => {
+  document.getElementById('policy-modal').hidden = true;
+});
+
 document.getElementById('add-idea-fab').addEventListener('click', openAddModal);
 document.getElementById('tab-archive').addEventListener('click', () => showView('archive'));
 document.getElementById('tab-chat').addEventListener('click', () => {

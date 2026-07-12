@@ -2,7 +2,7 @@ const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { defineSecret } = require('firebase-functions/params');
 const admin = require('firebase-admin');
 const { buildSystemPrompt } = require('./system-prompt');
-const { CATEGORIES, PERSUASION_STAGES } = require('./ideas-constants');
+const { CATEGORIES, PERSUASION_STAGES, CATEGORY_DEFINITIONS, PERSUASION_STAGE_DEFINITIONS } = require('./ideas-constants');
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -95,11 +95,13 @@ exports.classifyIdea = onCall({ secrets: [anthropicApiKey], region: 'us-central1
   const prompt = `הרעיון לתוכן: "${title}"
 פירוט נוסף: "${hookText}"
 
-בחר/י בדיוק אחת מהאפשרויות הבאות עבור "category":
-${CATEGORIES.map((c) => `- ${c}`).join('\n')}
+סווג/י את הרעיון הזה לפי שתי המערכות הבאות (המבוססות על המתודולוגיה המדויקת של מאיה קיסלב - אקדמיית המהלך השיווקי):
 
-ובחר/י בדיוק אחת מהאפשרויות הבאות עבור "persuasionStage":
-${PERSUASION_STAGES.map((s) => `- ${s}`).join('\n')}
+מערכת 1 - סוג תוכן ("category"), בחר/י בדיוק אחת:
+${CATEGORIES.map((c) => `- ${c}: ${CATEGORY_DEFINITIONS[c]}`).join('\n')}
+
+מערכת 2 - שלב שכנוע ("persuasionStage"), בחר/י בדיוק אחת. שימי לב: לכל תוכן יש בדרך כלל שלב שכנוע דומיננטי אחד, גם אם הוא נוגע קצת גם באחרים - תבחר/י את זה שהכי מתאר את המטרה המרכזית של הרעיון הספציפי הזה:
+${PERSUASION_STAGES.map((s) => `- ${s}: ${PERSUASION_STAGE_DEFINITIONS[s]}`).join('\n')}
 
 השב/י אך ורק ב-JSON תקין בפורמט הבא, בלי שום טקסט נוסף לפני או אחרי:
 {"category": "...", "persuasionStage": "..."}`;
