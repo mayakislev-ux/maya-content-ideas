@@ -9,7 +9,7 @@ function getAudioCtx() {
 
 function playDing() {
   const ctx = getAudioCtx();
-  [659, 831, 987].forEach((freq, i) => {
+  [831, 987].forEach((freq, i) => {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.type = 'sine';
