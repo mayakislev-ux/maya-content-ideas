@@ -1,29 +1,5 @@
 import { pickRandomIdea, STRONG_RATING } from './ideas-logic.js';
 
-let audioCtx = null;
-
-function getAudioCtx() {
-  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  return audioCtx;
-}
-
-function playDing() {
-  const ctx = getAudioCtx();
-  [831, 987].forEach((freq, i) => {
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = 'sine';
-    osc.frequency.value = freq;
-    const start = ctx.currentTime + i * 0.09;
-    gain.gain.setValueAtTime(0.0001, start);
-    gain.gain.linearRampToValueAtTime(0.09, start + 0.03);
-    gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.9);
-    osc.connect(gain).connect(ctx.destination);
-    osc.start(start);
-    osc.stop(start + 1);
-  });
-}
-
 export function wireRandomIdeaModal({ getIdeas, onOpenIdea }) {
   const modal = document.getElementById('random-modal');
   const spinner = document.getElementById('random-spinner');
@@ -64,7 +40,6 @@ export function wireRandomIdeaModal({ getIdeas, onOpenIdea }) {
         result.hidden = false;
         result.textContent = chosenIdea.title;
         againBtn.hidden = false;
-        playDing();
       }
     }, 90);
   }
