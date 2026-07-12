@@ -75,6 +75,77 @@ body {
 
 .view[hidden] { display: none; }
 
+.view-tabs { display: flex; gap: 0.5rem; }
+
+.tab-btn {
+  background: transparent;
+  border: 2px solid var(--muted);
+  color: var(--text);
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.tab-btn.active {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+  font-weight: bold;
+}
+
+.chat-messages {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  padding: 1.5rem;
+  max-width: 640px;
+  margin: 0 auto;
+  min-height: 50vh;
+}
+
+.chat-bubble {
+  padding: 0.8rem 1.1rem;
+  border-radius: 16px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  max-width: 85%;
+}
+
+.chat-bubble-assistant {
+  background: var(--surface);
+  align-self: flex-start;
+  border-bottom-left-radius: 4px;
+}
+
+.chat-bubble-user {
+  background: var(--accent);
+  color: white;
+  align-self: flex-end;
+  border-bottom-right-radius: 4px;
+}
+
+.chat-input-row {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  gap: 0.6rem;
+  padding: 1rem 1.5rem 1.5rem;
+  max-width: 640px;
+  margin: 0 auto;
+  background: var(--bg);
+}
+
+.chat-input-row textarea {
+  flex: 1;
+  min-height: 48px;
+  max-height: 140px;
+  resize: vertical;
+  padding: 0.7rem;
+  border-radius: 10px;
+  border: 1px solid #ddd8ee;
+  font-family: inherit;
+}
+
 .archive-controls {
   display: flex;
   gap: 0.6rem;

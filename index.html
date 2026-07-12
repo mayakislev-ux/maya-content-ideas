@@ -20,6 +20,10 @@
 <div id="app-screen" class="screen" hidden>
   <header class="app-header">
     <h1>רעיונות לתוכן</h1>
+    <nav class="view-tabs">
+      <button id="tab-archive" class="tab-btn active">מאגר וחיפוש</button>
+      <button id="tab-chat" class="tab-btn">בדיקת רעיון</button>
+    </nav>
     <button id="signout-btn" class="btn-text">התנתקות</button>
   </header>
 
@@ -54,6 +58,18 @@
       </select>
     </div>
     <ul class="archive-list" id="archive-list"></ul>
+  </main>
+
+  <main id="chat-view" class="view" hidden>
+    <div class="chat-messages" id="chat-messages">
+      <div class="chat-bubble chat-bubble-assistant">
+        היי! ספרי לי מה הרעיון לתוכן שאת חושבת עליו, ולמי הוא מיועד (קהל היעד) - ונבדוק ביחד אם הוא מספיק חזק. 💡
+      </div>
+    </div>
+    <form id="chat-form" class="chat-input-row">
+      <textarea id="chat-input" placeholder="כתבי כאן את הרעיון וקהל היעד..." required></textarea>
+      <button type="submit" class="btn-primary">שליחה</button>
+    </form>
   </main>
 
   <button id="add-idea-fab" class="fab">+ הוסיפי רעיון</button>
