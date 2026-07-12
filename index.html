@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>רעיונות לתוכן</title>
+<title>המוח השיווקי</title>
 <link rel="icon" type="image/png" href="assets/favicon.png">
 <link rel="stylesheet" href="css/style.css">
 </head>
@@ -11,7 +11,7 @@
 
 <div id="login-screen" class="screen">
   <div class="login-card">
-    <h1>רעיונות לתוכן</h1>
+    <h1>המוח השיווקי<br>שנמצא איתך 24/7</h1>
     <button id="google-signin-btn" class="btn-primary">התחברות עם Google</button>
     <p id="login-error" class="error-text" hidden></p>
   </div>
@@ -19,11 +19,12 @@
 
 <div id="app-screen" class="screen" hidden>
   <header class="app-header">
-    <h1>רעיונות לתוכן</h1>
+    <h1>המוח השיווקי שנמצא איתך 24/7</h1>
     <nav class="view-tabs">
-      <button id="tab-archive" class="tab-btn active">מאגר וחיפוש</button>
+      <button id="tab-archive" class="tab-btn active">הרעיונות שלי</button>
       <button id="tab-chat" class="tab-btn">בדיקת רעיון</button>
       <button id="tab-guide" class="tab-btn">איך למצוא רעיון</button>
+      <button id="tab-inspiration" class="tab-btn">מאגר להשראה</button>
       <button id="tab-feedback" class="tab-btn">חוות דעת</button>
     </nav>
     <button id="signout-btn" class="btn-text">התנתקות</button>
@@ -197,6 +198,24 @@
     </details>
   </main>
 
+  <main id="inspiration-view" class="view inspiration-view" hidden>
+    <div class="archive-controls">
+      <select id="inspiration-domain-filter">
+        <option value="">כל התחומים</option>
+        <option value="כושר ותזונה">כושר ותזונה</option>
+        <option value="יופי וקוסמטיקה">יופי וקוסמטיקה</option>
+        <option value="עסקים ויזמות">עסקים ויזמות</option>
+        <option value="טיפול ובריאות נפשית">טיפול ובריאות נפשית</option>
+        <option value="אחר">אחר</option>
+      </select>
+    </div>
+    <div class="construction-box">
+      <div class="construction-sticker">🚧👷‍♀️🚧</div>
+      <h2>בבנייה...</h2>
+      <p>מאגר ההשראה בדרך אלייך - בקרוב!</p>
+    </div>
+  </main>
+
   <main id="feedback-view" class="view feedback-view" hidden>
     <h2>חוות דעת</h2>
     <p>ההצלחה שלכם חשובה לי, ומהצד שלי אעזור לכם במקסימום שהיישום יהיה קל. אשמח שתעזרו לי לחשוב מה אפשר לשפר או להוסיף כאן, או מה לא היה מספיק טוב - הפידבק שלכם אנונימי לגמרי ונשלח ישירות אליי. 💜</p>
@@ -217,7 +236,7 @@
 
       <div class="form-section">
         <label>הרעיון *<input id="field-title" type="text" required></label>
-        <label>פירוט *<textarea id="field-hook" required></textarea></label>
+        <label>פירוט<textarea id="field-hook"></textarea></label>
         <label>לינק לסרטון (במידה ויש)<input id="field-link" type="url"></label>
       </div>
 
@@ -230,6 +249,7 @@
           <option value="אישי">אישי</option>
           <option value="מכירתי">מכירתי</option>
           <option value="בידורי">בידורי</option>
+          <option value="__ai__">🤖 לא בטוחה - תני לי הצעה</option>
         </select>
 
         <label>מקור הרעיון *
@@ -256,6 +276,7 @@
           <option value="שלב שכנוע 1 - מודעות לבעיה / חומרת הבעיה">שלב שכנוע 1 - מודעות לבעיה / חומרת הבעיה</option>
           <option value="שלב שכנוע 2 - מודעות לפתרון">שלב שכנוע 2 - מודעות לפתרון</option>
           <option value="שלב שכנוע 3 - למה דווקא אני">שלב שכנוע 3 - למה דווקא אני</option>
+          <option value="__ai__">🤖 לא סגורה - תני לי הצעה</option>
         </select>
 
         <label>למי הסרטון מדבר? *

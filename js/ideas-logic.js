@@ -58,11 +58,10 @@ export function filterIdeas(ideas, { text = '', category = '', audienceScope = '
   });
 }
 
-export function validateIdea({ title, category, hookText, source, persuasionStage, rating, audienceScope }) {
+export function validateIdea({ title, category, source, persuasionStage, rating, audienceScope }) {
   const errors = [];
   if (!title || !title.trim()) errors.push('שדה "הרעיון" חובה');
   if (!category || !CATEGORIES.includes(category)) errors.push('קטגוריה לא תקינה');
-  if (!hookText || !hookText.trim()) errors.push('שדה "פירוט" חובה');
   if (!source) errors.push('שדה "מקור הרעיון" חובה');
   if (!persuasionStage) errors.push('שדה "שלב שכנוע" חובה');
   if (!rating) errors.push('שדה "דירוג" חובה');

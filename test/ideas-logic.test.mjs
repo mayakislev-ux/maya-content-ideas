@@ -101,9 +101,21 @@ test('filterIdeas filters by rating', () => {
   assert.equal(result[0].title, 'א');
 });
 
-test('validateIdea requires every field now', () => {
-  const errors = validateIdea({ title: '', category: '', hookText: '', source: '', persuasionStage: '', rating: '', audienceScope: '' });
-  assert.equal(errors.length, 7);
+test('validateIdea requires every field except hookText', () => {
+  const errors = validateIdea({ title: '', category: '', source: '', persuasionStage: '', rating: '', audienceScope: '' });
+  assert.equal(errors.length, 6);
+});
+
+test('validateIdea does not require hookText', () => {
+  const errors = validateIdea({
+    title: 'כותרת',
+    category: 'בעל ערך',
+    source: 'טיקטוק',
+    persuasionStage: PERSUASION_STAGES[0],
+    rating: '🔥 חייב לצלם',
+    audienceScope: 'עיקרי',
+  });
+  assert.equal(errors.length, 0);
 });
 
 test('validateIdea passes when every field is filled', () => {

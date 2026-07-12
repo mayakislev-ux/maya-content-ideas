@@ -23,6 +23,25 @@ let onboardingStep = null;
 let draftProfile = {};
 let started = false;
 
+const URL_PATTERN = /(https?:\/\/[^\s]+)/g;
+
+function setBubbleText(bubble, text) {
+  bubble.innerHTML = '';
+  const parts = text.split(URL_PATTERN);
+  for (const part of parts) {
+    if (part.match(URL_PATTERN)) {
+      const link = document.createElement('a');
+      link.href = part;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      link.textContent = part;
+      bubble.appendChild(link);
+    } else if (part) {
+      bubble.appendChild(document.createTextNode(part));
+    }
+  }
+}
+
 function addBubble(text, role) {
   const messagesEl = document.getElementById('chat-messages');
   const row = document.createElement('div');
@@ -37,7 +56,7 @@ function addBubble(text, role) {
 
   const bubble = document.createElement('div');
   bubble.className = `chat-bubble chat-bubble-${role}`;
-  bubble.textContent = text;
+  setBubbleText(bubble, text);
   row.appendChild(bubble);
 
   messagesEl.appendChild(row);
@@ -149,6 +168,13 @@ export function wireIdeaChat() {
     startOnboarding();
   });
 
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      form.requestSubmit();
+    }
+  });
+
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const text = input.value.trim();
@@ -170,11 +196,11 @@ export function wireIdeaChat() {
     try {
       const result = await checkIdea({ messages: history, profile });
       const reply = result.data.reply;
-      thinkingBubble.textContent = reply;
+      setBubbleText(thinkingBubble, reply);
       history.push({ role: 'assistant', content: reply });
     } catch (err) {
       console.error('checkIdea failed:', err);
-      thinkingBubble.textContent = 'משהו השתבש, נסי שוב בבקשה.';
+      setBubbleText(thinkingBubble, 'משהו השתבש, נסי שוב בבקשה.');
     } finally {
       input.disabled = false;
       input.focus();

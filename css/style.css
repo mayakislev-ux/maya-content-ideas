@@ -24,7 +24,12 @@
 body {
   margin: 0;
   font-family: 'Segoe UI', Arial, sans-serif;
-  background: var(--bg);
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.88), rgba(255, 255, 255, 0.94)),
+    url('../assets/app-background.png');
+  background-size: cover;
+  background-position: top center;
+  background-attachment: fixed;
   color: var(--text);
   direction: rtl;
 }
@@ -126,6 +131,7 @@ h1, h2, h3 {
   flex-direction: column;
   gap: 0.7rem;
   padding: 1.5rem;
+  padding-bottom: 6rem;
   max-width: 640px;
   margin: 0 auto;
   min-height: 50vh;
@@ -174,14 +180,18 @@ h1, h2, h3 {
 }
 
 .chat-input-row {
-  position: sticky;
+  position: fixed;
   bottom: 0;
+  left: 0;
+  right: 0;
   display: flex;
   gap: 0.6rem;
-  padding: 1rem 1.5rem 1.5rem;
+  padding: 0.8rem 1.5rem calc(0.8rem + env(safe-area-inset-bottom, 0px));
   max-width: 640px;
   margin: 0 auto;
   background: var(--bg);
+  box-shadow: 0 -2px 12px rgba(33, 29, 46, 0.08);
+  z-index: 6;
 }
 
 .chat-choice-bubble { max-width: 100%; }
@@ -571,4 +581,30 @@ h1, h2, h3 {
   color: var(--cat-baal-erech);
   font-weight: bold;
   margin-top: 0.8rem;
+}
+
+.inspiration-view {
+  max-width: 700px;
+  margin: 0 auto;
+  padding: 1rem 1.5rem;
+}
+
+.construction-box {
+  text-align: center;
+  background: var(--surface);
+  border-radius: 20px;
+  padding: 3rem 1.5rem;
+  margin-top: 2rem;
+  box-shadow: 0 4px 16px rgba(33, 29, 46, 0.06);
+}
+
+.construction-sticker {
+  font-size: 3rem;
+  display: inline-block;
+  animation: constructionWobble 1.2s ease-in-out infinite;
+}
+
+@keyframes constructionWobble {
+  0%, 100% { transform: rotate(-6deg) translateY(0); }
+  50% { transform: rotate(6deg) translateY(-8px); }
 }

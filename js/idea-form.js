@@ -1,5 +1,10 @@
 import { validateIdea, CATEGORY_DEFINITIONS, PERSUASION_STAGE_DEFINITIONS } from './ideas-logic.js';
 import { addIdea, updateIdea, deleteIdea } from './ideas-store.js';
+import { functions } from './firebase-init.js';
+import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
+
+const classifyIdea = httpsCallable(functions, 'classifyIdea');
+const AI_OPTION = '__ai__';
 
 let editingId = null;
 
@@ -61,6 +66,33 @@ function wireInfoModal() {
   });
 }
 
+async function runAiClassification(sourceSelectId) {
+  const titleEl = document.getElementById('field-title');
+  const hookEl = document.getElementById('field-hook');
+  const categorySelect = document.getElementById('field-category');
+  const persuasionSelect = document.getElementById('field-persuasion');
+
+  if (!titleEl.value.trim()) {
+    alert('קודם תכתבי את "הרעיון" (ורצוי גם "פירוט"), ואז אני אוכל להציע.');
+    document.getElementById(sourceSelectId).value = '';
+    return;
+  }
+
+  try {
+    const result = await classifyIdea({ title: titleEl.value, hookText: hookEl.value });
+    categorySelect.value = result.data.category;
+    persuasionSelect.value = result.data.persuasionStage;
+    openInfoModal('ה-AI הציע/ה', {
+      [result.data.category]: 'קטגוריה מוצעת לפי מה שכתבת.',
+      [result.data.persuasionStage]: 'שלב שכנוע מוצע לפי מה שכתבת. את/ה תמיד יכול/ה לשנות ידנית.',
+    });
+  } catch (err) {
+    console.error('classifyIdea failed:', err);
+    alert('משהו השתבש בהצעה האוטומטית, נסי שוב או בחרי ידנית.');
+    document.getElementById(sourceSelectId).value = '';
+  }
+}
+
 export function wireIdeaForm() {
   wireInfoModal();
   document.getElementById('cancel-idea-btn').addEventListener('click', closeModal);
@@ -73,8 +105,16 @@ export function wireIdeaForm() {
     }
   });
 
+  document.getElementById('field-category').addEventListener('change', (e) => {
+    if (e.target.value === AI_OPTION) runAiClassification('field-category');
+  });
+
   document.getElementById('field-persuasion').addEventListener('change', (e) => {
     const stage = e.target.value;
+    if (stage === AI_OPTION) {
+      runAiClassification('field-persuasion');
+      return;
+    }
     if (stage && PERSUASION_STAGE_DEFINITIONS[stage]) {
       openInfoModal('שלב שכנוע שנבחר', { [stage]: PERSUASION_STAGE_DEFINITIONS[stage] + ' לתשומת ליבך: אם תשני בהמשך את זווית ההנגשה לרעיון הזה, ייתכן שהשלב המתאים ישתנה בהתאם - כדאי לבדוק שוב.' });
     }

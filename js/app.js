@@ -19,10 +19,12 @@ function showView(name) {
   document.getElementById('archive-view').hidden = name !== 'archive';
   document.getElementById('chat-view').hidden = name !== 'chat';
   document.getElementById('guide-view').hidden = name !== 'guide';
+  document.getElementById('inspiration-view').hidden = name !== 'inspiration';
   document.getElementById('feedback-view').hidden = name !== 'feedback';
   document.getElementById('tab-archive').classList.toggle('active', name === 'archive');
   document.getElementById('tab-chat').classList.toggle('active', name === 'chat');
   document.getElementById('tab-guide').classList.toggle('active', name === 'guide');
+  document.getElementById('tab-inspiration').classList.toggle('active', name === 'inspiration');
   document.getElementById('tab-feedback').classList.toggle('active', name === 'feedback');
   document.getElementById('random-idea-btn').hidden = name !== 'archive';
   document.getElementById('add-idea-fab').hidden = name !== 'archive';
@@ -52,6 +54,7 @@ document.getElementById('tab-chat').addEventListener('click', () => {
   startIdeaChat();
 });
 document.getElementById('tab-guide').addEventListener('click', () => showView('guide'));
+document.getElementById('tab-inspiration').addEventListener('click', () => showView('inspiration'));
 document.getElementById('tab-feedback').addEventListener('click', () => showView('feedback'));
 
 wireIdeaForm();
