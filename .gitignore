@@ -1,0 +1,8 @@
+node_modules/
+*.json.key
+*-firebase-adminsdk-*.json
+functions-deployer-*.json
+content-ideas-becd7-*.json
+functions/node_modules/
+functions/.env
+functions/.env.*
