@@ -237,6 +237,45 @@ body {
   color: var(--text);
 }
 
+.random-modal {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.random-modal-content {
+  text-align: center;
+  max-width: 380px;
+}
+
+.random-spinner {
+  font-size: 1.4rem;
+  font-weight: bold;
+  padding: 2rem 1rem;
+  color: var(--accent);
+  animation: randomPulse 0.09s infinite alternate;
+}
+
+@keyframes randomPulse {
+  from { transform: scale(1); }
+  to { transform: scale(1.06); }
+}
+
+.random-result {
+  font-size: 1.6rem;
+  font-weight: bold;
+  padding: 2rem 1.2rem;
+  border-radius: 14px;
+  background: var(--accent);
+  color: white;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(124, 58, 237, 0.35);
+}
+
+.random-modal-actions {
+  justify-content: center;
+  margin-top: 1.2rem;
+}
+
 .modal-content textarea { min-height: 70px; resize: vertical; }
 
 .modal-actions {

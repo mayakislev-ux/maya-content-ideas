@@ -2,7 +2,7 @@ import { onAuthChange, signInWithGoogle, signOutUser } from './auth.js';
 import { subscribeToIdeas } from './ideas-store.js';
 import { renderArchive, wireArchiveControls, getCurrentIdeas } from './archive-view.js';
 import { openAddModal, openEditModal, wireIdeaForm } from './idea-form.js';
-import { pickRandomStrongIdea } from './ideas-logic.js';
+import { wireRandomIdeaModal } from './random-idea-modal.js';
 
 let unsubscribeIdeas = null;
 
@@ -23,17 +23,9 @@ document.getElementById('google-signin-btn').addEventListener('click', async () 
 document.getElementById('signout-btn').addEventListener('click', () => signOutUser());
 document.getElementById('add-idea-fab').addEventListener('click', openAddModal);
 
-document.getElementById('random-idea-btn').addEventListener('click', () => {
-  const idea = pickRandomStrongIdea(getCurrentIdeas());
-  if (idea) {
-    openEditModal(idea);
-  } else {
-    alert('עוד אין לך רעיונות מדורגים "חייב לצלם" - סמני כמה רעיונות ככה כדי שהכפתור יוכל להגריל!');
-  }
-});
-
 wireIdeaForm();
 wireArchiveControls((idea) => openEditModal(idea));
+wireRandomIdeaModal({ getIdeas: getCurrentIdeas, onOpenIdea: openEditModal });
 
 onAuthChange((user) => {
   document.getElementById('login-screen').hidden = !!user;

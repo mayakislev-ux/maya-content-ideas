@@ -10,7 +10,6 @@ import {
   filterIdeas,
   validateIdea,
   pickRandomIdea,
-  pickRandomStrongIdea,
 } from '../js/ideas-logic.js';
 
 test('CATEGORIES has the 4 expected values in order', () => {
@@ -106,20 +105,4 @@ test('pickRandomIdea always returns an element from the list', () => {
     const picked = pickRandomIdea(ideas);
     assert.ok(ideas.includes(picked));
   }
-});
-
-test('pickRandomStrongIdea only picks ideas rated "חייב לצלם"', () => {
-  const ideas = [
-    { title: 'חזק', rating: '🔥 חייב לצלם' },
-    { title: 'חלש', rating: '⭐ שווה לצלם' },
-    { title: 'עתידי', rating: '💭 רעיון לעתיד' },
-  ];
-  for (let i = 0; i < 10; i++) {
-    assert.equal(pickRandomStrongIdea(ideas).title, 'חזק');
-  }
-});
-
-test('pickRandomStrongIdea returns null when no idea is rated "חייב לצלם"', () => {
-  const ideas = [{ title: 'חלש', rating: '⭐ שווה לצלם' }];
-  assert.equal(pickRandomStrongIdea(ideas), null);
 });

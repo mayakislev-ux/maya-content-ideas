@@ -55,7 +55,3 @@ export function pickRandomIdea(ideas) {
   if (!ideas.length) return null;
   return ideas[Math.floor(Math.random() * ideas.length)];
 }
-
-export function pickRandomStrongIdea(ideas) {
-  return pickRandomIdea(ideas.filter((idea) => idea.rating === STRONG_RATING));
-}
