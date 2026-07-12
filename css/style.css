@@ -180,8 +180,10 @@ body {
 
 .random-btn {
   position: fixed;
-  bottom: 1.5rem;
-  right: 1.5rem;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
   background: #ffb703;
   color: #211d2e;
   font-weight: bold;

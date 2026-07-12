@@ -7,7 +7,6 @@ export function openAddModal() {
   editingId = null;
   document.getElementById('modal-title').textContent = 'רעיון חדש';
   document.getElementById('idea-form').reset();
-  document.getElementById('field-status-wrap').hidden = true;
   document.getElementById('delete-idea-btn').hidden = true;
   document.getElementById('form-error').hidden = true;
   document.getElementById('idea-modal').hidden = false;
@@ -24,8 +23,6 @@ export function openEditModal(idea) {
   document.getElementById('field-persuasion').value = idea.persuasionStage || '';
   document.getElementById('field-rating').value = idea.rating || '';
   document.getElementById('field-viral').value = idea.viralPotential ? 'כן' : 'לא';
-  document.getElementById('field-status').value = idea.status;
-  document.getElementById('field-status-wrap').hidden = false;
   document.getElementById('delete-idea-btn').hidden = false;
   document.getElementById('form-error').hidden = true;
   document.getElementById('idea-modal').hidden = false;
@@ -67,7 +64,7 @@ export function wireIdeaForm() {
       return;
     }
     if (editingId) {
-      await updateIdea(editingId, { ...data, status: document.getElementById('field-status').value });
+      await updateIdea(editingId, data);
     } else {
       await addIdea(data);
     }

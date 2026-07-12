@@ -23,6 +23,8 @@
     <button id="signout-btn" class="btn-text">התנתקות</button>
   </header>
 
+  <button id="random-idea-btn" class="random-btn">🎲 אין לי רעיון</button>
+
   <main id="archive-view" class="view">
     <div class="archive-controls">
       <input id="search-input" type="text" placeholder="חיפוש לפי כותרת או טקסט...">
@@ -33,27 +35,10 @@
         <option value="מכירתי">מכירתי</option>
         <option value="בידורי">בידורי</option>
       </select>
-      <select id="filter-status">
-        <option value="">כל הסטטוסים</option>
-        <option value="רעיון">רעיון</option>
-        <option value="בתכנון">בתכנון</option>
-        <option value="פורסם">פורסם</option>
-      </select>
       <select id="filter-viral">
         <option value="">ויראלי - הכל</option>
         <option value="כן">ויראלי: כן</option>
         <option value="לא">ויראלי: לא</option>
-      </select>
-      <select id="filter-source">
-        <option value="">כל המקורות</option>
-        <option value="אינסטגרם">אינסטגרם</option>
-        <option value="טיקטוק">טיקטוק</option>
-        <option value="לקוחות">לקוחות</option>
-        <option value="מהראש">מהראש</option>
-        <option value="שיחה עם חברים / משפחה">שיחה עם חברים / משפחה</option>
-        <option value="פודקאסט">פודקאסט</option>
-        <option value="ספר">ספר</option>
-        <option value="אחר">אחר</option>
       </select>
       <select id="filter-persuasion">
         <option value="">כל שלבי השכנוע</option>
@@ -71,7 +56,6 @@
     <ul class="archive-list" id="archive-list"></ul>
   </main>
 
-  <button id="random-idea-btn" class="random-btn">🎲 אין לי רעיון</button>
   <button id="add-idea-fab" class="fab">+ הוסיפי רעיון</button>
 </div>
 
@@ -123,13 +107,6 @@
         <select id="field-viral">
           <option value="לא">לא</option>
           <option value="כן">כן</option>
-        </select>
-      </label>
-      <label id="field-status-wrap" hidden>סטטוס
-        <select id="field-status">
-          <option value="רעיון">רעיון</option>
-          <option value="בתכנון">בתכנון</option>
-          <option value="פורסם">פורסם</option>
         </select>
       </label>
       <p id="form-error" class="error-text" hidden></p>

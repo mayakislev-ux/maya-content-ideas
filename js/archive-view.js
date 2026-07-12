@@ -18,7 +18,7 @@ export function getCurrentIdeas() {
 }
 
 export function wireArchiveControls(onItemClick) {
-  const ids = ['search-input', 'filter-category', 'filter-status', 'filter-viral', 'filter-source', 'filter-persuasion', 'filter-rating'];
+  const ids = ['search-input', 'filter-category', 'filter-viral', 'filter-persuasion', 'filter-rating'];
   for (const id of ids) {
     const el = document.getElementById(id);
     el.addEventListener(el.tagName === 'SELECT' ? 'change' : 'input', () => applyFilters(onItemClick));
@@ -28,12 +28,10 @@ export function wireArchiveControls(onItemClick) {
 function applyFilters(onItemClick) {
   const text = document.getElementById('search-input').value;
   const category = document.getElementById('filter-category').value;
-  const status = document.getElementById('filter-status').value;
   const viral = document.getElementById('filter-viral').value;
-  const source = document.getElementById('filter-source').value;
   const persuasionStage = document.getElementById('filter-persuasion').value;
   const rating = document.getElementById('filter-rating').value;
-  const filtered = filterIdeas(currentIdeas, { text, category, status, viral, source, persuasionStage, rating });
+  const filtered = filterIdeas(currentIdeas, { text, category, viral, persuasionStage, rating });
 
   const list = document.getElementById('archive-list');
   list.innerHTML = '';
@@ -70,7 +68,7 @@ function renderItem(idea, onItemClick) {
 
   const meta = document.createElement('div');
   meta.className = 'archive-item-meta';
-  meta.textContent = [idea.status, idea.source, formatDate(idea)].filter(Boolean).join(' · ');
+  meta.textContent = [idea.source, formatDate(idea)].filter(Boolean).join(' · ');
   li.appendChild(meta);
 
   if (idea.sourceLink) {

@@ -2,7 +2,7 @@ import { onAuthChange, signInWithGoogle, signOutUser } from './auth.js';
 import { subscribeToIdeas } from './ideas-store.js';
 import { renderArchive, wireArchiveControls, getCurrentIdeas } from './archive-view.js';
 import { openAddModal, openEditModal, wireIdeaForm } from './idea-form.js';
-import { pickRandomIdea } from './ideas-logic.js';
+import { pickRandomStrongIdea } from './ideas-logic.js';
 
 let unsubscribeIdeas = null;
 
@@ -24,11 +24,11 @@ document.getElementById('signout-btn').addEventListener('click', () => signOutUs
 document.getElementById('add-idea-fab').addEventListener('click', openAddModal);
 
 document.getElementById('random-idea-btn').addEventListener('click', () => {
-  const idea = pickRandomIdea(getCurrentIdeas());
+  const idea = pickRandomStrongIdea(getCurrentIdeas());
   if (idea) {
     openEditModal(idea);
   } else {
-    alert('עוד אין לך רעיונות שמורים - תוסיפי כמה קודם!');
+    alert('עוד אין לך רעיונות מדורגים "חייב לצלם" - סמני כמה רעיונות ככה כדי שהכפתור יוכל להגריל!');
   }
 });
 

@@ -43,7 +43,6 @@ export async function addIdea({
     viralPotential,
     source,
     rating,
-    status: 'רעיון',
     ownerUid: auth.currentUser.uid,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),

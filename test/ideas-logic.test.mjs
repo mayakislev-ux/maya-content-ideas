@@ -2,22 +2,19 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   CATEGORIES,
-  STATUSES,
   PERSUASION_STAGES,
   SOURCES,
   RATINGS,
+  STRONG_RATING,
   categoryColorVar,
   filterIdeas,
   validateIdea,
   pickRandomIdea,
+  pickRandomStrongIdea,
 } from '../js/ideas-logic.js';
 
 test('CATEGORIES has the 4 expected values in order', () => {
   assert.deepEqual(CATEGORIES, ['בעל ערך', 'אישי', 'מכירתי', 'בידורי']);
-});
-
-test('STATUSES has the 3 expected stages in order', () => {
-  assert.deepEqual(STATUSES, ['רעיון', 'בתכנון', 'פורסם']);
 });
 
 test('PERSUASION_STAGES has the 3 expected stages', () => {
@@ -33,6 +30,7 @@ test('SOURCES has all 8 expected options', () => {
 
 test('RATINGS has the 3 expected labels with emoji', () => {
   assert.deepEqual(RATINGS, ['🔥 חייב לצלם', '⭐ שווה לצלם', '💭 רעיון לעתיד']);
+  assert.equal(STRONG_RATING, '🔥 חייב לצלם');
 });
 
 test('categoryColorVar maps each category to a distinct CSS var', () => {
@@ -44,40 +42,29 @@ test('categoryColorVar maps each category to a distinct CSS var', () => {
 
 test('filterIdeas matches free text in title or hookText', () => {
   const ideas = [
-    { title: 'טעות נפוצה', hookText: 'בעלי עסקים נתלים במספרים', category: 'בעל ערך', status: 'פורסם' },
-    { title: 'יום הולדת', hookText: 'רגע כנות', category: 'אישי', status: 'רעיון' },
+    { title: 'טעות נפוצה', hookText: 'בעלי עסקים נתלים במספרים', category: 'בעל ערך' },
+    { title: 'יום הולדת', hookText: 'רגע כנות', category: 'אישי' },
   ];
   const result = filterIdeas(ideas, { text: 'מספרים' });
   assert.equal(result.length, 1);
   assert.equal(result[0].title, 'טעות נפוצה');
 });
 
-test('filterIdeas filters by category, status, and viral potential together', () => {
+test('filterIdeas filters by category and viral potential together', () => {
   const ideas = [
-    { title: 'א', hookText: '', category: 'בעל ערך', status: 'רעיון', viralPotential: true },
-    { title: 'ב', hookText: '', category: 'אישי', status: 'רעיון', viralPotential: false },
-    { title: 'ג', hookText: '', category: 'בעל ערך', status: 'פורסם', viralPotential: true },
+    { title: 'א', hookText: '', category: 'בעל ערך', viralPotential: true },
+    { title: 'ב', hookText: '', category: 'אישי', viralPotential: false },
+    { title: 'ג', hookText: '', category: 'בעל ערך', viralPotential: true },
   ];
   assert.equal(filterIdeas(ideas, { category: 'בעל ערך' }).length, 2);
-  assert.equal(filterIdeas(ideas, { status: 'רעיון' }).length, 2);
   assert.equal(filterIdeas(ideas, { viral: 'כן' }).length, 2);
-  assert.equal(filterIdeas(ideas, { category: 'בעל ערך', status: 'רעיון' }).length, 1);
-});
-
-test('filterIdeas filters by source', () => {
-  const ideas = [
-    { title: 'א', hookText: '', category: 'בעל ערך', status: 'רעיון', source: 'טיקטוק' },
-    { title: 'ב', hookText: '', category: 'בעל ערך', status: 'רעיון', source: 'ספר' },
-  ];
-  const result = filterIdeas(ideas, { source: 'ספר' });
-  assert.equal(result.length, 1);
-  assert.equal(result[0].title, 'ב');
+  assert.equal(filterIdeas(ideas, { category: 'בעל ערך', viral: 'לא' }).length, 0);
 });
 
 test('filterIdeas filters by persuasion stage', () => {
   const ideas = [
-    { title: 'א', hookText: '', category: 'בעל ערך', status: 'רעיון', persuasionStage: PERSUASION_STAGES[0] },
-    { title: 'ב', hookText: '', category: 'בעל ערך', status: 'רעיון', persuasionStage: PERSUASION_STAGES[1] },
+    { title: 'א', hookText: '', category: 'בעל ערך', persuasionStage: PERSUASION_STAGES[0] },
+    { title: 'ב', hookText: '', category: 'בעל ערך', persuasionStage: PERSUASION_STAGES[1] },
   ];
   const result = filterIdeas(ideas, { persuasionStage: PERSUASION_STAGES[1] });
   assert.equal(result.length, 1);
@@ -86,8 +73,8 @@ test('filterIdeas filters by persuasion stage', () => {
 
 test('filterIdeas filters by rating', () => {
   const ideas = [
-    { title: 'א', hookText: '', category: 'בעל ערך', status: 'רעיון', rating: '🔥 חייב לצלם' },
-    { title: 'ב', hookText: '', category: 'בעל ערך', status: 'רעיון', rating: '💭 רעיון לעתיד' },
+    { title: 'א', hookText: '', category: 'בעל ערך', rating: '🔥 חייב לצלם' },
+    { title: 'ב', hookText: '', category: 'בעל ערך', rating: '💭 רעיון לעתיד' },
   ];
   const result = filterIdeas(ideas, { rating: '🔥 חייב לצלם' });
   assert.equal(result.length, 1);
@@ -119,4 +106,20 @@ test('pickRandomIdea always returns an element from the list', () => {
     const picked = pickRandomIdea(ideas);
     assert.ok(ideas.includes(picked));
   }
+});
+
+test('pickRandomStrongIdea only picks ideas rated "חייב לצלם"', () => {
+  const ideas = [
+    { title: 'חזק', rating: '🔥 חייב לצלם' },
+    { title: 'חלש', rating: '⭐ שווה לצלם' },
+    { title: 'עתידי', rating: '💭 רעיון לעתיד' },
+  ];
+  for (let i = 0; i < 10; i++) {
+    assert.equal(pickRandomStrongIdea(ideas).title, 'חזק');
+  }
+});
+
+test('pickRandomStrongIdea returns null when no idea is rated "חייב לצלם"', () => {
+  const ideas = [{ title: 'חלש', rating: '⭐ שווה לצלם' }];
+  assert.equal(pickRandomStrongIdea(ideas), null);
 });

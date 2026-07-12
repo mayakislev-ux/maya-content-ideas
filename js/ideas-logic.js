@@ -1,5 +1,4 @@
 export const CATEGORIES = ['בעל ערך', 'אישי', 'מכירתי', 'בידורי'];
-export const STATUSES = ['רעיון', 'בתכנון', 'פורסם'];
 export const PERSUASION_STAGES = [
   'שלב שכנוע 1 - מודעות לבעיה / חומרת הבעיה',
   'שלב שכנוע 2 - מודעות לפתרון',
@@ -16,6 +15,7 @@ export const SOURCES = [
   'אחר',
 ];
 export const RATINGS = ['🔥 חייב לצלם', '⭐ שווה לצלם', '💭 רעיון לעתיד'];
+export const STRONG_RATING = '🔥 חייב לצלם';
 
 const CATEGORY_COLOR_KEYS = {
   'בעל ערך': 'baal-erech',
@@ -28,12 +28,10 @@ export function categoryColorVar(category) {
   return `var(--cat-${CATEGORY_COLOR_KEYS[category] || 'default'})`;
 }
 
-export function filterIdeas(ideas, { text = '', category = '', status = '', viral = '', source = '', persuasionStage = '', rating = '' } = {}) {
+export function filterIdeas(ideas, { text = '', category = '', viral = '', persuasionStage = '', rating = '' } = {}) {
   const needle = text.trim().toLowerCase();
   return ideas.filter((idea) => {
     if (category && idea.category !== category) return false;
-    if (status && idea.status !== status) return false;
-    if (source && idea.source !== source) return false;
     if (persuasionStage && idea.persuasionStage !== persuasionStage) return false;
     if (rating && idea.rating !== rating) return false;
     if (viral === 'כן' && !idea.viralPotential) return false;
@@ -56,4 +54,8 @@ export function validateIdea({ title, category }) {
 export function pickRandomIdea(ideas) {
   if (!ideas.length) return null;
   return ideas[Math.floor(Math.random() * ideas.length)];
+}
+
+export function pickRandomStrongIdea(ideas) {
+  return pickRandomIdea(ideas.filter((idea) => idea.rating === STRONG_RATING));
 }
