@@ -6,6 +6,10 @@ import {
   SOURCES,
   RATINGS,
   STRONG_RATING,
+  AUDIENCE_SCOPES,
+  VIRAL_SCOPE,
+  CATEGORY_DEFINITIONS,
+  PERSUASION_STAGE_DEFINITIONS,
   categoryColorVar,
   filterIdeas,
   validateIdea,
@@ -32,6 +36,23 @@ test('RATINGS has the 3 expected labels with emoji', () => {
   assert.equal(STRONG_RATING, '🔥 חייב לצלם');
 });
 
+test('AUDIENCE_SCOPES has the 3 expected values, VIRAL_SCOPE is "רחב"', () => {
+  assert.deepEqual(AUDIENCE_SCOPES, ['עיקרי', 'משני', 'רחב']);
+  assert.equal(VIRAL_SCOPE, 'רחב');
+});
+
+test('CATEGORY_DEFINITIONS has an entry for every category', () => {
+  for (const cat of CATEGORIES) {
+    assert.ok(CATEGORY_DEFINITIONS[cat] && CATEGORY_DEFINITIONS[cat].length > 0);
+  }
+});
+
+test('PERSUASION_STAGE_DEFINITIONS has an entry for every stage', () => {
+  for (const stage of PERSUASION_STAGES) {
+    assert.ok(PERSUASION_STAGE_DEFINITIONS[stage] && PERSUASION_STAGE_DEFINITIONS[stage].length > 0);
+  }
+});
+
 test('categoryColorVar maps each category to a distinct CSS var', () => {
   assert.equal(categoryColorVar('בעל ערך'), 'var(--cat-baal-erech)');
   assert.equal(categoryColorVar('אישי'), 'var(--cat-ishi)');
@@ -49,15 +70,15 @@ test('filterIdeas matches free text in title or hookText', () => {
   assert.equal(result[0].title, 'טעות נפוצה');
 });
 
-test('filterIdeas filters by category and viral potential together', () => {
+test('filterIdeas filters by category and audience scope together', () => {
   const ideas = [
-    { title: 'א', hookText: '', category: 'בעל ערך', viralPotential: true },
-    { title: 'ב', hookText: '', category: 'אישי', viralPotential: false },
-    { title: 'ג', hookText: '', category: 'בעל ערך', viralPotential: true },
+    { title: 'א', hookText: '', category: 'בעל ערך', audienceScope: 'רחב' },
+    { title: 'ב', hookText: '', category: 'אישי', audienceScope: 'עיקרי' },
+    { title: 'ג', hookText: '', category: 'בעל ערך', audienceScope: 'רחב' },
   ];
   assert.equal(filterIdeas(ideas, { category: 'בעל ערך' }).length, 2);
-  assert.equal(filterIdeas(ideas, { viral: 'כן' }).length, 2);
-  assert.equal(filterIdeas(ideas, { category: 'בעל ערך', viral: 'לא' }).length, 0);
+  assert.equal(filterIdeas(ideas, { audienceScope: 'רחב' }).length, 2);
+  assert.equal(filterIdeas(ideas, { category: 'בעל ערך', audienceScope: 'עיקרי' }).length, 0);
 });
 
 test('filterIdeas filters by persuasion stage', () => {
@@ -80,18 +101,34 @@ test('filterIdeas filters by rating', () => {
   assert.equal(result[0].title, 'א');
 });
 
-test('validateIdea requires only title and category (hookText is optional)', () => {
-  const errors = validateIdea({ title: '', category: '' });
-  assert.equal(errors.length, 2);
+test('validateIdea requires every field now', () => {
+  const errors = validateIdea({ title: '', category: '', hookText: '', source: '', persuasionStage: '', rating: '', audienceScope: '' });
+  assert.equal(errors.length, 7);
 });
 
-test('validateIdea passes with just title and category filled', () => {
-  const errors = validateIdea({ title: 'כותרת', category: 'בעל ערך' });
+test('validateIdea passes when every field is filled', () => {
+  const errors = validateIdea({
+    title: 'כותרת',
+    category: 'בעל ערך',
+    hookText: 'פירוט',
+    source: 'טיקטוק',
+    persuasionStage: PERSUASION_STAGES[0],
+    rating: '🔥 חייב לצלם',
+    audienceScope: 'עיקרי',
+  });
   assert.equal(errors.length, 0);
 });
 
 test('validateIdea rejects an unknown category', () => {
-  const errors = validateIdea({ title: 'כותרת', category: 'לא קיים' });
+  const errors = validateIdea({
+    title: 'כותרת',
+    category: 'לא קיים',
+    hookText: 'פירוט',
+    source: 'טיקטוק',
+    persuasionStage: PERSUASION_STAGES[0],
+    rating: '🔥 חייב לצלם',
+    audienceScope: 'עיקרי',
+  });
   assert.equal(errors.length, 1);
 });
 

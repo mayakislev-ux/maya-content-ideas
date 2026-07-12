@@ -18,7 +18,7 @@ export function getCurrentIdeas() {
 }
 
 export function wireArchiveControls(onItemClick) {
-  const ids = ['search-input', 'filter-category', 'filter-viral', 'filter-persuasion', 'filter-rating'];
+  const ids = ['search-input', 'filter-category', 'filter-audience-scope', 'filter-persuasion', 'filter-rating'];
   for (const id of ids) {
     const el = document.getElementById(id);
     el.addEventListener(el.tagName === 'SELECT' ? 'change' : 'input', () => applyFilters(onItemClick));
@@ -28,10 +28,10 @@ export function wireArchiveControls(onItemClick) {
 function applyFilters(onItemClick) {
   const text = document.getElementById('search-input').value;
   const category = document.getElementById('filter-category').value;
-  const viral = document.getElementById('filter-viral').value;
+  const audienceScope = document.getElementById('filter-audience-scope').value;
   const persuasionStage = document.getElementById('filter-persuasion').value;
   const rating = document.getElementById('filter-rating').value;
-  const filtered = filterIdeas(currentIdeas, { text, category, viral, persuasionStage, rating });
+  const filtered = filterIdeas(currentIdeas, { text, category, audienceScope, persuasionStage, rating });
 
   const list = document.getElementById('archive-list');
   list.innerHTML = '';
@@ -58,11 +58,11 @@ function renderItem(idea, onItemClick) {
     ratingEl.textContent = idea.rating;
     header.appendChild(ratingEl);
   }
-  if (idea.viralPotential) {
-    const viralEl = document.createElement('span');
-    viralEl.className = 'viral-badge';
-    viralEl.textContent = '🔥 ויראלי';
-    header.appendChild(viralEl);
+  if (idea.audienceScope) {
+    const scopeEl = document.createElement('span');
+    scopeEl.className = idea.audienceScope === 'רחב' ? 'viral-badge' : 'card-category-tag';
+    scopeEl.textContent = idea.audienceScope === 'רחב' ? '🔥 קהל רחב' : `קהל ${idea.audienceScope}`;
+    header.appendChild(scopeEl);
   }
   li.appendChild(header);
 

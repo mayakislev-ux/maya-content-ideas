@@ -24,6 +24,7 @@
       <button id="tab-archive" class="tab-btn active">מאגר וחיפוש</button>
       <button id="tab-chat" class="tab-btn">בדיקת רעיון</button>
       <button id="tab-guide" class="tab-btn">איך למצוא רעיון</button>
+      <button id="tab-feedback" class="tab-btn">חוות דעת</button>
     </nav>
     <button id="signout-btn" class="btn-text">התנתקות</button>
   </header>
@@ -40,10 +41,11 @@
         <option value="מכירתי">מכירתי</option>
         <option value="בידורי">בידורי</option>
       </select>
-      <select id="filter-viral">
-        <option value="">ויראלי - הכל</option>
-        <option value="כן">ויראלי: כן</option>
-        <option value="לא">ויראלי: לא</option>
+      <select id="filter-audience-scope">
+        <option value="">כל סוגי הקהל</option>
+        <option value="עיקרי">קהל עיקרי</option>
+        <option value="משני">קהל משני</option>
+        <option value="רחב">קהל רחב (ויראלי)</option>
       </select>
       <select id="filter-persuasion">
         <option value="">כל שלבי השכנוע</option>
@@ -62,6 +64,7 @@
   </main>
 
   <main id="chat-view" class="view" hidden>
+    <button id="edit-profile-btn" class="btn-text edit-profile-btn" hidden>✏️ ערכי פרטים (מנהלת)</button>
     <div class="chat-messages" id="chat-messages"></div>
     <form id="chat-form" class="chat-input-row">
       <textarea id="chat-input" placeholder="כתבי כאן..." required></textarea>
@@ -194,59 +197,88 @@
     </details>
   </main>
 
+  <main id="feedback-view" class="view feedback-view" hidden>
+    <h2>חוות דעת</h2>
+    <p>ההצלחה שלכם חשובה לי, ומהצד שלי אעזור לכם במקסימום שהיישום יהיה קל. אשמח שתעזרו לי לחשוב מה אפשר לשפר או להוסיף כאן, או מה לא היה מספיק טוב - הפידבק שלכם אנונימי לגמרי ונשלח ישירות אליי. 💜</p>
+    <form id="feedback-form">
+      <textarea id="feedback-input" placeholder="כתבו כאן את חוות הדעת שלכם..." required></textarea>
+      <button type="submit" class="btn-primary">שליחת פידבק</button>
+      <p id="feedback-success" class="feedback-success" hidden>תודה! הפידבק נשלח בהצלחה 💜</p>
+    </form>
+  </main>
+
   <button id="add-idea-fab" class="fab">+ הוסיפי רעיון</button>
 </div>
 
 <div id="idea-modal" class="modal" hidden>
-  <div class="modal-content">
+  <div class="modal-content idea-modal-content">
     <h2 id="modal-title">רעיון חדש</h2>
     <form id="idea-form">
-      <label>הרעיון<input id="field-title" type="text" required></label>
-      <label>קטגוריה
+
+      <div class="form-section">
+        <label>הרעיון *<input id="field-title" type="text" required></label>
+        <label>פירוט *<textarea id="field-hook" required></textarea></label>
+        <label>לינק לסרטון (במידה ויש)<input id="field-link" type="url"></label>
+      </div>
+
+      <div class="form-section">
+        <label class="field-label-row">קטגוריה *
+          <button type="button" id="category-info-btn" class="info-btn" aria-label="מה זה אומר?">ⓘ</button>
+        </label>
         <select id="field-category" required>
           <option value="בעל ערך">בעל ערך</option>
           <option value="אישי">אישי</option>
           <option value="מכירתי">מכירתי</option>
           <option value="בידורי">בידורי</option>
         </select>
-      </label>
-      <label>פירוט<textarea id="field-hook"></textarea></label>
-      <label>לינק לסרטון (במידה ויש)<input id="field-link" type="url"></label>
-      <label>מקור הרעיון
-        <select id="field-source">
-          <option value="">בחרי מקור</option>
-          <option value="אינסטגרם">אינסטגרם</option>
-          <option value="טיקטוק">טיקטוק</option>
-          <option value="לקוחות">לקוחות</option>
-          <option value="מהראש">מהראש</option>
-          <option value="שיחה עם חברים / משפחה">שיחה עם חברים / משפחה</option>
-          <option value="פודקאסט">פודקאסט</option>
-          <option value="ספר">ספר</option>
-          <option value="אחר">אחר</option>
-        </select>
-      </label>
-      <label>שלב שכנוע
-        <select id="field-persuasion">
+
+        <label>מקור הרעיון *
+          <select id="field-source" required>
+            <option value="">בחרי מקור</option>
+            <option value="אינסטגרם">אינסטגרם</option>
+            <option value="טיקטוק">טיקטוק</option>
+            <option value="לקוחות">לקוחות</option>
+            <option value="מהראש">מהראש</option>
+            <option value="שיחה עם חברים / משפחה">שיחה עם חברים / משפחה</option>
+            <option value="פודקאסט">פודקאסט</option>
+            <option value="ספר">ספר</option>
+            <option value="אחר">אחר</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="form-section">
+        <label class="field-label-row">שלב שכנוע *
+          <button type="button" id="persuasion-info-btn" class="info-btn" aria-label="מה זה אומר?">ⓘ</button>
+        </label>
+        <select id="field-persuasion" required>
           <option value="">בחרי שלב שכנוע</option>
           <option value="שלב שכנוע 1 - מודעות לבעיה / חומרת הבעיה">שלב שכנוע 1 - מודעות לבעיה / חומרת הבעיה</option>
           <option value="שלב שכנוע 2 - מודעות לפתרון">שלב שכנוע 2 - מודעות לפתרון</option>
           <option value="שלב שכנוע 3 - למה דווקא אני">שלב שכנוע 3 - למה דווקא אני</option>
         </select>
-      </label>
-      <label>דירוג
-        <select id="field-rating">
-          <option value="">בחרי דירוג</option>
-          <option value="🔥 חייב לצלם">🔥 חייב לצלם</option>
-          <option value="⭐ שווה לצלם">⭐ שווה לצלם</option>
-          <option value="💭 רעיון לעתיד">💭 רעיון לעתיד</option>
-        </select>
-      </label>
-      <label>פוטנציאל ויראליות
-        <select id="field-viral">
-          <option value="לא">לא</option>
-          <option value="כן">כן</option>
-        </select>
-      </label>
+
+        <label>למי הסרטון מדבר? *
+          <select id="field-audience-scope" required>
+            <option value="">בחרי</option>
+            <option value="עיקרי">קהל עיקרי</option>
+            <option value="משני">קהל משני</option>
+            <option value="רחב">קהל רחב (ויראלי)</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="form-section">
+        <label>דירוג *
+          <select id="field-rating" required>
+            <option value="">בחרי דירוג</option>
+            <option value="🔥 חייב לצלם">🔥 חייב לצלם</option>
+            <option value="⭐ שווה לצלם">⭐ שווה לצלם</option>
+            <option value="💭 רעיון לעתיד">💭 רעיון לעתיד</option>
+          </select>
+        </label>
+      </div>
+
       <p id="form-error" class="error-text" hidden></p>
       <div class="modal-actions">
         <button type="button" id="delete-idea-btn" class="btn-danger" hidden>מחיקה</button>
@@ -254,6 +286,16 @@
         <button type="submit" class="btn-primary">שמירה</button>
       </div>
     </form>
+  </div>
+</div>
+
+<div id="info-modal" class="modal" hidden>
+  <div class="modal-content info-modal-content">
+    <h3 id="info-modal-title"></h3>
+    <div id="info-modal-body"></div>
+    <div class="modal-actions">
+      <button type="button" id="info-modal-close-btn" class="btn-primary">הבנתי</button>
+    </div>
   </div>
 </div>
 

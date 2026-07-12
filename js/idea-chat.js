@@ -1,8 +1,13 @@
-import { functions } from './firebase-init.js';
+import { functions, auth } from './firebase-init.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
 import { getProfile, saveProfile } from './user-profile.js';
 
+const ADMIN_EMAIL = 'mayakislev@gmail.com';
 const checkIdea = httpsCallable(functions, 'checkIdea');
+
+function isAdmin() {
+  return auth.currentUser && auth.currentUser.email === ADMIN_EMAIL;
+}
 
 const ONBOARDING_STEPS = ['name', 'pronoun', 'business', 'primaryAudience', 'secondaryAudience'];
 const ONBOARDING_QUESTIONS = {
@@ -123,6 +128,7 @@ function startOnboarding() {
 }
 
 export async function startIdeaChat() {
+  document.getElementById('edit-profile-btn').hidden = !isAdmin();
   if (started) return;
   started = true;
   profile = await getProfile();
@@ -136,6 +142,12 @@ export async function startIdeaChat() {
 export function wireIdeaChat() {
   const form = document.getElementById('chat-form');
   const input = document.getElementById('chat-input');
+
+  document.getElementById('edit-profile-btn').addEventListener('click', () => {
+    document.getElementById('chat-messages').innerHTML = '';
+    draftProfile = {};
+    startOnboarding();
+  });
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();

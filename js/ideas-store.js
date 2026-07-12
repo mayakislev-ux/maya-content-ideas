@@ -30,7 +30,7 @@ export async function addIdea({
   hookText = '',
   sourceLink = '',
   persuasionStage = '',
-  viralPotential = false,
+  audienceScope = '',
   source = '',
   rating = '',
 }) {
@@ -40,7 +40,7 @@ export async function addIdea({
     hookText,
     sourceLink,
     persuasionStage,
-    viralPotential,
+    audienceScope,
     source,
     rating,
     ownerUid: auth.currentUser.uid,

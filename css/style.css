@@ -115,6 +115,12 @@ h1, h2, h3 {
   box-shadow: 0 3px 10px rgba(124, 58, 237, 0.3);
 }
 
+.edit-profile-btn {
+  display: block;
+  margin: 0.8rem auto 0;
+  text-align: center;
+}
+
 .chat-messages {
   display: flex;
   flex-direction: column;
@@ -371,6 +377,46 @@ h1, h2, h3 {
   color: var(--text);
 }
 
+.idea-modal-content {
+  max-width: 520px;
+}
+
+.form-section {
+  background: var(--surface);
+  border-radius: 14px;
+  padding: 1rem 1.1rem 0.2rem;
+  margin-bottom: 1rem;
+}
+
+.field-label-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.info-btn {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.info-modal-content {
+  max-width: 420px;
+}
+
+.info-modal-content p {
+  line-height: 1.6;
+  margin: 0 0 0.9rem;
+}
+
+.info-modal-content p strong {
+  color: var(--accent);
+}
+
 .random-modal {
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
@@ -498,4 +544,31 @@ h1, h2, h3 {
   justify-content: flex-end;
   gap: 0.6rem;
   margin-top: 1rem;
+}
+
+.feedback-view {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+.feedback-view p {
+  line-height: 1.7;
+}
+
+#feedback-form textarea {
+  width: 100%;
+  min-height: 140px;
+  padding: 0.8rem;
+  border-radius: 12px;
+  border: 1px solid #ddd8ee;
+  font-family: inherit;
+  resize: vertical;
+  margin-bottom: 1rem;
+}
+
+.feedback-success {
+  color: var(--cat-baal-erech);
+  font-weight: bold;
+  margin-top: 0.8rem;
 }

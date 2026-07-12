@@ -1,12 +1,27 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    function isAdmin() {
+      return request.auth != null && request.auth.token.email == 'mayakislev@gmail.com';
+    }
+    function isAllowed() {
+      return isAdmin() || (request.auth != null && exists(/databases/$(database)/documents/allowlist/$(request.auth.token.email)));
+    }
+
     match /ideas/{ideaId} {
-      allow read, update, delete: if request.auth != null && request.auth.uid == resource.data.ownerUid;
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.ownerUid;
+      allow read, update, delete: if isAllowed() && request.auth.uid == resource.data.ownerUid;
+      allow create: if isAllowed() && request.auth.uid == request.resource.data.ownerUid;
     }
     match /profiles/{uid} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
+      allow read, write: if isAllowed() && request.auth.uid == uid;
+    }
+    match /allowlist/{email} {
+      allow read: if request.auth != null && request.auth.token.email == email;
+      allow write: if false;
+    }
+    match /feedback/{feedbackId} {
+      allow create: if isAllowed();
+      allow read, update, delete: if false;
     }
   }
 }
