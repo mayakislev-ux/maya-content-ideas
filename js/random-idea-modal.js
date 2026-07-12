@@ -7,21 +7,6 @@ function getAudioCtx() {
   return audioCtx;
 }
 
-function playTick(progress) {
-  const ctx = getAudioCtx();
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  osc.type = 'sine';
-  osc.frequency.value = 380 + progress * 380;
-  const start = ctx.currentTime;
-  gain.gain.setValueAtTime(0.0001, start);
-  gain.gain.linearRampToValueAtTime(0.1, start + 0.008);
-  gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.09);
-  osc.connect(gain).connect(ctx.destination);
-  osc.start(start);
-  osc.stop(start + 0.1);
-}
-
 function playDing() {
   const ctx = getAudioCtx();
   [659, 831, 987].forEach((freq, i) => {
@@ -71,7 +56,6 @@ export function wireRandomIdeaModal({ getIdeas, onOpenIdea }) {
     const totalTicks = 14;
     spinTimer = setInterval(() => {
       spinner.textContent = pickRandomIdea(pool).title;
-      playTick(ticks / totalTicks);
       ticks++;
       if (ticks >= totalTicks) {
         clearInterval(spinTimer);
