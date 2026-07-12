@@ -14,8 +14,12 @@ function onIdeasChanged(ideas) {
 function showView(name) {
   document.getElementById('archive-view').hidden = name !== 'archive';
   document.getElementById('chat-view').hidden = name !== 'chat';
+  document.getElementById('guide-view').hidden = name !== 'guide';
   document.getElementById('tab-archive').classList.toggle('active', name === 'archive');
   document.getElementById('tab-chat').classList.toggle('active', name === 'chat');
+  document.getElementById('tab-guide').classList.toggle('active', name === 'guide');
+  document.getElementById('random-idea-btn').hidden = name !== 'archive';
+  document.getElementById('add-idea-fab').hidden = name !== 'archive';
 }
 
 document.getElementById('google-signin-btn').addEventListener('click', async () => {
@@ -35,6 +39,7 @@ document.getElementById('tab-chat').addEventListener('click', () => {
   showView('chat');
   startIdeaChat();
 });
+document.getElementById('tab-guide').addEventListener('click', () => showView('guide'));
 
 wireIdeaForm();
 wireArchiveControls((idea) => openEditModal(idea));

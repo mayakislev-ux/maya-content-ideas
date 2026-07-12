@@ -20,16 +20,36 @@ let started = false;
 
 function addBubble(text, role) {
   const messagesEl = document.getElementById('chat-messages');
+  const row = document.createElement('div');
+  row.className = `chat-row chat-row-${role}`;
+
+  if (role === 'assistant') {
+    const avatar = document.createElement('div');
+    avatar.className = 'chat-avatar';
+    avatar.textContent = '🤖';
+    row.appendChild(avatar);
+  }
+
   const bubble = document.createElement('div');
   bubble.className = `chat-bubble chat-bubble-${role}`;
   bubble.textContent = text;
-  messagesEl.appendChild(bubble);
+  row.appendChild(bubble);
+
+  messagesEl.appendChild(row);
   messagesEl.scrollTop = messagesEl.scrollHeight;
   return bubble;
 }
 
 function addChoiceBubble(text, choices, onPick) {
   const messagesEl = document.getElementById('chat-messages');
+  const row = document.createElement('div');
+  row.className = 'chat-row chat-row-assistant';
+
+  const avatar = document.createElement('div');
+  avatar.className = 'chat-avatar';
+  avatar.textContent = '🤖';
+  row.appendChild(avatar);
+
   const wrap = document.createElement('div');
   wrap.className = 'chat-bubble chat-bubble-assistant chat-choice-bubble';
 
@@ -52,8 +72,9 @@ function addChoiceBubble(text, choices, onPick) {
     btnRow.appendChild(btn);
   }
   wrap.appendChild(btnRow);
+  row.appendChild(wrap);
 
-  messagesEl.appendChild(wrap);
+  messagesEl.appendChild(row);
   messagesEl.scrollTop = messagesEl.scrollHeight;
 }
 
