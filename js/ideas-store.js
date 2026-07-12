@@ -31,6 +31,8 @@ export async function addIdea({
   sourceLink = '',
   persuasionStage = '',
   viralPotential = false,
+  source = '',
+  rating = '',
 }) {
   return addDoc(ideasCollection(), {
     title,
@@ -39,6 +41,8 @@ export async function addIdea({
     sourceLink,
     persuasionStage,
     viralPotential,
+    source,
+    rating,
     status: 'רעיון',
     ownerUid: auth.currentUser.uid,
     createdAt: serverTimestamp(),

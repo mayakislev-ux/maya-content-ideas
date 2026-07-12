@@ -1,22 +1,12 @@
 import { onAuthChange, signInWithGoogle, signOutUser } from './auth.js';
 import { subscribeToIdeas } from './ideas-store.js';
-import { renderBoard } from './board-view.js';
-import { renderArchive, wireArchiveControls } from './archive-view.js';
+import { renderArchive, wireArchiveControls, getCurrentIdeas } from './archive-view.js';
 import { openAddModal, openEditModal, wireIdeaForm } from './idea-form.js';
+import { pickRandomIdea } from './ideas-logic.js';
 
 let unsubscribeIdeas = null;
-let latestIdeas = [];
-
-function showView(name) {
-  document.getElementById('board-view').hidden = name !== 'board';
-  document.getElementById('archive-view').hidden = name !== 'archive';
-  document.getElementById('tab-board').classList.toggle('active', name === 'board');
-  document.getElementById('tab-archive').classList.toggle('active', name === 'archive');
-}
 
 function onIdeasChanged(ideas) {
-  latestIdeas = ideas;
-  renderBoard(ideas, { onCardClick: openEditModal });
   renderArchive(ideas, { onItemClick: openEditModal });
 }
 
@@ -31,9 +21,16 @@ document.getElementById('google-signin-btn').addEventListener('click', async () 
 });
 
 document.getElementById('signout-btn').addEventListener('click', () => signOutUser());
-document.getElementById('tab-board').addEventListener('click', () => showView('board'));
-document.getElementById('tab-archive').addEventListener('click', () => showView('archive'));
 document.getElementById('add-idea-fab').addEventListener('click', openAddModal);
+
+document.getElementById('random-idea-btn').addEventListener('click', () => {
+  const idea = pickRandomIdea(getCurrentIdeas());
+  if (idea) {
+    openEditModal(idea);
+  } else {
+    alert('עוד אין לך רעיונות שמורים - תוסיפי כמה קודם!');
+  }
+});
 
 wireIdeaForm();
 wireArchiveControls((idea) => openEditModal(idea));
@@ -49,6 +46,5 @@ onAuthChange((user) => {
 
   if (user) {
     unsubscribeIdeas = subscribeToIdeas(onIdeasChanged);
-    showView('board');
   }
 });

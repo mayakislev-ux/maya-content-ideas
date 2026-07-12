@@ -20,7 +20,9 @@ export function openEditModal(idea) {
   document.getElementById('field-category').value = idea.category;
   document.getElementById('field-hook').value = idea.hookText || '';
   document.getElementById('field-link').value = idea.sourceLink || '';
+  document.getElementById('field-source').value = idea.source || '';
   document.getElementById('field-persuasion').value = idea.persuasionStage || '';
+  document.getElementById('field-rating').value = idea.rating || '';
   document.getElementById('field-viral').value = idea.viralPotential ? 'כן' : 'לא';
   document.getElementById('field-status').value = idea.status;
   document.getElementById('field-status-wrap').hidden = false;
@@ -52,7 +54,9 @@ export function wireIdeaForm() {
       category: document.getElementById('field-category').value,
       hookText: document.getElementById('field-hook').value,
       sourceLink: document.getElementById('field-link').value,
+      source: document.getElementById('field-source').value,
       persuasionStage: document.getElementById('field-persuasion').value,
+      rating: document.getElementById('field-rating').value,
       viralPotential: document.getElementById('field-viral').value === 'כן',
     };
     const errors = validateIdea(data);

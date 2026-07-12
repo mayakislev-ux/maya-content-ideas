@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>רעיונות לתוכן</title>
+<link rel="icon" type="image/png" href="assets/favicon.png">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -19,18 +20,10 @@
 <div id="app-screen" class="screen" hidden>
   <header class="app-header">
     <h1>רעיונות לתוכן</h1>
-    <nav class="view-tabs">
-      <button id="tab-board" class="tab-btn active">לוח</button>
-      <button id="tab-archive" class="tab-btn">מאגר וחיפוש</button>
-    </nav>
     <button id="signout-btn" class="btn-text">התנתקות</button>
   </header>
 
-  <main id="board-view" class="view">
-    <div class="board-columns" id="board-columns"></div>
-  </main>
-
-  <main id="archive-view" class="view" hidden>
+  <main id="archive-view" class="view">
     <div class="archive-controls">
       <input id="search-input" type="text" placeholder="חיפוש לפי כותרת או טקסט...">
       <select id="filter-category">
@@ -51,10 +44,34 @@
         <option value="כן">ויראלי: כן</option>
         <option value="לא">ויראלי: לא</option>
       </select>
+      <select id="filter-source">
+        <option value="">כל המקורות</option>
+        <option value="אינסטגרם">אינסטגרם</option>
+        <option value="טיקטוק">טיקטוק</option>
+        <option value="לקוחות">לקוחות</option>
+        <option value="מהראש">מהראש</option>
+        <option value="שיחה עם חברים / משפחה">שיחה עם חברים / משפחה</option>
+        <option value="פודקאסט">פודקאסט</option>
+        <option value="ספר">ספר</option>
+        <option value="אחר">אחר</option>
+      </select>
+      <select id="filter-persuasion">
+        <option value="">כל שלבי השכנוע</option>
+        <option value="שלב שכנוע 1 - מודעות לבעיה / חומרת הבעיה">שלב שכנוע 1</option>
+        <option value="שלב שכנוע 2 - מודעות לפתרון">שלב שכנוע 2</option>
+        <option value="שלב שכנוע 3 - למה דווקא אני">שלב שכנוע 3</option>
+      </select>
+      <select id="filter-rating">
+        <option value="">כל הדירוגים</option>
+        <option value="🔥 חייב לצלם">🔥 חייב לצלם</option>
+        <option value="⭐ שווה לצלם">⭐ שווה לצלם</option>
+        <option value="💭 רעיון לעתיד">💭 רעיון לעתיד</option>
+      </select>
     </div>
     <ul class="archive-list" id="archive-list"></ul>
   </main>
 
+  <button id="random-idea-btn" class="random-btn">🎲 אין לי רעיון</button>
   <button id="add-idea-fab" class="fab">+ הוסיפי רעיון</button>
 </div>
 
@@ -73,12 +90,33 @@
       </label>
       <label>פירוט<textarea id="field-hook"></textarea></label>
       <label>לינק לסרטון (במידה ויש)<input id="field-link" type="url"></label>
+      <label>מקור הרעיון
+        <select id="field-source">
+          <option value="">בחרי מקור</option>
+          <option value="אינסטגרם">אינסטגרם</option>
+          <option value="טיקטוק">טיקטוק</option>
+          <option value="לקוחות">לקוחות</option>
+          <option value="מהראש">מהראש</option>
+          <option value="שיחה עם חברים / משפחה">שיחה עם חברים / משפחה</option>
+          <option value="פודקאסט">פודקאסט</option>
+          <option value="ספר">ספר</option>
+          <option value="אחר">אחר</option>
+        </select>
+      </label>
       <label>שלב שכנוע
         <select id="field-persuasion">
           <option value="">בחרי שלב שכנוע</option>
           <option value="שלב שכנוע 1 - מודעות לבעיה / חומרת הבעיה">שלב שכנוע 1 - מודעות לבעיה / חומרת הבעיה</option>
           <option value="שלב שכנוע 2 - מודעות לפתרון">שלב שכנוע 2 - מודעות לפתרון</option>
           <option value="שלב שכנוע 3 - למה דווקא אני">שלב שכנוע 3 - למה דווקא אני</option>
+        </select>
+      </label>
+      <label>דירוג
+        <select id="field-rating">
+          <option value="">בחרי דירוג</option>
+          <option value="🔥 חייב לצלם">🔥 חייב לצלם</option>
+          <option value="⭐ שווה לצלם">⭐ שווה לצלם</option>
+          <option value="💭 רעיון לעתיד">💭 רעיון לעתיד</option>
         </select>
       </label>
       <label>פוטנציאל ויראליות
