@@ -92,7 +92,7 @@ async function finishOnboarding() {
 }
 
 function greetAndAskForIdea() {
-  addBubble(`אז ${profile.name}, איך אני יכולה לעזור לך היום לגבי הרעיון? כתבי לי מה הרעיון ואעזור לך.`, 'assistant');
+  addBubble(`${profile.name}, רשמי לי מה הרעיון שלך ואדייק אותך.`, 'assistant');
 }
 
 function startOnboarding() {

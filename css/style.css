@@ -273,11 +273,8 @@ body {
 }
 
 .random-btn {
-  position: fixed;
-  top: 1rem;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 10;
+  display: block;
+  margin: 1rem auto 0;
   background: #ffb703;
   color: #211d2e;
   font-weight: bold;
