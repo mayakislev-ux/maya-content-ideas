@@ -29,6 +29,22 @@ async function enforceRateLimit(uid, fnName) {
   });
 }
 
+function countClarifyingRepliesSinceLastAngles(messages) {
+  let count = 0;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const msg = messages[i];
+    if (msg.role !== 'assistant') continue;
+    const content = msg.content || '';
+    const reachedStageBOrLater =
+      content.includes('[[RECOGNIZED_EXCELLENT]]') ||
+      content.includes('מפת-דרכים-ליצירת-תוכן') ||
+      (content.includes('1.') && content.includes('2.') && content.includes('3.'));
+    if (reachedStageBOrLater) break;
+    count++;
+  }
+  return count;
+}
+
 async function callAnthropic(apiKey, body) {
   let response;
   try {
@@ -67,7 +83,11 @@ exports.checkIdea = onCall({ secrets: [anthropicApiKey], region: 'us-central1' }
   }
 
   const profile = (request.data && request.data.profile) || null;
-  const systemPrompt = buildSystemPrompt(profile);
+  let systemPrompt = buildSystemPrompt(profile);
+
+  if (countClarifyingRepliesSinceLastAngles(messages) >= 2) {
+    systemPrompt += '\n\n⚠️ הנחיה דחופה: כבר נשלחו 2 הודעות הבהרה או יותר על הרעיון הנוכחי בשיחה הזו. אסור לשאול שום שאלת הבהרה נוספת - חובה לעבור עכשיו, בהודעה הזו, ישירות לשלב ב\' (5 זוויות הנגשה) על סמך מה שכבר ידוע, גם אם זה לא מושלם. אם הרעיון כבר ברור מספיק, אפשר גם [[RECOGNIZED_EXCELLENT]] אם זה מתאים.';
+  }
 
   const data = await callAnthropic(anthropicApiKey.value(), {
     model: 'claude-haiku-4-5-20251001',
