@@ -87,10 +87,10 @@ h1, h2, h3 {
   justify-content: space-between;
   padding: 1rem 1.5rem;
   background:
-    linear-gradient(rgba(20, 10, 35, 0.35), rgba(20, 10, 35, 0.45)),
+    linear-gradient(rgba(20, 10, 35, 0.25), rgba(20, 10, 35, 0.35)),
     url('../assets/header-background.jpg');
   background-size: cover;
-  background-position: center;
+  background-position: 50% 62%;
   flex-wrap: wrap;
   gap: 0.5rem;
   box-shadow: 0 2px 16px rgba(20, 10, 35, 0.25);
