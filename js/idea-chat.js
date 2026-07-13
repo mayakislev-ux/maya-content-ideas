@@ -24,6 +24,7 @@ let draftProfile = {};
 let started = false;
 
 const URL_PATTERN = /(https?:\/\/[^\s]+)/g;
+const BOLD_PATTERN = /\*\*(.+?)\*\*/g;
 const RECOGNIZED_MARKER = '[[RECOGNIZED_EXCELLENT]]';
 
 function playSuccessSound() {
@@ -49,6 +50,20 @@ function playSuccessSound() {
   }
 }
 
+function appendWithBold(container, text) {
+  const parts = text.split(BOLD_PATTERN);
+  parts.forEach((part, i) => {
+    if (!part) return;
+    if (i % 2 === 1) {
+      const strong = document.createElement('strong');
+      strong.textContent = part;
+      container.appendChild(strong);
+    } else {
+      container.appendChild(document.createTextNode(part));
+    }
+  });
+}
+
 function setBubbleText(bubble, text) {
   bubble.innerHTML = '';
   const parts = text.split(URL_PATTERN);
@@ -61,7 +76,7 @@ function setBubbleText(bubble, text) {
       link.textContent = part;
       bubble.appendChild(link);
     } else if (part) {
-      bubble.appendChild(document.createTextNode(part));
+      appendWithBold(bubble, part);
     }
   }
 }
