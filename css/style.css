@@ -24,7 +24,9 @@
 body {
   margin: 0;
   font-family: 'Segoe UI', Arial, sans-serif;
-  background: #ffffff url('../assets/app-background.jpg');
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.22)),
+    url('../assets/app-background.jpg');
   background-size: cover;
   background-position: top center;
   background-attachment: fixed;
