@@ -26,6 +26,7 @@ let started = false;
 const URL_PATTERN = /(https?:\/\/[^\s]+)/g;
 const BOLD_PATTERN = /\*\*(.+?)\*\*/g;
 const RECOGNIZED_MARKER = '[[RECOGNIZED_EXCELLENT]]';
+const ROADMAP_URL = 'https://mayakislev-ux.github.io/lehiyot-brand/מפת-דרכים-ליצירת-תוכן.html';
 
 function playSuccessSound() {
   try {
@@ -73,7 +74,12 @@ function setBubbleText(bubble, text) {
       link.href = part;
       link.target = '_blank';
       link.rel = 'noopener noreferrer';
-      link.textContent = part;
+      if (part === ROADMAP_URL) {
+        link.className = 'chat-cta-btn';
+        link.textContent = '🗺️ למפת הדרכים ליצירת תוכן';
+      } else {
+        link.textContent = part;
+      }
       bubble.appendChild(link);
     } else if (part) {
       appendWithBold(bubble, part);

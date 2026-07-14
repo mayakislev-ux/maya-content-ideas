@@ -172,6 +172,8 @@ h1, h2, h3 {
   border-radius: 18px;
   line-height: 1.5;
   white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: break-word;
   max-width: 85%;
   box-shadow: 0 2px 8px rgba(33, 29, 46, 0.06);
 }
@@ -187,6 +189,18 @@ h1, h2, h3 {
   border-bottom-right-radius: 4px;
 }
 
+.chat-cta-btn {
+  display: block;
+  margin-top: 0.7rem;
+  padding: 0.7rem 1.2rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: white;
+  font-weight: bold;
+  text-align: center;
+  text-decoration: none;
+}
+
 .chat-bubble-excellent {
   background: linear-gradient(135deg, #ff9f43, #ffb85c);
   color: #2b1a05;
@@ -196,16 +210,17 @@ h1, h2, h3 {
 .chat-input-row {
   position: fixed;
   bottom: 0;
-  left: 0;
-  right: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
   display: flex;
   gap: 0.6rem;
   padding: 0.8rem 1.5rem calc(0.8rem + env(safe-area-inset-bottom, 0px));
   max-width: 640px;
-  margin: 0 auto;
   background: var(--bg);
   box-shadow: 0 -2px 12px rgba(33, 29, 46, 0.08);
   z-index: 6;
+  box-sizing: border-box;
 }
 
 .chat-choice-bubble { max-width: 100%; }
