@@ -9,6 +9,10 @@ import { wireIdeaChat, startIdeaChat } from './idea-chat.js';
 import { wireFeedbackForm } from './feedback.js';
 import { showView } from './view-router.js';
 
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch((err) => console.error('SW registration failed:', err));
+}
+
 const ADMIN_EMAIL = 'mayakislev@gmail.com';
 let unsubscribeIdeas = null;
 
