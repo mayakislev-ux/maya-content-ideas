@@ -30,9 +30,7 @@ export function openEditModal(idea) {
   document.getElementById('modal-title').textContent = 'עריכת רעיון';
   document.getElementById('field-title').value = idea.title;
   setCategoryChip(idea.category);
-  document.getElementById('field-hook').value = idea.hookText || '';
   document.getElementById('field-link').value = idea.sourceLink || '';
-  document.getElementById('field-source').value = idea.source || '';
   document.getElementById('field-persuasion').value = idea.persuasionStage || '';
   document.getElementById('field-rating').value = idea.rating || '';
   document.getElementById('field-audience-scope').value = idea.audienceScope || '';
@@ -76,16 +74,15 @@ function wireInfoModal() {
 
 async function runAiClassification() {
   const titleEl = document.getElementById('field-title');
-  const hookEl = document.getElementById('field-hook');
   const persuasionSelect = document.getElementById('field-persuasion');
 
   if (!titleEl.value.trim()) {
-    alert('קודם תכתבי את "הרעיון" (ורצוי גם "פירוט"), ואז אני אוכל להציע.');
+    alert('קודם תכתבי את "הרעיון", ואז אני אוכל להציע.');
     return;
   }
 
   try {
-    const result = await classifyIdea({ title: titleEl.value, hookText: hookEl.value });
+    const result = await classifyIdea({ title: titleEl.value });
     setCategoryChip(result.data.category);
     persuasionSelect.value = result.data.persuasionStage;
     openInfoModal('ה-AI הציע/ה', {
@@ -136,9 +133,7 @@ export function wireIdeaForm() {
     const data = {
       title: document.getElementById('field-title').value,
       category: document.getElementById('field-category').value,
-      hookText: document.getElementById('field-hook').value,
       sourceLink: document.getElementById('field-link').value,
-      source: document.getElementById('field-source').value,
       persuasionStage: document.getElementById('field-persuasion').value,
       rating: document.getElementById('field-rating').value,
       audienceScope: document.getElementById('field-audience-scope').value,

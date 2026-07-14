@@ -66,10 +66,13 @@ function renderItem(idea, onItemClick) {
   }
   li.appendChild(header);
 
-  const meta = document.createElement('div');
-  meta.className = 'archive-item-meta';
-  meta.textContent = [idea.source, formatDate(idea)].filter(Boolean).join(' · ');
-  li.appendChild(meta);
+  const dateText = formatDate(idea);
+  if (dateText) {
+    const meta = document.createElement('div');
+    meta.className = 'archive-item-meta';
+    meta.textContent = dateText;
+    li.appendChild(meta);
+  }
 
   if (idea.sourceLink) {
     const linkRow = document.createElement('div');

@@ -27,8 +27,8 @@
       <button id="tab-guide" class="tab-btn">איך למצוא רעיון</button>
       <button id="tab-inspiration" class="tab-btn">מאגר להשראה</button>
       <button id="tab-feedback" class="tab-btn">חוות דעת</button>
-      <a href="https://mayakislev-ux.github.io/lehiyot-brand/מפת-דרכים-ליצירת-תוכן.html" target="_blank" rel="noopener noreferrer" class="tab-btn external-tab-btn">🗺️ מפת הדרכים ליצירת תוכן</a>
-      <a href="https://mayakislev-ux.github.io/lehiyot-brand/מפת-דרכים-לתכנית-תוכן.html" target="_blank" rel="noopener noreferrer" class="tab-btn external-tab-btn">📅 תכנית תוכן</a>
+      <button id="tab-roadmap" class="tab-btn">🗺️ מפת הדרכים ליצירת תוכן</button>
+      <button id="tab-content-plan" class="tab-btn">📅 תכנית תוכן</button>
     </nav>
     <button type="button" id="open-policy-btn-app" class="btn-text policy-link">מדיניות פרטיות</button>
     <button id="signout-btn" class="btn-text">התנתקות</button>
@@ -230,6 +230,14 @@
     </form>
   </main>
 
+  <main id="roadmap-view" class="view embed-view" hidden>
+    <iframe src="https://mayakislev-ux.github.io/lehiyot-brand/מפת-דרכים-ליצירת-תוכן.html" class="embed-frame" title="מפת הדרכים ליצירת תוכן"></iframe>
+  </main>
+
+  <main id="content-plan-view" class="view embed-view" hidden>
+    <iframe src="https://mayakislev-ux.github.io/lehiyot-brand/מפת-דרכים-לתכנית-תוכן.html" class="embed-frame" title="תכנית תוכן"></iframe>
+  </main>
+
   <button id="add-idea-fab" class="fab">+ הוסיפי רעיון</button>
 </div>
 
@@ -239,8 +247,7 @@
     <form id="idea-form">
 
       <div class="form-section">
-        <label>הרעיון *<input id="field-title" type="text" required></label>
-        <label>פירוט<textarea id="field-hook"></textarea></label>
+        <label>הרעיון *<textarea id="field-title" class="field-title-textarea" required></textarea></label>
         <label>לינק לסרטון (במידה ויש)<input id="field-link" type="url"></label>
       </div>
 
@@ -253,23 +260,9 @@
           <button type="button" class="category-chip" data-value="אישי" style="--chip-color: var(--cat-ishi)">אישי</button>
           <button type="button" class="category-chip" data-value="מכירתי" style="--chip-color: var(--cat-mechirti)">מכירתי</button>
           <button type="button" class="category-chip" data-value="בידורי" style="--chip-color: var(--cat-biduri)">בידורי</button>
-          <button type="button" class="category-chip category-chip-ai" data-value="__ai__">🤖 לא בטוחה</button>
+          <button type="button" class="category-chip category-chip-ai" data-value="__ai__">🤖 שה-AI יזהה</button>
         </div>
         <input type="hidden" id="field-category">
-
-        <label>מקור הרעיון *
-          <select id="field-source" required>
-            <option value="">בחרי מקור</option>
-            <option value="אינסטגרם">אינסטגרם</option>
-            <option value="טיקטוק">טיקטוק</option>
-            <option value="לקוחות">לקוחות</option>
-            <option value="מהראש">מהראש</option>
-            <option value="שיחה עם חברים / משפחה">שיחה עם חברים / משפחה</option>
-            <option value="פודקאסט">פודקאסט</option>
-            <option value="ספר">ספר</option>
-            <option value="אחר">אחר</option>
-          </select>
-        </label>
       </div>
 
       <div class="form-section">
@@ -281,7 +274,7 @@
           <option value="שלב שכנוע 1 - מודעות לבעיה / חומרת הבעיה">שלב שכנוע 1 - מודעות לבעיה / חומרת הבעיה</option>
           <option value="שלב שכנוע 2 - מודעות לפתרון">שלב שכנוע 2 - מודעות לפתרון</option>
           <option value="שלב שכנוע 3 - למה דווקא אני">שלב שכנוע 3 - למה דווקא אני</option>
-          <option value="__ai__">🤖 לא סגורה - תני לי הצעה</option>
+          <option value="__ai__">🤖 שה-AI יציע</option>
         </select>
 
         <label>למי הסרטון מדבר? *
@@ -341,7 +334,7 @@
     <h2>מדיניות פרטיות ותנאי שימוש</h2>
 
     <h3>איזה מידע נשמר</h3>
-    <p>האפליקציה שומרת: שם, תחום עיסוק וקהל היעד שסיפקת בשיחת ההיכרות; הרעיונות לתוכן שהוספת (כותרת, פירוט, קטגוריה וכו'); וההודעות שאת/ה כותב/ת בלשונית "בדיקת רעיון". פידבק שנשלח דרך לשונית "חוות דעת" נשמר בלי כל פרט מזהה - אנונימי לחלוטין.</p>
+    <p>האפליקציה שומרת: שם, תחום עיסוק וקהל היעד שסיפקת בשיחת ההיכרות; הרעיונות לתוכן שהוספת (כותרת, קטגוריה וכו'); וההודעות שאת/ה כותב/ת בלשונית "בדיקת רעיון". פידבק שנשלח דרך לשונית "חוות דעת" נשמר בלי כל פרט מזהה - אנונימי לחלוטין.</p>
 
     <h3>איך המידע משמש</h3>
     <p>המידע משמש אך ורק להפעלת האפליקציה עבורך: שמירת הרעיונות שלך והצגתם, והפעלת הצ'אט עם ה-AI. כדי לספק את שירות ה-AI, הטקסט ששולח/ת בלשונית "בדיקת רעיון" מועבר לעיבוד אצל חברת Anthropic (ספקית מודל ה-AI Claude) - כמו כל שירות AI, יש לה גישה לטקסט הזה לצורך יצירת התשובה בלבד.</p>

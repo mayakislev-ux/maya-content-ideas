@@ -1,6 +1,7 @@
 import { functions, auth } from './firebase-init.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
 import { getProfile, saveProfile } from './user-profile.js';
+import { showView } from './view-router.js';
 
 const ADMIN_EMAIL = 'mayakislev@gmail.com';
 const checkIdea = httpsCallable(functions, 'checkIdea');
@@ -70,17 +71,21 @@ function setBubbleText(bubble, text) {
   const parts = text.split(URL_PATTERN);
   for (const part of parts) {
     if (part.match(URL_PATTERN)) {
-      const link = document.createElement('a');
-      link.href = part;
-      link.target = '_blank';
-      link.rel = 'noopener noreferrer';
       if (part === ROADMAP_URL) {
-        link.className = 'chat-cta-btn';
-        link.textContent = '🗺️ למפת הדרכים ליצירת תוכן';
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'chat-cta-btn';
+        btn.textContent = '🗺️ למפת הדרכים ליצירת תוכן';
+        btn.addEventListener('click', () => showView('roadmap'));
+        bubble.appendChild(btn);
       } else {
+        const link = document.createElement('a');
+        link.href = part;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
         link.textContent = part;
+        bubble.appendChild(link);
       }
-      bubble.appendChild(link);
     } else if (part) {
       appendWithBold(bubble, part);
     }

@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import {
   CATEGORIES,
   PERSUASION_STAGES,
-  SOURCES,
   RATINGS,
   STRONG_RATING,
   AUDIENCE_SCOPES,
@@ -23,12 +22,6 @@ test('CATEGORIES has the 4 expected values in order', () => {
 test('PERSUASION_STAGES has the 3 expected stages', () => {
   assert.equal(PERSUASION_STAGES.length, 3);
   assert.match(PERSUASION_STAGES[0], /מודעות לבעיה/);
-});
-
-test('SOURCES has all 8 expected options', () => {
-  assert.equal(SOURCES.length, 8);
-  assert.ok(SOURCES.includes('אינסטגרם'));
-  assert.ok(SOURCES.includes('פודקאסט'));
 });
 
 test('RATINGS has the 3 expected labels with emoji', () => {
@@ -101,29 +94,15 @@ test('filterIdeas filters by rating', () => {
   assert.equal(result[0].title, 'א');
 });
 
-test('validateIdea requires every field except hookText', () => {
-  const errors = validateIdea({ title: '', category: '', source: '', persuasionStage: '', rating: '', audienceScope: '' });
-  assert.equal(errors.length, 6);
-});
-
-test('validateIdea does not require hookText', () => {
-  const errors = validateIdea({
-    title: 'כותרת',
-    category: 'בעל ערך',
-    source: 'טיקטוק',
-    persuasionStage: PERSUASION_STAGES[0],
-    rating: '🔥 חייב לצלם',
-    audienceScope: 'עיקרי',
-  });
-  assert.equal(errors.length, 0);
+test('validateIdea requires every field', () => {
+  const errors = validateIdea({ title: '', category: '', persuasionStage: '', rating: '', audienceScope: '' });
+  assert.equal(errors.length, 5);
 });
 
 test('validateIdea passes when every field is filled', () => {
   const errors = validateIdea({
     title: 'כותרת',
     category: 'בעל ערך',
-    hookText: 'פירוט',
-    source: 'טיקטוק',
     persuasionStage: PERSUASION_STAGES[0],
     rating: '🔥 חייב לצלם',
     audienceScope: 'עיקרי',
@@ -135,8 +114,6 @@ test('validateIdea rejects an unknown category', () => {
   const errors = validateIdea({
     title: 'כותרת',
     category: 'לא קיים',
-    hookText: 'פירוט',
-    source: 'טיקטוק',
     persuasionStage: PERSUASION_STAGES[0],
     rating: '🔥 חייב לצלם',
     audienceScope: 'עיקרי',

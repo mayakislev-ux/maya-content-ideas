@@ -7,27 +7,13 @@ import { openAddModal, openEditModal, wireIdeaForm } from './idea-form.js';
 import { wireRandomIdeaModal } from './random-idea-modal.js';
 import { wireIdeaChat, startIdeaChat } from './idea-chat.js';
 import { wireFeedbackForm } from './feedback.js';
+import { showView } from './view-router.js';
 
 const ADMIN_EMAIL = 'mayakislev@gmail.com';
 let unsubscribeIdeas = null;
 
 function onIdeasChanged(ideas) {
   renderArchive(ideas, { onItemClick: openEditModal });
-}
-
-function showView(name) {
-  document.getElementById('archive-view').hidden = name !== 'archive';
-  document.getElementById('chat-view').hidden = name !== 'chat';
-  document.getElementById('guide-view').hidden = name !== 'guide';
-  document.getElementById('inspiration-view').hidden = name !== 'inspiration';
-  document.getElementById('feedback-view').hidden = name !== 'feedback';
-  document.getElementById('tab-archive').classList.toggle('active', name === 'archive');
-  document.getElementById('tab-chat').classList.toggle('active', name === 'chat');
-  document.getElementById('tab-guide').classList.toggle('active', name === 'guide');
-  document.getElementById('tab-inspiration').classList.toggle('active', name === 'inspiration');
-  document.getElementById('tab-feedback').classList.toggle('active', name === 'feedback');
-  document.getElementById('random-idea-btn').hidden = name !== 'archive';
-  document.getElementById('add-idea-fab').hidden = name !== 'archive';
 }
 
 async function isEmailAllowed(email) {
@@ -66,6 +52,8 @@ document.getElementById('tab-chat').addEventListener('click', () => {
 document.getElementById('tab-guide').addEventListener('click', () => showView('guide'));
 document.getElementById('tab-inspiration').addEventListener('click', () => showView('inspiration'));
 document.getElementById('tab-feedback').addEventListener('click', () => showView('feedback'));
+document.getElementById('tab-roadmap').addEventListener('click', () => showView('roadmap'));
+document.getElementById('tab-content-plan').addEventListener('click', () => showView('content-plan'));
 
 wireIdeaForm();
 wireArchiveControls((idea) => openEditModal(idea));

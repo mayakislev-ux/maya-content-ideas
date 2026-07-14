@@ -128,16 +128,18 @@ h1, h2, h3 {
   box-shadow: 0 3px 10px rgba(124, 58, 237, 0.3);
 }
 
-.external-tab-btn {
-  background: #ffb703;
-  color: #211d2e;
-  border-color: transparent;
-  text-decoration: none;
-  display: inline-flex;
-  align-items: center;
+.embed-view {
+  padding: 0;
+  flex: 1;
+  min-height: 0;
 }
 
-.external-tab-btn:hover { transform: translateY(-2px); }
+.embed-frame {
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
+}
 
 .edit-profile-btn {
   display: block;
@@ -202,14 +204,19 @@ h1, h2, h3 {
 
 .chat-cta-btn {
   display: block;
+  width: 100%;
   margin-top: 0.7rem;
   padding: 0.7rem 1.2rem;
+  border: none;
   border-radius: 999px;
   background: linear-gradient(135deg, var(--accent), var(--accent-2));
   color: white;
   font-weight: bold;
+  font-size: 1rem;
+  font-family: inherit;
   text-align: center;
   text-decoration: none;
+  cursor: pointer;
 }
 
 .chat-bubble-excellent {
@@ -562,6 +569,8 @@ h1, h2, h3 {
 }
 
 .modal-content textarea { min-height: 70px; resize: vertical; }
+
+.field-title-textarea { min-height: 110px; }
 
 .guide-view {
   max-width: 760px;
