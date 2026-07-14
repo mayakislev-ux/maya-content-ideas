@@ -129,9 +129,10 @@ h1, h2, h3 {
 }
 
 .embed-view {
+  position: fixed;
+  inset: 0;
+  z-index: 4;
   padding: 0;
-  flex: 1;
-  min-height: 0;
 }
 
 .embed-frame {
@@ -470,6 +471,11 @@ h1, h2, h3 {
 .category-chip-ai.active {
   background: var(--accent);
   color: white;
+}
+
+.category-chip:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 
 .form-section {

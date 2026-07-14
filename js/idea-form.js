@@ -75,11 +75,17 @@ function wireInfoModal() {
 async function runAiClassification() {
   const titleEl = document.getElementById('field-title');
   const persuasionSelect = document.getElementById('field-persuasion');
+  const aiChip = document.querySelector('.category-chip-ai');
 
   if (!titleEl.value.trim()) {
     alert('קודם תכתבי את "הרעיון", ואז אני אוכל להציע.');
     return;
   }
+
+  const originalChipText = aiChip.textContent;
+  aiChip.textContent = '🤖 חושב/ת...';
+  aiChip.disabled = true;
+  persuasionSelect.disabled = true;
 
   try {
     const result = await classifyIdea({ title: titleEl.value });
@@ -92,6 +98,10 @@ async function runAiClassification() {
   } catch (err) {
     console.error('classifyIdea failed:', err);
     alert('משהו השתבש בהצעה האוטומטית, נסי שוב או בחרי ידנית.');
+  } finally {
+    aiChip.textContent = originalChipText;
+    aiChip.disabled = false;
+    persuasionSelect.disabled = false;
   }
 }
 
