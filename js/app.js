@@ -55,6 +55,28 @@ document.getElementById('tab-feedback').addEventListener('click', () => showView
 document.getElementById('tab-roadmap').addEventListener('click', () => showView('roadmap'));
 document.getElementById('tab-content-plan').addEventListener('click', () => showView('content-plan'));
 
+const viewTabsNav = document.getElementById('view-tabs');
+const menuOverlay = document.getElementById('menu-overlay');
+
+function closeMobileMenu() {
+  viewTabsNav.classList.remove('open');
+  menuOverlay.hidden = true;
+}
+
+document.getElementById('mobile-menu-btn').addEventListener('click', () => {
+  const isOpen = viewTabsNav.classList.toggle('open');
+  menuOverlay.hidden = !isOpen;
+});
+menuOverlay.addEventListener('click', closeMobileMenu);
+viewTabsNav.querySelectorAll('.tab-btn').forEach((btn) => btn.addEventListener('click', closeMobileMenu));
+
+const appHeader = document.querySelector('.app-header');
+function updateHeaderHeight() {
+  document.documentElement.style.setProperty('--header-height', `${appHeader.offsetHeight}px`);
+}
+updateHeaderHeight();
+new ResizeObserver(updateHeaderHeight).observe(appHeader);
+
 wireIdeaForm();
 wireArchiveControls((idea) => openEditModal(idea));
 wireRandomIdeaModal({ getIdeas: getCurrentIdeas, onOpenIdea: openEditModal });

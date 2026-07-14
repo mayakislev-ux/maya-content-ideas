@@ -109,6 +109,58 @@ h1, h2, h3 {
 
 .view-tabs { display: flex; gap: 0.5rem; flex-wrap: wrap; }
 
+.mobile-menu-btn {
+  display: none;
+  background: white;
+  color: var(--accent);
+  border: none;
+  padding: 0.6rem 1.1rem;
+  border-radius: 999px;
+  font-weight: bold;
+  font-size: 1rem;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+.menu-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 15;
+}
+
+.menu-overlay[hidden] { display: none; }
+
+@media (max-width: 720px) {
+  .mobile-menu-btn { display: inline-block; order: 2; }
+  .app-header h1 { order: 1; font-size: 1.2rem; }
+  .app-header .policy-link, .app-header #signout-btn { order: 3; }
+
+  .view-tabs {
+    position: fixed;
+    top: 0;
+    right: -85%;
+    width: 85%;
+    max-width: 300px;
+    height: 100vh;
+    background: linear-gradient(180deg, #3a1a52, #1f0f30);
+    flex-direction: column;
+    align-items: stretch;
+    flex-wrap: nowrap;
+    padding: 5rem 1.2rem 2rem;
+    gap: 0.7rem;
+    z-index: 20;
+    transition: right 0.25s ease;
+    overflow-y: auto;
+  }
+
+  .view-tabs.open { right: 0; }
+  .view-tabs .tab-btn { width: 100%; text-align: center; }
+
+  .menu-overlay:not([hidden]) { display: block; }
+}
+
 .tab-btn {
   background: rgba(255, 255, 255, 0.1);
   border: 2px solid rgba(255, 255, 255, 0.5);
@@ -130,7 +182,10 @@ h1, h2, h3 {
 
 .embed-view {
   position: fixed;
-  inset: 0;
+  top: var(--header-height, 90px);
+  left: 0;
+  right: 0;
+  bottom: 0;
   z-index: 4;
   padding: 0;
 }
