@@ -128,19 +128,16 @@ h1, h2, h3 {
   box-shadow: 0 3px 10px rgba(124, 58, 237, 0.3);
 }
 
-.roadmap-nav-btn {
-  display: inline-block;
+.external-tab-btn {
   background: #ffb703;
   color: #211d2e;
-  padding: 0.5rem 1.1rem;
-  border-radius: 999px;
-  font-weight: bold;
+  border-color: transparent;
   text-decoration: none;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
-  transition: transform 0.15s ease;
+  display: inline-flex;
+  align-items: center;
 }
 
-.roadmap-nav-btn:hover { transform: translateY(-2px); }
+.external-tab-btn:hover { transform: translateY(-2px); }
 
 .edit-profile-btn {
   display: block;
