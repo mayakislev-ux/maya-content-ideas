@@ -512,8 +512,7 @@ h1, h2, h3 {
   padding: 1.5rem;
   width: 100%;
   max-width: 480px;
-  max-height: 90vh;
-  overflow-y: auto;
+  margin-bottom: 2rem;
   box-shadow: 0 10px 40px rgba(33, 29, 46, 0.25);
 }
 
