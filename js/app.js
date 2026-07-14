@@ -8,9 +8,27 @@ import { wireRandomIdeaModal } from './random-idea-modal.js';
 import { wireIdeaChat, startIdeaChat } from './idea-chat.js';
 import { wireFeedbackForm } from './feedback.js';
 import { showView } from './view-router.js';
+import { showToast } from './toast.js';
 
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js').catch((err) => console.error('SW registration failed:', err));
+  navigator.serviceWorker
+    .register('./sw.js')
+    .then((registration) => {
+      registration.addEventListener('updatefound', () => {
+        const newWorker = registration.installing;
+        if (!newWorker) return;
+        newWorker.addEventListener('statechange', () => {
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            showToast('יש גרסה חדשה של האפליקציה', {
+              actionLabel: 'לרענן עכשיו',
+              onAction: () => window.location.reload(),
+              duration: 20000,
+            });
+          }
+        });
+      });
+    })
+    .catch((err) => console.error('SW registration failed:', err));
 }
 
 const ADMIN_EMAIL = 'mayakislev@gmail.com';

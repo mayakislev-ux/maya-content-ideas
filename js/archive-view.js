@@ -1,4 +1,4 @@
-import { filterIdeas, categoryColorVar } from './ideas-logic.js';
+import { filterIdeas, sortIdeas, categoryColorVar } from './ideas-logic.js';
 import { getInstantThumbnail, fetchThumbnail } from './video-preview.js';
 
 let currentIdeas = [];
@@ -9,7 +9,7 @@ function formatDate(idea) {
 }
 
 export function renderArchive(ideas, { onItemClick }) {
-  currentIdeas = ideas;
+  currentIdeas = ideas.filter((idea) => !idea.deletedAt);
   applyFilters(onItemClick);
 }
 
@@ -17,11 +17,20 @@ export function getCurrentIdeas() {
   return currentIdeas;
 }
 
+function debounce(fn, delay) {
+  let timer = null;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), delay);
+  };
+}
+
 export function wireArchiveControls(onItemClick) {
-  const ids = ['search-input', 'filter-category', 'filter-audience-scope', 'filter-persuasion', 'filter-rating'];
-  for (const id of ids) {
-    const el = document.getElementById(id);
-    el.addEventListener(el.tagName === 'SELECT' ? 'change' : 'input', () => applyFilters(onItemClick));
+  const debouncedApply = debounce(() => applyFilters(onItemClick), 200);
+  document.getElementById('search-input').addEventListener('input', debouncedApply);
+  const selectIds = ['filter-category', 'filter-audience-scope', 'filter-persuasion', 'filter-rating', 'sort-order'];
+  for (const id of selectIds) {
+    document.getElementById(id).addEventListener('change', () => applyFilters(onItemClick));
   }
 }
 
@@ -31,11 +40,13 @@ function applyFilters(onItemClick) {
   const audienceScope = document.getElementById('filter-audience-scope').value;
   const persuasionStage = document.getElementById('filter-persuasion').value;
   const rating = document.getElementById('filter-rating').value;
+  const sortOrder = document.getElementById('sort-order').value;
   const filtered = filterIdeas(currentIdeas, { text, category, audienceScope, persuasionStage, rating });
+  const sorted = sortIdeas(filtered, sortOrder);
 
   const list = document.getElementById('archive-list');
   list.innerHTML = '';
-  for (const idea of filtered) {
+  for (const idea of sorted) {
     list.appendChild(renderItem(idea, onItemClick));
   }
 }
@@ -64,6 +75,21 @@ function renderItem(idea, onItemClick) {
     scopeEl.textContent = idea.audienceScope === 'רחב' ? '🔥 קהל רחב' : `קהל ${idea.audienceScope}`;
     header.appendChild(scopeEl);
   }
+
+  const copyBtn = document.createElement('button');
+  copyBtn.type = 'button';
+  copyBtn.className = 'copy-idea-btn';
+  copyBtn.textContent = '📋';
+  copyBtn.setAttribute('aria-label', 'העתקת הרעיון');
+  copyBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(idea.title).then(() => {
+      copyBtn.textContent = '✓';
+      setTimeout(() => (copyBtn.textContent = '📋'), 1500);
+    });
+  });
+  header.appendChild(copyBtn);
+
   li.appendChild(header);
 
   const dateText = formatDate(idea);

@@ -73,12 +73,20 @@
         <option value="⭐ שווה לצלם">⭐ שווה לצלם</option>
         <option value="💭 רעיון לעתיד">💭 רעיון לעתיד</option>
       </select>
+      <select id="sort-order">
+        <option value="newest">הכי חדש קודם</option>
+        <option value="oldest">הכי ישן קודם</option>
+        <option value="rating">🔥 הכי חזק קודם</option>
+      </select>
     </div>
     <ul class="archive-list" id="archive-list"></ul>
   </main>
 
   <main id="chat-view" class="view" hidden>
-    <button id="edit-profile-btn" class="btn-text edit-profile-btn" hidden>✏️ ערכי פרטים (מנהלת)</button>
+    <div class="chat-toolbar">
+      <button id="new-idea-btn" class="btn-text">🔄 רעיון חדש</button>
+      <button id="edit-profile-btn" class="btn-text edit-profile-btn" hidden>✏️ ערכי פרטים (מנהלת)</button>
+    </div>
     <div class="chat-messages" id="chat-messages"></div>
     <form id="chat-form" class="chat-input-row">
       <textarea id="chat-input" placeholder="כתבי כאן..." required></textarea>

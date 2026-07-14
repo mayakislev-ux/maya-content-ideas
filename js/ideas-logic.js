@@ -62,3 +62,51 @@ export function pickRandomIdea(ideas) {
   if (!ideas.length) return null;
   return ideas[Math.floor(Math.random() * ideas.length)];
 }
+
+export function sortIdeas(ideas, order) {
+  const time = (idea) => (idea.createdAt && typeof idea.createdAt.toMillis === 'function' ? idea.createdAt.toMillis() : 0);
+  const sorted = [...ideas];
+  if (order === 'oldest') {
+    sorted.sort((a, b) => time(a) - time(b));
+  } else if (order === 'rating') {
+    sorted.sort((a, b) => RATINGS.indexOf(a.rating) - RATINGS.indexOf(b.rating));
+  } else {
+    sorted.sort((a, b) => time(b) - time(a));
+  }
+  return sorted;
+}
+
+function normalizeForMatch(text) {
+  return (text || '').trim().replace(/\s+/g, ' ');
+}
+
+function wordOverlapRatio(a, b) {
+  const wordsA = new Set(normalizeForMatch(a).split(' ').filter(Boolean));
+  const wordsB = new Set(normalizeForMatch(b).split(' ').filter(Boolean));
+  if (!wordsA.size || !wordsB.size) return 0;
+  let shared = 0;
+  for (const word of wordsA) {
+    if (wordsB.has(word)) shared++;
+  }
+  return shared / Math.max(wordsA.size, wordsB.size);
+}
+
+export function findSimilarIdea(ideas, text) {
+  const normalizedText = normalizeForMatch(text);
+  if (!normalizedText) return null;
+  let best = null;
+  let bestScore = 0;
+  for (const idea of ideas) {
+    const normalizedTitle = normalizeForMatch(idea.title);
+    if (!normalizedTitle) continue;
+    const score =
+      normalizedTitle === normalizedText || normalizedText.includes(normalizedTitle) || normalizedTitle.includes(normalizedText)
+        ? 1
+        : wordOverlapRatio(normalizedTitle, normalizedText);
+    if (score > bestScore) {
+      bestScore = score;
+      best = idea;
+    }
+  }
+  return bestScore >= 0.5 ? best : null;
+}

@@ -13,6 +13,8 @@ import {
   filterIdeas,
   validateIdea,
   pickRandomIdea,
+  sortIdeas,
+  findSimilarIdea,
 } from '../js/ideas-logic.js';
 
 test('CATEGORIES has the 4 expected values in order', () => {
@@ -131,4 +133,49 @@ test('pickRandomIdea always returns an element from the list', () => {
     const picked = pickRandomIdea(ideas);
     assert.ok(ideas.includes(picked));
   }
+});
+
+test('sortIdeas defaults to newest first', () => {
+  const ideas = [
+    { title: 'ישן', createdAt: { toMillis: () => 100 } },
+    { title: 'חדש', createdAt: { toMillis: () => 200 } },
+  ];
+  const sorted = sortIdeas(ideas, 'newest');
+  assert.equal(sorted[0].title, 'חדש');
+});
+
+test('sortIdeas can sort oldest first', () => {
+  const ideas = [
+    { title: 'ישן', createdAt: { toMillis: () => 100 } },
+    { title: 'חדש', createdAt: { toMillis: () => 200 } },
+  ];
+  const sorted = sortIdeas(ideas, 'oldest');
+  assert.equal(sorted[0].title, 'ישן');
+});
+
+test('sortIdeas can sort by rating strength', () => {
+  const ideas = [
+    { title: 'עתידי', rating: '💭 רעיון לעתיד' },
+    { title: 'חזק', rating: '🔥 חייב לצלם' },
+  ];
+  const sorted = sortIdeas(ideas, 'rating');
+  assert.equal(sorted[0].title, 'חזק');
+});
+
+test('findSimilarIdea finds an exact title match', () => {
+  const ideas = [{ id: '1', title: 'טעות נפוצה בקוסמטיקה' }, { id: '2', title: 'יום הולדת' }];
+  const match = findSimilarIdea(ideas, 'טעות נפוצה בקוסמטיקה');
+  assert.equal(match.id, '1');
+});
+
+test('findSimilarIdea finds a close word-overlap match', () => {
+  const ideas = [{ id: '1', title: 'טעות נפוצה בקוסמטיקה אצל לקוחות' }];
+  const match = findSimilarIdea(ideas, 'טעות נפוצה בקוסמטיקה');
+  assert.equal(match.id, '1');
+});
+
+test('findSimilarIdea returns null when nothing matches well', () => {
+  const ideas = [{ id: '1', title: 'יום הולדת מרגש' }];
+  const match = findSimilarIdea(ideas, 'איך לבחור קרם פנים לעור רגיש');
+  assert.equal(match, null);
 });

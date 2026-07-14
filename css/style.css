@@ -141,9 +141,7 @@ h1, h2, h3 {
   .app-header h1 {
     order: 1;
     font-size: clamp(1.6rem, 8vw, 2.2rem);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    line-height: 1.25;
     max-width: 100%;
   }
   .mobile-menu-btn { display: inline-block; order: 2; }
@@ -168,7 +166,12 @@ h1, h2, h3 {
   }
 
   .view-tabs.open { right: 0; }
-  .view-tabs .tab-btn { width: 100%; text-align: center; }
+  .view-tabs .tab-btn {
+    width: 100%;
+    text-align: center;
+    font-size: 1.1rem;
+    padding: 0.9rem 1.1rem;
+  }
 
   .menu-overlay:not([hidden]) { display: block; }
 }
@@ -209,10 +212,12 @@ h1, h2, h3 {
   display: block;
 }
 
-.edit-profile-btn {
-  display: block;
-  margin: 0.8rem auto 0;
-  text-align: center;
+.chat-toolbar {
+  display: flex;
+  justify-content: center;
+  gap: 1.2rem;
+  padding: 0.8rem 1rem 0;
+  flex-wrap: wrap;
 }
 
 .chat-messages {
@@ -287,6 +292,10 @@ h1, h2, h3 {
   cursor: pointer;
 }
 
+.chat-save-btn {
+  background: linear-gradient(135deg, #3ecb75, #1f8a4c);
+}
+
 .chat-bubble-excellent {
   background: linear-gradient(135deg, #ff9f43, #ffb85c);
   color: #2b1a05;
@@ -357,6 +366,16 @@ h1, h2, h3 {
   border: 1px solid #ddd8ee;
   background: white;
   color: var(--text);
+  font-size: 1rem;
+  font-family: inherit;
+}
+
+@media (max-width: 720px) {
+  .archive-controls input,
+  .archive-controls select {
+    font-size: 1.05rem;
+    padding: 0.7rem;
+  }
 }
 
 .archive-list {
@@ -385,6 +404,19 @@ h1, h2, h3 {
 }
 
 .archive-item-header strong { font-size: 1.05rem; }
+
+.copy-idea-btn {
+  margin-left: auto;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0.2rem 0.4rem;
+  border-radius: 6px;
+  color: var(--muted);
+}
+
+.copy-idea-btn:hover { background: var(--surface); }
 
 .card-category-tag {
   display: inline-block;
@@ -465,9 +497,11 @@ h1, h2, h3 {
   inset: 0;
   background: rgba(33, 29, 46, 0.5);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   padding: 1rem;
+  padding-top: max(3rem, env(safe-area-inset-top, 0px));
+  overflow-y: auto;
 }
 
 .modal[hidden] { display: none; }
@@ -500,6 +534,19 @@ h1, h2, h3 {
   border: 1px solid #ddd8ee;
   background: white;
   color: var(--text);
+  font-size: 1rem;
+  font-family: inherit;
+}
+
+@media (max-width: 720px) {
+  .modal-content form label { font-size: 1.05rem; }
+  .modal-content input,
+  .modal-content select,
+  .modal-content textarea { font-size: 1.1rem; padding: 0.7rem; }
+  .category-chip { font-size: 1rem; padding: 0.6rem 1.1rem; }
+  .modal-actions .btn-primary,
+  .modal-actions .btn-text,
+  .modal-actions .btn-danger { font-size: 1.05rem; padding: 0.85rem 1.5rem; }
 }
 
 .idea-modal-content {
@@ -784,4 +831,31 @@ h1, h2, h3 {
 @keyframes constructionWobble {
   0%, 100% { transform: rotate(-6deg) translateY(0); }
   50% { transform: rotate(6deg) translateY(-8px); }
+}
+
+.toast {
+  position: fixed;
+  bottom: 5.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--text);
+  color: white;
+  padding: 0.8rem 1.2rem;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  z-index: 40;
+  max-width: calc(100vw - 2rem);
+  font-size: 0.95rem;
+}
+
+.toast-action-btn {
+  background: none;
+  border: none;
+  color: var(--accent-2);
+  font-weight: bold;
+  cursor: pointer;
+  white-space: nowrap;
 }

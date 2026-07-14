@@ -2,6 +2,9 @@ import { functions, auth } from './firebase-init.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
 import { getProfile, saveProfile } from './user-profile.js';
 import { showView } from './view-router.js';
+import { openAddModal, openEditModal } from './idea-form.js';
+import { getCurrentIdeas } from './archive-view.js';
+import { findSimilarIdea } from './ideas-logic.js';
 
 const ADMIN_EMAIL = 'mayakislev@gmail.com';
 const checkIdea = httpsCallable(functions, 'checkIdea');
@@ -23,6 +26,7 @@ let profile = null;
 let onboardingStep = null;
 let draftProfile = {};
 let started = false;
+let originalIdeaText = null;
 
 const URL_PATTERN = /(https?:\/\/[^\s]+)/g;
 const BOLD_PATTERN = /\*\*(.+?)\*\*/g;
@@ -90,6 +94,35 @@ function setBubbleText(bubble, text) {
       appendWithBold(bubble, part);
     }
   }
+}
+
+function saveFinalIdea(finalizedText) {
+  const match = findSimilarIdea(getCurrentIdeas(), originalIdeaText || '');
+  showView('archive');
+  if (match) {
+    const wantsUpdate = confirm(`זיהיתי שזה כנראה עדכון לרעיון הקיים "${match.title}" - לעדכן אותו?\n\n(ביטול ← יצירת רעיון חדש בנפרד)`);
+    if (wantsUpdate) {
+      openEditModal(match, finalizedText);
+      return;
+    }
+  }
+  openAddModal(finalizedText);
+}
+
+function addSaveButton(bubble, finalizedText) {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'chat-cta-btn chat-save-btn';
+  btn.textContent = '💾 שמרי כרעיון';
+  btn.addEventListener('click', () => saveFinalIdea(finalizedText));
+  bubble.appendChild(btn);
+}
+
+function resetChat() {
+  history = [];
+  originalIdeaText = null;
+  document.getElementById('chat-messages').innerHTML = '';
+  greetAndAskForIdea();
 }
 
 function addBubble(text, role) {
@@ -221,6 +254,8 @@ export function wireIdeaChat() {
     startOnboarding();
   });
 
+  document.getElementById('new-idea-btn').addEventListener('click', resetChat);
+
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -243,6 +278,7 @@ export function wireIdeaChat() {
 
     input.disabled = true;
     addBubble(text, 'user');
+    if (history.length === 0) originalIdeaText = text;
     history.push({ role: 'user', content: text });
     const thinkingBubble = addBubble('חושבת...', 'assistant');
 
@@ -255,6 +291,9 @@ export function wireIdeaChat() {
         playSuccessSound();
       }
       setBubbleText(thinkingBubble, reply);
+      if (reply.includes(ROADMAP_URL)) {
+        addSaveButton(thinkingBubble, reply.split(ROADMAP_URL)[0].trim());
+      }
       history.push({ role: 'assistant', content: reply });
     } catch (err) {
       console.error('checkIdea failed:', err);

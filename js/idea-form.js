@@ -1,7 +1,8 @@
 import { validateIdea, CATEGORY_DEFINITIONS, PERSUASION_STAGE_DEFINITIONS } from './ideas-logic.js';
-import { addIdea, updateIdea, deleteIdea } from './ideas-store.js';
+import { addIdea, updateIdea, deleteIdea, restoreIdea } from './ideas-store.js';
 import { functions } from './firebase-init.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
+import { showToast } from './toast.js';
 
 const classifyIdea = httpsCallable(functions, 'classifyIdea');
 const AI_OPTION = '__ai__';
@@ -15,20 +16,21 @@ function setCategoryChip(value) {
   });
 }
 
-export function openAddModal() {
+export function openAddModal(prefillTitle = '') {
   editingId = null;
   document.getElementById('modal-title').textContent = 'רעיון חדש';
   document.getElementById('idea-form').reset();
   setCategoryChip('');
+  if (prefillTitle) document.getElementById('field-title').value = prefillTitle;
   document.getElementById('delete-idea-btn').hidden = true;
   document.getElementById('form-error').hidden = true;
   document.getElementById('idea-modal').hidden = false;
 }
 
-export function openEditModal(idea) {
+export function openEditModal(idea, overrideTitle = '') {
   editingId = idea.id;
   document.getElementById('modal-title').textContent = 'עריכת רעיון';
-  document.getElementById('field-title').value = idea.title;
+  document.getElementById('field-title').value = overrideTitle || idea.title;
   setCategoryChip(idea.category);
   document.getElementById('field-link').value = idea.sourceLink || '';
   document.getElementById('field-persuasion').value = idea.persuasionStage || '';
@@ -111,10 +113,13 @@ export function wireIdeaForm() {
 
   document.getElementById('delete-idea-btn').addEventListener('click', async () => {
     if (!editingId) return;
-    if (confirm('בטוחה שאת רוצה למחוק את הרעיון הזה?')) {
-      await deleteIdea(editingId);
-      closeModal();
-    }
+    const deletedId = editingId;
+    await deleteIdea(deletedId);
+    closeModal();
+    showToast('הרעיון נמחק', {
+      actionLabel: 'בטלי',
+      onAction: () => restoreIdea(deletedId),
+    });
   });
 
   document.querySelectorAll('.category-chip').forEach((chip) => {
@@ -161,5 +166,6 @@ export function wireIdeaForm() {
       await addIdea(data);
     }
     closeModal();
+    showToast('✓ הרעיון נשמר בהצלחה');
   });
 }

@@ -3,7 +3,6 @@ import {
   collection,
   addDoc,
   updateDoc,
-  deleteDoc,
   doc,
   onSnapshot,
   query,
@@ -54,5 +53,9 @@ export async function updateIdea(id, fields) {
 }
 
 export async function deleteIdea(id) {
-  return deleteDoc(doc(db, 'ideas', id));
+  return updateDoc(doc(db, 'ideas', id), { deletedAt: serverTimestamp() });
+}
+
+export async function restoreIdea(id) {
+  return updateDoc(doc(db, 'ideas', id), { deletedAt: null });
 }
