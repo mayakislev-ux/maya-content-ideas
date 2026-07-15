@@ -12,19 +12,30 @@ import { showToast } from './toast.js';
 import { hasCompletedTour, showWelcomeTour } from './welcome-tour.js';
 
 if ('serviceWorker' in navigator) {
+  let refreshedAlready = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (refreshedAlready) return;
+    refreshedAlready = true;
+    window.location.reload();
+  });
+
   navigator.serviceWorker
     .register('./sw.js')
     .then((registration) => {
+      // Actively check for a new version instead of waiting for the browser's
+      // own (infrequent) update heuristics - every 60s while the tab is open,
+      // and immediately whenever the user comes back to this tab.
+      setInterval(() => registration.update(), 60000);
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') registration.update();
+      });
+
       registration.addEventListener('updatefound', () => {
         const newWorker = registration.installing;
         if (!newWorker) return;
         newWorker.addEventListener('statechange', () => {
           if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-            showToast('יש גרסה חדשה של האפליקציה', {
-              actionLabel: 'לרענן עכשיו',
-              onAction: () => window.location.reload(),
-              duration: 20000,
-            });
+            showToast('מעדכן לגרסה חדשה...', { duration: 4000 });
           }
         });
       });
