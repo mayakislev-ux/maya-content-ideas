@@ -373,7 +373,7 @@ h1, h2, h3 {
   }
 
   .chat-input-row {
-    padding: 1rem 1.2rem calc(1.2rem + env(safe-area-inset-bottom, 0px));
+    padding: 1rem 1.2rem calc(1.6rem + env(safe-area-inset-bottom, 0px));
     gap: 0.8rem;
   }
 
@@ -381,6 +381,9 @@ h1, h2, h3 {
     min-height: 54px;
     font-size: 1.05rem;
   }
+
+  .add-idea-top-btn { display: inline-block; }
+  #add-idea-fab { display: none; }
 }
 
 .tab-btn {
@@ -744,6 +747,13 @@ textarea:focus-visible,
   font-weight: bold;
   color: var(--muted);
   font-size: 0.95rem;
+}
+
+.add-idea-top-btn {
+  display: none;
+  margin-inline-start: auto;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
 }
 
 .draft-badge {

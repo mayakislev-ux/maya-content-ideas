@@ -107,6 +107,7 @@ policyModal.addEventListener('click', (e) => {
 });
 
 document.getElementById('add-idea-fab').addEventListener('click', openAddModal);
+document.getElementById('add-idea-top-btn').addEventListener('click', openAddModal);
 document.getElementById('tab-archive').addEventListener('click', () => showView('archive'));
 document.getElementById('tab-chat').addEventListener('click', () => {
   showView('chat');
