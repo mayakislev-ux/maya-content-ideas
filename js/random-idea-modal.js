@@ -47,6 +47,9 @@ export function wireRandomIdeaModal({ getIdeas, onOpenIdea }) {
   triggerBtn.addEventListener('click', spin);
   againBtn.addEventListener('click', spin);
   closeBtn.addEventListener('click', close);
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) close();
+  });
   result.addEventListener('click', () => {
     if (chosenIdea) {
       close();

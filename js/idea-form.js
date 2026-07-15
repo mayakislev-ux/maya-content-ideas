@@ -69,8 +69,12 @@ function wireInfoModal() {
   document.getElementById('persuasion-info-btn').addEventListener('click', () => {
     openInfoModal('מה כל שלב שכנוע אומר?', PERSUASION_STAGE_DEFINITIONS);
   });
+  const infoModal = document.getElementById('info-modal');
   document.getElementById('info-modal-close-btn').addEventListener('click', () => {
-    document.getElementById('info-modal').hidden = true;
+    infoModal.hidden = true;
+  });
+  infoModal.addEventListener('click', (e) => {
+    if (e.target === infoModal) infoModal.hidden = true;
   });
 }
 
@@ -110,6 +114,11 @@ async function runAiClassification() {
 export function wireIdeaForm() {
   wireInfoModal();
   document.getElementById('cancel-idea-btn').addEventListener('click', closeModal);
+
+  const ideaModal = document.getElementById('idea-modal');
+  ideaModal.addEventListener('click', (e) => {
+    if (e.target === ideaModal) closeModal();
+  });
 
   document.getElementById('delete-idea-btn').addEventListener('click', async () => {
     if (!editingId) return;

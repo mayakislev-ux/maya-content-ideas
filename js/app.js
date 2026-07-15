@@ -74,8 +74,12 @@ function openPolicyModal() {
 }
 document.getElementById('open-policy-btn-login').addEventListener('click', openPolicyModal);
 document.getElementById('open-policy-btn-app').addEventListener('click', openPolicyModal);
+const policyModal = document.getElementById('policy-modal');
 document.getElementById('policy-close-btn').addEventListener('click', () => {
-  document.getElementById('policy-modal').hidden = true;
+  policyModal.hidden = true;
+});
+policyModal.addEventListener('click', (e) => {
+  if (e.target === policyModal) policyModal.hidden = true;
 });
 
 document.getElementById('add-idea-fab').addEventListener('click', openAddModal);
