@@ -131,8 +131,14 @@ policyModal.addEventListener('click', (e) => {
   if (e.target === policyModal) policyModal.hidden = true;
 });
 
-document.getElementById('add-idea-fab').addEventListener('click', openAddModal);
-document.getElementById('add-idea-top-btn').addEventListener('click', openAddModal);
+// Wrapped in arrow functions - passing openAddModal directly to
+// addEventListener means the browser invokes it with the click/pointer
+// event as the first argument, which becomes the modal's "prefillTitle"
+// parameter and gets written into the title field as "[object
+// PointerEvent]" once stringified. openAddModal() with no arguments avoids
+// that entirely.
+document.getElementById('add-idea-fab').addEventListener('click', () => openAddModal());
+document.getElementById('add-idea-top-btn').addEventListener('click', () => openAddModal());
 document.getElementById('tab-archive').addEventListener('click', () => showView('archive'));
 document.getElementById('tab-chat').addEventListener('click', () => {
   showView('chat');
