@@ -2,16 +2,19 @@ const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { defineSecret } = require('firebase-functions/params');
 const admin = require('firebase-admin');
 const { buildSystemPrompt } = require('./system-prompt');
+const { buildWarmingPrompt } = require('./warming-system-prompt');
 const { CATEGORIES, PERSUASION_STAGES, CATEGORY_DEFINITIONS, PERSUASION_STAGE_DEFINITIONS } = require('./ideas-constants');
 
 admin.initializeApp();
 const db = admin.firestore();
 
 const anthropicApiKey = defineSecret('ANTHROPIC_API_KEY');
+const ADMIN_EMAIL = 'mayakislev@gmail.com';
 
 const DAILY_LIMITS = {
   checkIdea: 60,
   classifyIdea: 40,
+  generateWarmingPlan: 20,
 };
 
 async function enforceRateLimit(uid, fnName) {
@@ -145,4 +148,53 @@ ${PERSUASION_STAGES.map((s) => `- ${s}: ${PERSUASION_STAGE_DEFINITIONS[s]}`).joi
   const category = CATEGORIES.includes(parsed.category) ? parsed.category : CATEGORIES[0];
   const persuasionStage = PERSUASION_STAGES.includes(parsed.persuasionStage) ? parsed.persuasionStage : PERSUASION_STAGES[0];
   return { category, persuasionStage };
+});
+
+exports.generateWarmingPlan = onCall({ secrets: [anthropicApiKey], region: 'us-central1' }, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'יש להתחבר כדי להשתמש בתכונה הזו');
+  }
+  if (request.auth.token.email !== ADMIN_EMAIL) {
+    throw new HttpsError('permission-denied', 'התכונה הזו זמינה כרגע רק למנהלת');
+  }
+  await enforceRateLimit(request.auth.uid, 'generateWarmingPlan');
+
+  const product = ((request.data && request.data.product) || '').trim();
+  const audience = ((request.data && request.data.audience) || '').trim();
+  const extraContext = (request.data && request.data.extraContext) || '';
+  const existingIdeasTitles = (request.data && request.data.existingIdeasTitles) || [];
+
+  if (!product || !audience) {
+    throw new HttpsError('invalid-argument', 'צריך לפחות מוצר וקהל יעד כדי לבנות תוכנית חימום');
+  }
+
+  const prompt = buildWarmingPrompt({
+    product,
+    audience,
+    extraContext,
+    existingIdeasTitles: existingIdeasTitles.slice(0, 40),
+  });
+
+  const data = await callAnthropic(anthropicApiKey.value(), {
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 4096,
+    messages: [{ role: 'user', content: prompt }],
+  });
+
+  const text = (data.content && data.content[0] && data.content[0].text) || '{}';
+  let parsed;
+  try {
+    const match = text.match(/\{[\s\S]*\}/);
+    parsed = JSON.parse(match ? match[0] : text);
+  } catch (err) {
+    console.error('Failed to parse generateWarmingPlan response:', text);
+    throw new HttpsError('internal', 'לא הצלחתי לבנות את התוכנית, נסו שוב');
+  }
+
+  if (!Array.isArray(parsed.week1) || !Array.isArray(parsed.week2) || !Array.isArray(parsed.week3)) {
+    console.error('generateWarmingPlan response missing expected weeks:', text);
+    throw new HttpsError('internal', 'התקבלה תשובה לא תקינה, נסו שוב');
+  }
+
+  return { plan: parsed };
 });

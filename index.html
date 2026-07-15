@@ -38,6 +38,7 @@
       <button id="tab-feedback" class="tab-btn">חוות דעת</button>
       <button id="tab-roadmap" class="tab-btn">🗺️ מפת הדרכים ליצירת תוכן</button>
       <button id="tab-content-plan" class="tab-btn">📅 תכנית תוכן</button>
+      <button id="tab-warming" class="tab-btn" hidden>🔥 חימום בסטורי (מנהלת)</button>
     </nav>
     <button id="signout-btn" class="btn-text">התנתקות</button>
   </header>
@@ -275,6 +276,28 @@
 
   <main id="content-plan-view" class="view embed-view" hidden>
     <iframe src="https://mayakislev-ux.github.io/lehiyot-brand/מפת-דרכים-לתכנית-תוכן.html" class="embed-frame" title="תכנית תוכן"></iframe>
+  </main>
+
+  <main id="warming-view" class="view warming-view" hidden>
+    <h2>🔥 חימום קהל בסטורי</h2>
+    <p class="warming-intro">בונה תוכנית ל-3 שבועות: שבועיים חימום שוטף + שבוע חימום לקראת מכירה, לפי המתודולוגיה שלך. תכונה בפיתוח - זמינה רק למנהלת בינתיים.</p>
+
+    <form id="warming-form" class="warming-form">
+      <label>איזה מוצר/הצעה מקדמים בסבב הזה? *
+        <input id="warming-product" type="text" required placeholder="לדוגמה: הקורס להכשרת מטפלות רגשיות">
+      </label>
+      <label>לאיזה קהל מתמקד הסבב הזה? *
+        <input id="warming-audience" type="text" required placeholder="לדוגמה: נשים שכירות שרוצות להסב מקצוע">
+      </label>
+      <label>מידע נוסף (אופציונלי) - אפשר להדביק כאן טקסט מה-Sheets או כל מידע רלוונטי נוסף
+        <textarea id="warming-context" rows="3" placeholder="לדוגמה: פרטים על הקהל, מבצע ספציפי, דברים שקרו לאחרונה..."></textarea>
+      </label>
+      <p id="warming-error" class="error-text" hidden></p>
+      <button type="submit" class="btn-primary" id="warming-generate-btn">🔥 בניית תוכנית חימום</button>
+    </form>
+
+    <div id="warming-loading" class="warming-loading" hidden>בונה תוכנית... זה יכול לקחת כמה שניות 🔥</div>
+    <div id="warming-result" class="warming-result"></div>
   </main>
 
   <button id="add-idea-fab" class="fab">+ הוסיפו רעיון</button>

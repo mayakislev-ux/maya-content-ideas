@@ -7,6 +7,7 @@ import { openAddModal, openEditModal, wireIdeaForm } from './idea-form.js';
 import { wireRandomIdeaModal } from './random-idea-modal.js';
 import { wireIdeaChat, startIdeaChat } from './idea-chat.js';
 import { wireFeedbackForm } from './feedback.js';
+import { wireWarmingView } from './warming.js';
 import { showView } from './view-router.js';
 import { showToast } from './toast.js';
 import { hasCompletedTour, showWelcomeTour } from './welcome-tour.js';
@@ -88,6 +89,7 @@ document.getElementById('tab-inspiration').addEventListener('click', () => showV
 document.getElementById('tab-feedback').addEventListener('click', () => showView('feedback'));
 document.getElementById('tab-roadmap').addEventListener('click', () => showView('roadmap'));
 document.getElementById('tab-content-plan').addEventListener('click', () => showView('content-plan'));
+document.getElementById('tab-warming').addEventListener('click', () => showView('warming'));
 
 const viewTabsNav = document.getElementById('view-tabs');
 const menuOverlay = document.getElementById('menu-overlay');
@@ -117,6 +119,7 @@ wireArchiveControls((idea) => openEditModal(idea));
 wireRandomIdeaModal({ getIdeas: getCurrentIdeas, onOpenIdea: openEditModal });
 wireIdeaChat();
 wireFeedbackForm();
+wireWarmingView();
 
 onAuthChange(async (user) => {
   if (unsubscribeIdeas) {
@@ -141,6 +144,7 @@ onAuthChange(async (user) => {
 
   document.getElementById('login-screen').hidden = true;
   document.getElementById('app-screen').hidden = false;
+  document.getElementById('tab-warming').hidden = user.email !== ADMIN_EMAIL;
   showView('archive');
   unsubscribeIdeas = subscribeToIdeas(onIdeasChanged);
 

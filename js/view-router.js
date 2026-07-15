@@ -1,4 +1,4 @@
-const VIEWS = ['archive', 'chat', 'guide', 'inspiration', 'feedback', 'roadmap', 'content-plan'];
+const VIEWS = ['archive', 'chat', 'guide', 'inspiration', 'feedback', 'roadmap', 'content-plan', 'warming'];
 
 export function showView(name) {
   for (const view of VIEWS) {
