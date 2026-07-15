@@ -8,7 +8,7 @@ import { wireRandomIdeaModal } from './random-idea-modal.js';
 import { wireIdeaChat, startIdeaChat } from './idea-chat.js';
 import { wireFeedbackForm } from './feedback.js';
 import { wireWarmingView } from './warming.js';
-import { showView } from './view-router.js';
+import { showView, getLastView } from './view-router.js';
 import { showToast } from './toast.js';
 import { hasCompletedTour, showWelcomeTour } from './welcome-tour.js';
 
@@ -111,6 +111,36 @@ document.getElementById('close-menu-btn').addEventListener('click', closeMobileM
 menuOverlay.addEventListener('click', closeMobileMenu);
 viewTabsNav.querySelectorAll('.tab-btn').forEach((btn) => btn.addEventListener('click', closeMobileMenu));
 
+let drawerTouchStartX = null;
+viewTabsNav.addEventListener('touchstart', (e) => {
+  drawerTouchStartX = e.touches[0].clientX;
+});
+viewTabsNav.addEventListener('touchend', (e) => {
+  if (drawerTouchStartX === null) return;
+  const deltaX = e.changedTouches[0].clientX - drawerTouchStartX;
+  drawerTouchStartX = null;
+  if (deltaX > 60) closeMobileMenu();
+});
+
+document.getElementById('embed-back-btn').addEventListener('click', () => showView('archive'));
+
+const scrollTopBtn = document.getElementById('scroll-top-btn');
+window.addEventListener('scroll', () => {
+  const archiveView = document.getElementById('archive-view');
+  scrollTopBtn.hidden = archiveView.hidden || window.scrollY < 400;
+});
+scrollTopBtn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+
+document.addEventListener(
+  'focusin',
+  (e) => {
+    const field = e.target.closest('input, select, textarea');
+    if (!field || !field.closest('.modal')) return;
+    setTimeout(() => field.scrollIntoView({ block: 'center', behavior: 'smooth' }), 250);
+  },
+  true
+);
+
 const appHeader = document.querySelector('.app-header');
 function updateHeaderHeight() {
   document.documentElement.style.setProperty('--header-height', `${appHeader.offsetHeight}px`);
@@ -149,7 +179,9 @@ onAuthChange(async (user) => {
   document.getElementById('login-screen').hidden = true;
   document.getElementById('app-screen').hidden = false;
   document.getElementById('tab-warming').hidden = user.email !== ADMIN_EMAIL;
-  showView('archive');
+  const restorableViews = ['guide', 'inspiration', 'feedback', 'roadmap', 'content-plan'];
+  const lastView = getLastView();
+  showView(restorableViews.includes(lastView) ? lastView : 'archive');
   unsubscribeIdeas = subscribeToIdeas(onIdeasChanged);
 
   const tourDone = await hasCompletedTour();

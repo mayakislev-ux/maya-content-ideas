@@ -13,6 +13,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="המוח השיווקי">
 <link rel="stylesheet" href="css/style.css">
+<link rel="preconnect" href="https://www.gstatic.com">
+<link rel="preconnect" href="https://firestore.googleapis.com">
+<link rel="preconnect" href="https://us-central1-content-ideas-becd7.cloudfunctions.net">
 </head>
 <body>
 
@@ -48,7 +51,7 @@
     <section class="quick-add-section">
       <h3 class="section-label">⚡ הוספה מהירה</h3>
       <div class="quick-add-box">
-        <textarea id="quick-add-input" placeholder="רשמו כאן רעיון מהיר לטיוטה, ותשלימו אותו אחר כך..." rows="2"></textarea>
+        <textarea id="quick-add-input" enterkeyhint="done" placeholder="רשמו כאן רעיון מהיר לטיוטה, ותשלימו אותו אחר כך..." rows="2"></textarea>
         <button type="button" id="quick-add-btn" class="btn-primary">+ הוספה מהירה</button>
       </div>
     </section>
@@ -61,7 +64,7 @@
       </div>
 
       <div class="archive-search-row">
-        <input id="search-input" type="text" placeholder="חיפוש לפי כותרת או טקסט...">
+        <input id="search-input" type="text" enterkeyhint="search" placeholder="חיפוש לפי כותרת או טקסט...">
         <button type="button" id="filters-toggle-btn" class="filters-toggle-btn">🔍 סינון</button>
       </div>
 
@@ -101,7 +104,11 @@
       <button id="random-idea-btn" class="random-btn">🎲 אין לי רעיון</button>
     </section>
 
-    <ul class="archive-list" id="archive-list"></ul>
+    <ul class="archive-list" id="archive-list">
+      <li class="archive-item skeleton-card" aria-hidden="true"></li>
+      <li class="archive-item skeleton-card" aria-hidden="true"></li>
+      <li class="archive-item skeleton-card" aria-hidden="true"></li>
+    </ul>
   </main>
 
   <main id="chat-view" class="view" hidden>
@@ -112,7 +119,7 @@
     </div>
     <div class="chat-messages" id="chat-messages"></div>
     <form id="chat-form" class="chat-input-row">
-      <textarea id="chat-input" placeholder="כתיבה כאן..." required></textarea>
+      <textarea id="chat-input" enterkeyhint="send" placeholder="כתיבה כאן..." required></textarea>
       <button type="submit" class="btn-primary">שליחה</button>
     </form>
   </main>
@@ -316,6 +323,8 @@
   </main>
 
   <button id="add-idea-fab" class="fab">+ הוסיפו רעיון</button>
+  <button id="embed-back-btn" class="fab embed-back-btn" hidden>🔙 חזרה לאפליקציה</button>
+  <button id="scroll-top-btn" class="scroll-top-btn" hidden aria-label="חזרה לראש הרשימה">⬆️</button>
 
   <footer class="app-footer">
     <button type="button" id="open-policy-btn-app" class="btn-text policy-link">מדיניות פרטיות</button>
@@ -329,6 +338,7 @@
 
       <div class="form-section">
         <label>הרעיון *<textarea id="field-title" class="field-title-textarea" required></textarea></label>
+        <p id="field-title-hint" class="field-hint" hidden>רעיון ארוך - אפשר גם, אבל שקלי אם יש לקצר לשם קריאות נוחה יותר</p>
         <label>לינק לסרטון (במידה ויש)<input id="field-link" type="url"></label>
       </div>
 

@@ -120,6 +120,12 @@ export function wireIdeaForm() {
     if (e.target === ideaModal) closeModal();
   });
 
+  const titleInput = document.getElementById('field-title');
+  const titleHint = document.getElementById('field-title-hint');
+  titleInput.addEventListener('input', () => {
+    titleHint.hidden = titleInput.value.length <= 280;
+  });
+
   document.getElementById('delete-idea-btn').addEventListener('click', async () => {
     if (!editingId) return;
     const deletedId = editingId;

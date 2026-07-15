@@ -52,10 +52,19 @@ export function wireArchiveControls(onItemClick) {
 
   const quickAddInput = document.getElementById('quick-add-input');
   const quickAddBtn = document.getElementById('quick-add-btn');
+  const QUICK_ADD_DRAFT_KEY = 'quick-add-draft';
+
+  const savedDraft = localStorage.getItem(QUICK_ADD_DRAFT_KEY);
+  if (savedDraft) quickAddInput.value = savedDraft;
+  quickAddInput.addEventListener('input', () => {
+    localStorage.setItem(QUICK_ADD_DRAFT_KEY, quickAddInput.value);
+  });
+
   const submitQuickAdd = async () => {
     const title = quickAddInput.value.trim();
     if (!title) return;
     quickAddInput.value = '';
+    localStorage.removeItem(QUICK_ADD_DRAFT_KEY);
     await addQuickIdea(title);
     showToast('📝 הרעיון נשמר כטיוטה - אפשר להשלים אותו בהמשך');
   };
@@ -176,6 +185,7 @@ function renderItem(idea, onItemClick) {
 
     const thumb = document.createElement('img');
     thumb.className = 'archive-item-thumb';
+    thumb.loading = 'lazy';
     thumb.hidden = true;
     const instant = getInstantThumbnail(idea.sourceLink);
     if (instant) {

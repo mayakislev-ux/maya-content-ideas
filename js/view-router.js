@@ -1,4 +1,6 @@
 const VIEWS = ['archive', 'chat', 'guide', 'inspiration', 'feedback', 'roadmap', 'content-plan', 'warming'];
+const EMBED_VIEWS = ['roadmap', 'content-plan'];
+const LAST_VIEW_KEY = 'last-view';
 
 export function showView(name) {
   for (const view of VIEWS) {
@@ -9,4 +11,11 @@ export function showView(name) {
   }
   document.getElementById('random-idea-btn').hidden = name !== 'archive';
   document.getElementById('add-idea-fab').hidden = name !== 'archive';
+  document.getElementById('embed-back-btn').hidden = !EMBED_VIEWS.includes(name);
+  sessionStorage.setItem(LAST_VIEW_KEY, name);
+}
+
+export function getLastView() {
+  const saved = sessionStorage.getItem(LAST_VIEW_KEY);
+  return VIEWS.includes(saved) ? saved : 'archive';
 }

@@ -80,6 +80,7 @@ h1, h2, h3 {
 }
 
 .error-text { color: var(--cat-mechirti); font-weight: bold; }
+.field-hint { color: var(--muted); font-size: 0.85rem; margin: -0.5rem 0 0.9rem; }
 
 .app-header {
   display: flex;
@@ -237,6 +238,17 @@ h1, h2, h3 {
     text-align: center;
     font-size: 1.1rem;
     padding: 0.9rem 1.1rem;
+    position: relative;
+  }
+  .view-tabs .tab-btn.active::before {
+    content: '';
+    position: absolute;
+    inset-inline-start: -0.4rem;
+    top: 20%;
+    bottom: 20%;
+    width: 4px;
+    border-radius: 999px;
+    background: white;
   }
 
   .close-menu-btn {
@@ -528,6 +540,19 @@ h1, h2, h3 {
   box-shadow: 0 4px 14px rgba(33, 29, 46, 0.18);
 }
 
+.skeleton-card {
+  min-height: 110px;
+  background: linear-gradient(100deg, var(--surface) 30%, rgba(124, 58, 237, 0.12) 50%, var(--surface) 70%);
+  background-size: 200% 100%;
+  animation: skeletonShimmer 1.3s ease-in-out infinite;
+  box-shadow: none;
+}
+
+@keyframes skeletonShimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
 .archive-item-draft {
   border: 2px dashed rgba(255, 255, 255, 0.65);
 }
@@ -662,6 +687,33 @@ h1, h2, h3 {
   font-size: 1rem;
 }
 
+.embed-back-btn {
+  background: rgba(33, 29, 46, 0.85);
+  backdrop-filter: blur(6px);
+  font-size: 0.95rem;
+  padding: 0.8rem 1.2rem;
+  z-index: 5;
+}
+
+.embed-back-btn[hidden] { display: none; }
+
+.scroll-top-btn {
+  position: fixed;
+  bottom: max(1.5rem, calc(env(safe-area-inset-bottom) + 1rem));
+  right: 1.5rem;
+  background: white;
+  color: var(--accent);
+  border: 1px solid var(--border, #ddd8ee);
+  border-radius: 50%;
+  width: 3rem;
+  height: 3rem;
+  font-size: 1.1rem;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(33, 29, 46, 0.2);
+}
+
+.scroll-top-btn[hidden] { display: none; }
+
 .random-btn {
   display: block;
   margin: 1rem auto 0;
@@ -728,6 +780,10 @@ h1, h2, h3 {
   .modal-content select,
   .modal-content textarea { font-size: 1.1rem; padding: 0.7rem; }
   .category-chip { font-size: 1rem; padding: 0.6rem 1.1rem; }
+  .category-chips { gap: 0.8rem; }
+  .archive-item-header { gap: 0.7rem; }
+  .copy-idea-btn { padding: 0.5rem 0.6rem; font-size: 1.1rem; }
+  .complete-idea-btn { padding: 0.5rem 0.9rem; font-size: 0.9rem; }
   .modal-actions .btn-primary,
   .modal-actions .btn-text,
   .modal-actions .btn-danger { font-size: 1.05rem; padding: 0.85rem 1.5rem; }
