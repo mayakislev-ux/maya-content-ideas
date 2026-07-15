@@ -129,17 +129,10 @@ onAuthChange(async (user) => {
   }
 
   document.getElementById('login-screen').hidden = true;
+  document.getElementById('app-screen').hidden = false;
+  showView('archive');
+  unsubscribeIdeas = subscribeToIdeas(onIdeasChanged);
 
   const tourDone = await hasCompletedTour();
-  if (!tourDone) {
-    showWelcomeTour(() => {
-      document.getElementById('app-screen').hidden = false;
-      showView('archive');
-    });
-  } else {
-    document.getElementById('app-screen').hidden = false;
-    showView('archive');
-  }
-
-  unsubscribeIdeas = subscribeToIdeas(onIdeasChanged);
+  if (!tourDone) showWelcomeTour();
 });

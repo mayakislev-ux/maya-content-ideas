@@ -72,7 +72,7 @@ function applyFilters(onItemClick) {
   const filtered = filterIdeas(scoped, { text, category, audienceScope, persuasionStage, rating });
   const sorted = sortIdeas(filtered, sortOrder);
 
-  document.getElementById('idea-count').textContent = `${sorted.length} רעיונות`;
+  document.getElementById('idea-count').textContent = `${sorted.length} רעיונות במאגר שלך`;
 
   const list = document.getElementById('archive-list');
   list.innerHTML = '';
