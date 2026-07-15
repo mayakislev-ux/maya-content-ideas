@@ -3,7 +3,7 @@ const { defineSecret } = require('firebase-functions/params');
 const admin = require('firebase-admin');
 const { buildSystemPrompt } = require('./system-prompt');
 const { buildWarmingPrompt } = require('./warming-system-prompt');
-const { fetchSheetsContent } = require('./sheets-helper');
+const { fetchSheetsContent, sheetsServiceAccountKey } = require('./sheets-content');
 const { CATEGORIES, PERSUASION_STAGES, CATEGORY_DEFINITIONS, PERSUASION_STAGE_DEFINITIONS } = require('./ideas-constants');
 
 admin.initializeApp();
@@ -151,7 +151,7 @@ ${PERSUASION_STAGES.map((s) => `- ${s}: ${PERSUASION_STAGE_DEFINITIONS[s]}`).joi
   return { category, persuasionStage };
 });
 
-exports.generateWarmingPlan = onCall({ secrets: [anthropicApiKey], region: 'us-central1' }, async (request) => {
+exports.generateWarmingPlan = onCall({ secrets: [anthropicApiKey, sheetsServiceAccountKey], region: 'us-central1' }, async (request) => {
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'יש להתחבר כדי להשתמש בתכונה הזו');
   }
@@ -177,7 +177,7 @@ exports.generateWarmingPlan = onCall({ secrets: [anthropicApiKey], region: 'us-c
     );
   }
   if (sheetResult && !sheetResult.error) {
-    extraContext = `${extraContext}\n\nתוכן שנשלף מתוך קובץ ה-Sheets המצורף (CSV):\n${sheetResult.csv}`;
+    extraContext = `${extraContext}\n\nתוכן שנשלף מתוך קובץ ה-Sheets המצורף:\n${sheetResult.content}`;
   }
 
   const prompt = buildWarmingPrompt({
