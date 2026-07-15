@@ -3,6 +3,9 @@ const { defineSecret } = require('firebase-functions/params');
 
 const sheetsServiceAccountKey = defineSecret('SHEETS_SERVICE_ACCOUNT_KEY');
 const SHEETS_URL_PATTERN = /https:\/\/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/;
+const PRIORITY_TAB_KEYWORDS = ['פרסונה', 'קהל יעד', 'חימום', 'רעיונות', 'לידים'];
+const MAX_CHARS_PER_TAB = 7000;
+const MAX_SHEETS_CHARS = 120000;
 
 async function fetchViaServiceAccount(sheetId) {
   let keyValue;
@@ -45,14 +48,27 @@ async function fetchViaServiceAccount(sheetId) {
     const sections = (res.data.valueRanges || [])
       .map((valueRange, i) => {
         const rows = valueRange.values || [];
-        if (!rows.length) return '';
-        const tabText = rows.map((row) => row.join(' | ')).join('\n');
-        return `--- לשונית: ${tabTitles[i]} ---\n${tabText}`;
+        if (!rows.length) return null;
+        // Cap each tab individually - some tabs (persona/audience answers)
+        // hold full paragraph-length content per cell and would otherwise
+        // eat the entire shared budget, starving every tab that comes after.
+        const tabText = rows.map((row) => row.join(' | ')).join('\n').slice(0, MAX_CHARS_PER_TAB);
+        const title = tabTitles[i];
+        const isPriority = PRIORITY_TAB_KEYWORDS.some((kw) => title.includes(kw));
+        return { title, isPriority, text: `--- לשונית: ${title} ---\n${tabText}` };
       })
       .filter(Boolean);
 
     if (!sections.length) return null;
-    return sections.join('\n\n').slice(0, 20000);
+
+    // Put the tabs most likely to matter (audience/persona/ideas/leads)
+    // first, so an overall size ceiling (if the sheet is huge) drops the
+    // least important tabs rather than cutting these off arbitrarily.
+    sections.sort((a, b) => (b.isPriority ? 1 : 0) - (a.isPriority ? 1 : 0));
+    return sections
+      .map((s) => s.text)
+      .join('\n\n')
+      .slice(0, MAX_SHEETS_CHARS);
   } catch (err) {
     console.error('Service account Sheets fetch failed:', err.message);
     return null;
