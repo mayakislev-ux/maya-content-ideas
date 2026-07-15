@@ -234,6 +234,8 @@ function renderSavedList(plans, onOpen, onDelete) {
   }
 }
 
+const WARMING_DRAFT_KEY = 'warming-form-draft';
+
 export function wireWarmingView() {
   const form = document.getElementById('warming-form');
   const errorEl = document.getElementById('warming-error');
@@ -242,6 +244,31 @@ export function wireWarmingView() {
   const saveBtn = document.getElementById('warming-save-btn');
   const savedToggleBtn = document.getElementById('warming-saved-toggle-btn');
   const savedListEl = document.getElementById('warming-saved-list');
+
+  const productInput = document.getElementById('warming-product');
+  const audienceInput = document.getElementById('warming-audience');
+  const contextInput = document.getElementById('warming-context');
+
+  try {
+    const draft = JSON.parse(localStorage.getItem(WARMING_DRAFT_KEY) || 'null');
+    if (draft) {
+      productInput.value = draft.product || '';
+      audienceInput.value = draft.audience || '';
+      contextInput.value = draft.extraContext || '';
+    }
+  } catch (err) {
+    console.error('Failed to restore warming form draft:', err);
+  }
+
+  const saveDraft = () => {
+    localStorage.setItem(
+      WARMING_DRAFT_KEY,
+      JSON.stringify({ product: productInput.value, audience: audienceInput.value, extraContext: contextInput.value })
+    );
+  };
+  productInput.addEventListener('input', saveDraft);
+  audienceInput.addEventListener('input', saveDraft);
+  contextInput.addEventListener('input', saveDraft);
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
