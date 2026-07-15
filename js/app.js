@@ -2,7 +2,7 @@ import { onAuthChange, signInWithGoogle, signOutUser } from './auth.js';
 import { auth, db } from './firebase-init.js';
 import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 import { subscribeToIdeas } from './ideas-store.js';
-import { renderArchive, wireArchiveControls, getCurrentIdeas } from './archive-view.js';
+import { renderArchive, wireArchiveControls, getCurrentIdeas, wirePullToRefresh } from './archive-view.js';
 import { openAddModal, openEditModal, wireIdeaForm } from './idea-form.js';
 import { wireRandomIdeaModal } from './random-idea-modal.js';
 import { wireIdeaChat, startIdeaChat } from './idea-chat.js';
@@ -172,6 +172,7 @@ new ResizeObserver(updateHeaderHeight).observe(appHeader);
 
 wireIdeaForm();
 wireArchiveControls((idea) => openEditModal(idea));
+wirePullToRefresh();
 wireRandomIdeaModal({ getIdeas: getCurrentIdeas, onOpenIdea: openEditModal });
 wireIdeaChat();
 wireFeedbackForm();

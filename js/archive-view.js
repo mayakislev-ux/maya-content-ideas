@@ -1,7 +1,17 @@
 import { filterIdeas, sortIdeas, categoryColorVar } from './ideas-logic.js';
 import { getInstantThumbnail, fetchThumbnail } from './video-preview.js';
-import { addQuickIdea, markIdeaCompleted, uncompleteIdea } from './ideas-store.js';
+import { addQuickIdea, markIdeaCompleted, uncompleteIdea, deleteIdea, restoreIdea } from './ideas-store.js';
 import { showToast } from './toast.js';
+
+const MILESTONES = [10, 25, 50, 100];
+const seenMilestones = new Set(JSON.parse(localStorage.getItem('idea-milestones-seen') || '[]'));
+
+function celebrateMilestone(count) {
+  if (!MILESTONES.includes(count) || seenMilestones.has(count)) return;
+  seenMilestones.add(count);
+  localStorage.setItem('idea-milestones-seen', JSON.stringify([...seenMilestones]));
+  showToast(`🎉 וואו, ${count} רעיונות במאגר שלך!`, { duration: 6000 });
+}
 
 let currentIdeas = [];
 let showingCompleted = false;
@@ -14,6 +24,7 @@ function formatDate(idea) {
 export function renderArchive(ideas, { onItemClick }) {
   currentIdeas = ideas.filter((idea) => !idea.deletedAt);
   applyFilters(onItemClick);
+  celebrateMilestone(currentIdeas.length);
 }
 
 export function getCurrentIdeas() {
@@ -92,6 +103,19 @@ function applyFilters(onItemClick) {
 
   const list = document.getElementById('archive-list');
   list.innerHTML = '';
+
+  if (!sorted.length) {
+    const empty = document.createElement('li');
+    empty.className = 'archive-empty-state';
+    if (currentIdeas.length === 0) {
+      empty.innerHTML = '<div class="archive-empty-emoji">💡</div><p>עדיין אין לך רעיונות שמורים - ההוספה המהירה למעלה היא הדרך הכי קלה להתחיל</p>';
+    } else {
+      empty.innerHTML = '<div class="archive-empty-emoji">🔍</div><p>לא נמצאו רעיונות שתואמים את החיפוש/הסינון הנוכחי</p>';
+    }
+    list.appendChild(empty);
+    return;
+  }
+
   for (const idea of sorted) {
     list.appendChild(renderItem(idea, onItemClick));
   }
@@ -99,9 +123,23 @@ function applyFilters(onItemClick) {
 
 function renderItem(idea, onItemClick) {
   const li = document.createElement('li');
-  li.style.setProperty('--card-color', categoryColorVar(idea.category));
-  li.className = 'archive-item';
-  if (!idea.category) li.classList.add('archive-item-draft');
+  li.className = 'archive-item-outer';
+
+  const doneAction = document.createElement('div');
+  doneAction.className = 'swipe-action swipe-action-done';
+  doneAction.textContent = idea.completedAt ? '↩' : '✓';
+  li.appendChild(doneAction);
+
+  const deleteAction = document.createElement('div');
+  deleteAction.className = 'swipe-action swipe-action-delete';
+  deleteAction.textContent = '🗑️';
+  li.appendChild(deleteAction);
+
+  const inner = document.createElement('div');
+  inner.style.setProperty('--card-color', categoryColorVar(idea.category));
+  inner.className = 'archive-item';
+  if (!idea.category) inner.classList.add('archive-item-draft');
+  li.appendChild(inner);
 
   const header = document.createElement('div');
   header.className = 'archive-item-header';
@@ -164,19 +202,20 @@ function renderItem(idea, onItemClick) {
     doneBtn.textContent = '✓ בוצע';
     doneBtn.addEventListener('click', async (e) => {
       e.stopPropagation();
+      inner.classList.add('archive-item-pop');
       await markIdeaCompleted(idea.id);
     });
     header.appendChild(doneBtn);
   }
 
-  li.appendChild(header);
+  inner.appendChild(header);
 
   const dateText = formatDate(idea);
   if (dateText) {
     const meta = document.createElement('div');
     meta.className = 'archive-item-meta';
     meta.textContent = dateText;
-    li.appendChild(meta);
+    inner.appendChild(meta);
   }
 
   if (idea.sourceLink) {
@@ -209,9 +248,101 @@ function renderItem(idea, onItemClick) {
     link.addEventListener('click', (e) => e.stopPropagation());
     linkRow.appendChild(link);
 
-    li.appendChild(linkRow);
+    inner.appendChild(linkRow);
   }
 
-  li.addEventListener('click', () => onItemClick(idea));
+  let hasSwiped = false;
+  let touchStartX = null;
+  let touchStartY = null;
+  let horizontalSwipe = false;
+
+  inner.addEventListener('touchstart', (e) => {
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+    horizontalSwipe = false;
+    inner.style.transition = 'none';
+  });
+
+  inner.addEventListener('touchmove', (e) => {
+    if (touchStartX === null) return;
+    const deltaX = e.touches[0].clientX - touchStartX;
+    const deltaY = e.touches[0].clientY - touchStartY;
+    if (!horizontalSwipe && Math.abs(deltaX) > 12 && Math.abs(deltaX) > Math.abs(deltaY)) {
+      horizontalSwipe = true;
+    }
+    if (!horizontalSwipe) return;
+    e.preventDefault();
+    hasSwiped = true;
+    const clamped = Math.max(-90, Math.min(90, deltaX));
+    inner.style.transform = `translateX(${clamped}px)`;
+  });
+
+  inner.addEventListener('touchend', async (e) => {
+    if (!horizontalSwipe) {
+      touchStartX = null;
+      return;
+    }
+    const deltaX = e.changedTouches[0].clientX - touchStartX;
+    touchStartX = null;
+    inner.style.transition = 'transform 0.2s ease';
+    inner.style.transform = 'translateX(0)';
+
+    if (deltaX > 70) {
+      inner.classList.add('archive-item-pop');
+      if (idea.completedAt) await uncompleteIdea(idea.id);
+      else await markIdeaCompleted(idea.id);
+    } else if (deltaX < -70) {
+      await deleteIdea(idea.id);
+      showToast('הרעיון נמחק', { actionLabel: 'בטלו', onAction: () => restoreIdea(idea.id) });
+    }
+
+    setTimeout(() => {
+      hasSwiped = false;
+    }, 50);
+  });
+
+  inner.addEventListener('click', () => {
+    if (hasSwiped) return;
+    onItemClick(idea);
+  });
   return li;
+}
+
+export function wirePullToRefresh() {
+  const archiveView = document.getElementById('archive-view');
+  const indicator = document.createElement('div');
+  indicator.className = 'pull-refresh-indicator';
+  indicator.textContent = '↻';
+  archiveView.prepend(indicator);
+
+  let startY = null;
+  let pulling = false;
+
+  archiveView.addEventListener('touchstart', (e) => {
+    startY = window.scrollY === 0 && !archiveView.hidden ? e.touches[0].clientY : null;
+  });
+
+  archiveView.addEventListener('touchmove', (e) => {
+    if (startY === null) return;
+    const delta = e.touches[0].clientY - startY;
+    if (delta > 0 && window.scrollY === 0) {
+      pulling = true;
+      const clamped = Math.min(delta, 70);
+      indicator.style.opacity = Math.min(delta / 70, 1);
+      indicator.style.transform = `translateY(${clamped}px) rotate(${delta * 2}deg)`;
+    }
+  });
+
+  archiveView.addEventListener('touchend', () => {
+    if (pulling) {
+      indicator.classList.add('spinning');
+      setTimeout(() => {
+        indicator.classList.remove('spinning');
+        indicator.style.opacity = 0;
+        indicator.style.transform = '';
+      }, 500);
+    }
+    startY = null;
+    pulling = false;
+  });
 }
