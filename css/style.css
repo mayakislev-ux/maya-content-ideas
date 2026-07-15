@@ -1659,3 +1659,70 @@ textarea:focus-visible,
   cursor: pointer;
   white-space: nowrap;
 }
+
+.ios-install-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 96;
+  background: rgba(15, 8, 25, 0.72);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.2rem;
+}
+
+.ios-install-card {
+  background: var(--card-bg);
+  border-radius: 20px;
+  padding: 1.8rem 1.5rem;
+  max-width: 360px;
+  text-align: center;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+}
+
+.ios-install-emoji { font-size: 2.5rem; margin-bottom: 0.6rem; }
+.ios-install-card h2 { font-size: 1.15rem; margin: 0 0 0.6rem; }
+.ios-install-card p { color: var(--muted); line-height: 1.55; margin: 0 0 1rem; }
+
+.ios-install-steps {
+  text-align: right;
+  padding-inline-start: 1.3rem;
+  margin: 0 0 1.3rem;
+  line-height: 1.9;
+}
+
+.ios-install-dismiss-btn { width: 100%; }
+
+.notification-nudge-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 96;
+  background: rgba(15, 8, 25, 0.72);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.2rem;
+}
+
+.notification-nudge-card {
+  background: var(--card-bg);
+  border-radius: 20px;
+  padding: 1.8rem 1.5rem;
+  max-width: 360px;
+  text-align: center;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+}
+
+.notification-nudge-emoji { font-size: 2.5rem; margin-bottom: 0.6rem; }
+.notification-nudge-card h2 { font-size: 1.15rem; margin: 0 0 0.6rem; }
+.notification-nudge-card p { color: var(--muted); line-height: 1.55; margin: 0 0 1.3rem; }
+
+.notification-nudge-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}

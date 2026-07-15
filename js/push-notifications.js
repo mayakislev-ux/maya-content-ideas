@@ -55,3 +55,35 @@ export function notificationsSupported() {
 export function notificationPermission() {
   return notificationsSupported() ? Notification.permission : 'unsupported';
 }
+
+const NUDGE_COUNT_KEY = 'notification-nudge-count';
+const MAX_NUDGES = 3;
+
+export function showNotificationNudgeIfNeeded() {
+  if (!notificationsSupported() || notificationPermission() === 'granted') return;
+
+  const shownCount = Number(localStorage.getItem(NUDGE_COUNT_KEY) || '0');
+  if (shownCount >= MAX_NUDGES) return;
+  localStorage.setItem(NUDGE_COUNT_KEY, String(shownCount + 1));
+
+  const overlay = document.createElement('div');
+  overlay.className = 'notification-nudge-overlay';
+  overlay.innerHTML = `
+    <div class="notification-nudge-card">
+      <div class="notification-nudge-emoji">🔔</div>
+      <h2>הפעלת התראות מומלצת מאוד!</h2>
+      <p>ככה תקבלי תזכורות ועדכונים ישר לטלפון. תמיד אפשר לכבות את זה אחר כך בהגדרות הטלפון.</p>
+      <div class="notification-nudge-actions">
+        <button type="button" class="btn-primary notification-nudge-enable-btn">🔔 הפעלת התראות</button>
+        <button type="button" class="btn-text notification-nudge-later-btn">אחר כך</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  overlay.querySelector('.notification-nudge-enable-btn').addEventListener('click', async () => {
+    await enableNotifications();
+    overlay.remove();
+  });
+  overlay.querySelector('.notification-nudge-later-btn').addEventListener('click', () => overlay.remove());
+}

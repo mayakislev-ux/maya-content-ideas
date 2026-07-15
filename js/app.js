@@ -11,8 +11,14 @@ import { wireWarmingView } from './warming.js';
 import { showView, getLastView } from './view-router.js';
 import { showToast } from './toast.js';
 import { hasCompletedTour, showWelcomeTour } from './welcome-tour.js';
-import { enableNotifications, notificationsSupported, notificationPermission } from './push-notifications.js';
+import {
+  enableNotifications,
+  notificationsSupported,
+  notificationPermission,
+  showNotificationNudgeIfNeeded,
+} from './push-notifications.js';
 import { wireNotificationAdmin } from './notification-admin.js';
+import { showIosInstallOverlayIfNeeded } from './ios-install-overlay.js';
 
 // iOS Safari doesn't reliably resize a position:fixed element (like our
 // modals) when the on-screen keyboard opens - the layout viewport stays
@@ -263,6 +269,9 @@ onAuthChange(async (user) => {
 
   const tourDone = await hasCompletedTour();
   if (!tourDone) showWelcomeTour();
+
+  showIosInstallOverlayIfNeeded();
+  setTimeout(showNotificationNudgeIfNeeded, 3000);
 });
 
 const isPreciseInput = window.matchMedia('(pointer: fine)').matches;
