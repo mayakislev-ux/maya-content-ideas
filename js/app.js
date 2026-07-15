@@ -223,3 +223,43 @@ onAuthChange(async (user) => {
   const tourDone = await hasCompletedTour();
   if (!tourDone) showWelcomeTour();
 });
+
+function trapFocus(modal) {
+  const focusable = modal.querySelectorAll(
+    'button:not([hidden]), [href], input:not([hidden]), select, textarea, [tabindex]:not([tabindex="-1"])'
+  );
+  if (!focusable.length) return;
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  first.focus();
+
+  modal._focusTrapHandler = (e) => {
+    if (e.key !== 'Tab') return;
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  };
+  modal.addEventListener('keydown', modal._focusTrapHandler);
+}
+
+function releaseFocusTrap(modal) {
+  if (modal._focusTrapHandler) {
+    modal.removeEventListener('keydown', modal._focusTrapHandler);
+    modal._focusTrapHandler = null;
+  }
+}
+
+document.querySelectorAll('.modal').forEach((modal) => {
+  const observer = new MutationObserver(() => {
+    if (modal.hidden) {
+      releaseFocusTrap(modal);
+    } else {
+      trapFocus(modal);
+    }
+  });
+  observer.observe(modal, { attributes: true, attributeFilter: ['hidden'] });
+});

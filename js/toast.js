@@ -1,6 +1,8 @@
 export function showToast(message, { actionLabel, onAction, duration = 5000 } = {}) {
   const toast = document.createElement('div');
   toast.className = 'toast';
+  toast.setAttribute('role', 'status');
+  toast.setAttribute('aria-live', 'polite');
 
   const text = document.createElement('span');
   text.textContent = message;

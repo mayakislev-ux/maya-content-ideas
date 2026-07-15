@@ -23,7 +23,7 @@
   <div class="login-card">
     <h1>המוח השיווקי<br>שנמצא איתך 24/7</h1>
     <button id="google-signin-btn" class="btn-primary">התחברות עם Google</button>
-    <p id="login-error" class="error-text" hidden></p>
+    <p id="login-error" class="error-text" role="alert" hidden></p>
     <button type="button" id="open-policy-btn-login" class="btn-text policy-link">מדיניות פרטיות ותנאי שימוש</button>
   </div>
 </div>
@@ -310,7 +310,7 @@
       <label>מידע נוסף (אופציונלי) - אפשר להדביק כאן קישור ל-Google Sheets (פרטי או משותף) או כל מידע רלוונטי נוסף
         <textarea id="warming-context" rows="3" placeholder="לדוגמה: לינק ל-Sheets, פרטים על הקהל, מבצע ספציפי, דברים שקרו לאחרונה..."></textarea>
       </label>
-      <p id="warming-error" class="error-text" hidden></p>
+      <p id="warming-error" class="error-text" role="alert" hidden></p>
       <button type="submit" class="btn-primary" id="warming-generate-btn">🔥 בניית תוכנית חימום</button>
     </form>
 
@@ -392,7 +392,7 @@
         </label>
       </div>
 
-      <p id="form-error" class="error-text" hidden></p>
+      <p id="form-error" class="error-text" role="alert" hidden></p>
       <div class="modal-actions">
         <button type="button" id="delete-idea-btn" class="btn-danger" hidden>מחיקה</button>
         <button type="button" id="cancel-idea-btn" class="btn-text">ביטול</button>
