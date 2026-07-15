@@ -26,7 +26,7 @@ let countdownInterval = null;
 
 function startCountdown() {
   const el = document.getElementById('warming-countdown');
-  let secondsLeft = 75;
+  let secondsLeft = 40;
   el.textContent = `בונה תוכנית... בערך ${secondsLeft} שניות נותרו`;
   countdownInterval = setInterval(() => {
     secondsLeft -= 1;

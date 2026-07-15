@@ -198,8 +198,10 @@ exports.generateWarmingPlan = onCall({ secrets: [anthropicApiKey, sheetsServiceA
     }
   }
 
-  const ongoing = await callAndParse(buildOngoingWarmingPrompt(promptArgs));
-  const presale = await callAndParse(buildPresaleWarmingPrompt(promptArgs));
+  const [ongoing, presale] = await Promise.all([
+    callAndParse(buildOngoingWarmingPrompt(promptArgs)),
+    callAndParse(buildPresaleWarmingPrompt(promptArgs)),
+  ]);
 
   if (!Array.isArray(ongoing.week1) || !Array.isArray(ongoing.week2) || !Array.isArray(presale.week3)) {
     console.error('generateWarmingPlan response missing expected weeks:', JSON.stringify({ ongoing, presale }));
