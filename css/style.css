@@ -974,6 +974,12 @@ h1, h2, h3 {
   gap: 0.5rem;
 }
 
+.warming-saved-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0.4rem;
+}
+
 .warming-saved-item {
   background: white;
   border: 1px solid #ddd8ee;
@@ -983,9 +989,22 @@ h1, h2, h3 {
   cursor: pointer;
   font-family: inherit;
   font-size: 0.95rem;
+  flex: 1;
+  min-width: 0;
 }
 
 .warming-saved-item:hover { background: var(--surface); }
+
+.warming-saved-delete-btn {
+  background: white;
+  border: 1px solid #ddd8ee;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0 0.7rem;
+}
+
+.warming-saved-delete-btn:hover { background: #fde8e8; }
 
 .warming-intro {
   color: var(--muted);

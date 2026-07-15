@@ -1,7 +1,7 @@
 import { functions } from './firebase-init.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
 import { getCurrentIdeas } from './archive-view.js';
-import { saveWarmingPlan, updateWarmingPlan, listWarmingPlans } from './warming-store.js';
+import { saveWarmingPlan, updateWarmingPlan, listWarmingPlans, deleteWarmingPlan } from './warming-store.js';
 import { showToast } from './toast.js';
 
 const generateWarmingPlan = httpsCallable(functions, 'generateWarmingPlan', { timeout: 170000 });
@@ -200,7 +200,7 @@ function renderPlan(plan) {
   document.getElementById('warming-save-btn').hidden = false;
 }
 
-function renderSavedList(plans, onOpen) {
+function renderSavedList(plans, onOpen, onDelete) {
   const container = document.getElementById('warming-saved-list');
   container.innerHTML = '';
   if (!plans.length) {
@@ -208,13 +208,29 @@ function renderSavedList(plans, onOpen) {
     return;
   }
   for (const p of plans) {
+    const row = document.createElement('div');
+    row.className = 'warming-saved-row';
+
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'warming-saved-item';
     const dateText = p.createdAt && p.createdAt.toDate ? p.createdAt.toDate().toLocaleDateString('he-IL') : '';
     btn.textContent = `${p.product} - ${p.audience} (${dateText})`;
     btn.addEventListener('click', () => onOpen(p));
-    container.appendChild(btn);
+    row.appendChild(btn);
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.type = 'button';
+    deleteBtn.className = 'warming-saved-delete-btn';
+    deleteBtn.textContent = '🗑️';
+    deleteBtn.setAttribute('aria-label', 'מחיקת התוכנית');
+    deleteBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      onDelete(p);
+    });
+    row.appendChild(deleteBtn);
+
+    container.appendChild(row);
   }
 }
 
@@ -281,27 +297,43 @@ export function wireWarmingView() {
     }
   });
 
-  savedToggleBtn.addEventListener('click', async () => {
-    const opening = savedListEl.hidden;
-    savedListEl.hidden = !opening;
-    if (!opening) return;
-
+  async function refreshSavedList() {
     savedListEl.textContent = 'טוען...';
     try {
       const plans = await listWarmingPlans();
-      renderSavedList(plans, (p) => {
-        currentPlan = p.plan;
-        currentMeta = { product: p.product, audience: p.audience, extraContext: p.extraContext };
-        currentPlanId = p.id;
-        document.getElementById('warming-product').value = p.product;
-        document.getElementById('warming-audience').value = p.audience;
-        document.getElementById('warming-context').value = p.extraContext || '';
-        renderPlan(currentPlan);
-        savedListEl.hidden = true;
-      });
+      renderSavedList(
+        plans,
+        (p) => {
+          currentPlan = p.plan;
+          currentMeta = { product: p.product, audience: p.audience, extraContext: p.extraContext };
+          currentPlanId = p.id;
+          document.getElementById('warming-product').value = p.product;
+          document.getElementById('warming-audience').value = p.audience;
+          document.getElementById('warming-context').value = p.extraContext || '';
+          renderPlan(currentPlan);
+          savedListEl.hidden = true;
+        },
+        async (p) => {
+          try {
+            await deleteWarmingPlan(p.id);
+            if (currentPlanId === p.id) currentPlanId = null;
+            showToast('🗑️ התוכנית נמחקה');
+            refreshSavedList();
+          } catch (err) {
+            console.error('deleteWarmingPlan failed:', err);
+            showToast('משהו השתבש במחיקה, נסו שוב');
+          }
+        }
+      );
     } catch (err) {
       console.error('listWarmingPlans failed:', err);
       savedListEl.textContent = 'משהו השתבש בטעינת התוכניות השמורות.';
     }
+  }
+
+  savedToggleBtn.addEventListener('click', () => {
+    const opening = savedListEl.hidden;
+    savedListEl.hidden = !opening;
+    if (opening) refreshSavedList();
   });
 }

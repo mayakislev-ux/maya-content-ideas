@@ -3,6 +3,7 @@ import {
   collection,
   addDoc,
   updateDoc,
+  deleteDoc,
   doc,
   query,
   where,
@@ -28,6 +29,10 @@ export async function saveWarmingPlan({ product, audience, extraContext, plan })
 
 export async function updateWarmingPlan(id, { plan }) {
   return updateDoc(doc(db, 'warmingPlans', id), { plan, updatedAt: serverTimestamp() });
+}
+
+export async function deleteWarmingPlan(id) {
+  return deleteDoc(doc(db, 'warmingPlans', id));
 }
 
 export async function listWarmingPlans() {
