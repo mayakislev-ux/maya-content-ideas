@@ -955,6 +955,34 @@ textarea:focus-visible,
   box-shadow: 0 10px 40px rgba(33, 29, 46, 0.25);
 }
 
+/* Full-screen takeover on mobile instead of a centered floating card - a
+   centered card sized by 100vh/visualViewport math kept getting reported as
+   "can't see/scroll to the rest of it" across every modal in the app. A
+   full-screen page with ONE clear scroll owner (.modal-content itself) is
+   the standard, much more robust mobile pattern - removes the whole class
+   of centering/height-calculation edge cases instead of chasing another one. */
+@media (max-width: 720px) {
+  .modal {
+    padding: 0;
+    align-items: stretch;
+    justify-content: stretch;
+    overflow: hidden;
+  }
+
+  .modal-content {
+    width: 100%;
+    max-width: none;
+    height: 100%;
+    margin: 0;
+    border-radius: 0;
+    box-shadow: none;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-top: max(1.5rem, env(safe-area-inset-top, 0px));
+    padding-bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));
+  }
+}
+
 .modal-content form label {
   display: block;
   margin-bottom: 0.9rem;
