@@ -33,6 +33,7 @@ const URL_PATTERN = /(https?:\/\/[^\s]+)/g;
 const TRAILING_PUNCT = /[.,)\]'"”’״׳]+$/;
 const BOLD_PATTERN = /\*\*(.+?)\*\*/g;
 const RECOGNIZED_MARKER = '[[RECOGNIZED_EXCELLENT]]';
+const SUMMARY_MARKER = '[[IDEA_SUMMARY]]';
 const ROADMAP_URL = 'https://mayakislev-ux.github.io/lehiyot-brand/מפת-דרכים-ליצירת-תוכן.html';
 
 function playSuccessSound() {
@@ -106,6 +107,23 @@ function setBubbleText(bubble, text) {
       appendWithBold(bubble, part);
     }
   }
+}
+
+function extractIdeaSummary(reply) {
+  const markerIndex = reply.indexOf(SUMMARY_MARKER);
+  if (markerIndex === -1) return { visibleReply: reply, summary: null };
+
+  const visibleReply = reply.slice(0, markerIndex).trim();
+  const rawLine = reply.slice(markerIndex + SUMMARY_MARKER.length).split('\n')[0];
+  const [idea, angle, story] = rawLine.split('||').map((part) => (part || '').trim());
+
+  if (!idea) return { visibleReply, summary: null };
+
+  let composedTitle = idea;
+  if (angle) composedTitle += ` | זווית: ${angle}`;
+  if (story) composedTitle += ` | סיפור: ${story}`;
+
+  return { visibleReply, summary: composedTitle };
 }
 
 function saveFinalIdea(finalizedText) {
@@ -311,11 +329,14 @@ export function wireIdeaChat() {
         thinkingBubble.classList.add('chat-bubble-excellent');
         playSuccessSound();
       }
-      setBubbleText(thinkingBubble, reply);
-      if (reply.includes(ROADMAP_URL)) {
-        addSaveButton(thinkingBubble, reply.split(ROADMAP_URL)[0].trim());
+      const { visibleReply, summary } = extractIdeaSummary(reply);
+      setBubbleText(thinkingBubble, visibleReply);
+      if (summary) {
+        addSaveButton(thinkingBubble, summary);
+      } else if (visibleReply.includes(ROADMAP_URL)) {
+        addSaveButton(thinkingBubble, visibleReply.split(ROADMAP_URL)[0].trim());
       }
-      history.push({ role: 'assistant', content: reply });
+      history.push({ role: 'assistant', content: visibleReply });
     } catch (err) {
       console.error('checkIdea failed:', err);
       setBubbleText(thinkingBubble, 'משהו השתבש, נסו שוב בבקשה.');
