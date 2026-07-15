@@ -288,8 +288,10 @@ export async function startIdeaChat() {
   document.getElementById('replay-tour-btn').hidden = !isAdmin();
   if (started) return;
   started = true;
+  const loadingBubble = addThinkingBubble();
   try {
     profile = await getProfile();
+    loadingBubble.closest('.chat-row').remove();
     if (profile) {
       greetAndAskForIdea();
     } else {
@@ -297,6 +299,7 @@ export async function startIdeaChat() {
     }
   } catch (err) {
     console.error('startIdeaChat failed:', err);
+    loadingBubble.closest('.chat-row').remove();
     started = false;
     addBubble('משהו השתבש בטעינת הצ\'אט - נסו לצאת וללחוץ שוב על "בדיקת רעיון".', 'assistant');
   }

@@ -225,6 +225,9 @@ onAuthChange(async (user) => {
   if (!tourDone) showWelcomeTour();
 });
 
+const isPreciseInput = window.matchMedia('(pointer: fine)').matches;
+const TEXT_INPUT_TAGS = ['INPUT', 'TEXTAREA', 'SELECT'];
+
 function trapFocus(modal) {
   const focusable = modal.querySelectorAll(
     'button:not([hidden]), [href], input:not([hidden]), select, textarea, [tabindex]:not([tabindex="-1"])'
@@ -232,7 +235,14 @@ function trapFocus(modal) {
   if (!focusable.length) return;
   const first = focusable[0];
   const last = focusable[focusable.length - 1];
-  first.focus();
+
+  // Force-focusing a text field pops the mobile on-screen keyboard
+  // immediately, which can shove the modal's own close button off
+  // screen - only auto-focus on devices with a real keyboard/mouse,
+  // or when the first element isn't a text field anyway.
+  if (isPreciseInput || !TEXT_INPUT_TAGS.includes(first.tagName)) {
+    first.focus();
+  }
 
   modal._focusTrapHandler = (e) => {
     if (e.key !== 'Tab') return;
