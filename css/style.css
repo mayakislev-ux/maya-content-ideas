@@ -112,6 +112,33 @@ h1, h2, h3 {
   padding: 1.5rem 1rem 5rem;
 }
 
+.quick-add-section,
+.archive-controls-section {
+  margin: 1.2rem 1.5rem;
+  padding: 1.1rem;
+  background: var(--surface);
+  border-radius: 16px;
+}
+
+.quick-add-section .quick-add-box textarea { background: white; }
+
+.quick-add-box {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-end;
+}
+
+.quick-add-box textarea {
+  flex: 1;
+  border: 1px solid #ddd8ee;
+  border-radius: 10px;
+  padding: 0.7rem 1rem;
+  font-family: inherit;
+  font-size: 1rem;
+  resize: vertical;
+  background-color: white;
+}
+
 .view-tabs { display: flex; gap: 0.5rem; flex-wrap: wrap; }
 
 .mobile-menu-btn {
@@ -140,6 +167,8 @@ h1, h2, h3 {
 .close-menu-btn { display: none; }
 
 @media (max-width: 720px) {
+  html { font-size: 18px; }
+
   .app-header {
     z-index: 25;
     flex-direction: column;
@@ -438,33 +467,6 @@ h1, h2, h3 {
   font-weight: bold;
   color: var(--muted);
   font-size: 0.95rem;
-}
-
-.quick-add-section,
-.archive-controls-section {
-  margin: 1.2rem 1.5rem;
-  padding: 1.1rem;
-  background: var(--surface);
-  border-radius: 16px;
-}
-
-.quick-add-section .quick-add-box textarea { background: white; }
-
-.quick-add-box {
-  display: flex;
-  gap: 0.6rem;
-  align-items: flex-end;
-}
-
-.quick-add-box textarea {
-  flex: 1;
-  border: 1px solid #ddd8ee;
-  border-radius: 10px;
-  padding: 0.7rem 1rem;
-  font-family: inherit;
-  font-size: 1rem;
-  resize: vertical;
-  background-color: white;
 }
 
 .draft-badge {

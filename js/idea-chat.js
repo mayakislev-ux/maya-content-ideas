@@ -5,6 +5,7 @@ import { showView } from './view-router.js';
 import { openAddModal, openEditModal } from './idea-form.js';
 import { getCurrentIdeas } from './archive-view.js';
 import { findSimilarIdea } from './ideas-logic.js';
+import { showWelcomeTour } from './welcome-tour.js';
 
 const ADMIN_EMAIL = 'mayakislev@gmail.com';
 const checkIdea = httpsCallable(functions, 'checkIdea');
@@ -235,13 +236,20 @@ function startOnboarding() {
 
 export async function startIdeaChat() {
   document.getElementById('edit-profile-btn').hidden = !isAdmin();
+  document.getElementById('replay-tour-btn').hidden = !isAdmin();
   if (started) return;
   started = true;
-  profile = await getProfile();
-  if (profile) {
-    greetAndAskForIdea();
-  } else {
-    startOnboarding();
+  try {
+    profile = await getProfile();
+    if (profile) {
+      greetAndAskForIdea();
+    } else {
+      startOnboarding();
+    }
+  } catch (err) {
+    console.error('startIdeaChat failed:', err);
+    started = false;
+    addBubble('משהו השתבש בטעינת הצ\'אט - נסו לצאת וללחוץ שוב על "בדיקת רעיון".', 'assistant');
   }
 }
 
@@ -256,6 +264,7 @@ export function wireIdeaChat() {
   });
 
   document.getElementById('new-idea-btn').addEventListener('click', resetChat);
+  document.getElementById('replay-tour-btn').addEventListener('click', () => showWelcomeTour());
 
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
