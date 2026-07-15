@@ -2,7 +2,7 @@ const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { defineSecret } = require('firebase-functions/params');
 const admin = require('firebase-admin');
 const { buildSystemPrompt } = require('./system-prompt');
-const { buildWarmingPrompt } = require('./warming-system-prompt');
+const { buildOngoingWarmingPrompt, buildPresaleWarmingPrompt } = require('./warming-system-prompt');
 const { fetchSheetsContent, sheetsServiceAccountKey } = require('./sheets-content');
 const { CATEGORIES, PERSUASION_STAGES, CATEGORY_DEFINITIONS, PERSUASION_STAGE_DEFINITIONS } = require('./ideas-constants');
 
@@ -151,7 +151,7 @@ ${PERSUASION_STAGES.map((s) => `- ${s}: ${PERSUASION_STAGE_DEFINITIONS[s]}`).joi
   return { category, persuasionStage };
 });
 
-exports.generateWarmingPlan = onCall({ secrets: [anthropicApiKey, sheetsServiceAccountKey], region: 'us-central1' }, async (request) => {
+exports.generateWarmingPlan = onCall({ secrets: [anthropicApiKey, sheetsServiceAccountKey], region: 'us-central1', timeoutSeconds: 180 }, async (request) => {
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'יש להתחבר כדי להשתמש בתכונה הזו');
   }
@@ -180,33 +180,31 @@ exports.generateWarmingPlan = onCall({ secrets: [anthropicApiKey, sheetsServiceA
     extraContext = `${extraContext}\n\nתוכן שנשלף מתוך קובץ ה-Sheets המצורף:\n${sheetResult.content}`;
   }
 
-  const prompt = buildWarmingPrompt({
-    product,
-    audience,
-    extraContext,
-    existingIdeasTitles: existingIdeasTitles.slice(0, 40),
-  });
+  const promptArgs = { product, audience, extraContext, existingIdeasTitles: existingIdeasTitles.slice(0, 40) };
 
-  const data = await callAnthropic(anthropicApiKey.value(), {
-    model: 'claude-haiku-4-5-20251001',
-    max_tokens: 6144,
-    messages: [{ role: 'user', content: prompt }],
-  });
-
-  const text = (data.content && data.content[0] && data.content[0].text) || '{}';
-  let parsed;
-  try {
-    const match = text.match(/\{[\s\S]*\}/);
-    parsed = JSON.parse(match ? match[0] : text);
-  } catch (err) {
-    console.error('Failed to parse generateWarmingPlan response:', text);
-    throw new HttpsError('internal', 'לא הצלחתי לבנות את התוכנית, נסו שוב');
+  async function callAndParse(prompt) {
+    const data = await callAnthropic(anthropicApiKey.value(), {
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 4096,
+      messages: [{ role: 'user', content: prompt }],
+    });
+    const text = (data.content && data.content[0] && data.content[0].text) || '{}';
+    try {
+      const match = text.match(/\{[\s\S]*\}/);
+      return JSON.parse(match ? match[0] : text);
+    } catch (err) {
+      console.error('Failed to parse generateWarmingPlan response:', text);
+      throw new HttpsError('internal', 'לא הצלחתי לבנות את התוכנית, נסו שוב');
+    }
   }
 
-  if (!Array.isArray(parsed.week1) || !Array.isArray(parsed.week2) || !Array.isArray(parsed.week3)) {
-    console.error('generateWarmingPlan response missing expected weeks:', text);
+  const ongoing = await callAndParse(buildOngoingWarmingPrompt(promptArgs));
+  const presale = await callAndParse(buildPresaleWarmingPrompt(promptArgs));
+
+  if (!Array.isArray(ongoing.week1) || !Array.isArray(ongoing.week2) || !Array.isArray(presale.week3)) {
+    console.error('generateWarmingPlan response missing expected weeks:', JSON.stringify({ ongoing, presale }));
     throw new HttpsError('internal', 'התקבלה תשובה לא תקינה, נסו שוב');
   }
 
-  return { plan: parsed };
+  return { plan: { week1: ongoing.week1, week2: ongoing.week2, week3: presale.week3 } };
 });

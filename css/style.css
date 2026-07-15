@@ -1032,6 +1032,8 @@ h1, h2, h3 {
   gap: 0.6rem;
 }
 
+.warming-loading[hidden] { display: none; }
+
 .warming-spinner {
   font-size: 2rem;
   animation: warmingPulse 1s ease-in-out infinite;
@@ -1187,6 +1189,8 @@ h1, h2, h3 {
   display: block;
   margin: 1rem auto 0;
 }
+
+.warming-save-btn[hidden] { display: none; }
 
 .toast {
   position: fixed;

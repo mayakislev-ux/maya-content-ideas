@@ -4,7 +4,7 @@ import { getCurrentIdeas } from './archive-view.js';
 import { saveWarmingPlan, updateWarmingPlan, listWarmingPlans } from './warming-store.js';
 import { showToast } from './toast.js';
 
-const generateWarmingPlan = httpsCallable(functions, 'generateWarmingPlan');
+const generateWarmingPlan = httpsCallable(functions, 'generateWarmingPlan', { timeout: 170000 });
 
 const WEEK_LABELS = {
   week1: '🗓️ שבוע 1 - חימום שוטף',
@@ -22,6 +22,23 @@ const STAGE_LABELS = {
 let currentPlan = null;
 let currentMeta = null;
 let currentPlanId = null;
+let countdownInterval = null;
+
+function startCountdown() {
+  const el = document.getElementById('warming-countdown');
+  let secondsLeft = 75;
+  el.textContent = `בונה תוכנית... בערך ${secondsLeft} שניות נותרו`;
+  countdownInterval = setInterval(() => {
+    secondsLeft -= 1;
+    el.textContent =
+      secondsLeft > 0 ? `בונה תוכנית... בערך ${secondsLeft} שניות נותרו` : 'כמעט מוכן, עוד רגע... 🔥';
+  }, 1000);
+}
+
+function stopCountdown() {
+  if (countdownInterval) clearInterval(countdownInterval);
+  countdownInterval = null;
+}
 
 function makeEditable(el, onCommit) {
   el.contentEditable = 'true';
@@ -226,6 +243,7 @@ export function wireWarmingView() {
     loadingEl.hidden = false;
     document.getElementById('warming-result').innerHTML = '';
     saveBtn.hidden = true;
+    startCountdown();
 
     try {
       const result = await generateWarmingPlan({ product, audience, extraContext, existingIdeasTitles });
@@ -240,6 +258,7 @@ export function wireWarmingView() {
     } finally {
       generateBtn.disabled = false;
       loadingEl.hidden = true;
+      stopCountdown();
     }
   });
 
