@@ -964,14 +964,32 @@ textarea:focus-visible,
 @media (max-width: 720px) {
   .modal {
     padding: 0;
+    flex-direction: column;
     align-items: stretch;
     justify-content: stretch;
     overflow: hidden;
   }
 
-  .modal-content {
+  /* .modal-content.modal-content (repeating the class) bumps specificity
+     above .idea-modal-content/.info-modal-content/.policy-modal-content/
+     .random-modal-content, which are declared later in the file and each
+     set their own max-width - without this, source order would let their
+     max-width silently win back over this override on mobile regardless
+     of what's written here. Same specificity-tie bug class as the earlier
+     .random-btn/.warming-loading fixes, just with two classes this time. */
+  .modal-content.modal-content {
     width: 100%;
     max-width: none;
+    /* flex-grow instead of relying solely on height:100% - percentage
+       heights inside a flex container depend on the parent having a
+       "definite" height, which has a history of inconsistent resolution
+       in WebKit; flex-basis/grow is the more robust way to fill a flex
+       parent. min-height:0 overrides the flex-item default of
+       min-height:auto, which otherwise refuses to let this box shrink
+       below its content's natural height - exactly the classic bug
+       pattern that silently defeats overflow-y:auto in a flex child. */
+    flex: 1 1 auto;
+    min-height: 0;
     height: 100%;
     margin: 0;
     border-radius: 0;
