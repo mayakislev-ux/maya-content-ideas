@@ -382,8 +382,8 @@ h1, h2, h3 {
     font-size: 1.05rem;
   }
 
-  .add-idea-top-btn { display: inline-block; }
-  #add-idea-fab { display: none; }
+  button.add-idea-top-btn { display: inline-block; }
+  #add-idea-fab.fab { display: none; }
 }
 
 .tab-btn {
@@ -764,6 +764,7 @@ textarea:focus-visible,
   background: #fff3cd;
   color: #7a5c00;
   font-weight: bold;
+  text-shadow: none;
 }
 
 .complete-idea-btn {
@@ -775,6 +776,7 @@ textarea:focus-visible,
   font-size: 0.8rem;
   cursor: pointer;
   color: white;
+  text-shadow: none;
 }
 
 .complete-idea-btn:hover { background: rgba(255, 255, 255, 0.3); }
@@ -805,6 +807,7 @@ textarea:focus-visible,
   padding: 0.2rem 0.4rem;
   border-radius: 6px;
   color: var(--muted);
+  text-shadow: none;
 }
 
 .copy-idea-btn:hover { background: var(--surface); }
@@ -817,6 +820,7 @@ textarea:focus-visible,
   background: rgba(255, 255, 255, 0.85);
   color: var(--card-color, var(--accent));
   font-weight: bold;
+  text-shadow: none;
 }
 
 .viral-badge {
@@ -827,6 +831,7 @@ textarea:focus-visible,
   background: #ff6b35;
   color: white;
   font-weight: bold;
+  text-shadow: none;
 }
 
 .archive-item-meta {
