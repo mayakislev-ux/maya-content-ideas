@@ -27,10 +27,32 @@ async function fetchViaServiceAccount(sheetId) {
       scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
     });
     const sheets = google.sheets({ version: 'v4', auth });
-    const res = await sheets.spreadsheets.values.get({ spreadsheetId: sheetId, range: 'A1:Z1000' });
-    const rows = res.data.values || [];
-    if (!rows.length) return null;
-    return rows.map((row) => row.join(', ')).join('\n').slice(0, 8000);
+
+    // A spreadsheet can have many tabs (audience tables, persona notes,
+    // ideas, etc. often live on separate tabs, not the first/default one)
+    // - fetching only a bare "A1:Z1000" range reads just the first tab and
+    // silently misses everything else, so pull every tab explicitly.
+    const meta = await sheets.spreadsheets.get({
+      spreadsheetId: sheetId,
+      fields: 'sheets.properties.title',
+    });
+    const tabTitles = (meta.data.sheets || []).map((s) => s.properties.title);
+    if (!tabTitles.length) return null;
+
+    const ranges = tabTitles.map((title) => `'${title}'!A1:Z1000`);
+    const res = await sheets.spreadsheets.values.batchGet({ spreadsheetId: sheetId, ranges });
+
+    const sections = (res.data.valueRanges || [])
+      .map((valueRange, i) => {
+        const rows = valueRange.values || [];
+        if (!rows.length) return '';
+        const tabText = rows.map((row) => row.join(' | ')).join('\n');
+        return `--- לשונית: ${tabTitles[i]} ---\n${tabText}`;
+      })
+      .filter(Boolean);
+
+    if (!sections.length) return null;
+    return sections.join('\n\n').slice(0, 20000);
   } catch (err) {
     console.error('Service account Sheets fetch failed:', err.message);
     return null;
