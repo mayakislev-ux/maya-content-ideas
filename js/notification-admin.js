@@ -55,7 +55,8 @@ export function wireNotificationAdmin() {
       setTimeout(closeModal, 2000);
     } catch (err) {
       console.error('sendNotification failed:', err);
-      errorEl.textContent = err.message || 'משהו השתבש בשליחה, נסו שוב';
+      const friendlyMessage = err.message && err.message !== 'INTERNAL' ? err.message : 'משהו השתבש בשליחה, נסו שוב';
+      errorEl.textContent = friendlyMessage;
       errorEl.hidden = false;
     } finally {
       sendBtn.disabled = false;

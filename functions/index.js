@@ -234,7 +234,7 @@ exports.sendNotification = onCall({ secrets: [vapidPrivateKey], region: 'us-cent
     throw new HttpsError('invalid-argument', 'צריך לציין מייל כדי לשלוח למשתמשת ספציפית');
   }
 
-  webpush.setVapidDetails('mailto:mayakislev@gmail.com', VAPID_PUBLIC_KEY, vapidPrivateKey.value());
+  webpush.setVapidDetails('mailto:mayakislev@gmail.com', VAPID_PUBLIC_KEY, vapidPrivateKey.value().trim());
 
   let query = db.collection('pushSubscriptions');
   if (target === 'one') {
