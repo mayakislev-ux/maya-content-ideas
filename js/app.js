@@ -47,6 +47,28 @@ if ('serviceWorker' in navigator) {
 const ADMIN_EMAIL = 'mayakislev@gmail.com';
 let unsubscribeIdeas = null;
 
+const offlineBanner = document.getElementById('offline-banner');
+function updateOnlineStatus() {
+  offlineBanner.hidden = navigator.onLine;
+}
+window.addEventListener('online', updateOnlineStatus);
+window.addEventListener('offline', updateOnlineStatus);
+updateOnlineStatus();
+
+let deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  document.getElementById('install-app-btn').hidden = false;
+});
+document.getElementById('install-app-btn').addEventListener('click', async () => {
+  if (!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  await deferredInstallPrompt.userChoice;
+  deferredInstallPrompt = null;
+  document.getElementById('install-app-btn').hidden = true;
+});
+
 function onIdeasChanged(ideas) {
   renderArchive(ideas, { onItemClick: openEditModal });
 }
@@ -179,9 +201,23 @@ onAuthChange(async (user) => {
   document.getElementById('login-screen').hidden = true;
   document.getElementById('app-screen').hidden = false;
   document.getElementById('tab-warming').hidden = user.email !== ADMIN_EMAIL;
-  const restorableViews = ['guide', 'inspiration', 'feedback', 'roadmap', 'content-plan'];
-  const lastView = getLastView();
-  showView(restorableViews.includes(lastView) ? lastView : 'archive');
+
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('action') === 'add') {
+    showView('archive');
+    openAddModal();
+  } else if (params.get('view') === 'chat') {
+    showView('chat');
+    startIdeaChat();
+  } else {
+    const restorableViews = ['guide', 'inspiration', 'feedback', 'roadmap', 'content-plan'];
+    const lastView = getLastView();
+    showView(restorableViews.includes(lastView) ? lastView : 'archive');
+  }
+  if (params.has('action') || params.has('view')) {
+    window.history.replaceState({}, '', window.location.pathname);
+  }
+
   unsubscribeIdeas = subscribeToIdeas(onIdeasChanged);
 
   const tourDone = await hasCompletedTour();

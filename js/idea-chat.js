@@ -177,6 +177,26 @@ function addBubble(text, role) {
   return bubble;
 }
 
+function addThinkingBubble() {
+  const messagesEl = document.getElementById('chat-messages');
+  const row = document.createElement('div');
+  row.className = 'chat-row chat-row-assistant';
+
+  const avatar = document.createElement('div');
+  avatar.className = 'chat-avatar';
+  avatar.textContent = '🤖';
+  row.appendChild(avatar);
+
+  const bubble = document.createElement('div');
+  bubble.className = 'chat-bubble chat-bubble-assistant';
+  bubble.innerHTML = '<span class="chat-thinking-dots"><span></span><span></span><span></span></span>';
+  row.appendChild(bubble);
+
+  messagesEl.appendChild(row);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+  return bubble;
+}
+
 function addChoiceBubble(text, choices, onPick) {
   const messagesEl = document.getElementById('chat-messages');
   const row = document.createElement('div');
@@ -317,9 +337,10 @@ export function wireIdeaChat() {
 
     input.disabled = true;
     addBubble(text, 'user');
+    if (navigator.vibrate) navigator.vibrate(15);
     if (history.length === 0) originalIdeaText = text;
     history.push({ role: 'user', content: text });
-    const thinkingBubble = addBubble('חושבת...', 'assistant');
+    const thinkingBubble = addThinkingBubble();
 
     try {
       const result = await checkIdea({ messages: history, profile });
@@ -336,6 +357,8 @@ export function wireIdeaChat() {
       } else if (visibleReply.includes(ROADMAP_URL)) {
         addSaveButton(thinkingBubble, visibleReply.split(ROADMAP_URL)[0].trim());
       }
+      const messagesEl = document.getElementById('chat-messages');
+      messagesEl.scrollTop = messagesEl.scrollHeight;
       history.push({ role: 'assistant', content: visibleReply });
     } catch (err) {
       console.error('checkIdea failed:', err);

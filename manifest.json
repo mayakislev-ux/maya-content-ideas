@@ -23,5 +23,19 @@
       "type": "image/png",
       "purpose": "maskable"
     }
+  ],
+  "shortcuts": [
+    {
+      "name": "רעיון חדש",
+      "short_name": "רעיון חדש",
+      "url": "./index.html?action=add",
+      "icons": [{ "src": "assets/favicon.png", "sizes": "256x256" }]
+    },
+    {
+      "name": "בדיקת רעיון",
+      "short_name": "בדיקת רעיון",
+      "url": "./index.html?view=chat",
+      "icons": [{ "src": "assets/favicon.png", "sizes": "256x256" }]
+    }
   ]
 }
