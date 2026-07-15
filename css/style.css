@@ -107,6 +107,11 @@ h1, h2, h3 {
 
 .view[hidden] { display: none; }
 
+.app-footer {
+  text-align: center;
+  padding: 1.5rem 1rem 5rem;
+}
+
 .view-tabs { display: flex; gap: 0.5rem; flex-wrap: wrap; }
 
 .mobile-menu-btn {
@@ -193,8 +198,7 @@ h1, h2, h3 {
   .menu-overlay:not([hidden]) { display: block; }
 
   .quick-add-box { flex-direction: column; align-items: stretch; }
-  .archive-header-row { padding: 1rem 1rem 0; }
-  .quick-add-box, .archive-controls { padding-left: 1rem; padding-right: 1rem; }
+  .quick-add-section, .archive-controls-section { margin: 1rem; padding: 1rem; }
 }
 
 .tab-btn {
@@ -376,7 +380,7 @@ h1, h2, h3 {
 .archive-controls {
   display: flex;
   gap: 0.6rem;
-  padding: 1rem 1.5rem;
+  padding: 0;
   flex-wrap: wrap;
 }
 
@@ -424,9 +428,10 @@ h1, h2, h3 {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem 1.5rem 0;
+  padding: 0;
   flex-wrap: wrap;
   gap: 0.5rem;
+  margin-bottom: 0.8rem;
 }
 
 .idea-count-badge {
@@ -435,11 +440,20 @@ h1, h2, h3 {
   font-size: 0.95rem;
 }
 
+.quick-add-section,
+.archive-controls-section {
+  margin: 1.2rem 1.5rem;
+  padding: 1.1rem;
+  background: var(--surface);
+  border-radius: 16px;
+}
+
+.quick-add-section .quick-add-box textarea { background: white; }
+
 .quick-add-box {
   display: flex;
   gap: 0.6rem;
   align-items: flex-end;
-  padding: 0.8rem 1.5rem 0;
 }
 
 .quick-add-box textarea {
@@ -788,6 +802,24 @@ h1, h2, h3 {
 
 .guide-view p {
   line-height: 1.7;
+  font-size: 1.05rem;
+}
+
+.guide-intro {
+  background: var(--surface);
+  border-radius: 16px;
+  padding: 1.3rem 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.guide-intro p:last-child { margin-bottom: 0; }
+
+.guide-example {
+  background: white;
+  border-radius: 12px;
+  padding: 1rem 1.2rem;
+  margin-top: 1rem;
+  border-right: 4px solid var(--accent);
 }
 
 .guide-callout {

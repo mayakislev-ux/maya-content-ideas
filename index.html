@@ -39,57 +39,61 @@
       <button id="tab-roadmap" class="tab-btn">🗺️ מפת הדרכים ליצירת תוכן</button>
       <button id="tab-content-plan" class="tab-btn">📅 תכנית תוכן</button>
     </nav>
-    <button type="button" id="open-policy-btn-app" class="btn-text policy-link">מדיניות פרטיות</button>
     <button id="signout-btn" class="btn-text">התנתקות</button>
   </header>
   <div id="menu-overlay" class="menu-overlay" hidden></div>
 
-  <button id="random-idea-btn" class="random-btn">🎲 אין לי רעיון</button>
-
   <main id="archive-view" class="view">
-    <div class="quick-add-box">
-      <textarea id="quick-add-input" placeholder="רשמי כאן רעיון מהיר לטיוטה, ותשלימי אותו אחר כך..." rows="2"></textarea>
-      <button type="button" id="quick-add-btn" class="btn-primary">+ הוספה מהירה</button>
-    </div>
+    <section class="quick-add-section">
+      <div class="quick-add-box">
+        <textarea id="quick-add-input" placeholder="רשמו כאן רעיון מהיר לטיוטה, ותשלימו אותו אחר כך..." rows="2"></textarea>
+        <button type="button" id="quick-add-btn" class="btn-primary">+ הוספה מהירה</button>
+      </div>
+    </section>
 
-    <div class="archive-header-row">
-      <span id="idea-count" class="idea-count-badge"></span>
-      <button type="button" id="completed-toggle-btn" class="btn-text">📦 רעיונות שבוצעו</button>
-    </div>
+    <section class="archive-controls-section">
+      <div class="archive-header-row">
+        <span id="idea-count" class="idea-count-badge"></span>
+        <button type="button" id="completed-toggle-btn" class="btn-text">📦 רעיונות שבוצעו</button>
+      </div>
 
-    <div class="archive-controls">
-      <input id="search-input" type="text" placeholder="חיפוש לפי כותרת או טקסט...">
-      <select id="filter-category">
-        <option value="">כל הקטגוריות</option>
-        <option value="בעל ערך">בעל ערך</option>
-        <option value="אישי">אישי</option>
-        <option value="מכירתי">מכירתי</option>
-        <option value="בידורי">בידורי</option>
-      </select>
-      <select id="filter-audience-scope">
-        <option value="">כל סוגי הקהל</option>
-        <option value="עיקרי">קהל עיקרי</option>
-        <option value="משני">קהל משני</option>
-        <option value="רחב">קהל רחב (ויראלי)</option>
-      </select>
-      <select id="filter-persuasion">
-        <option value="">כל שלבי השכנוע</option>
-        <option value="שלב שכנוע 1 - מודעות לבעיה / חומרת הבעיה">שלב שכנוע 1</option>
-        <option value="שלב שכנוע 2 - מודעות לפתרון">שלב שכנוע 2</option>
-        <option value="שלב שכנוע 3 - למה דווקא אני">שלב שכנוע 3</option>
-      </select>
-      <select id="filter-rating">
-        <option value="">כל הדירוגים</option>
-        <option value="🔥 חייב לצלם">🔥 חייב לצלם</option>
-        <option value="⭐ שווה לצלם">⭐ שווה לצלם</option>
-        <option value="💭 רעיון לעתיד">💭 רעיון לעתיד</option>
-      </select>
-      <select id="sort-order">
-        <option value="newest">הכי חדש קודם</option>
-        <option value="oldest">הכי ישן קודם</option>
-        <option value="rating">🔥 הכי חזק קודם</option>
-      </select>
-    </div>
+      <div class="archive-controls">
+        <input id="search-input" type="text" placeholder="חיפוש לפי כותרת או טקסט...">
+        <select id="filter-category">
+          <option value="">כל הקטגוריות</option>
+          <option value="בעל ערך">בעל ערך</option>
+          <option value="אישי">אישי</option>
+          <option value="מכירתי">מכירתי</option>
+          <option value="בידורי">בידורי</option>
+        </select>
+        <select id="filter-audience-scope">
+          <option value="">כל סוגי הקהל</option>
+          <option value="עיקרי">קהל עיקרי</option>
+          <option value="משני">קהל משני</option>
+          <option value="רחב">קהל רחב (ויראלי)</option>
+        </select>
+        <select id="filter-persuasion">
+          <option value="">כל שלבי השכנוע</option>
+          <option value="שלב שכנוע 1 - מודעות לבעיה / חומרת הבעיה">שלב שכנוע 1</option>
+          <option value="שלב שכנוע 2 - מודעות לפתרון">שלב שכנוע 2</option>
+          <option value="שלב שכנוע 3 - למה דווקא אני">שלב שכנוע 3</option>
+        </select>
+        <select id="filter-rating">
+          <option value="">כל הדירוגים</option>
+          <option value="🔥 חייב לצלם">🔥 חייב לצלם</option>
+          <option value="⭐ שווה לצלם">⭐ שווה לצלם</option>
+          <option value="💭 רעיון לעתיד">💭 רעיון לעתיד</option>
+        </select>
+        <select id="sort-order">
+          <option value="newest">הכי חדש קודם</option>
+          <option value="oldest">הכי ישן קודם</option>
+          <option value="rating">🔥 הכי חזק קודם</option>
+        </select>
+      </div>
+
+      <button id="random-idea-btn" class="random-btn">🎲 אין לי רעיון</button>
+    </section>
+
     <ul class="archive-list" id="archive-list"></ul>
   </main>
 
@@ -107,10 +111,16 @@
 
   <main id="guide-view" class="view guide-view" hidden>
     <h2>מאיפה להביא רעיונות לתוכן?</h2>
-    <p>אפשר להביא רעיונות מכל דבר בעולם - העיקר: לקשור את זה לתחום העיסוק שלכם (קשר ישיר או עקיף) או לדמות שאתם (תוכן אישי).</p>
-    <p>למשל אם אתם מאמני כושר - מן הסתם תדברו על כל עולם הכושר והתזונה, אבל אפשר גם לייצר תוכן שלא קשור רק לעסק שלכם כדי לבדל את עצמכם ברשת - תוכן שקשור לדמות שאתם ולערכים שלכם. אם עכשיו יצאתם לדייט והייתה סיטואציה שהפריעה לכם, אתם יכולים לפתוח מצלמה בלייב ולהפוך את זה לתוכן.</p>
-    <p>אבל אם תעשו סתם טרנד/סרטון כמו "3 מקומות שווים לטיול בלונדון" ואתם בכלל מאמני כושר - התוכן הזה לא משקף לא את האישיות שלכם ולא את התחום שלכם, ולכן לא תעלו אותו. זה בדיוק ההבדל בין משפיענים לבעלי עסקים ברשת.</p>
-    <p>כדי שיהיה יותר מובן - אני יועצת שיווק לעסקים, אבל זה לא אומר שכל תוכן שאני מעלה חייב לדבר על שיווק. חשוב מאוד להראות את מי שאני. העליתי לא מזמן סרטון על זה שקניתי מוצר שניצל ב-137 שקל והסברתי למה עשיתי את זה - הסרטון בכלל לא מדבר על שיווק אבל משקף את חיי היום-יום שלי ואת האישיות שלי, לכן אפשר להעלות. אבל אם סתם הייתי עושה סרטון "בואו איתי להכין שניצל" - זה לא משקף לא את הדמות שלי ולא את העסק שלי, לכן לא מעלה.</p>
+    <div class="guide-intro">
+      <p>אפשר להביא רעיונות <strong>מכל דבר בעולם</strong> - העיקר: לקשור את זה לתחום העיסוק שלכם (קשר ישיר או עקיף) או לדמות שאתם (תוכן אישי).</p>
+      <p>למשל אם אתם מאמני כושר - מן הסתם תדברו על כל עולם הכושר והתזונה, אבל אפשר גם לייצר תוכן שלא קשור רק לעסק שלכם כדי לבדל את עצמכם ברשת - תוכן שקשור לדמות שאתם ולערכים שלכם. אם עכשיו יצאתם לדייט והייתה סיטואציה שהפריעה לכם, אתם יכולים לפתוח מצלמה בלייב ולהפוך את זה לתוכן.</p>
+      <p><strong>אבל</strong> אם תעשו סתם טרנד/סרטון כמו "3 מקומות שווים לטיול בלונדון" ואתם בכלל מאמני כושר - התוכן הזה לא משקף לא את האישיות שלכם ולא את התחום שלכם, ולכן לא תעלו אותו. זה בדיוק ההבדל בין משפיענים לבעלי עסקים ברשת.</p>
+      <div class="guide-example">
+        <p>כדי שיהיה יותר מובן - אני יועצת שיווק לעסקים, אבל זה לא אומר שכל תוכן שאני מעלה חייב לדבר על שיווק. <strong>חשוב מאוד להראות את מי שאני.</strong></p>
+        <p>העליתי לא מזמן סרטון על זה שקניתי מוצר שניצל ב-137 שקל והסברתי למה עשיתי את זה - הסרטון בכלל לא מדבר על שיווק אבל משקף את חיי היום-יום שלי ואת האישיות שלי, לכן אפשר להעלות.</p>
+        <p>אבל אם סתם הייתי עושה סרטון "בואו איתי להכין שניצל" - זה לא משקף לא את הדמות שלי ולא את העסק שלי, לכן <strong>לא</strong> מעלה.</p>
+      </div>
+    </div>
 
     <h3>11 דרכים להביא רעיונות לתוכן</h3>
 
@@ -266,7 +276,11 @@
     <iframe src="https://mayakislev-ux.github.io/lehiyot-brand/מפת-דרכים-לתכנית-תוכן.html" class="embed-frame" title="תכנית תוכן"></iframe>
   </main>
 
-  <button id="add-idea-fab" class="fab">+ הוסיפי רעיון</button>
+  <button id="add-idea-fab" class="fab">+ הוסיפו רעיון</button>
+
+  <footer class="app-footer">
+    <button type="button" id="open-policy-btn-app" class="btn-text policy-link">מדיניות פרטיות</button>
+  </footer>
 </div>
 
 <div id="idea-modal" class="modal" hidden>
@@ -298,7 +312,7 @@
           <button type="button" id="persuasion-info-btn" class="info-btn" aria-label="מה זה אומר?">ⓘ</button>
         </label>
         <select id="field-persuasion" required>
-          <option value="">בחרי שלב שכנוע</option>
+          <option value="">בחרו שלב שכנוע</option>
           <option value="שלב שכנוע 1 - מודעות לבעיה / חומרת הבעיה">שלב שכנוע 1 - מודעות לבעיה / חומרת הבעיה</option>
           <option value="שלב שכנוע 2 - מודעות לפתרון">שלב שכנוע 2 - מודעות לפתרון</option>
           <option value="שלב שכנוע 3 - למה דווקא אני">שלב שכנוע 3 - למה דווקא אני</option>
@@ -307,7 +321,7 @@
 
         <label>למי הסרטון מדבר? *
           <select id="field-audience-scope" required>
-            <option value="">בחרי</option>
+            <option value="">בחרו</option>
             <option value="עיקרי">קהל עיקרי</option>
             <option value="משני">קהל משני</option>
             <option value="רחב">קהל רחב (ויראלי)</option>
@@ -318,7 +332,7 @@
       <div class="form-section">
         <label>דירוג *
           <select id="field-rating" required>
-            <option value="">בחרי דירוג</option>
+            <option value="">בחרו דירוג</option>
             <option value="🔥 חייב לצלם">🔥 חייב לצלם</option>
             <option value="⭐ שווה לצלם">⭐ שווה לצלם</option>
             <option value="💭 רעיון לעתיד">💭 רעיון לעתיד</option>

@@ -50,6 +50,8 @@ const STEPS = [
   },
 ];
 
+const CURRENT_TOUR_VERSION = 2;
+
 let currentStep = 0;
 let blocker, spotlight, callout;
 let resizeHandler = null;
@@ -186,12 +188,17 @@ async function finish() {
   blocker.remove();
   spotlight.remove();
   callout.remove();
-  await setDoc(doc(db, 'profiles', auth.currentUser.uid), { tourCompletedAt: serverTimestamp() }, { merge: true });
+  await setDoc(
+    doc(db, 'profiles', auth.currentUser.uid),
+    { tourCompletedAt: serverTimestamp(), tourVersion: CURRENT_TOUR_VERSION },
+    { merge: true }
+  );
 }
 
 export async function hasCompletedTour() {
   const snap = await getDoc(doc(db, 'profiles', auth.currentUser.uid));
-  return Boolean(snap.exists() && snap.data().tourCompletedAt);
+  const seenVersion = (snap.exists() && snap.data().tourVersion) || 0;
+  return seenVersion >= CURRENT_TOUR_VERSION;
 }
 
 export function showWelcomeTour() {

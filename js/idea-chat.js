@@ -220,8 +220,9 @@ async function finishOnboarding() {
 }
 
 function greetAndAskForIdea() {
+  const registerVerb = profile.pronoun === 'אתה' ? 'רשום' : 'רשמי';
   addBubble(
-    `${profile.name}, רשמי לי מה הרעיון שלך ואדייק אותך.\n\n💡 טיפ: אם קשה לך להמציא רעיון מ-0 (וזה רוב האנשים!) - הכי מומלץ להתחיל משכפול רעיון וזווית הנגשה שראית ברשת ומצאו חן בעיניך. ככה לא צריך לשבור את הראש על רעיון חדש, לא צריך לחשוב לבד איך לצלם כי הפורמט כבר מוכח, וזה גם עוזר לפתח הבנה שיווקית של מה עובד. מדריך מלא לשכפול תוכן: https://docs.google.com/document/d/16E3UA0ukElNLcxHT_5C84XrWUZJ3iN0AVPD4BiNphx8/edit?tab=t.0`,
+    `${profile.name}, ${registerVerb} לי מה הרעיון שלך ואדייק אותך.\n\n💡 טיפ: אם קשה לך להמציא רעיון מ-0 (וזה רוב האנשים!) - הכי מומלץ להתחיל משכפול רעיון וזווית הנגשה שראית ברשת ומצאו חן בעיניך. ככה לא צריך לשבור את הראש על רעיון חדש, לא צריך לחשוב לבד איך לצלם כי הפורמט כבר מוכח, וזה גם עוזר לפתח הבנה שיווקית של מה עובד. מדריך מלא לשכפול תוכן: https://docs.google.com/document/d/16E3UA0ukElNLcxHT_5C84XrWUZJ3iN0AVPD4BiNphx8/edit?tab=t.0`,
     'assistant'
   );
 }
@@ -297,7 +298,7 @@ export function wireIdeaChat() {
       history.push({ role: 'assistant', content: reply });
     } catch (err) {
       console.error('checkIdea failed:', err);
-      setBubbleText(thinkingBubble, 'משהו השתבש, נסי שוב בבקשה.');
+      setBubbleText(thinkingBubble, 'משהו השתבש, נסו שוב בבקשה.');
     } finally {
       input.disabled = false;
       input.focus();

@@ -80,7 +80,7 @@ async function runAiClassification() {
   const aiChip = document.querySelector('.category-chip-ai');
 
   if (!titleEl.value.trim()) {
-    alert('קודם תכתבי את "הרעיון", ואז אני אוכל להציע.');
+    alert('קודם תכתבו את "הרעיון", ואז אני אוכל להציע.');
     return;
   }
 
@@ -99,7 +99,7 @@ async function runAiClassification() {
     });
   } catch (err) {
     console.error('classifyIdea failed:', err);
-    alert('משהו השתבש בהצעה האוטומטית, נסי שוב או בחרי ידנית.');
+    alert('משהו השתבש בהצעה האוטומטית, נסו שוב או בחרו ידנית.');
   } finally {
     aiChip.textContent = originalChipText;
     aiChip.disabled = false;
@@ -117,7 +117,7 @@ export function wireIdeaForm() {
     await deleteIdea(deletedId);
     closeModal();
     showToast('הרעיון נמחק', {
-      actionLabel: 'בטלי',
+      actionLabel: 'בטלו',
       onAction: () => restoreIdea(deletedId),
     });
   });

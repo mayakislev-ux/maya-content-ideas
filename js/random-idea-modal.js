@@ -19,7 +19,7 @@ export function wireRandomIdeaModal({ getIdeas, onOpenIdea }) {
   function spin() {
     const pool = getIdeas().filter((idea) => idea.rating === STRONG_RATING);
     if (!pool.length) {
-      alert('עוד אין לך רעיונות מדורגים "חייב לצלם" - סמני כמה רעיונות ככה כדי שהכפתור יוכל להגריל!');
+      alert('עוד אין לך רעיונות מדורגים "חייב לצלם" - סמנו כמה רעיונות ככה כדי שהכפתור יוכל להגריל!');
       return;
     }
 

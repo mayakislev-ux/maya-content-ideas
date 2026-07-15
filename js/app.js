@@ -50,7 +50,7 @@ document.getElementById('google-signin-btn').addEventListener('click', async () 
     await signInWithGoogle();
   } catch (err) {
     const errorEl = document.getElementById('login-error');
-    errorEl.textContent = 'ההתחברות נכשלה, נסי שוב';
+    errorEl.textContent = 'ההתחברות נכשלה, נסו שוב';
     errorEl.hidden = false;
   }
 });
