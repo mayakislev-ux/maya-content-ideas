@@ -43,6 +43,13 @@ export function wireArchiveControls(onItemClick) {
     applyFilters(onItemClick);
   });
 
+  const filtersToggleBtn = document.getElementById('filters-toggle-btn');
+  const archiveFilters = document.getElementById('archive-filters');
+  filtersToggleBtn.addEventListener('click', () => {
+    const isOpen = archiveFilters.classList.toggle('open');
+    filtersToggleBtn.classList.toggle('active', isOpen);
+  });
+
   const quickAddInput = document.getElementById('quick-add-input');
   const quickAddBtn = document.getElementById('quick-add-btn');
   const submitQuickAdd = async () => {

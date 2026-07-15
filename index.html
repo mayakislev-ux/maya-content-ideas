@@ -46,6 +46,7 @@
 
   <main id="archive-view" class="view">
     <section class="quick-add-section">
+      <h3 class="section-label">⚡ הוספה מהירה</h3>
       <div class="quick-add-box">
         <textarea id="quick-add-input" placeholder="רשמו כאן רעיון מהיר לטיוטה, ותשלימו אותו אחר כך..." rows="2"></textarea>
         <button type="button" id="quick-add-btn" class="btn-primary">+ הוספה מהירה</button>
@@ -53,13 +54,18 @@
     </section>
 
     <section class="archive-controls-section">
+      <h3 class="section-label">📚 הרעיונות שלי</h3>
       <div class="archive-header-row">
         <span id="idea-count" class="idea-count-badge"></span>
         <button type="button" id="completed-toggle-btn" class="btn-text">📦 רעיונות שבוצעו</button>
       </div>
 
-      <div class="archive-controls">
+      <div class="archive-search-row">
         <input id="search-input" type="text" placeholder="חיפוש לפי כותרת או טקסט...">
+        <button type="button" id="filters-toggle-btn" class="filters-toggle-btn">🔍 סינון</button>
+      </div>
+
+      <div class="archive-controls" id="archive-filters">
         <select id="filter-category">
           <option value="">כל הקטגוריות</option>
           <option value="בעל ערך">בעל ערך</option>
