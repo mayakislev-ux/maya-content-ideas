@@ -954,6 +954,39 @@ h1, h2, h3 {
   padding: 1.5rem 1.5rem 6rem;
 }
 
+.warming-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.warming-header-row h2 { margin: 0; }
+
+.warming-saved-list {
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 1rem 1.2rem;
+  margin-bottom: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.warming-saved-item {
+  background: white;
+  border: 1px solid #ddd8ee;
+  border-radius: 10px;
+  padding: 0.6rem 0.9rem;
+  text-align: right;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.95rem;
+}
+
+.warming-saved-item:hover { background: var(--surface); }
+
 .warming-intro {
   color: var(--muted);
   line-height: 1.6;
@@ -993,6 +1026,20 @@ h1, h2, h3 {
   color: var(--muted);
   font-weight: bold;
   padding: 1.5rem 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.warming-spinner {
+  font-size: 2rem;
+  animation: warmingPulse 1s ease-in-out infinite;
+}
+
+@keyframes warmingPulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.3); opacity: 0.6; }
 }
 
 .warming-week {
@@ -1013,16 +1060,35 @@ h1, h2, h3 {
 
 .warming-week summary::-webkit-details-marker { display: none; }
 
+.warming-week3 {
+  background: linear-gradient(135deg, rgba(230, 57, 70, 0.1), rgba(255, 159, 67, 0.12));
+  border: 1px solid rgba(230, 57, 70, 0.25);
+}
+
 .warming-days {
   padding: 0.2rem 1.3rem 1rem;
 }
 
 .warming-day-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
   padding: 0.7rem 0;
   border-top: 1px solid rgba(124, 58, 237, 0.15);
 }
 
 .warming-day-row:first-child { border-top: none; }
+
+.warming-checkbox {
+  margin-top: 0.3rem;
+  width: 1.15rem;
+  height: 1.15rem;
+  flex-shrink: 0;
+  cursor: pointer;
+  accent-color: var(--accent);
+}
+
+.warming-day-text { flex: 1; min-width: 0; }
 
 .warming-day-name {
   font-weight: bold;
@@ -1030,8 +1096,96 @@ h1, h2, h3 {
   margin-bottom: 0.2rem;
 }
 
+.warming-law-label {
+  font-weight: bold;
+  font-size: 0.9rem;
+  color: var(--muted);
+  margin-bottom: 0.2rem;
+}
+
 .warming-day-idea {
   line-height: 1.6;
+}
+
+.warming-editable {
+  border-radius: 8px;
+  padding: 0.15rem 0.4rem;
+  margin: -0.15rem -0.4rem;
+}
+
+.warming-editable:hover { background: rgba(124, 58, 237, 0.08); }
+.warming-editable:focus { background: white; outline: 2px solid var(--accent); }
+
+.warming-done .warming-day-idea,
+.warming-done .warming-law-label,
+.warming-done .warming-block-label,
+.warming-done .warming-story-idea {
+  text-decoration: line-through;
+  opacity: 0.55;
+}
+
+.warming-blocks {
+  padding: 0.2rem 1.3rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.warming-block {
+  background: white;
+  border-radius: 12px;
+  padding: 0.9rem 1rem;
+}
+
+.warming-block-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  margin-bottom: 0.5rem;
+}
+
+.warming-stage-tag {
+  font-size: 0.8rem;
+  font-weight: bold;
+  color: var(--cat-mechirti);
+  white-space: nowrap;
+  margin-top: 0.2rem;
+}
+
+.warming-block-label {
+  font-weight: bold;
+  flex: 1;
+  min-width: 0;
+}
+
+.warming-stories {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-inline-start: 1.9rem;
+}
+
+.warming-story-row {
+  line-height: 1.6;
+}
+
+.warming-story-num {
+  font-weight: bold;
+  color: var(--accent);
+  margin-inline-end: 0.4rem;
+}
+
+.warming-story-format {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin-inline-end: 0.4rem;
+}
+
+.warming-story-idea { display: inline; }
+
+.warming-save-btn {
+  display: block;
+  margin: 1rem auto 0;
 }
 
 .toast {

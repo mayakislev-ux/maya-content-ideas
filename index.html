@@ -279,8 +279,13 @@
   </main>
 
   <main id="warming-view" class="view warming-view" hidden>
-    <h2>🔥 חימום קהל בסטורי</h2>
+    <div class="warming-header-row">
+      <h2>🔥 חימום קהל בסטורי</h2>
+      <button type="button" id="warming-saved-toggle-btn" class="btn-text">📂 תוכניות שמורות</button>
+    </div>
     <p class="warming-intro">בונה תוכנית ל-3 שבועות: שבועיים חימום שוטף + שבוע חימום לקראת מכירה, לפי המתודולוגיה שלך. תכונה בפיתוח - זמינה רק למנהלת בינתיים.</p>
+
+    <div id="warming-saved-list" class="warming-saved-list" hidden></div>
 
     <form id="warming-form" class="warming-form">
       <label>איזה מוצר/הצעה מקדמים בסבב הזה? *
@@ -289,15 +294,19 @@
       <label>לאיזה קהל מתמקד הסבב הזה? *
         <input id="warming-audience" type="text" required placeholder="לדוגמה: נשים שכירות שרוצות להסב מקצוע">
       </label>
-      <label>מידע נוסף (אופציונלי) - אפשר להדביק כאן קישור ל-Google Sheets (חייב להיות משותף כ"כל מי שיש לו את הקישור - צופה") או כל מידע רלוונטי נוסף
+      <label>מידע נוסף (אופציונלי) - אפשר להדביק כאן קישור ל-Google Sheets (פרטי או משותף) או כל מידע רלוונטי נוסף
         <textarea id="warming-context" rows="3" placeholder="לדוגמה: לינק ל-Sheets, פרטים על הקהל, מבצע ספציפי, דברים שקרו לאחרונה..."></textarea>
       </label>
       <p id="warming-error" class="error-text" hidden></p>
       <button type="submit" class="btn-primary" id="warming-generate-btn">🔥 בניית תוכנית חימום</button>
     </form>
 
-    <div id="warming-loading" class="warming-loading" hidden>בונה תוכנית... זה יכול לקחת כמה שניות 🔥</div>
+    <div id="warming-loading" class="warming-loading" hidden>
+      <div class="warming-spinner">🔥</div>
+      <div>בונה תוכנית... זה בדרך כלל לוקח כדקה, אל תסגרי את המסך</div>
+    </div>
     <div id="warming-result" class="warming-result"></div>
+    <button type="button" id="warming-save-btn" class="btn-primary warming-save-btn" hidden>💾 שמירת התוכנית</button>
   </main>
 
   <button id="add-idea-fab" class="fab">+ הוסיפו רעיון</button>

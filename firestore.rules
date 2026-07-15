@@ -23,5 +23,9 @@ service cloud.firestore {
       allow create: if isAllowed();
       allow read, update, delete: if false;
     }
+    match /warmingPlans/{planId} {
+      allow read, update, delete: if isAdmin() && request.auth.uid == resource.data.ownerUid;
+      allow create: if isAdmin() && request.auth.uid == request.resource.data.ownerUid;
+    }
   }
 }
