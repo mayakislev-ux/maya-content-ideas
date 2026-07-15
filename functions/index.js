@@ -3,6 +3,7 @@ const { defineSecret } = require('firebase-functions/params');
 const admin = require('firebase-admin');
 const { buildSystemPrompt } = require('./system-prompt');
 const { buildWarmingPrompt } = require('./warming-system-prompt');
+const { fetchSheetsContent } = require('./sheets-helper');
 const { CATEGORIES, PERSUASION_STAGES, CATEGORY_DEFINITIONS, PERSUASION_STAGE_DEFINITIONS } = require('./ideas-constants');
 
 admin.initializeApp();
@@ -161,11 +162,22 @@ exports.generateWarmingPlan = onCall({ secrets: [anthropicApiKey], region: 'us-c
 
   const product = ((request.data && request.data.product) || '').trim();
   const audience = ((request.data && request.data.audience) || '').trim();
-  const extraContext = (request.data && request.data.extraContext) || '';
   const existingIdeasTitles = (request.data && request.data.existingIdeasTitles) || [];
+  let extraContext = (request.data && request.data.extraContext) || '';
 
   if (!product || !audience) {
     throw new HttpsError('invalid-argument', 'צריך לפחות מוצר וקהל יעד כדי לבנות תוכנית חימום');
+  }
+
+  const sheetResult = await fetchSheetsContent(extraContext);
+  if (sheetResult && sheetResult.error) {
+    throw new HttpsError(
+      'failed-precondition',
+      'לא הצלחתי לקרוא את קובץ ה-Sheets - ודאי שההרשאות שלו מוגדרות ל"כל מי שיש לו את הקישור - צופה" (Anyone with the link - Viewer) ונסי שוב'
+    );
+  }
+  if (sheetResult && !sheetResult.error) {
+    extraContext = `${extraContext}\n\nתוכן שנשלף מתוך קובץ ה-Sheets המצורף (CSV):\n${sheetResult.csv}`;
   }
 
   const prompt = buildWarmingPrompt({
