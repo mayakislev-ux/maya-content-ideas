@@ -586,6 +586,7 @@ h1, h2, h3 {
   cursor: pointer;
   font-size: 1rem;
 }
+.random-btn[hidden] { display: none; }
 
 .modal {
   position: fixed;

@@ -113,7 +113,7 @@ function addSaveButton(bubble, finalizedText) {
   const btn = document.createElement('button');
   btn.type = 'button';
   btn.className = 'chat-cta-btn chat-save-btn';
-  btn.textContent = '💾 שמרי כרעיון';
+  btn.textContent = '💾 שמירה כרעיון';
   btn.addEventListener('click', () => saveFinalIdea(finalizedText));
   bubble.appendChild(btn);
 }

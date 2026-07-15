@@ -23,7 +23,7 @@ async function enforceRateLimit(uid, fnName) {
     const snap = await tx.get(ref);
     const count = snap.exists ? snap.data().count : 0;
     if (count >= limit) {
-      throw new HttpsError('resource-exhausted', 'הגעת למכסת השימוש היומית ב-AI, נסי שוב מחר');
+      throw new HttpsError('resource-exhausted', 'הגעת למכסת השימוש היומית ב-AI, נסו שוב מחר');
     }
     tx.set(ref, { count: count + 1, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
   });
@@ -59,13 +59,13 @@ async function callAnthropic(apiKey, body) {
     });
   } catch (err) {
     console.error('Network error calling Anthropic API:', err);
-    throw new HttpsError('unavailable', 'לא ניתן להתחבר כרגע לשירות ה-AI, נסי שוב בעוד רגע');
+    throw new HttpsError('unavailable', 'לא ניתן להתחבר כרגע לשירות ה-AI, נסו שוב בעוד רגע');
   }
 
   if (!response.ok) {
     const errText = await response.text();
     console.error('Anthropic API error:', response.status, errText);
-    throw new HttpsError('internal', 'שגיאה בפנייה ל-AI, נסי שוב');
+    throw new HttpsError('internal', 'שגיאה בפנייה ל-AI, נסו שוב');
   }
 
   return response.json();
@@ -120,7 +120,7 @@ exports.classifyIdea = onCall({ secrets: [anthropicApiKey], region: 'us-central1
 מערכת 1 - סוג תוכן ("category"), בחר/י בדיוק אחת:
 ${CATEGORIES.map((c) => `- ${c}: ${CATEGORY_DEFINITIONS[c]}`).join('\n')}
 
-מערכת 2 - שלב שכנוע ("persuasionStage"), בחר/י בדיוק אחת. שימי לב: לכל תוכן יש בדרך כלל שלב שכנוע דומיננטי אחד, גם אם הוא נוגע קצת גם באחרים - תבחר/י את זה שהכי מתאר את המטרה המרכזית של הרעיון הספציפי הזה:
+מערכת 2 - שלב שכנוע ("persuasionStage"), בחר/י בדיוק אחת. לשים לב: לכל תוכן יש בדרך כלל שלב שכנוע דומיננטי אחד, גם אם הוא נוגע קצת גם באחרים - תבחר/י את זה שהכי מתאר את המטרה המרכזית של הרעיון הספציפי הזה:
 ${PERSUASION_STAGES.map((s) => `- ${s}: ${PERSUASION_STAGE_DEFINITIONS[s]}`).join('\n')}
 
 השב/י אך ורק ב-JSON תקין בפורמט הבא, בלי שום טקסט נוסף לפני או אחרי:
@@ -139,7 +139,7 @@ ${PERSUASION_STAGES.map((s) => `- ${s}: ${PERSUASION_STAGE_DEFINITIONS[s]}`).joi
     parsed = JSON.parse(match ? match[0] : text);
   } catch (err) {
     console.error('Failed to parse classifyIdea response:', text);
-    throw new HttpsError('internal', 'לא הצלחתי לסווג את הרעיון, נסי שוב');
+    throw new HttpsError('internal', 'לא הצלחתי לסווג את הרעיון, נסו שוב');
   }
 
   const category = CATEGORIES.includes(parsed.category) ? parsed.category : CATEGORIES[0];
