@@ -30,6 +30,7 @@ let started = false;
 let originalIdeaText = null;
 
 const URL_PATTERN = /(https?:\/\/[^\s]+)/g;
+const TRAILING_PUNCT = /[.,)\]'"”’״׳]+$/;
 const BOLD_PATTERN = /\*\*(.+?)\*\*/g;
 const RECOGNIZED_MARKER = '[[RECOGNIZED_EXCELLENT]]';
 const ROADMAP_URL = 'https://mayakislev-ux.github.io/lehiyot-brand/מפת-דרכים-ליצירת-תוכן.html';
@@ -76,7 +77,16 @@ function setBubbleText(bubble, text) {
   const parts = text.split(URL_PATTERN);
   for (const part of parts) {
     if (part.match(URL_PATTERN)) {
-      if (part === ROADMAP_URL) {
+      // The AI doesn't always put a space before trailing punctuation after a
+      // URL (e.g. "...html." or markdown-style "...html)") - the URL_PATTERN
+      // regex then swallows that punctuation into the "URL" itself, breaking
+      // both the roadmap-link equality check below and the href itself.
+      // Strip it back off and render it as plain text after the link.
+      const trailingMatch = part.match(TRAILING_PUNCT);
+      const trailing = trailingMatch ? trailingMatch[0] : '';
+      const cleanUrl = trailing ? part.slice(0, -trailing.length) : part;
+
+      if (cleanUrl === ROADMAP_URL) {
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'chat-cta-btn';
@@ -85,12 +95,13 @@ function setBubbleText(bubble, text) {
         bubble.appendChild(btn);
       } else {
         const link = document.createElement('a');
-        link.href = part;
+        link.href = cleanUrl;
         link.target = '_blank';
         link.rel = 'noopener noreferrer';
-        link.textContent = part;
+        link.textContent = cleanUrl;
         bubble.appendChild(link);
       }
+      if (trailing) bubble.appendChild(document.createTextNode(trailing));
     } else if (part) {
       appendWithBold(bubble, part);
     }
