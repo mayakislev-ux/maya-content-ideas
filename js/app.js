@@ -50,6 +50,8 @@ let unsubscribeIdeas = null;
 const offlineBanner = document.getElementById('offline-banner');
 function updateOnlineStatus() {
   offlineBanner.hidden = navigator.onLine;
+  const height = offlineBanner.hidden ? 0 : offlineBanner.offsetHeight;
+  document.documentElement.style.setProperty('--offline-banner-height', `${height}px`);
 }
 window.addEventListener('online', updateOnlineStatus);
 window.addEventListener('offline', updateOnlineStatus);
