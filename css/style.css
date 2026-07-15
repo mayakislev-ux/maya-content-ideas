@@ -181,7 +181,7 @@ h1, h2, h3 {
     max-width: 100%;
   }
   .mobile-menu-btn { display: inline-block; order: 2; }
-  .app-header .policy-link, .app-header #signout-btn { order: 3; }
+  .app-header #signout-btn { order: 3; }
 
   .view-tabs {
     position: fixed;

@@ -11,5 +11,5 @@ export async function getProfile() {
 }
 
 export async function saveProfile(profile) {
-  await setDoc(doc(db, 'profiles', auth.currentUser.uid), profile);
+  await setDoc(doc(db, 'profiles', auth.currentUser.uid), profile, { merge: true });
 }
