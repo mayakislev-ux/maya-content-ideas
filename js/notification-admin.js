@@ -46,7 +46,7 @@ export function wireNotificationAdmin() {
     const targetEmail = document.getElementById('notification-email').value.trim();
 
     sendBtn.disabled = true;
-    sendBtn.textContent = 'שולחת...';
+    sendBtn.textContent = 'בשליחה...';
     try {
       const result = await sendNotification({ title, body, target, targetEmail });
       successEl.textContent = `נשלח בהצלחה ל-${result.data.sent} מכשירים${result.data.failed ? ` (${result.data.failed} נכשלו)` : ''}`;

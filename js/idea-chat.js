@@ -114,8 +114,12 @@ function extractIdeaSummary(reply) {
   if (markerIndex === -1) return { visibleReply: reply, summary: null };
 
   const visibleReply = reply.slice(0, markerIndex).trim();
-  const rawLine = reply.slice(markerIndex + SUMMARY_MARKER.length).split('\n')[0];
-  const [idea, angle, story] = rawLine.split('||').map((part) => (part || '').trim());
+  // Take everything after the marker to the end of the message, not just the
+  // first line - the marker is always the last thing in the reply, and
+  // truncating at the first "\n" would silently corrupt the result if a
+  // field (e.g. the story summary) ever contains an embedded line break.
+  const rawTail = reply.slice(markerIndex + SUMMARY_MARKER.length).trim();
+  const [idea, angle, story] = rawTail.split('||').map((part) => (part || '').trim());
 
   if (!idea) return { visibleReply, summary: null };
 

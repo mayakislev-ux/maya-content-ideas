@@ -72,7 +72,7 @@ export function showNotificationNudgeIfNeeded() {
     <div class="notification-nudge-card">
       <div class="notification-nudge-emoji">🔔</div>
       <h2>הפעלת התראות מומלצת מאוד!</h2>
-      <p>ככה תקבלי תזכורות ועדכונים ישר לטלפון. תמיד אפשר לכבות את זה אחר כך בהגדרות הטלפון.</p>
+      <p>ככה מקבלים תזכורות ועדכונים ישר לטלפון. תמיד אפשר לכבות את זה אחר כך בהגדרות הטלפון.</p>
       <div class="notification-nudge-actions">
         <button type="button" class="btn-primary notification-nudge-enable-btn">🔔 הפעלת התראות</button>
         <button type="button" class="btn-text notification-nudge-later-btn">אחר כך</button>
