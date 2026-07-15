@@ -9,6 +9,7 @@ import { wireIdeaChat, startIdeaChat } from './idea-chat.js';
 import { wireFeedbackForm } from './feedback.js';
 import { showView } from './view-router.js';
 import { showToast } from './toast.js';
+import { hasCompletedTour, showWelcomeTour } from './welcome-tour.js';
 
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker
@@ -89,6 +90,7 @@ document.getElementById('mobile-menu-btn').addEventListener('click', () => {
   const isOpen = viewTabsNav.classList.toggle('open');
   menuOverlay.hidden = !isOpen;
 });
+document.getElementById('close-menu-btn').addEventListener('click', closeMobileMenu);
 menuOverlay.addEventListener('click', closeMobileMenu);
 viewTabsNav.querySelectorAll('.tab-btn').forEach((btn) => btn.addEventListener('click', closeMobileMenu));
 
@@ -127,7 +129,17 @@ onAuthChange(async (user) => {
   }
 
   document.getElementById('login-screen').hidden = true;
-  document.getElementById('app-screen').hidden = false;
+
+  const tourDone = await hasCompletedTour();
+  if (!tourDone) {
+    showWelcomeTour(() => {
+      document.getElementById('app-screen').hidden = false;
+      showView('archive');
+    });
+  } else {
+    document.getElementById('app-screen').hidden = false;
+    showView('archive');
+  }
+
   unsubscribeIdeas = subscribeToIdeas(onIdeasChanged);
-  showView('archive');
 });

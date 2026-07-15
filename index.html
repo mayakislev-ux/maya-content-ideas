@@ -25,11 +25,22 @@
   </div>
 </div>
 
+<div id="welcome-tour" class="welcome-tour" hidden>
+  <div class="welcome-tour-card">
+    <div id="welcome-tour-emoji" class="welcome-tour-emoji"></div>
+    <h2 id="welcome-tour-title"></h2>
+    <p id="welcome-tour-body"></p>
+    <div id="welcome-tour-dots" class="welcome-tour-dots"></div>
+    <button type="button" id="welcome-tour-next-btn" class="btn-primary"></button>
+  </div>
+</div>
+
 <div id="app-screen" class="screen" hidden>
   <header class="app-header">
     <h1>המוח השיווקי שנמצא איתך 24/7</h1>
     <button type="button" id="mobile-menu-btn" class="mobile-menu-btn" aria-label="פתיחת תפריט">☰ תפריט</button>
     <nav class="view-tabs" id="view-tabs">
+      <button type="button" id="close-menu-btn" class="close-menu-btn" aria-label="סגירת תפריט">✕</button>
       <button id="tab-archive" class="tab-btn active">הרעיונות שלי</button>
       <button id="tab-chat" class="tab-btn">בדיקת רעיון</button>
       <button id="tab-guide" class="tab-btn">איך למצוא רעיון</button>
@@ -46,6 +57,16 @@
   <button id="random-idea-btn" class="random-btn">🎲 אין לי רעיון</button>
 
   <main id="archive-view" class="view">
+    <div class="archive-header-row">
+      <span id="idea-count" class="idea-count-badge"></span>
+      <button type="button" id="completed-toggle-btn" class="btn-text">📦 רעיונות שבוצעו</button>
+    </div>
+
+    <div class="quick-add-box">
+      <textarea id="quick-add-input" placeholder="רשמי כאן רעיון מהיר לטיוטה, ותשלימי אותו אחר כך..." rows="2"></textarea>
+      <button type="button" id="quick-add-btn" class="btn-primary">+ הוספה מהירה</button>
+    </div>
+
     <div class="archive-controls">
       <input id="search-input" type="text" placeholder="חיפוש לפי כותרת או טקסט...">
       <select id="filter-category">

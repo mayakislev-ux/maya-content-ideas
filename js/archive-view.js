@@ -1,7 +1,10 @@
 import { filterIdeas, sortIdeas, categoryColorVar } from './ideas-logic.js';
 import { getInstantThumbnail, fetchThumbnail } from './video-preview.js';
+import { addQuickIdea, markIdeaCompleted, uncompleteIdea } from './ideas-store.js';
+import { showToast } from './toast.js';
 
 let currentIdeas = [];
+let showingCompleted = false;
 
 function formatDate(idea) {
   if (!idea.createdAt || typeof idea.createdAt.toDate !== 'function') return '';
@@ -14,7 +17,7 @@ export function renderArchive(ideas, { onItemClick }) {
 }
 
 export function getCurrentIdeas() {
-  return currentIdeas;
+  return currentIdeas.filter((idea) => !idea.completedAt);
 }
 
 function debounce(fn, delay) {
@@ -32,6 +35,30 @@ export function wireArchiveControls(onItemClick) {
   for (const id of selectIds) {
     document.getElementById(id).addEventListener('change', () => applyFilters(onItemClick));
   }
+
+  const toggleBtn = document.getElementById('completed-toggle-btn');
+  toggleBtn.addEventListener('click', () => {
+    showingCompleted = !showingCompleted;
+    toggleBtn.textContent = showingCompleted ? '🔙 חזרה לרעיונות פעילים' : '📦 רעיונות שבוצעו';
+    applyFilters(onItemClick);
+  });
+
+  const quickAddInput = document.getElementById('quick-add-input');
+  const quickAddBtn = document.getElementById('quick-add-btn');
+  const submitQuickAdd = async () => {
+    const title = quickAddInput.value.trim();
+    if (!title) return;
+    quickAddInput.value = '';
+    await addQuickIdea(title);
+    showToast('📝 הרעיון נשמר כטיוטה - אפשר להשלים אותו בהמשך');
+  };
+  quickAddBtn.addEventListener('click', submitQuickAdd);
+  quickAddInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      submitQuickAdd();
+    }
+  });
 }
 
 function applyFilters(onItemClick) {
@@ -41,8 +68,11 @@ function applyFilters(onItemClick) {
   const persuasionStage = document.getElementById('filter-persuasion').value;
   const rating = document.getElementById('filter-rating').value;
   const sortOrder = document.getElementById('sort-order').value;
-  const filtered = filterIdeas(currentIdeas, { text, category, audienceScope, persuasionStage, rating });
+  const scoped = currentIdeas.filter((idea) => Boolean(idea.completedAt) === showingCompleted);
+  const filtered = filterIdeas(scoped, { text, category, audienceScope, persuasionStage, rating });
   const sorted = sortIdeas(filtered, sortOrder);
+
+  document.getElementById('idea-count').textContent = `${sorted.length} רעיונות`;
 
   const list = document.getElementById('archive-list');
   list.innerHTML = '';
@@ -55,15 +85,26 @@ function renderItem(idea, onItemClick) {
   const li = document.createElement('li');
   li.style.setProperty('--card-color', categoryColorVar(idea.category));
   li.className = 'archive-item';
+  if (!idea.category) li.classList.add('archive-item-draft');
 
   const header = document.createElement('div');
   header.className = 'archive-item-header';
   const title = document.createElement('strong');
   title.textContent = idea.title;
-  const tag = document.createElement('span');
-  tag.className = 'card-category-tag';
-  tag.textContent = idea.category;
-  header.append(title, tag);
+  header.appendChild(title);
+
+  if (idea.category) {
+    const tag = document.createElement('span');
+    tag.className = 'card-category-tag';
+    tag.textContent = idea.category;
+    header.appendChild(tag);
+  } else {
+    const draftTag = document.createElement('span');
+    draftTag.className = 'draft-badge';
+    draftTag.textContent = '📝 טיוטה - להשלמה';
+    header.appendChild(draftTag);
+  }
+
   if (idea.rating) {
     const ratingEl = document.createElement('span');
     ratingEl.textContent = idea.rating;
@@ -89,6 +130,28 @@ function renderItem(idea, onItemClick) {
     });
   });
   header.appendChild(copyBtn);
+
+  if (idea.completedAt) {
+    const undoBtn = document.createElement('button');
+    undoBtn.type = 'button';
+    undoBtn.className = 'complete-idea-btn';
+    undoBtn.textContent = '↩ החזרה לפעילים';
+    undoBtn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      await uncompleteIdea(idea.id);
+    });
+    header.appendChild(undoBtn);
+  } else {
+    const doneBtn = document.createElement('button');
+    doneBtn.type = 'button';
+    doneBtn.className = 'complete-idea-btn';
+    doneBtn.textContent = '✓ בוצע';
+    doneBtn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      await markIdeaCompleted(idea.id);
+    });
+    header.appendChild(doneBtn);
+  }
 
   li.appendChild(header);
 

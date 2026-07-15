@@ -59,3 +59,27 @@ export async function deleteIdea(id) {
 export async function restoreIdea(id) {
   return updateDoc(doc(db, 'ideas', id), { deletedAt: null });
 }
+
+export async function addQuickIdea(title) {
+  return addDoc(ideasCollection(), {
+    title,
+    category: '',
+    hookText: '',
+    sourceLink: '',
+    persuasionStage: '',
+    audienceScope: '',
+    source: '',
+    rating: '',
+    ownerUid: auth.currentUser.uid,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function markIdeaCompleted(id) {
+  return updateDoc(doc(db, 'ideas', id), { completedAt: serverTimestamp() });
+}
+
+export async function uncompleteIdea(id) {
+  return updateDoc(doc(db, 'ideas', id), { completedAt: null });
+}

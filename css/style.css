@@ -132,6 +132,8 @@ h1, h2, h3 {
 
 .menu-overlay[hidden] { display: none; }
 
+.close-menu-btn { display: none; }
+
 @media (max-width: 720px) {
   .app-header {
     z-index: 25;
@@ -173,7 +175,26 @@ h1, h2, h3 {
     padding: 0.9rem 1.1rem;
   }
 
+  .close-menu-btn {
+    display: block;
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+    background: rgba(255, 255, 255, 0.15);
+    border: none;
+    color: white;
+    font-size: 1.3rem;
+    width: 2.4rem;
+    height: 2.4rem;
+    border-radius: 50%;
+    cursor: pointer;
+  }
+
   .menu-overlay:not([hidden]) { display: block; }
+
+  .quick-add-box { flex-direction: column; align-items: stretch; }
+  .archive-header-row { padding: 1rem 1rem 0; }
+  .quick-add-box, .archive-controls { padding-left: 1rem; padding-right: 1rem; }
 }
 
 .tab-btn {
@@ -394,6 +415,68 @@ h1, h2, h3 {
   cursor: pointer;
   box-shadow: 0 4px 14px rgba(33, 29, 46, 0.18);
 }
+
+.archive-item-draft {
+  border: 2px dashed rgba(255, 255, 255, 0.65);
+}
+
+.archive-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem 0;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.idea-count-badge {
+  font-weight: bold;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.quick-add-box {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-end;
+  padding: 0.8rem 1.5rem 0;
+}
+
+.quick-add-box textarea {
+  flex: 1;
+  border: 1px solid #ddd8ee;
+  border-radius: 10px;
+  padding: 0.7rem 1rem;
+  font-family: inherit;
+  font-size: 1rem;
+  resize: vertical;
+  background-color: #fffef8;
+  background-image: repeating-linear-gradient(to bottom, transparent, transparent 1.6em, #e3ddf0 1.6em, #e3ddf0 calc(1.6em + 1px));
+  line-height: 1.6em;
+}
+
+.draft-badge {
+  display: inline-block;
+  font-size: 0.75rem;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  background: #fff3cd;
+  color: #7a5c00;
+  font-weight: bold;
+}
+
+.complete-idea-btn {
+  margin-right: 0.4rem;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 999px;
+  padding: 0.2rem 0.7rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+  color: white;
+}
+
+.complete-idea-btn:hover { background: rgba(255, 255, 255, 0.3); }
 
 .archive-item-header {
   display: flex;
@@ -858,3 +941,55 @@ h1, h2, h3 {
   cursor: pointer;
   white-space: nowrap;
 }
+
+.welcome-tour {
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(160deg, #3a1a52, #17101f);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  z-index: 100;
+  overflow-y: auto;
+}
+
+.welcome-tour[hidden] { display: none; }
+
+.welcome-tour-card {
+  background: white;
+  border-radius: 20px;
+  padding: 2rem 1.8rem;
+  max-width: 420px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+}
+
+.welcome-tour-emoji { font-size: 3rem; margin-bottom: 0.5rem; }
+
+.welcome-tour-card h2 { margin: 0.3rem 0; }
+
+.welcome-tour-card p {
+  color: var(--text);
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.welcome-tour-dots {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin: 1.2rem 0;
+}
+
+.welcome-tour-dot {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background: #ddd8ee;
+}
+
+.welcome-tour-dot.active { background: var(--accent); }
+
+#welcome-tour-next-btn { width: 100%; }
