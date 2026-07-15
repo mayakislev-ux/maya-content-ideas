@@ -329,6 +329,9 @@
 
   <footer class="app-footer">
     <button type="button" id="install-app-btn" class="btn-text install-app-btn" hidden>📲 להתקין את האפליקציה</button>
+    <p id="ios-install-hint" class="ios-install-hint" hidden>📱 באייפון: כדי לקבל התראות צריך קודם להוסיף את האפליקציה למסך הבית - לחצי על כפתור השיתוף ⬆️ בספארי, ואז "הוספה למסך הבית"</p>
+    <button type="button" id="enable-notifications-btn" class="btn-text" hidden>🔔 הפעלת התראות</button>
+    <button type="button" id="send-notification-btn" class="btn-text" hidden>📣 שליחת התראה (מנהלת)</button>
     <button type="button" id="open-policy-btn-app" class="btn-text policy-link">מדיניות פרטיות</button>
   </footer>
 </div>
@@ -452,6 +455,35 @@
     <div class="modal-actions">
       <button type="button" id="policy-close-btn" class="btn-primary">סגירה</button>
     </div>
+  </div>
+</div>
+
+<div id="notification-modal" class="modal" hidden>
+  <div class="modal-content">
+    <h2>📣 שליחת התראה</h2>
+    <form id="notification-form">
+      <label>כותרת ההתראה
+        <input id="notification-title" type="text" required maxlength="60">
+      </label>
+      <label>תוכן ההודעה
+        <textarea id="notification-body" rows="3" required></textarea>
+      </label>
+      <label>למי לשלוח?
+        <select id="notification-target">
+          <option value="all">לכל המשתמשות שהפעילו התראות</option>
+          <option value="one">למייל ספציפי</option>
+        </select>
+      </label>
+      <label id="notification-email-row" hidden>מייל הלקוחה
+        <input id="notification-email" type="email">
+      </label>
+      <p id="notification-error" class="error-text" role="alert" hidden></p>
+      <p id="notification-success" class="feedback-success" hidden></p>
+      <div class="modal-actions">
+        <button type="button" id="notification-cancel-btn" class="btn-text">ביטול</button>
+        <button type="submit" class="btn-primary" id="notification-send-btn">שליחה</button>
+      </div>
+    </form>
   </div>
 </div>
 

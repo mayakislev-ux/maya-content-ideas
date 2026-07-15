@@ -149,6 +149,16 @@ h1, h2, h3 {
 
 .install-app-btn[hidden] { display: none; }
 
+.ios-install-hint {
+  max-width: 380px;
+  font-size: 0.85rem;
+  color: var(--muted);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.ios-install-hint[hidden] { display: none; }
+
 .offline-banner {
   position: fixed;
   top: 0;

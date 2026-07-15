@@ -1,6 +1,7 @@
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { defineSecret } = require('firebase-functions/params');
 const admin = require('firebase-admin');
+const webpush = require('web-push');
 const { buildSystemPrompt } = require('./system-prompt');
 const { buildOngoingWarmingPrompt, buildPresaleWarmingPrompt } = require('./warming-system-prompt');
 const { fetchSheetsContent, sheetsServiceAccountKey } = require('./sheets-content');
@@ -10,6 +11,8 @@ admin.initializeApp();
 const db = admin.firestore();
 
 const anthropicApiKey = defineSecret('ANTHROPIC_API_KEY');
+const vapidPrivateKey = defineSecret('VAPID_PRIVATE_KEY');
+const VAPID_PUBLIC_KEY = 'BJEiFPdCP25KUDW3COmcY0Y0noeC6tILFu4DoTjYW_v4mBwBshy4JyqivKa8pFE2f-36PpALDZ6_1zXnUGwKv94';
 const ADMIN_EMAIL = 'mayakislev@gmail.com';
 
 const DAILY_LIMITS = {
@@ -209,4 +212,58 @@ exports.generateWarmingPlan = onCall({ secrets: [anthropicApiKey, sheetsServiceA
   }
 
   return { plan: { week1: ongoing.week1, week2: ongoing.week2, week3: presale.week3 } };
+});
+
+exports.sendNotification = onCall({ secrets: [vapidPrivateKey], region: 'us-central1' }, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'יש להתחבר כדי להשתמש בתכונה הזו');
+  }
+  if (request.auth.token.email !== ADMIN_EMAIL) {
+    throw new HttpsError('permission-denied', 'התכונה הזו זמינה כרגע רק למנהלת');
+  }
+
+  const title = ((request.data && request.data.title) || '').trim();
+  const body = ((request.data && request.data.body) || '').trim();
+  const target = (request.data && request.data.target) || 'all';
+  const targetEmail = ((request.data && request.data.targetEmail) || '').trim().toLowerCase();
+
+  if (!title || !body) {
+    throw new HttpsError('invalid-argument', 'צריך כותרת ותוכן כדי לשלוח התראה');
+  }
+  if (target === 'one' && !targetEmail) {
+    throw new HttpsError('invalid-argument', 'צריך לציין מייל כדי לשלוח למשתמשת ספציפית');
+  }
+
+  webpush.setVapidDetails('mailto:mayakislev@gmail.com', VAPID_PUBLIC_KEY, vapidPrivateKey.value());
+
+  let query = db.collection('pushSubscriptions');
+  if (target === 'one') {
+    query = query.where('email', '==', targetEmail);
+  }
+  const snap = await query.get();
+
+  if (snap.empty) {
+    throw new HttpsError('not-found', target === 'one' ? 'לא נמצאה הרשמה להתראות עבור המייל הזה' : 'אף אחת עוד לא הפעילה התראות');
+  }
+
+  const payload = JSON.stringify({ title, body });
+  let sent = 0;
+  let failed = 0;
+
+  await Promise.all(
+    snap.docs.map(async (docSnap) => {
+      try {
+        await webpush.sendNotification(docSnap.data().subscription, payload);
+        sent++;
+      } catch (err) {
+        failed++;
+        console.error('sendNotification failed for', docSnap.id, err.message);
+        if (err.statusCode === 404 || err.statusCode === 410) {
+          await docSnap.ref.delete();
+        }
+      }
+    })
+  );
+
+  return { sent, failed };
 });

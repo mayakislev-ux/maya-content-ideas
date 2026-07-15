@@ -11,6 +11,8 @@ import { wireWarmingView } from './warming.js';
 import { showView, getLastView } from './view-router.js';
 import { showToast } from './toast.js';
 import { hasCompletedTour, showWelcomeTour } from './welcome-tour.js';
+import { enableNotifications, notificationsSupported, notificationPermission } from './push-notifications.js';
+import { wireNotificationAdmin } from './notification-admin.js';
 
 if ('serviceWorker' in navigator) {
   let refreshedAlready = false;
@@ -180,6 +182,12 @@ wireRandomIdeaModal({ getIdeas: getCurrentIdeas, onOpenIdea: openEditModal });
 wireIdeaChat();
 wireFeedbackForm();
 wireWarmingView();
+wireNotificationAdmin();
+
+document.getElementById('enable-notifications-btn').addEventListener('click', async () => {
+  const ok = await enableNotifications();
+  if (ok) document.getElementById('enable-notifications-btn').hidden = true;
+});
 
 onAuthChange(async (user) => {
   if (unsubscribeIdeas) {
@@ -205,6 +213,18 @@ onAuthChange(async (user) => {
   document.getElementById('login-screen').hidden = true;
   document.getElementById('app-screen').hidden = false;
   document.getElementById('tab-warming').hidden = user.email !== ADMIN_EMAIL;
+  document.getElementById('send-notification-btn').hidden = user.email !== ADMIN_EMAIL;
+
+  const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  if (isIos && !isStandalone) {
+    document.getElementById('ios-install-hint').hidden = false;
+    document.getElementById('enable-notifications-btn').hidden = true;
+  } else {
+    document.getElementById('ios-install-hint').hidden = true;
+    document.getElementById('enable-notifications-btn').hidden =
+      !notificationsSupported() || notificationPermission() === 'granted';
+  }
 
   const params = new URLSearchParams(window.location.search);
   if (params.get('action') === 'add') {
