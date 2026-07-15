@@ -14,6 +14,23 @@ import { hasCompletedTour, showWelcomeTour } from './welcome-tour.js';
 import { enableNotifications, notificationsSupported, notificationPermission } from './push-notifications.js';
 import { wireNotificationAdmin } from './notification-admin.js';
 
+// iOS Safari doesn't reliably resize a position:fixed element (like our
+// modals) when the on-screen keyboard opens - the layout viewport stays
+// full-height while the visible area shrinks, so content can end up
+// unreachable even with overflow-y:auto. Track the *real* visible area via
+// visualViewport and drive the modal's actual size/position from it instead
+// of trusting 100vh/inset:0 to react on their own.
+if (window.visualViewport) {
+  const vv = window.visualViewport;
+  const updateViewportVars = () => {
+    document.documentElement.style.setProperty('--vv-height', `${vv.height}px`);
+    document.documentElement.style.setProperty('--vv-top', `${vv.offsetTop}px`);
+  };
+  vv.addEventListener('resize', updateViewportVars);
+  vv.addEventListener('scroll', updateViewportVars);
+  updateViewportVars();
+}
+
 if ('serviceWorker' in navigator) {
   let refreshedAlready = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => {

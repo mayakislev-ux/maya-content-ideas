@@ -929,7 +929,10 @@ textarea:focus-visible,
 
 .modal {
   position: fixed;
-  inset: 0;
+  top: var(--vv-top, 0px);
+  left: 0;
+  right: 0;
+  height: var(--vv-height, 100vh);
   background: rgba(33, 29, 46, 0.5);
   display: flex;
   align-items: flex-start;
@@ -937,6 +940,7 @@ textarea:focus-visible,
   padding: 1rem;
   padding-top: max(3rem, env(safe-area-inset-top, 0px));
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .modal[hidden] { display: none; }
