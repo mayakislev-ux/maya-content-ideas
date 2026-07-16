@@ -6,6 +6,7 @@ import { renderArchive, wireArchiveControls, getCurrentIdeas, wirePullToRefresh 
 import { openAddModal, openEditModal, wireIdeaForm } from './idea-form.js';
 import { wireRandomIdeaModal } from './random-idea-modal.js';
 import { wireIdeaChat, startIdeaChat } from './idea-chat.js';
+import { wireScriptChat, startScriptChat } from './script-chat.js';
 import { wireFeedbackForm } from './feedback.js';
 import { wireWarmingView } from './warming.js';
 import { showView, getLastView } from './view-router.js';
@@ -144,6 +145,10 @@ document.getElementById('tab-chat').addEventListener('click', () => {
   showView('chat');
   startIdeaChat();
 });
+document.getElementById('tab-script').addEventListener('click', () => {
+  showView('script');
+  startScriptChat();
+});
 document.getElementById('tab-guide').addEventListener('click', () => showView('guide'));
 document.getElementById('tab-inspiration').addEventListener('click', () => showView('inspiration'));
 document.getElementById('tab-feedback').addEventListener('click', () => showView('feedback'));
@@ -209,6 +214,7 @@ wireArchiveControls((idea) => openEditModal(idea));
 wirePullToRefresh();
 wireRandomIdeaModal({ getIdeas: getCurrentIdeas, onOpenIdea: openEditModal });
 wireIdeaChat();
+wireScriptChat();
 wireFeedbackForm();
 wireWarmingView();
 wireNotificationAdmin();
@@ -242,6 +248,7 @@ onAuthChange(async (user) => {
   document.getElementById('login-screen').hidden = true;
   document.getElementById('app-screen').hidden = false;
   document.getElementById('tab-warming').hidden = user.email !== ADMIN_EMAIL;
+  document.getElementById('tab-script').hidden = user.email !== ADMIN_EMAIL;
   document.getElementById('send-notification-btn').hidden = user.email !== ADMIN_EMAIL;
 
   const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent);

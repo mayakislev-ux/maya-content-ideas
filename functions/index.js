@@ -3,6 +3,7 @@ const { defineSecret } = require('firebase-functions/params');
 const admin = require('firebase-admin');
 const webpush = require('web-push');
 const { buildSystemPrompt } = require('./system-prompt');
+const { buildScriptSystemPrompt } = require('./script-system-prompt');
 const { buildOngoingWarmingPrompt, buildPresaleWarmingPrompt } = require('./warming-system-prompt');
 const { fetchSheetsContent, sheetsServiceAccountKey } = require('./sheets-content');
 const { CATEGORIES, PERSUASION_STAGES, CATEGORY_DEFINITIONS, PERSUASION_STAGE_DEFINITIONS } = require('./ideas-constants');
@@ -19,6 +20,7 @@ const DAILY_LIMITS = {
   checkIdea: 60,
   classifyIdea: 40,
   generateWarmingPlan: 20,
+  writeScript: 60,
 };
 
 async function enforceRateLimit(uid, fnName) {
@@ -99,6 +101,35 @@ exports.checkIdea = onCall({ secrets: [anthropicApiKey], region: 'us-central1' }
   const data = await callAnthropic(anthropicApiKey.value(), {
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 1024,
+    system: systemPrompt,
+    messages,
+  });
+
+  const reply = (data.content && data.content[0] && data.content[0].text) || '';
+  return { reply };
+});
+
+exports.writeScript = onCall({ secrets: [anthropicApiKey], region: 'us-central1' }, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'יש להתחבר כדי להשתמש בתכונה הזו');
+  }
+  if (request.auth.token.email !== ADMIN_EMAIL) {
+    throw new HttpsError('permission-denied', 'התכונה הזו זמינה כרגע רק למנהלת');
+  }
+  await enforceRateLimit(request.auth.uid, 'writeScript');
+
+  const messages = request.data && request.data.messages;
+  if (!Array.isArray(messages) || messages.length === 0) {
+    throw new HttpsError('invalid-argument', 'חסרות הודעות בשיחה');
+  }
+
+  const profile = (request.data && request.data.profile) || null;
+  const ideaContext = (request.data && request.data.ideaContext) || null;
+  const systemPrompt = buildScriptSystemPrompt(profile, ideaContext);
+
+  const data = await callAnthropic(anthropicApiKey.value(), {
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 1536,
     system: systemPrompt,
     messages,
   });

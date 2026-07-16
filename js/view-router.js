@@ -1,4 +1,4 @@
-const VIEWS = ['archive', 'chat', 'guide', 'inspiration', 'feedback', 'roadmap', 'content-plan', 'warming'];
+const VIEWS = ['archive', 'chat', 'script', 'guide', 'inspiration', 'feedback', 'roadmap', 'content-plan', 'warming'];
 const EMBED_VIEWS = ['roadmap', 'content-plan'];
 const LAST_VIEW_KEY = 'last-view';
 
