@@ -25,6 +25,12 @@
   --cat-biduri: #3a86ff;
   --cat-default: var(--accent);
   --ease-snap: cubic-bezier(.16,1,.3,1);
+  --content-max: 1100px;
+}
+
+.content-width {
+  width: min(var(--content-max), 100% - 3rem);
+  margin-inline: auto;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -131,17 +137,22 @@ h1, h2, h3 {
 .field-hint { color: var(--muted); font-size: 0.85rem; margin: -0.5rem 0 0.9rem; }
 
 .app-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1rem 1.5rem;
   background: linear-gradient(135deg, var(--accent), var(--warm) 130%);
-  flex-wrap: wrap;
-  gap: 0.5rem;
   box-shadow: 0 2px 16px rgba(124, 58, 237, 0.25);
   position: sticky;
   top: var(--offline-banner-height, 0px);
   z-index: 5;
+}
+
+.app-header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 0;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  width: min(var(--content-max), 100% - 3rem);
+  margin-inline: auto;
 }
 
 .app-header h1 { margin: 0; color: white; text-shadow: 0 1px 6px rgba(0, 0, 0, 0.15); }
@@ -209,8 +220,9 @@ h1, h2, h3 {
 
 .quick-add-section,
 .archive-controls-section {
-  margin: 1.2rem 1.5rem;
-  padding: 1.1rem;
+  width: min(var(--content-max), 100% - 3rem);
+  margin: 1.2rem auto;
+  padding: 1.1rem 1.3rem;
   background: var(--surface);
   border-radius: 16px;
 }
@@ -232,13 +244,20 @@ h1, h2, h3 {
 .archive-search-row input {
   flex: 1;
   min-width: 0;
-  padding: 0.5rem;
-  border-radius: 8px;
+  padding: 0.6rem 0.9rem;
+  border-radius: 10px;
   border: 1px solid var(--border-color);
   background: var(--card-bg);
   color: var(--text);
-  font-size: 1rem;
+  font-size: 0.9rem;
   font-family: inherit;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.archive-search-row input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-tint, rgba(124, 58, 237, 0.15));
+  outline: none;
 }
 
 .filters-toggle-btn {
@@ -414,14 +433,18 @@ h1, h2, h3 {
 
   .app-header {
     z-index: 25;
-    flex-direction: column;
-    align-items: flex-start;
     /* On a notched/Dynamic-Island phone (especially installed as a standalone
        PWA, with no Safari chrome above to push content down), the header's
        normal 1rem top padding isn't enough - the title renders partly behind
        the camera cutout. Push it down by the actual safe-area inset instead
        of guessing a fixed number. */
     padding-top: calc(1rem + env(safe-area-inset-top, 0px));
+  }
+  .app-header-inner {
+    flex-direction: column;
+    align-items: flex-start;
+    width: 100%;
+    padding-inline: 1rem;
   }
   .app-header h1 {
     order: 1;
@@ -508,7 +531,7 @@ h1, h2, h3 {
   .menu-overlay:not([hidden]) { display: block; }
 
   .quick-add-box { flex-direction: column; align-items: stretch; }
-  .quick-add-section, .archive-controls-section { margin: 1rem; padding: 1rem; }
+  .quick-add-section, .archive-controls-section { width: auto; margin: 1rem; padding: 1rem; }
 
   .filters-toggle-btn {
     display: flex;
@@ -573,23 +596,29 @@ h1, h2, h3 {
 }
 
 .tab-btn {
-  background: rgba(255, 255, 255, 0.1);
-  border: 2px solid rgba(255, 255, 255, 0.5);
-  color: white;
-  padding: 0.5rem 1.1rem;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.8);
+  padding: 0.5rem 0.9rem;
   border-radius: 999px;
   cursor: pointer;
   font-weight: 600;
-  transition: all 0.15s ease;
+  font-size: 0.875rem;
+  white-space: nowrap;
+  transition: background 150ms ease, color 150ms ease, transform 150ms var(--ease-snap);
 }
 
+.tab-btn:hover { background: rgba(255, 255, 255, 0.12); color: #fff; }
+.tab-btn:active { transform: scale(0.96); }
+
 .tab-btn.active {
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
-  color: white;
-  border-color: transparent;
-  font-weight: bold;
-  box-shadow: 0 3px 10px rgba(124, 58, 237, 0.3);
+  background: #fff;
+  color: var(--accent-strong, var(--accent));
+  font-weight: 700;
+  box-shadow: 0 3px 10px rgba(33, 29, 46, 0.15);
 }
+
+.tab-btn.active:hover { background: #fff; color: var(--accent-strong, var(--accent)); }
 
 .embed-view {
   position: fixed;
@@ -817,13 +846,24 @@ h1, h2, h3 {
 
 .archive-controls input,
 .archive-controls select {
-  padding: 0.5rem;
-  border-radius: 8px;
+  padding: 0.55rem 0.8rem;
+  border-radius: 10px;
   border: 1px solid var(--border-color);
   background: var(--card-bg);
   color: var(--text);
-  font-size: 1rem;
+  font-size: 0.9rem;
   font-family: inherit;
+}
+
+.archive-controls select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23706b85' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: left 0.6rem center;
+  background-size: 16px;
+  padding-left: 1.8rem;
+  cursor: pointer;
 }
 
 @media (max-width: 720px) {
@@ -836,10 +876,16 @@ h1, h2, h3 {
 
 .archive-list {
   list-style: none;
-  padding: 0.5rem 1.5rem 6rem;
+  width: min(var(--content-max), 100% - 3rem);
+  margin-inline: auto;
+  padding: 0.5rem 0 6rem;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 1rem;
+}
+
+@media (max-width: 720px) {
+  .archive-list { width: auto; margin-inline: 1rem; }
 }
 
 .archive-empty-state {
@@ -924,12 +970,15 @@ h1, h2, h3 {
   position: relative;
   z-index: 1;
   touch-action: pan-y;
-  background: var(--card-color, var(--accent));
-  color: white;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
-  border-radius: 14px;
+  cursor: pointer;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-inline-end: 4px solid var(--card-color, var(--accent));
+  color: var(--text);
+  border-radius: 16px;
   padding: 1rem;
   opacity: 0;
+  box-shadow: 0 2px 8px rgba(33, 29, 46, 0.06);
   animation: archiveItemIn 420ms var(--ease-snap) both;
   animation-delay: calc(var(--stagger-i, 0) * 60ms);
   transition: transform 200ms var(--ease-snap), box-shadow 200ms var(--ease-snap);
@@ -943,11 +992,8 @@ h1, h2, h3 {
 @media (hover: hover) {
   .archive-item:hover {
     transform: translateY(-3px);
-    box-shadow: 0 10px 22px rgba(33, 29, 46, 0.18);
+    box-shadow: 0 10px 22px rgba(33, 29, 46, 0.14);
   }
-}
-  cursor: pointer;
-  box-shadow: 0 4px 14px rgba(33, 29, 46, 0.18);
 }
 
 button:focus-visible,
@@ -979,7 +1025,8 @@ textarea:focus-visible,
 }
 
 .archive-item-draft {
-  border: 2px dashed rgba(255, 255, 255, 0.65);
+  border: 2px dashed var(--border-color);
+  border-inline-end: 2px dashed var(--border-color);
 }
 
 .archive-header-row {
@@ -1027,17 +1074,18 @@ textarea:focus-visible,
 
 .complete-idea-btn {
   margin-right: 0.4rem;
-  background: rgba(255, 255, 255, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.5);
+  background: var(--surface);
+  border: 1px solid var(--border-color);
   border-radius: 999px;
   padding: 0.2rem 0.7rem;
   font-size: 0.8rem;
   cursor: pointer;
-  color: white;
-  text-shadow: none;
+  color: var(--text);
+  font-weight: 600;
+  transition: background 150ms ease;
 }
 
-.complete-idea-btn:hover { background: rgba(255, 255, 255, 0.3); }
+.complete-idea-btn:hover { background: var(--accent-tint, var(--surface)); }
 
 .archive-item-header {
   display: flex;
@@ -1075,10 +1123,9 @@ textarea:focus-visible,
   font-size: 0.75rem;
   padding: 0.15rem 0.6rem;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.85);
+  background: var(--surface);
   color: var(--card-color, var(--accent));
   font-weight: bold;
-  text-shadow: none;
 }
 
 .viral-badge {
@@ -1086,15 +1133,14 @@ textarea:focus-visible,
   font-size: 0.75rem;
   padding: 0.15rem 0.6rem;
   border-radius: 999px;
-  background: #ff6b35;
-  color: white;
+  background: var(--warm);
+  color: #211d2e;
   font-weight: bold;
-  text-shadow: none;
 }
 
 .archive-item-meta {
   font-size: 0.8rem;
-  opacity: 0.9;
+  color: var(--muted);
   margin-bottom: 0.5rem;
 }
 
@@ -1112,7 +1158,7 @@ textarea:focus-visible,
 }
 
 .archive-item-link a {
-  color: white;
+  color: var(--accent-strong, var(--accent));
   font-weight: bold;
   text-decoration: underline;
 }
