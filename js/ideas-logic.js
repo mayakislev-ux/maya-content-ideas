@@ -33,6 +33,17 @@ export function categoryColorVar(category) {
   return `var(--cat-${CATEGORY_COLOR_KEYS[category] || 'default'})`;
 }
 
+const CATEGORY_ICONS = {
+  'בעל ערך': '💡',
+  'אישי': '🫶',
+  'מכירתי': '🛍️',
+  'בידורי': '🎬',
+};
+
+export function categoryIcon(category) {
+  return CATEGORY_ICONS[category] || '';
+}
+
 export function filterIdeas(ideas, { text = '', category = '', audienceScope = '', persuasionStage = '', rating = '' } = {}) {
   const needle = text.trim().toLowerCase();
   return ideas.filter((idea) => {

@@ -1,4 +1,4 @@
-import { filterIdeas, sortIdeas, categoryColorVar } from './ideas-logic.js';
+import { filterIdeas, sortIdeas, categoryColorVar, categoryIcon, CATEGORIES } from './ideas-logic.js';
 import { getInstantThumbnail, fetchThumbnail } from './video-preview.js';
 import { addQuickIdea, markIdeaCompleted, uncompleteIdea, deleteIdea, restoreIdea } from './ideas-store.js';
 import { showToast } from './toast.js';
@@ -11,6 +11,25 @@ const QUICK_ADD_TOASTS = [
   '💡 עוד רעיון אחד קרוב יותר לתוכן הבא שלך',
   '📥 נשמר בבטחה - תחזרי אליו כשתהיה לך את הזמן',
 ];
+
+const LEVELS = [
+  { min: 0, name: 'מתחילה', icon: '🌱' },
+  { min: 10, name: 'יוצרת תוכן', icon: '🌿' },
+  { min: 25, name: 'יוצרת מנוסה', icon: '🌳' },
+  { min: 50, name: 'מומחית תוכן', icon: '⭐' },
+  { min: 100, name: 'אלופת תוכן', icon: '👑' },
+];
+
+function currentLevel(count) {
+  return [...LEVELS].reverse().find((level) => count >= level.min);
+}
+
+function renderLevelBadge(count) {
+  const el = document.getElementById('level-badge');
+  if (!el) return;
+  const level = currentLevel(count);
+  el.textContent = `${level.icon} ${level.name}`;
+}
 
 const MILESTONES = [10, 25, 50, 100];
 const seenMilestones = new Set(JSON.parse(localStorage.getItem('idea-milestones-seen') || '[]'));
@@ -35,6 +54,40 @@ export function renderArchive(ideas, { onItemClick }) {
   currentIdeas = ideas.filter((idea) => !idea.deletedAt);
   applyFilters(onItemClick);
   celebrateMilestone(currentIdeas.length);
+  renderCategoryBreakdown();
+  renderLevelBadge(currentIdeas.length);
+}
+
+function renderCategoryBreakdown() {
+  const container = document.getElementById('category-breakdown');
+  const active = getCurrentIdeas();
+  if (active.length < 2) {
+    container.hidden = true;
+    return;
+  }
+  container.hidden = false;
+  const counts = CATEGORIES.map((category) => ({
+    category,
+    count: active.filter((idea) => idea.category === category).length,
+  })).filter((row) => row.count > 0);
+  const max = Math.max(...counts.map((row) => row.count), 1);
+
+  container.innerHTML = '';
+  for (const { category, count } of counts) {
+    const row = document.createElement('div');
+    row.className = 'category-breakdown-row';
+    row.innerHTML = `
+      <span class="category-breakdown-label">${categoryIcon(category)} ${category}</span>
+      <span class="category-breakdown-track"><span class="category-breakdown-fill"></span></span>
+      <span class="category-breakdown-count">${count}</span>
+    `;
+    container.appendChild(row);
+    const fill = row.querySelector('.category-breakdown-fill');
+    fill.style.background = categoryColorVar(category);
+    requestAnimationFrame(() => {
+      fill.style.width = `${Math.max((count / max) * 100, 8)}%`;
+    });
+  }
 }
 
 export function getCurrentIdeas() {
@@ -56,6 +109,25 @@ export function wireArchiveControls(onItemClick) {
   for (const id of selectIds) {
     document.getElementById(id).addEventListener('change', () => applyFilters(onItemClick));
   }
+
+  const categorySelect = document.getElementById('filter-category');
+  const audienceSelect = document.getElementById('filter-audience-scope');
+  const categoryChips = document.querySelectorAll('.quick-chip[data-category]');
+  const viralChip = document.getElementById('quick-chip-viral');
+
+  categoryChips.forEach((chip) => {
+    chip.addEventListener('click', () => {
+      categorySelect.value = chip.dataset.category;
+      categoryChips.forEach((c) => c.classList.toggle('active', c === chip));
+      applyFilters(onItemClick);
+    });
+  });
+
+  viralChip.addEventListener('click', () => {
+    const isActive = viralChip.classList.toggle('active');
+    audienceSelect.value = isActive ? 'רחב' : '';
+    applyFilters(onItemClick);
+  });
 
   const toggleBtn = document.getElementById('completed-toggle-btn');
   toggleBtn.addEventListener('click', () => {
@@ -174,7 +246,7 @@ function renderItem(idea, onItemClick, index = 0) {
   if (idea.category) {
     const tag = document.createElement('span');
     tag.className = 'card-category-tag';
-    tag.textContent = idea.category;
+    tag.textContent = `${categoryIcon(idea.category)} ${idea.category}`;
     header.appendChild(tag);
   } else {
     const draftTag = document.createElement('span');

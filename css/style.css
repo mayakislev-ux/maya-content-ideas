@@ -243,6 +243,88 @@ h1, h2, h3 {
   display: none;
 }
 
+.category-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 0.9rem;
+}
+
+.category-breakdown[hidden] { display: none; }
+
+.category-breakdown-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+}
+
+.category-breakdown-label {
+  flex: 0 0 88px;
+  color: var(--muted);
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.category-breakdown-track {
+  flex: 1;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.category-breakdown-fill {
+  height: 100%;
+  border-radius: 999px;
+  width: 0%;
+  transition: width 600ms var(--ease-snap);
+}
+
+.category-breakdown-count {
+  flex: 0 0 auto;
+  font-weight: 700;
+  color: var(--text);
+  min-width: 1.4em;
+  text-align: left;
+}
+
+.quick-filter-chips {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.8rem;
+}
+
+.quick-chip {
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  border: 1.5px solid var(--border-color);
+  background: var(--card-bg);
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 0.45rem 0.9rem;
+  cursor: pointer;
+  transition: transform 150ms var(--ease-snap), background 150ms ease, color 150ms ease, border-color 150ms ease;
+}
+
+.quick-chip:active { transform: scale(0.94); }
+
+.quick-chip.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.quick-chip-viral.active {
+  background: var(--warm);
+  border-color: var(--warm);
+  color: #211d2e;
+}
+
 .quick-add-section .quick-add-box textarea { background: var(--card-bg); }
 
 .quick-add-box {
@@ -894,6 +976,15 @@ textarea:focus-visible,
   font-weight: bold;
   color: var(--muted);
   font-size: 0.95rem;
+}
+
+.level-badge {
+  font-weight: 700;
+  font-size: 0.8rem;
+  color: var(--accent-strong, var(--accent));
+  background: var(--accent-tint, var(--surface));
+  border-radius: 999px;
+  padding: 0.25rem 0.7rem;
 }
 
 .add-idea-top-btn {
