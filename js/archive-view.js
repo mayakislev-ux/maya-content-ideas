@@ -54,40 +54,105 @@ export function renderArchive(ideas, { onItemClick }) {
   currentIdeas = ideas.filter((idea) => !idea.deletedAt);
   applyFilters(onItemClick);
   celebrateMilestone(currentIdeas.length);
-  renderCategoryBreakdown();
+  renderGoalDashboard();
   renderLevelBadge(currentIdeas.length);
 }
 
-function renderCategoryBreakdown() {
-  const container = document.getElementById('category-breakdown');
+const WEEKLY_GOAL_KEY = 'weekly-idea-goal';
+
+function getWeeklyGoal() {
+  const saved = Number(localStorage.getItem(WEEKLY_GOAL_KEY));
+  return Number.isFinite(saved) && saved > 0 ? saved : 10;
+}
+
+function startOfWeek() {
+  const now = new Date();
+  const day = now.getDay(); // 0 = Sunday
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day);
+  return start;
+}
+
+function renderGoalDashboard() {
+  const container = document.getElementById('goal-dashboard');
   const active = getCurrentIdeas();
   if (active.length < 2) {
     container.hidden = true;
     return;
   }
   container.hidden = false;
+
+  const weekStart = startOfWeek();
+  const thisWeekCount = active.filter((idea) => {
+    if (!idea.createdAt || typeof idea.createdAt.toDate !== 'function') return false;
+    return idea.createdAt.toDate() >= weekStart;
+  }).length;
+  const goal = getWeeklyGoal();
+  const progress = Math.min(thisWeekCount / goal, 1);
+  const radius = 60;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference * (1 - progress);
+
   const counts = CATEGORIES.map((category) => ({
     category,
     count: active.filter((idea) => idea.category === category).length,
   })).filter((row) => row.count > 0);
-  const max = Math.max(...counts.map((row) => row.count), 1);
+  const total = counts.reduce((sum, row) => sum + row.count, 0);
 
-  container.innerHTML = '';
-  for (const { category, count } of counts) {
-    const row = document.createElement('div');
-    row.className = 'category-breakdown-row';
-    row.innerHTML = `
-      <span class="category-breakdown-label">${categoryIcon(category)} ${category}</span>
-      <span class="category-breakdown-track"><span class="category-breakdown-fill"></span></span>
-      <span class="category-breakdown-count">${count}</span>
-    `;
-    container.appendChild(row);
-    const fill = row.querySelector('.category-breakdown-fill');
-    fill.style.background = categoryColorVar(category);
-    requestAnimationFrame(() => {
-      fill.style.width = `${Math.max((count / max) * 100, 8)}%`;
-    });
-  }
+  let cumulativePercent = 0;
+  const gradientStops = counts
+    .map(({ category, count }) => {
+      const from = cumulativePercent;
+      cumulativePercent += (count / total) * 100;
+      return `${categoryColorVar(category)} ${from}% ${cumulativePercent}%`;
+    })
+    .join(', ');
+
+  container.innerHTML = `
+    <div class="goal-card goal-ring-card">
+      <div class="goal-ring-wrap">
+        <svg width="140" height="140" viewBox="0 0 140 140">
+          <circle cx="70" cy="70" r="${radius}" fill="none" stroke="var(--surface)" stroke-width="12"/>
+          <circle cx="70" cy="70" r="${radius}" fill="none" stroke="var(--accent)" stroke-width="12" stroke-linecap="round"
+            stroke-dasharray="${circumference}" stroke-dashoffset="${offset}" style="transition: stroke-dashoffset 700ms var(--ease-snap);"/>
+        </svg>
+        <div class="goal-ring-center">
+          <span class="goal-ring-num">${thisWeekCount}/${goal}</span>
+          <span class="goal-ring-label">רעיונות השבוע</span>
+        </div>
+      </div>
+      <div class="goal-ring-stats">
+        <div class="goal-ring-stat"><span class="n">${thisWeekCount}</span><span class="l">נכתבו השבוע</span></div>
+        <div class="goal-ring-stat"><span class="n">${Math.max(goal - thisWeekCount, 0)}</span><span class="l">נשארו ליעד</span></div>
+      </div>
+      <button type="button" class="goal-edit-btn" id="goal-edit-btn">שינוי יעד שבועי (${goal})</button>
+    </div>
+    ${
+      counts.length
+        ? `<div class="goal-card goal-donut-card">
+      <div style="width:96px;height:96px;border-radius:50%;background:conic-gradient(${gradientStops});display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <div style="width:56px;height:56px;border-radius:50%;background:var(--card-bg);display:flex;align-items:center;justify-content:center;font-family:'Ploni Black',sans-serif;font-weight:900;color:var(--accent-strong, var(--accent));">${total}</div>
+      </div>
+      <div class="goal-donut-legend">
+        ${counts
+          .map(
+            ({ category, count }) =>
+              `<div class="goal-donut-legend-item"><span class="goal-donut-dot" style="background:${categoryColorVar(category)}"></span>${categoryIcon(category)} ${category} · ${count}</div>`
+          )
+          .join('')}
+      </div>
+    </div>`
+        : ''
+    }
+  `;
+
+  document.getElementById('goal-edit-btn').addEventListener('click', () => {
+    const input = prompt('כמה רעיונות תרצי להציב כיעד שבועי?', String(goal));
+    const parsed = Number(input);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      localStorage.setItem(WEEKLY_GOAL_KEY, String(Math.round(parsed)));
+      renderGoalDashboard();
+    }
+  });
 }
 
 export function getCurrentIdeas() {

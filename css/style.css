@@ -245,53 +245,71 @@ h1, h2, h3 {
   display: none;
 }
 
-.category-breakdown {
+.goal-dashboard {
+  background: radial-gradient(circle at 25% 0%, #f5eeff 0%, #ece0fd 60%, #ddccfa 100%);
+  border-radius: 20px;
+  padding: 18px 16px;
+  margin-bottom: 0.9rem;
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
-  margin-bottom: 0.9rem;
+  gap: 14px;
 }
 
-.category-breakdown[hidden] { display: none; }
+.goal-dashboard[hidden] { display: none; }
 
-.category-breakdown-row {
+@media (prefers-color-scheme: dark) {
+  .goal-dashboard {
+    background: radial-gradient(circle at 25% 0%, #2e2740 0%, #241d38 60%, #1c1730 100%);
+  }
+}
+
+.goal-card {
+  background: var(--card-bg);
+  border-radius: 18px;
+  padding: 16px;
+  box-shadow: 0 10px 24px rgba(124, 58, 237, 0.12);
+}
+
+.goal-ring-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.goal-ring-wrap { position: relative; width: 140px; height: 140px; }
+.goal-ring-wrap svg { transform: rotate(-90deg); }
+.goal-ring-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.goal-ring-num { font-family: 'Ploni Black', sans-serif; font-weight: 900; font-size: 1.5rem; color: var(--accent-strong, var(--accent)); }
+.goal-ring-label { font-size: 0.7rem; color: var(--muted); }
+
+.goal-ring-stats { display: flex; justify-content: space-around; width: 100%; margin-top: 10px; }
+.goal-ring-stat { text-align: center; }
+.goal-ring-stat .n { font-family: 'Ploni Black', sans-serif; font-weight: 900; font-size: 1.05rem; display: block; }
+.goal-ring-stat .l { font-size: 0.7rem; color: var(--muted); }
+.goal-edit-btn {
+  background: none; border: none; color: var(--muted); font-size: 0.7rem; text-decoration: underline;
+  cursor: pointer; font-family: inherit; margin-top: 2px;
+}
+
+.goal-donut-card {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  font-size: 0.8rem;
+  gap: 16px;
 }
 
-.category-breakdown-label {
-  flex: 0 0 88px;
-  color: var(--muted);
-  font-weight: 700;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.category-breakdown-track {
-  flex: 1;
-  height: 8px;
-  border-radius: 999px;
-  background: var(--surface);
-  overflow: hidden;
-}
-
-.category-breakdown-fill {
-  height: 100%;
-  border-radius: 999px;
-  width: 0%;
-  transition: width 600ms var(--ease-snap);
-}
-
-.category-breakdown-count {
-  flex: 0 0 auto;
-  font-weight: 700;
-  color: var(--text);
-  min-width: 1.4em;
-  text-align: left;
-}
+.goal-donut-legend { display: flex; flex-direction: column; gap: 8px; flex: 1; font-size: 0.8rem; }
+.goal-donut-legend-item { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.goal-donut-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.goal-donut-empty { font-size: 0.8rem; color: var(--muted); text-align: center; padding: 8px; }
 
 .quick-filter-chips {
   display: flex;
