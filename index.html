@@ -30,7 +30,10 @@
 
 <div id="app-screen" class="screen" hidden>
   <header class="app-header">
-    <h1>המוח השיווקי שנמצא איתך 24/7</h1>
+    <div>
+      <span class="greeting-line" id="greeting-line"></span>
+      <h1>המוח השיווקי שנמצא איתך 24/7</h1>
+    </div>
     <button type="button" id="mobile-menu-btn" class="mobile-menu-btn" aria-label="פתיחת תפריט">☰ תפריט</button>
     <nav class="view-tabs" id="view-tabs">
       <button type="button" id="close-menu-btn" class="close-menu-btn" aria-label="סגירת תפריט">✕</button>
@@ -57,6 +60,7 @@
         <textarea id="quick-add-input" enterkeyhint="done" placeholder="רשמו כאן רעיון מהיר לטיוטה, ותשלימו אותו אחר כך..." rows="2"></textarea>
         <button type="button" id="quick-add-btn" class="btn-primary">+ הוספה מהירה</button>
       </div>
+      <span class="draft-saved-indicator" id="draft-saved-indicator" hidden>נשמר ✓</span>
     </section>
 
     <section class="archive-controls-section">

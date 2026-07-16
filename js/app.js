@@ -22,6 +22,18 @@ import {
 import { wireNotificationAdmin } from './notification-admin.js';
 import { showIosInstallOverlayIfNeeded } from './ios-install-overlay.js';
 
+function setGreeting(displayName) {
+  const hour = new Date().getHours();
+  const firstName = displayName ? displayName.split(' ')[0] : '';
+  let greeting;
+  if (hour < 5) greeting = 'לילה טוב';
+  else if (hour < 12) greeting = 'בוקר טוב';
+  else if (hour < 18) greeting = 'צהריים טובים';
+  else greeting = 'ערב טוב';
+  const el = document.getElementById('greeting-line');
+  if (el) el.textContent = firstName ? `${greeting}, ${firstName}` : greeting;
+}
+
 // iOS Safari doesn't reliably resize a position:fixed element (like our
 // modals) when the on-screen keyboard opens - the layout viewport stays
 // full-height while the visible area shrinks, so content can end up
@@ -269,6 +281,7 @@ onAuthChange(async (user) => {
 
   document.getElementById('login-screen').hidden = true;
   document.getElementById('app-screen').hidden = false;
+  setGreeting(user.displayName);
   document.getElementById('tab-warming').hidden = user.email !== ADMIN_EMAIL;
   document.getElementById('tab-script').hidden = user.email !== ADMIN_EMAIL;
   document.getElementById('send-notification-btn').hidden = user.email !== ADMIN_EMAIL;

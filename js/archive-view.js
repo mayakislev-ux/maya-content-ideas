@@ -2,6 +2,15 @@ import { filterIdeas, sortIdeas, categoryColorVar } from './ideas-logic.js';
 import { getInstantThumbnail, fetchThumbnail } from './video-preview.js';
 import { addQuickIdea, markIdeaCompleted, uncompleteIdea, deleteIdea, restoreIdea } from './ideas-store.js';
 import { showToast } from './toast.js';
+import { animateCountUp } from './count-up.js';
+import { burstConfetti } from './confetti.js';
+
+const QUICK_ADD_TOASTS = [
+  '📝 הרעיון נשמר כטיוטה - אפשר להשלים אותו בהמשך',
+  '✨ נחמד! הרעיון חיכה במגירה, עכשיו הוא במאגר',
+  '💡 עוד רעיון אחד קרוב יותר לתוכן הבא שלך',
+  '📥 נשמר בבטחה - תחזרי אליו כשתהיה לך את הזמן',
+];
 
 const MILESTONES = [10, 25, 50, 100];
 const seenMilestones = new Set(JSON.parse(localStorage.getItem('idea-milestones-seen') || '[]'));
@@ -10,6 +19,7 @@ function celebrateMilestone(count) {
   if (!MILESTONES.includes(count) || seenMilestones.has(count)) return;
   seenMilestones.add(count);
   localStorage.setItem('idea-milestones-seen', JSON.stringify([...seenMilestones]));
+  burstConfetti();
   showToast(`🎉 וואו, ${count} רעיונות במאגר שלך!`, { duration: 6000 });
 }
 
@@ -63,12 +73,21 @@ export function wireArchiveControls(onItemClick) {
 
   const quickAddInput = document.getElementById('quick-add-input');
   const quickAddBtn = document.getElementById('quick-add-btn');
+  const draftSavedIndicator = document.getElementById('draft-saved-indicator');
   const QUICK_ADD_DRAFT_KEY = 'quick-add-draft';
 
   const savedDraft = localStorage.getItem(QUICK_ADD_DRAFT_KEY);
   if (savedDraft) quickAddInput.value = savedDraft;
+  const showDraftSaved = debounce(() => {
+    if (!quickAddInput.value.trim()) return;
+    draftSavedIndicator.hidden = false;
+    draftSavedIndicator.classList.remove('draft-saved-pop');
+    void draftSavedIndicator.offsetWidth;
+    draftSavedIndicator.classList.add('draft-saved-pop');
+  }, 400);
   quickAddInput.addEventListener('input', () => {
     localStorage.setItem(QUICK_ADD_DRAFT_KEY, quickAddInput.value);
+    showDraftSaved();
   });
 
   const submitQuickAdd = async () => {
@@ -77,7 +96,7 @@ export function wireArchiveControls(onItemClick) {
     quickAddInput.value = '';
     localStorage.removeItem(QUICK_ADD_DRAFT_KEY);
     await addQuickIdea(title);
-    showToast('📝 הרעיון נשמר כטיוטה - אפשר להשלים אותו בהמשך');
+    showToast(QUICK_ADD_TOASTS[Math.floor(Math.random() * QUICK_ADD_TOASTS.length)]);
   };
   quickAddBtn.addEventListener('click', submitQuickAdd);
   quickAddInput.addEventListener('keydown', (e) => {
@@ -99,7 +118,7 @@ function applyFilters(onItemClick) {
   const filtered = filterIdeas(scoped, { text, category, audienceScope, persuasionStage, rating });
   const sorted = sortIdeas(filtered, sortOrder);
 
-  document.getElementById('idea-count').textContent = `${sorted.length} רעיונות במאגר שלך`;
+  animateCountUp(document.getElementById('idea-count'), sorted.length, ' רעיונות במאגר שלך');
 
   const list = document.getElementById('archive-list');
   list.innerHTML = '';
@@ -108,20 +127,20 @@ function applyFilters(onItemClick) {
     const empty = document.createElement('li');
     empty.className = 'archive-empty-state';
     if (currentIdeas.length === 0) {
-      empty.innerHTML = '<div class="archive-empty-emoji">💡</div><p>עדיין אין לך רעיונות שמורים - ההוספה המהירה למעלה היא הדרך הכי קלה להתחיל</p>';
+      empty.innerHTML = '<div class="archive-empty-emoji">🌱</div><p>עדיין שקט כאן - הרעיון הראשון שלך רק מחכה שתכתבי אותו בהוספה המהירה למעלה</p>';
     } else {
-      empty.innerHTML = '<div class="archive-empty-emoji">🔍</div><p>לא נמצאו רעיונות שתואמים את החיפוש/הסינון הנוכחי</p>';
+      empty.innerHTML = '<div class="archive-empty-emoji">🔍</div><p>כלום לא תואם את החיפוש הזה - נסי מילה אחרת או נקי את הסינון</p>';
     }
     list.appendChild(empty);
     return;
   }
 
-  for (const idea of sorted) {
-    list.appendChild(renderItem(idea, onItemClick));
-  }
+  sorted.forEach((idea, index) => {
+    list.appendChild(renderItem(idea, onItemClick, index));
+  });
 }
 
-function renderItem(idea, onItemClick) {
+function renderItem(idea, onItemClick, index = 0) {
   const li = document.createElement('li');
   li.className = 'archive-item-outer';
 
@@ -135,8 +154,13 @@ function renderItem(idea, onItemClick) {
   deleteAction.textContent = '🗑️';
   li.appendChild(deleteAction);
 
+  const trail = document.createElement('div');
+  trail.className = 'swipe-trail';
+  li.appendChild(trail);
+
   const inner = document.createElement('div');
   inner.style.setProperty('--card-color', categoryColorVar(idea.category));
+  inner.style.setProperty('--stagger-i', Math.min(index, 12));
   inner.className = 'archive-item';
   if (!idea.category) inner.classList.add('archive-item-draft');
   li.appendChild(inner);
@@ -275,9 +299,14 @@ function renderItem(idea, onItemClick) {
     hasSwiped = true;
     const clamped = Math.max(-90, Math.min(90, deltaX));
     inner.style.transform = `translateX(${clamped}px)`;
+    trail.classList.toggle('right', clamped > 8);
+    trail.classList.toggle('left', clamped < -8);
+    trail.style.opacity = Math.min(Math.abs(clamped) / 70, 1);
   });
 
   inner.addEventListener('touchend', async (e) => {
+    trail.style.opacity = 0;
+    trail.classList.remove('right', 'left');
     if (!horizontalSwipe) {
       touchStartX = null;
       return;
