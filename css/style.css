@@ -268,6 +268,12 @@ h1, h2, h3 {
     z-index: 25;
     flex-direction: column;
     align-items: flex-start;
+    /* On a notched/Dynamic-Island phone (especially installed as a standalone
+       PWA, with no Safari chrome above to push content down), the header's
+       normal 1rem top padding isn't enough - the title renders partly behind
+       the camera cutout. Push it down by the actual safe-area inset instead
+       of guessing a fixed number. */
+    padding-top: calc(1rem + env(safe-area-inset-top, 0px));
   }
   .app-header h1 {
     order: 1;
@@ -307,7 +313,11 @@ h1, h2, h3 {
     align-items: stretch;
     flex-wrap: nowrap;
     gap: 0.7rem;
-    padding: 5rem 1.2rem 2rem;
+    /* Must grow by the same safe-area-inset-top as .close-menu-btn's own
+       "top" below - otherwise on a notched phone the button (pushed down by
+       the inset) ends up tall enough to dip into this padding zone and
+       overlap the first tab button instead of sitting cleanly above it. */
+    padding: calc(5rem + env(safe-area-inset-top, 0px)) 1.2rem 2rem;
     overflow-y: auto;
     height: 100%;
     box-sizing: border-box;

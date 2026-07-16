@@ -127,10 +127,11 @@ document.getElementById('token-usage-btn').addEventListener('click', async () =>
   try {
     const { data } = await getTokenUsage();
     const lines = Object.entries(data.byFunction).map(
-      ([fn, u]) => `${fn}: ${u.calls} קריאות, ${u.inputTokens.toLocaleString()} טוקני קלט, ${u.outputTokens.toLocaleString()} טוקני פלט`
+      ([fn, u]) =>
+        `${fn}: ${u.calls} קריאות, ${u.inputTokens.toLocaleString()} קלט, ${u.outputTokens.toLocaleString()} פלט, ${(u.cacheReadTokens || 0).toLocaleString()} קריאות-מטמון`
     );
     alert(
-      `סה"כ מאז שהתחלנו למדוד:\n\nקלט: ${data.totalInput.toLocaleString()} טוקנים\nפלט: ${data.totalOutput.toLocaleString()} טוקנים\nעלות משוערת: כ-₪${data.estimatedCostIls.toFixed(2)} (כ-$${data.estimatedCostUsd.toFixed(2)}, שער משוער 1$≈₪3)\n\nלפי פונקציה:\n${lines.join('\n')}\n\n⚠️ זה סופר רק מהיום שהוספתי את המדידה - לא כולל שימוש היסטורי מלפני כן. להיסטוריה המלאה: console.anthropic.com`
+      `סה"כ מאז שהתחלנו למדוד:\n\nקלט: ${data.totalInput.toLocaleString()} טוקנים\nפלט: ${data.totalOutput.toLocaleString()} טוקנים\nכתיבות מטמון: ${data.totalCacheWrite.toLocaleString()}\nקריאות ממטמון (זול פי 10): ${data.totalCacheRead.toLocaleString()}\n\nעלות משוערת: כ-₪${data.estimatedCostIls.toFixed(2)} (כ-$${data.estimatedCostUsd.toFixed(2)}, שער משוער 1$≈₪3)\nחיסכון בזכות Prompt Caching: כ-₪${data.savedByCachingIls.toFixed(2)}\n\nלפי פונקציה:\n${lines.join('\n')}\n\n⚠️ זה סופר רק מהיום שהוספתי את המדידה - לא כולל שימוש היסטורי מלפני כן. להיסטוריה המלאה: console.anthropic.com`
     );
   } catch (err) {
     console.error('getTokenUsage failed:', err);

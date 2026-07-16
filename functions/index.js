@@ -57,7 +57,10 @@ function countClarifyingRepliesSinceLastAngles(messages) {
 // Real, exact token counts and $ cost, straight from Anthropic's own response
 // on every call - not an estimate. Written best-effort (a logging failure
 // must never break the actual feature the user is waiting on).
-const HAIKU_PRICE_PER_MTOK = { input: 1, output: 5 }; // USD per million tokens - update if pricing changes
+// Base Haiku 4.5 rate confirmed against anthropic.com/claude/haiku. Cache
+// write/read multipliers (1.25x / 0.1x of base input) are Anthropic's
+// standard published ratios for the default 5-minute ephemeral cache.
+const HAIKU_PRICE_PER_MTOK = { input: 1, output: 5, cacheWrite: 1.25, cacheRead: 0.1 }; // USD per million tokens
 const USD_TO_ILS_RATE = 3.0; // approximate, checked 2026-07-16 - not live, update if it drifts a lot
 
 async function recordTokenUsage(fnName, usage) {
@@ -66,12 +69,16 @@ async function recordTokenUsage(fnName, usage) {
     const ref = db.collection('tokenUsage').doc(fnName);
     await db.runTransaction(async (tx) => {
       const snap = await tx.get(ref);
-      const prev = snap.exists ? snap.data() : { inputTokens: 0, outputTokens: 0, calls: 0 };
+      const prev = snap.exists
+        ? snap.data()
+        : { inputTokens: 0, outputTokens: 0, cacheCreationTokens: 0, cacheReadTokens: 0, calls: 0 };
       tx.set(
         ref,
         {
           inputTokens: (prev.inputTokens || 0) + (usage.input_tokens || 0),
           outputTokens: (prev.outputTokens || 0) + (usage.output_tokens || 0),
+          cacheCreationTokens: (prev.cacheCreationTokens || 0) + (usage.cache_creation_input_tokens || 0),
+          cacheReadTokens: (prev.cacheReadTokens || 0) + (usage.cache_read_input_tokens || 0),
           calls: (prev.calls || 0) + 1,
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         },
@@ -81,6 +88,26 @@ async function recordTokenUsage(fnName, usage) {
   } catch (err) {
     console.error('recordTokenUsage failed (non-fatal):', fnName, err.message);
   }
+}
+
+// Marks text as cacheable so Anthropic reuses it across calls in the same
+// conversation instead of re-billing it at full price every message.
+function cachedText(text) {
+  return [{ type: 'text', text, cache_control: { type: 'ephemeral' } }];
+}
+
+// Prompt caching needs an exact-prefix match to hit. Since every call resends
+// the full growing conversation, marking the *last* message as a cache
+// breakpoint caches everything up to and including it - the next call (which
+// will contain this same history plus one new exchange) hits that cache for
+// the unchanged part and only pays full price for what's actually new.
+function withCacheControl(messages) {
+  if (!Array.isArray(messages) || messages.length === 0) return messages;
+  return messages.map((msg, i) => {
+    if (i !== messages.length - 1) return msg;
+    const text = typeof msg.content === 'string' ? msg.content : msg.content;
+    return { ...msg, content: cachedText(text) };
+  });
 }
 
 async function callAnthropic(apiKey, body, fnName) {
@@ -118,17 +145,48 @@ exports.getTokenUsage = onCall({ region: 'us-central1' }, async (request) => {
   const snap = await db.collection('tokenUsage').get();
   let totalInput = 0;
   let totalOutput = 0;
+  let totalCacheWrite = 0;
+  let totalCacheRead = 0;
   const byFunction = {};
   snap.forEach((doc) => {
     const d = doc.data();
     totalInput += d.inputTokens || 0;
     totalOutput += d.outputTokens || 0;
-    byFunction[doc.id] = { inputTokens: d.inputTokens || 0, outputTokens: d.outputTokens || 0, calls: d.calls || 0 };
+    totalCacheWrite += d.cacheCreationTokens || 0;
+    totalCacheRead += d.cacheReadTokens || 0;
+    byFunction[doc.id] = {
+      inputTokens: d.inputTokens || 0,
+      outputTokens: d.outputTokens || 0,
+      cacheCreationTokens: d.cacheCreationTokens || 0,
+      cacheReadTokens: d.cacheReadTokens || 0,
+      calls: d.calls || 0,
+    };
   });
   const estimatedCostUsd =
-    (totalInput / 1_000_000) * HAIKU_PRICE_PER_MTOK.input + (totalOutput / 1_000_000) * HAIKU_PRICE_PER_MTOK.output;
+    (totalInput / 1_000_000) * HAIKU_PRICE_PER_MTOK.input +
+    (totalOutput / 1_000_000) * HAIKU_PRICE_PER_MTOK.output +
+    (totalCacheWrite / 1_000_000) * HAIKU_PRICE_PER_MTOK.cacheWrite +
+    (totalCacheRead / 1_000_000) * HAIKU_PRICE_PER_MTOK.cacheRead;
+  // What those same cache tokens would have cost at full input price, had
+  // caching not been on - the gap between this and estimatedCostUsd is the
+  // real, visible saving caching is producing.
+  const costWithoutCachingUsd =
+    (totalInput / 1_000_000) * HAIKU_PRICE_PER_MTOK.input +
+    (totalOutput / 1_000_000) * HAIKU_PRICE_PER_MTOK.output +
+    ((totalCacheWrite + totalCacheRead) / 1_000_000) * HAIKU_PRICE_PER_MTOK.input;
   const estimatedCostIls = estimatedCostUsd * USD_TO_ILS_RATE;
-  return { totalInput, totalOutput, byFunction, estimatedCostUsd, estimatedCostIls };
+  const savedByCachingUsd = Math.max(0, costWithoutCachingUsd - estimatedCostUsd);
+  return {
+    totalInput,
+    totalOutput,
+    totalCacheWrite,
+    totalCacheRead,
+    byFunction,
+    estimatedCostUsd,
+    estimatedCostIls,
+    savedByCachingUsd,
+    savedByCachingIls: savedByCachingUsd * USD_TO_ILS_RATE,
+  };
 });
 
 exports.checkIdea = onCall({ secrets: [anthropicApiKey], region: 'us-central1' }, async (request) => {
@@ -151,7 +209,12 @@ exports.checkIdea = onCall({ secrets: [anthropicApiKey], region: 'us-central1' }
 
   const data = await callAnthropic(
     anthropicApiKey.value(),
-    { model: 'claude-haiku-4-5-20251001', max_tokens: 1024, system: systemPrompt, messages },
+    {
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1024,
+      system: cachedText(systemPrompt),
+      messages: withCacheControl(messages),
+    },
     'checkIdea'
   );
 
@@ -179,7 +242,12 @@ exports.writeScript = onCall({ secrets: [anthropicApiKey], region: 'us-central1'
 
   const data = await callAnthropic(
     anthropicApiKey.value(),
-    { model: 'claude-haiku-4-5-20251001', max_tokens: 4096, system: systemPrompt, messages },
+    {
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 4096,
+      system: cachedText(systemPrompt),
+      messages: withCacheControl(messages),
+    },
     'writeScript'
   );
 
