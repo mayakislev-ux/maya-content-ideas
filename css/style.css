@@ -161,12 +161,12 @@ h1, h2, h3 {
 .view[hidden] { display: none; }
 
 .view {
-  animation: viewIn 260ms var(--ease-snap) both;
+  animation: viewIn 260ms var(--ease-snap);
 }
 
 @keyframes viewIn {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .app-footer {
