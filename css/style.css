@@ -335,7 +335,7 @@ h1, h2, h3 {
   .close-menu-btn {
     display: block;
     position: absolute;
-    top: 1rem;
+    top: calc(1rem + env(safe-area-inset-top, 0px));
     left: 1rem;
     background: rgba(255, 255, 255, 0.15);
     border: none;

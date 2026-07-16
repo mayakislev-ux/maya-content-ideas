@@ -178,11 +178,11 @@ async function sendMessage(text) {
     const result = await writeScript({ messages: history, profile, ideaContext });
     let reply = result.data.reply;
 
-    if (reply.startsWith(REDIRECT_MARKER)) {
-      reply = reply.slice(REDIRECT_MARKER.length).trimStart();
-      setBubbleText(thinkingBubble, reply);
+    if (reply.includes(REDIRECT_MARKER)) {
+      const visibleReply = reply.replace(REDIRECT_MARKER, '').trim();
+      setBubbleText(thinkingBubble, visibleReply);
       addGoToIdeaChatButton(thinkingBubble);
-      history.push({ role: 'assistant', content: reply });
+      history.push({ role: 'assistant', content: visibleReply });
       input.disabled = false;
       return;
     }

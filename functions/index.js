@@ -129,7 +129,7 @@ exports.writeScript = onCall({ secrets: [anthropicApiKey], region: 'us-central1'
 
   const data = await callAnthropic(anthropicApiKey.value(), {
     model: 'claude-haiku-4-5-20251001',
-    max_tokens: 1536,
+    max_tokens: 4096,
     system: systemPrompt,
     messages,
   });
