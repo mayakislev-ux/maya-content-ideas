@@ -54,7 +54,36 @@ function countClarifyingRepliesSinceLastAngles(messages) {
   return count;
 }
 
-async function callAnthropic(apiKey, body) {
+// Real, exact token counts and $ cost, straight from Anthropic's own response
+// on every call - not an estimate. Written best-effort (a logging failure
+// must never break the actual feature the user is waiting on).
+const HAIKU_PRICE_PER_MTOK = { input: 1, output: 5 }; // USD per million tokens - update if pricing changes
+const USD_TO_ILS_RATE = 3.0; // approximate, checked 2026-07-16 - not live, update if it drifts a lot
+
+async function recordTokenUsage(fnName, usage) {
+  if (!usage) return;
+  try {
+    const ref = db.collection('tokenUsage').doc(fnName);
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      const prev = snap.exists ? snap.data() : { inputTokens: 0, outputTokens: 0, calls: 0 };
+      tx.set(
+        ref,
+        {
+          inputTokens: (prev.inputTokens || 0) + (usage.input_tokens || 0),
+          outputTokens: (prev.outputTokens || 0) + (usage.output_tokens || 0),
+          calls: (prev.calls || 0) + 1,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      );
+    });
+  } catch (err) {
+    console.error('recordTokenUsage failed (non-fatal):', fnName, err.message);
+  }
+}
+
+async function callAnthropic(apiKey, body, fnName) {
   let response;
   try {
     response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -77,8 +106,30 @@ async function callAnthropic(apiKey, body) {
     throw new HttpsError('internal', 'שגיאה בפנייה ל-AI, נסו שוב');
   }
 
-  return response.json();
+  const data = await response.json();
+  if (fnName) await recordTokenUsage(fnName, data.usage);
+  return data;
 }
+
+exports.getTokenUsage = onCall({ region: 'us-central1' }, async (request) => {
+  if (!request.auth || request.auth.token.email !== ADMIN_EMAIL) {
+    throw new HttpsError('permission-denied', 'התכונה הזו זמינה כרגע רק למנהלת');
+  }
+  const snap = await db.collection('tokenUsage').get();
+  let totalInput = 0;
+  let totalOutput = 0;
+  const byFunction = {};
+  snap.forEach((doc) => {
+    const d = doc.data();
+    totalInput += d.inputTokens || 0;
+    totalOutput += d.outputTokens || 0;
+    byFunction[doc.id] = { inputTokens: d.inputTokens || 0, outputTokens: d.outputTokens || 0, calls: d.calls || 0 };
+  });
+  const estimatedCostUsd =
+    (totalInput / 1_000_000) * HAIKU_PRICE_PER_MTOK.input + (totalOutput / 1_000_000) * HAIKU_PRICE_PER_MTOK.output;
+  const estimatedCostIls = estimatedCostUsd * USD_TO_ILS_RATE;
+  return { totalInput, totalOutput, byFunction, estimatedCostUsd, estimatedCostIls };
+});
 
 exports.checkIdea = onCall({ secrets: [anthropicApiKey], region: 'us-central1' }, async (request) => {
   if (!request.auth) {
@@ -98,12 +149,11 @@ exports.checkIdea = onCall({ secrets: [anthropicApiKey], region: 'us-central1' }
     systemPrompt += '\n\n⚠️ הנחיה דחופה: כבר נשלחו 2 הודעות הבהרה או יותר על הרעיון הנוכחי בשיחה הזו. אסור לשאול שום שאלת הבהרה נוספת - חובה לעבור עכשיו, בהודעה הזו, ישירות לשלב ב\' (5 זוויות הנגשה) על סמך מה שכבר ידוע, גם אם זה לא מושלם. אם הרעיון כבר ברור מספיק, אפשר גם [[RECOGNIZED_EXCELLENT]] אם זה מתאים.';
   }
 
-  const data = await callAnthropic(anthropicApiKey.value(), {
-    model: 'claude-haiku-4-5-20251001',
-    max_tokens: 1024,
-    system: systemPrompt,
-    messages,
-  });
+  const data = await callAnthropic(
+    anthropicApiKey.value(),
+    { model: 'claude-haiku-4-5-20251001', max_tokens: 1024, system: systemPrompt, messages },
+    'checkIdea'
+  );
 
   const reply = (data.content && data.content[0] && data.content[0].text) || '';
   return { reply };
@@ -127,12 +177,11 @@ exports.writeScript = onCall({ secrets: [anthropicApiKey], region: 'us-central1'
   const ideaContext = (request.data && request.data.ideaContext) || null;
   const systemPrompt = buildScriptSystemPrompt(profile, ideaContext);
 
-  const data = await callAnthropic(anthropicApiKey.value(), {
-    model: 'claude-haiku-4-5-20251001',
-    max_tokens: 4096,
-    system: systemPrompt,
-    messages,
-  });
+  const data = await callAnthropic(
+    anthropicApiKey.value(),
+    { model: 'claude-haiku-4-5-20251001', max_tokens: 4096, system: systemPrompt, messages },
+    'writeScript'
+  );
 
   const reply = (data.content && data.content[0] && data.content[0].text) || '';
   return { reply };
@@ -164,11 +213,11 @@ ${PERSUASION_STAGES.map((s) => `- ${s}: ${PERSUASION_STAGE_DEFINITIONS[s]}`).joi
 השב/י אך ורק ב-JSON תקין בפורמט הבא, בלי שום טקסט נוסף לפני או אחרי:
 {"category": "...", "persuasionStage": "..."}`;
 
-  const data = await callAnthropic(anthropicApiKey.value(), {
-    model: 'claude-haiku-4-5-20251001',
-    max_tokens: 200,
-    messages: [{ role: 'user', content: prompt }],
-  });
+  const data = await callAnthropic(
+    anthropicApiKey.value(),
+    { model: 'claude-haiku-4-5-20251001', max_tokens: 200, messages: [{ role: 'user', content: prompt }] },
+    'classifyIdea'
+  );
 
   const text = (data.content && data.content[0] && data.content[0].text) || '{}';
   let parsed;
@@ -217,11 +266,11 @@ exports.generateWarmingPlan = onCall({ secrets: [anthropicApiKey, sheetsServiceA
   const promptArgs = { product, audience, extraContext, existingIdeasTitles: existingIdeasTitles.slice(0, 40) };
 
   async function callAndParse(prompt) {
-    const data = await callAnthropic(anthropicApiKey.value(), {
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 4096,
-      messages: [{ role: 'user', content: prompt }],
-    });
+    const data = await callAnthropic(
+      anthropicApiKey.value(),
+      { model: 'claude-haiku-4-5-20251001', max_tokens: 4096, messages: [{ role: 'user', content: prompt }] },
+      'generateWarmingPlan'
+    );
     const text = (data.content && data.content[0] && data.content[0].text) || '{}';
     try {
       const match = text.match(/\{[\s\S]*\}/);

@@ -130,7 +130,7 @@ document.getElementById('token-usage-btn').addEventListener('click', async () =>
       ([fn, u]) => `${fn}: ${u.calls} קריאות, ${u.inputTokens.toLocaleString()} טוקני קלט, ${u.outputTokens.toLocaleString()} טוקני פלט`
     );
     alert(
-      `סה"כ מאז שהתחלנו למדוד:\n\nקלט: ${data.totalInput.toLocaleString()} טוקנים\nפלט: ${data.totalOutput.toLocaleString()} טוקנים\nעלות משוערת: כ-$${data.estimatedCostUsd.toFixed(2)} (לפי תעריף Haiku, $1/מיליון קלט + $5/מיליון פלט)\n\nלפי פונקציה:\n${lines.join('\n')}\n\n⚠️ זה סופר רק מהיום שהוספתי את המדידה - לא כולל שימוש היסטורי מלפני כן. להיסטוריה המלאה: console.anthropic.com`
+      `סה"כ מאז שהתחלנו למדוד:\n\nקלט: ${data.totalInput.toLocaleString()} טוקנים\nפלט: ${data.totalOutput.toLocaleString()} טוקנים\nעלות משוערת: כ-₪${data.estimatedCostIls.toFixed(2)} (כ-$${data.estimatedCostUsd.toFixed(2)}, שער משוער 1$≈₪3)\n\nלפי פונקציה:\n${lines.join('\n')}\n\n⚠️ זה סופר רק מהיום שהוספתי את המדידה - לא כולל שימוש היסטורי מלפני כן. להיסטוריה המלאה: console.anthropic.com`
     );
   } catch (err) {
     console.error('getTokenUsage failed:', err);
