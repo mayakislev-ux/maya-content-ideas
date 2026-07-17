@@ -377,6 +377,18 @@ onAuthChange(async (user) => {
   document.getElementById('login-screen').hidden = true;
   document.getElementById('app-screen').hidden = false;
   setGreeting(user.displayName);
+  if (user.photoURL) {
+    const logo = document.querySelector('.app-logo');
+    if (logo) {
+      logo.hidden = true;
+      const avatar = document.createElement('img');
+      avatar.className = 'app-avatar';
+      avatar.src = user.photoURL;
+      avatar.alt = '';
+      avatar.referrerPolicy = 'no-referrer';
+      logo.insertAdjacentElement('afterend', avatar);
+    }
+  }
   document.getElementById('tab-warming').hidden = user.email !== ADMIN_EMAIL;
   document.getElementById('tab-script').hidden = user.email !== ADMIN_EMAIL;
   document.getElementById('bottomnav-script').hidden = user.email !== ADMIN_EMAIL;

@@ -1,4 +1,4 @@
-const COLORS = ['#7c3aed', '#a78bfa', '#f5941f', '#2ecc71', '#ff4d9d'];
+const COLORS = ['#263ea8', '#8b98d9', '#ff2ea8', '#ff7ac8', '#ffffff'];
 
 export function burstConfetti() {
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;

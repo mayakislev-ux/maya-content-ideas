@@ -114,11 +114,16 @@ function renderHero() {
   `;
 }
 
+let lastSeenLevelName = localStorage.getItem('last-seen-level-name');
+
 function renderStatScroll() {
   const container = document.getElementById('stat-scroll');
   const active = getCurrentIdeas();
   const level = currentLevel(active.length);
   const { goal } = weeklyProgress();
+  const leveledUp = lastSeenLevelName !== null && lastSeenLevelName !== level.name;
+  lastSeenLevelName = level.name;
+  localStorage.setItem('last-seen-level-name', level.name);
 
   const counts = CATEGORIES.map((category) => ({
     category,
@@ -126,7 +131,7 @@ function renderStatScroll() {
   })).filter((row) => row.count > 0);
 
   container.innerHTML = `
-    <button type="button" class="stat-pill stat-pill-level" id="goal-edit-btn">
+    <button type="button" class="stat-pill stat-pill-level${leveledUp ? ' level-up-glow' : ''}" id="goal-edit-btn">
       <span class="n">${level.icon} ${level.name}</span>
       <span class="l">יעד שבועי: ${goal} · לשינוי</span>
     </button>

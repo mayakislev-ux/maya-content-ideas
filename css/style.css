@@ -260,6 +260,15 @@ h1, h2, h3 {
   flex-shrink: 0;
 }
 
+.app-avatar {
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1.5px solid rgba(255, 255, 255, 0.55);
+}
+
 .theme-toggle-btn {
   background: rgba(255, 255, 255, 0.15);
   border: none;
@@ -618,7 +627,14 @@ body.focus-mode .chat-input-row { bottom: 0; }
 
 @media (max-width: 720px) {
   html { font-size: 18px; }
-  :root { --bottom-nav-h: calc(66px + env(safe-area-inset-bottom, 0px)); }
+  :root {
+    --bottom-nav-h: calc(66px + env(safe-area-inset-bottom, 0px));
+    /* Dramatic shadows read as "premium depth" on a large desktop
+       display, but the same shadow size relative to a small phone
+       screen starts to look heavy/muddy rather than elegant - a
+       lighter, tighter shadow reads as equally premium at this scale. */
+    --card-shadow: 0 4px 14px rgba(38, 62, 168, 0.10);
+  }
 
   .app-header {
     z-index: 25;
@@ -1269,7 +1285,30 @@ body.focus-mode .chat-input-row { bottom: 0; }
   100% { transform: scale(1); }
 }
 
-.archive-item-pop { animation: archiveItemPop 0.25s ease; }
+.archive-item-pop { animation: archiveItemPop 0.25s ease; overflow: hidden; }
+
+.archive-item-pop::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(120deg, transparent 40%, rgba(255, 255, 255, 0.6) 50%, transparent 60%);
+  transform: translateX(-120%);
+  animation: lightSweep 0.6s ease;
+  pointer-events: none;
+}
+
+@keyframes lightSweep {
+  to { transform: translateX(120%); }
+}
+
+.level-up-glow {
+  animation: levelUpPulse 1.4s ease 2;
+}
+
+@keyframes levelUpPulse {
+  0%, 100% { box-shadow: var(--card-shadow); }
+  50% { box-shadow: 0 0 0 4px var(--warm-tint), 0 0 24px 4px rgba(255, 46, 168, 0.5); }
+}
 
 .archive-item {
   position: relative;
