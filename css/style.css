@@ -930,7 +930,7 @@ h1, h2, h3 {
 .archive-item-outer {
   position: relative;
   overflow: hidden;
-  border-radius: 14px;
+  border-radius: var(--card-radius);
 }
 
 .swipe-trail {
