@@ -9,15 +9,15 @@ const QUICK_ADD_TOASTS = [
   '📝 הרעיון נשמר כטיוטה - אפשר להשלים אותו בהמשך',
   '✨ נחמד! הרעיון חיכה במגירה, עכשיו הוא במאגר',
   '💡 עוד רעיון אחד קרוב יותר לתוכן הבא שלך',
-  '📥 נשמר בבטחה - תחזרי אליו כשתהיה לך את הזמן',
+  '📥 נשמר בבטחה - תחזרו אליו כשיהיה לכם את הזמן',
 ];
 
 const LEVELS = [
-  { min: 0, name: 'מתחילה', icon: '🌱' },
-  { min: 10, name: 'יוצרת תוכן', icon: '🌿' },
-  { min: 25, name: 'יוצרת מנוסה', icon: '🌳' },
-  { min: 50, name: 'מומחית תוכן', icon: '⭐' },
-  { min: 100, name: 'אלופת תוכן', icon: '👑' },
+  { min: 0, name: 'בתחלת הדרך', icon: '🌱' },
+  { min: 10, name: 'בקצב עולה', icon: '🌿' },
+  { min: 25, name: 'בהתקדמות משמעותית', icon: '🌳' },
+  { min: 50, name: 'ברמת מומחיות', icon: '⭐' },
+  { min: 100, name: 'בשיא היצירה', icon: '👑' },
 ];
 
 function currentLevel(count) {
@@ -147,7 +147,7 @@ function renderGoalDashboard() {
   `;
 
   document.getElementById('goal-edit-btn').addEventListener('click', () => {
-    const input = prompt('כמה רעיונות תרצי להציב כיעד שבועי?', String(goal));
+    const input = prompt('כמה רעיונות לקבוע כיעד שבועי?', String(goal));
     const parsed = Number(input);
     if (Number.isFinite(parsed) && parsed > 0) {
       localStorage.setItem(WEEKLY_GOAL_KEY, String(Math.round(parsed)));
@@ -266,9 +266,9 @@ function applyFilters(onItemClick) {
     const empty = document.createElement('li');
     empty.className = 'archive-empty-state';
     if (currentIdeas.length === 0) {
-      empty.innerHTML = '<div class="archive-empty-emoji">🌱</div><p>עדיין שקט כאן - הרעיון הראשון שלך רק מחכה שתכתבי אותו בהוספה המהירה למעלה</p>';
+      empty.innerHTML = '<div class="archive-empty-emoji">🌱</div><p>עדיין שקט כאן - הרעיון הראשון מחכה שיכתבו אותו בהוספה המהירה למעלה</p>';
     } else {
-      empty.innerHTML = '<div class="archive-empty-emoji">🔍</div><p>כלום לא תואם את החיפוש הזה - נסי מילה אחרת או נקי את הסינון</p>';
+      empty.innerHTML = '<div class="archive-empty-emoji">🔍</div><p>כלום לא תואם את החיפוש הזה - נסו מילה אחרת או נקו את הסינון</p>';
     }
     list.appendChild(empty);
     return;

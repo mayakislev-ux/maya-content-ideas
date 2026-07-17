@@ -156,6 +156,7 @@ document.getElementById('google-signin-btn').addEventListener('click', async () 
 });
 
 document.getElementById('signout-btn').addEventListener('click', () => signOutUser());
+document.getElementById('drawer-signout-btn').addEventListener('click', () => signOutUser());
 
 const getTokenUsage = httpsCallable(functions, 'getTokenUsage');
 document.getElementById('token-usage-btn').addEventListener('click', async () => {

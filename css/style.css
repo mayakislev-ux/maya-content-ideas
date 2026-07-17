@@ -538,6 +538,7 @@ body.focus-mode .chat-input-row { bottom: 0; }
 .menu-overlay[hidden] { display: none; }
 
 .close-menu-btn { display: none; }
+.drawer-signout-btn { display: none; }
 
 @media (max-width: 720px) {
   html { font-size: 18px; }
@@ -567,8 +568,13 @@ body.focus-mode .chat-input-row { bottom: 0; }
     line-height: 1.25;
     max-width: 100%;
   }
-  .mobile-menu-btn { display: inline-block; order: 2; }
-  .app-header #signout-btn { order: 3; }
+  /* The mobile-only bottom nav's "עוד" button already opens this exact
+     drawer, so the header hamburger and its stacked row are redundant
+     weight on top of an already-tall header - dropped in favor of the
+     bottom nav's entry point. Sign-out moves into the drawer itself
+     (see .drawer-signout-btn) instead of sitting in the header. */
+  .mobile-menu-btn { display: none; }
+  .app-header #signout-btn { display: none; }
   /* The theme toggle used to be a normal flex child, which meant it
      took up an entire extra row of its own once .app-header-inner
      switched to a column layout here - the header nearly doubled in
@@ -679,6 +685,21 @@ body.focus-mode .chat-input-row { bottom: 0; }
     width: 4px;
     border-radius: 999px;
     background: white;
+  }
+
+  .drawer-signout-btn {
+    display: block;
+    width: calc(100% - 2.4rem);
+    margin: 0.5rem 1.2rem 1.2rem;
+    padding: 0.8rem;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    color: rgba(255, 255, 255, 0.85);
+    font-family: inherit;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
   }
 
   .close-menu-btn {

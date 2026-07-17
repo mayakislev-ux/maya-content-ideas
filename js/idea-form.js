@@ -154,7 +154,7 @@ export function wireIdeaForm() {
       return;
     }
     if (stage && PERSUASION_STAGE_DEFINITIONS[stage]) {
-      openInfoModal('שלב שכנוע שנבחר', { [stage]: PERSUASION_STAGE_DEFINITIONS[stage] + ' לתשומת ליבך: אם תשני בהמשך את זווית ההנגשה לרעיון הזה, ייתכן שהשלב המתאים ישתנה בהתאם - כדאי לבדוק שוב.' });
+      openInfoModal('שלב שכנוע שנבחר', { [stage]: PERSUASION_STAGE_DEFINITIONS[stage] + ' לתשומת ליבך: אם תשנו בהמשך את זווית ההנגשה לרעיון הזה, ייתכן שהשלב המתאים ישתנה בהתאם - כדאי לבדוק שוב.' });
     }
   });
 

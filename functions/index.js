@@ -324,7 +324,7 @@ exports.generateWarmingPlan = onCall({ secrets: [anthropicApiKey, sheetsServiceA
   if (sheetResult && sheetResult.error) {
     throw new HttpsError(
       'failed-precondition',
-      'לא הצלחתי לקרוא את קובץ ה-Sheets - ודאי שההרשאות שלו מוגדרות ל"כל מי שיש לו את הקישור - צופה" (Anyone with the link - Viewer) ונסי שוב'
+      'לא הצלחתי לקרוא את קובץ ה-Sheets - ודאו שההרשאות שלו מוגדרות ל"כל מי שיש לו את הקישור - צופה" (Anyone with the link - Viewer) ונסו שוב'
     );
   }
   if (sheetResult && !sheetResult.error) {

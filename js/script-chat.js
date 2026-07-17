@@ -84,7 +84,7 @@ function addCopyScriptButton(bubble, summary) {
       showToast('התסריט הועתק ✅');
     } catch (err) {
       console.error('Clipboard write failed:', err);
-      showToast('לא הצלחתי להעתיק - נסי לסמן ולהעתיק ידנית');
+      showToast('לא הצלחתי להעתיק - נסו לסמן ולהעתיק ידנית');
     }
   });
   bubble.appendChild(btn);
