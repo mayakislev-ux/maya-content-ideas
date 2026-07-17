@@ -191,8 +191,8 @@ h1, h2, h3 {
 .field-hint { color: var(--muted); font-size: 0.85rem; margin: -0.5rem 0 0.9rem; }
 
 .app-header {
-  background: linear-gradient(135deg, var(--accent-strong, var(--accent)), var(--accent));
-  box-shadow: 0 6px 22px rgba(124, 58, 237, 0.28);
+  background: linear-gradient(135deg, #10163a 0%, #2a2361 55%, #d68fd6 100%);
+  box-shadow: 0 6px 22px rgba(16, 22, 58, 0.4);
   border-radius: 0 0 24px 24px;
   position: sticky;
   top: var(--offline-banner-height, 0px);
@@ -587,9 +587,10 @@ body.focus-mode .chat-input-row { bottom: 0; }
     align-items: flex-start;
     width: 100%;
     padding-inline: 1rem;
-    /* Leave room on the right for the absolutely-positioned theme
-       toggle so it never overlaps the title. */
+    /* Leave room on both sides for the absolutely-positioned theme
+       toggle and hamburger so neither ever overlaps the title. */
     padding-inline-end: 3.2rem;
+    padding-inline-start: 3.2rem;
   }
   .app-header h1 {
     order: 1;
@@ -597,19 +598,21 @@ body.focus-mode .chat-input-row { bottom: 0; }
     line-height: 1.25;
     max-width: 100%;
   }
-  /* The mobile-only bottom nav's "עוד" button already opens this exact
-     drawer, so the header hamburger and its stacked row are redundant
-     weight on top of an already-tall header - dropped in favor of the
-     bottom nav's entry point. Sign-out moves into the drawer itself
-     (see .drawer-signout-btn) instead of sitting in the header. */
-  .mobile-menu-btn { display: none; }
+  /* The bottom nav hides itself on the chat/script views (its own
+     fixed input row lives there instead) - that means the header
+     hamburger is the ONLY way to reach the drawer on exactly those two
+     views, so it must always be present, never conditionally dropped.
+     Positioned like the theme toggle (fixed corner, out of the column
+     flex flow) so it doesn't reintroduce the stacked-row height bug -
+     that bug was the theme toggle being a normal flex child, not this
+     button, so this button was never actually the cause of that report. */
+  .mobile-menu-btn {
+    display: inline-block;
+    position: absolute;
+    top: calc(1rem + env(safe-area-inset-top, 0px));
+    right: 1rem;
+  }
   .app-header #signout-btn { display: none; }
-  /* The theme toggle used to be a normal flex child, which meant it
-     took up an entire extra row of its own once .app-header-inner
-     switched to a column layout here - the header nearly doubled in
-     height because of one small button. Taking it out of the flex
-     flow entirely (fixed corner position) keeps the header the same
-     height it was before this button existed. */
   .theme-toggle-btn {
     position: absolute;
     top: calc(1rem + env(safe-area-inset-top, 0px));
