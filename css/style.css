@@ -185,6 +185,11 @@ h1, h2, h3 {
 
 .bottom-nav[hidden] { display: none !important; }
 
+body.focus-mode .app-header { display: none; }
+body.focus-mode .bottom-nav { display: none !important; }
+body.focus-mode .chat-toolbar { top: 0; }
+body.focus-mode .chat-input-row { bottom: 0; }
+
 .view {
   animation: viewIn 260ms var(--ease-snap);
 }
@@ -366,6 +371,20 @@ h1, h2, h3 {
 }
 
 .quick-chip:active { transform: scale(0.94); }
+
+.category-chip,
+.complete-idea-btn,
+.copy-idea-btn,
+.tab-btn,
+.goal-edit-btn {
+  transition: transform 150ms var(--ease-snap), background 150ms ease, color 150ms ease, border-color 150ms ease;
+}
+
+.category-chip:active,
+.complete-idea-btn:active,
+.copy-idea-btn:active {
+  transform: scale(0.9);
+}
 
 .quick-chip.active {
   background: var(--accent);

@@ -39,6 +39,7 @@ function celebrateMilestone(count) {
   seenMilestones.add(count);
   localStorage.setItem('idea-milestones-seen', JSON.stringify([...seenMilestones]));
   burstConfetti();
+  if (navigator.vibrate) navigator.vibrate([20, 40, 20]);
   showToast(`🎉 וואו, ${count} רעיונות במאגר שלך!`, { duration: 6000 });
 }
 
@@ -232,6 +233,7 @@ export function wireArchiveControls(onItemClick) {
     if (!title) return;
     quickAddInput.value = '';
     localStorage.removeItem(QUICK_ADD_DRAFT_KEY);
+    if (navigator.vibrate) navigator.vibrate(15);
     await addQuickIdea(title);
     showToast(QUICK_ADD_TOASTS[Math.floor(Math.random() * QUICK_ADD_TOASTS.length)]);
   };
@@ -364,6 +366,7 @@ function renderItem(idea, onItemClick, index = 0) {
     doneBtn.addEventListener('click', async (e) => {
       e.stopPropagation();
       inner.classList.add('archive-item-pop');
+      if (navigator.vibrate) navigator.vibrate(15);
       await markIdeaCompleted(idea.id);
     });
     header.appendChild(doneBtn);
@@ -455,9 +458,11 @@ function renderItem(idea, onItemClick, index = 0) {
 
     if (deltaX > 70) {
       inner.classList.add('archive-item-pop');
+      if (navigator.vibrate) navigator.vibrate(15);
       if (idea.completedAt) await uncompleteIdea(idea.id);
       else await markIdeaCompleted(idea.id);
     } else if (deltaX < -70) {
+      if (navigator.vibrate) navigator.vibrate(15);
       await deleteIdea(idea.id);
       showToast('הרעיון נמחק', { actionLabel: 'בטלו', onAction: () => restoreIdea(idea.id) });
     }

@@ -214,6 +214,11 @@ document.getElementById('bottomnav-more').addEventListener('click', () => {
   menuOverlay.hidden = !isOpen;
 });
 
+document.getElementById('focus-mode-btn').addEventListener('click', (e) => {
+  const isFocused = document.body.classList.toggle('focus-mode');
+  e.target.textContent = isFocused ? '✕ יציאה ממיקוד' : '🎯 מצב מיקוד';
+});
+
 let drawerTouchStartX = null;
 viewTabsNav.addEventListener('touchstart', (e) => {
   drawerTouchStartX = e.touches[0].clientX;

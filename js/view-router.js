@@ -20,6 +20,11 @@ export function showView(name) {
   document.getElementById('add-idea-fab').hidden = name !== 'archive';
   document.getElementById('embed-back-btn').hidden = !EMBED_VIEWS.includes(name);
   document.getElementById('bottom-nav').hidden = VIEWS_WITHOUT_BOTTOM_NAV.includes(name);
+  if (name !== 'script') {
+    document.body.classList.remove('focus-mode');
+    const focusBtn = document.getElementById('focus-mode-btn');
+    if (focusBtn) focusBtn.textContent = '🎯 מצב מיקוד';
+  }
   sessionStorage.setItem(LAST_VIEW_KEY, name);
 }
 
