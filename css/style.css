@@ -255,9 +255,15 @@ h1, h2, h3 {
 .field-hint { color: var(--muted); font-size: 0.85rem; margin: -0.5rem 0 0.9rem; }
 
 .app-header {
+  /* Fixed-pixel radius (not a percentage) - a percentage-sized radial
+     gradient scales to the element's own farthest-corner distance,
+     which balloons on a wide desktop header (the fuchsia ended up
+     covering nearly half the bar) while staying appropriately small
+     on a narrow mobile one. A fixed radius stays "a touch of color in
+     the corner" regardless of how wide the header actually is. */
   background:
-    radial-gradient(circle at 88% 100%, rgba(255, 46, 168, 0.85), transparent 55%),
-    radial-gradient(circle at 20% -10%, rgba(60, 80, 200, 0.6), transparent 60%),
+    radial-gradient(circle 260px at 100% 100%, rgba(255, 46, 168, 0.8), transparent 100%),
+    radial-gradient(circle 300px at 0% 0%, rgba(60, 80, 200, 0.5), transparent 100%),
     linear-gradient(135deg, #0b1240 0%, #10184e 100%);
   box-shadow: 0 6px 22px rgba(16, 22, 58, 0.4);
   border-radius: 0 0 24px 24px;
@@ -410,6 +416,12 @@ body.focus-mode .chat-input-row { bottom: 0; }
   border-radius: var(--card-radius);
   box-shadow: var(--card-shadow);
 }
+
+.archive-controls-section {
+  padding-bottom: 1rem;
+  margin-bottom: 0;
+}
+
 
 .quick-add-section {
   padding: 0.6rem 0.8rem;
@@ -654,7 +666,22 @@ body.focus-mode .chat-input-row { bottom: 0; }
   100% { opacity: 0; }
 }
 
-.view-tabs { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+/* Wrapping 9 tabs across multiple lines interacted badly with
+   justify-content:space-between on .app-header-inner - the signout
+   button and whichever tab overflowed would end up stacked in a
+   broken-looking column at the edge instead of a clean layout. A
+   single non-wrapping, horizontally-scrollable row (the same
+   established pattern as the mobile drawer's tab list) is predictable
+   regardless of how many tabs exist or how narrow the window gets. */
+.view-tabs {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  min-width: 0;
+  flex: 1 1 auto;
+  scrollbar-width: thin;
+}
 .view-tabs-scroll { display: contents; }
 
 .mobile-menu-btn {
