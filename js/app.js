@@ -47,6 +47,22 @@ document.getElementById('theme-toggle-btn').addEventListener('click', () => {
   applyTheme(next);
 });
 
+// A sticky header that never shrinks permanently eats a quarter of a
+// small phone screen for pure branding on every scroll frame. Collapsing
+// it to a slim bar once the page has actually scrolled gives that space
+// back without losing the "hamburger always reachable" guarantee that
+// stickiness exists for in the first place.
+const appHeaderEl = document.querySelector('.app-header');
+let headerScrollTicking = false;
+window.addEventListener('scroll', () => {
+  if (headerScrollTicking) return;
+  headerScrollTicking = true;
+  requestAnimationFrame(() => {
+    appHeaderEl.classList.toggle('scrolled', window.scrollY > 24);
+    headerScrollTicking = false;
+  });
+}, { passive: true });
+
 function setGreeting(displayName) {
   const hour = new Date().getHours();
   const firstName = displayName ? displayName.split(' ')[0] : '';

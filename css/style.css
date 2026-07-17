@@ -421,14 +421,22 @@ body.focus-mode .chat-input-row { bottom: 0; }
 .archive-controls-section {
   width: min(var(--content-max), 100% - 3rem);
   margin: 0.5rem auto;
+}
+
+.quick-add-section {
   padding: 1.4rem 1.5rem;
   background: var(--card-bg);
   border-radius: var(--card-radius);
   box-shadow: var(--card-shadow);
 }
 
+/* Deliberately NOT a boxed card like the quick-add pill above it - a
+   third stacked white card with its own radius/shadow was turning the
+   screen into a stack of segmented blocks instead of one continuous
+   flow straight into the list. This is just a control row sitting
+   directly on the page background. */
 .archive-controls-section {
-  padding-bottom: 1rem;
+  padding: 0.4rem 0.2rem 1rem;
   margin-bottom: 0;
 }
 
@@ -672,18 +680,28 @@ body.focus-mode .chat-input-row { bottom: 0; }
 }
 .view-tabs-scroll { display: contents; }
 
+/* Same circular treatment as .theme-toggle-btn (translucent white on
+   the header gradient) instead of a solid white pill with its own
+   label - a filled pill of a totally different shape/material read as
+   a sticker glued on top of the header rather than a control that
+   belongs to it. */
 .mobile-menu-btn {
   display: none;
-  background: white;
-  color: var(--accent);
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
   border: none;
-  padding: 0.6rem 1.1rem;
-  border-radius: 999px;
-  font-weight: bold;
-  font-size: 1rem;
+  font-size: 1.1rem;
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 50%;
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  align-items: center;
+  justify-content: center;
+  transition: background 150ms ease, transform 150ms var(--ease-snap);
 }
+
+.mobile-menu-btn:hover { background: rgba(255, 255, 255, 0.28); }
+.mobile-menu-btn:active { transform: scale(0.9); }
 
 .menu-overlay {
   display: none;
@@ -717,6 +735,8 @@ body.focus-mode .chat-input-row { bottom: 0; }
        the camera cutout. Push it down by the actual safe-area inset instead
        of guessing a fixed number. */
     padding-top: calc(1rem + env(safe-area-inset-top, 0px));
+    padding-bottom: 1rem;
+    transition: padding 200ms ease;
   }
   .app-header-inner {
     position: relative;
@@ -734,7 +754,28 @@ body.focus-mode .chat-input-row { bottom: 0; }
     font-size: clamp(1.6rem, 8vw, 2.2rem);
     line-height: 1.25;
     max-width: 100%;
+    transition: font-size 200ms ease;
   }
+  .app-logo, .app-avatar {
+    transition: width 200ms ease, height 200ms ease;
+  }
+
+  /* This screen is sticky (the hamburger needs to always be reachable,
+     even on chat/script where it's the only way to the drawer) - but a
+     sticky header that never shrinks permanently eats a quarter of a
+     small phone screen for pure branding, on every single scroll frame,
+     for as long as the list is open. Collapsing it to a slim bar once
+     the user has actually started scrolling (see the scroll listener in
+     app.js) gives back that space without losing the "always reachable"
+     guarantee. */
+  .app-header.scrolled {
+    padding-top: calc(0.5rem + env(safe-area-inset-top, 0px));
+    padding-bottom: 0.5rem;
+  }
+  .app-header.scrolled .greeting-line { display: none; }
+  .app-header.scrolled h1 { font-size: 1.05rem; }
+  .app-header.scrolled .app-logo,
+  .app-header.scrolled .app-avatar { width: 28px; height: 28px; }
   /* The bottom nav hides itself on the chat/script views (its own
      fixed input row lives there instead) - that means the header
      hamburger is the ONLY way to reach the drawer on exactly those two
@@ -744,16 +785,25 @@ body.focus-mode .chat-input-row { bottom: 0; }
      that bug was the theme toggle being a normal flex child, not this
      button, so this button was never actually the cause of that report. */
   .mobile-menu-btn {
-    display: inline-block;
+    display: flex;
     position: absolute;
     top: calc(1rem + env(safe-area-inset-top, 0px));
     right: 1rem;
+    transition: width 200ms ease, height 200ms ease, top 200ms ease, font-size 200ms ease;
+  }
+  .app-header.scrolled .mobile-menu-btn,
+  .app-header.scrolled .theme-toggle-btn {
+    width: 2rem;
+    height: 2rem;
+    font-size: 0.95rem;
+    top: calc(0.5rem + env(safe-area-inset-top, 0px));
   }
   .app-header #signout-btn { display: none; }
   .theme-toggle-btn {
     position: absolute;
     top: calc(1rem + env(safe-area-inset-top, 0px));
     left: 1rem;
+    transition: width 200ms ease, height 200ms ease, top 200ms ease, font-size 200ms ease, background 150ms ease, transform 150ms var(--ease-snap);
   }
 
   .bottom-nav {
@@ -892,23 +942,33 @@ body.focus-mode .chat-input-row { bottom: 0; }
 
   .menu-overlay:not([hidden]) { display: block; }
 
-  .quick-add-section, .archive-controls-section { width: auto; margin: 0.5rem 1rem; padding: 1rem; }
+  .quick-add-section, .archive-controls-section { width: auto; margin: 0.5rem 1rem; }
   .quick-add-section { padding: 0.5rem 0.7rem; }
+  .archive-controls-section { padding: 0.3rem 0.2rem 0.8rem; }
 
+  /* A bold gradient-filled pill here made "filter" (an occasional,
+     secondary action) the single most visually dominant control on the
+     whole screen - louder than adding an idea. Matching the muted,
+     outlined style of its neighbors (completed/add-idea) puts the
+     weighting back where it belongs. */
   .filters-toggle-btn {
     display: flex;
     align-items: center;
     gap: 0.3rem;
     flex-shrink: 0;
-    background: linear-gradient(135deg, var(--accent), var(--accent-2));
-    border: none;
+    background: none;
+    border: 1.5px solid var(--border-color);
     border-radius: 999px;
-    padding: 0.5rem 1rem;
-    font-size: 0.95rem;
-    font-weight: bold;
-    color: white;
+    padding: 0.4rem 0.9rem;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--muted);
     cursor: pointer;
-    box-shadow: 0 3px 10px rgba(38, 62, 168, 0.35);
+  }
+
+  .filters-toggle-btn.active {
+    border-color: var(--accent);
+    color: var(--accent);
   }
 
   .filters-toggle-btn::after {
@@ -973,8 +1033,6 @@ body.focus-mode .chat-input-row { bottom: 0; }
      clearance, leaving the last message hidden behind the input row
      + bottom nav stack. */
   .chat-messages.chat-messages { padding-bottom: calc(6rem + var(--bottom-nav-h, 70px)); }
-
-  #add-idea-fab.fab { display: none; }
 }
 
 .tab-btn {
@@ -1497,13 +1555,6 @@ textarea:focus-visible,
   padding: 0.25rem 0.7rem;
 }
 
-.add-idea-top-btn {
-  display: none;
-  margin-inline-start: auto;
-  padding: 0.5rem 1rem;
-  font-size: 0.9rem;
-}
-
 .draft-badge {
   display: inline-block;
   font-size: 0.75rem;
@@ -1516,7 +1567,6 @@ textarea:focus-visible,
 }
 
 .complete-idea-btn {
-  margin-right: 0.4rem;
   background: var(--surface);
   border: 1px solid var(--border-color);
   border-radius: 999px;
@@ -1582,10 +1632,17 @@ textarea:focus-visible,
   font-weight: bold;
 }
 
-.archive-item-meta {
+.archive-item-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.archive-item-date {
   font-size: 0.8rem;
   color: var(--muted);
-  margin-bottom: 0.5rem;
 }
 
 .archive-item-link {
@@ -1650,21 +1707,28 @@ textarea:focus-visible,
 
 .scroll-top-btn[hidden] { display: none; }
 
+/* This is a rarely-used fallback ("I have no idea"), not the point of
+   the screen - a full-width filled fuchsia block made it read as the
+   most important thing here, bigger and louder than any real idea
+   card below it. An inline outlined pill keeps it discoverable without
+   it stealing the spotlight from the actual content. */
 .random-btn {
-  display: block;
-  margin: 1rem auto 0;
-  background: var(--warm);
-  color: #211d2e;
-  font-weight: bold;
-  border: none;
+  display: flex;
+  width: fit-content;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.6rem auto 0;
+  background: none;
+  color: var(--accent-strong, var(--accent));
+  font-weight: 700;
+  border: 1.5px solid var(--accent);
   border-radius: 999px;
-  padding: 1rem 1.4rem;
-  transition: transform 150ms var(--ease-snap), box-shadow 150ms var(--ease-snap);
-  box-shadow: 0 4px 14px rgba(255, 46, 168, 0.35);
-  box-shadow: 0 4px 14px rgba(33, 29, 46, 0.3);
+  padding: 0.5rem 1rem;
+  transition: transform 150ms var(--ease-snap), background 150ms ease;
   cursor: pointer;
-  font-size: 1rem;
+  font-size: 0.9rem;
 }
+.random-btn:active { transform: scale(0.96); }
 .random-btn[hidden] { display: none; }
 
 .modal {

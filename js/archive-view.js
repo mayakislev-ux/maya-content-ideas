@@ -373,6 +373,21 @@ function renderItem(idea, onItemClick, index = 0) {
   });
   header.appendChild(copyBtn);
 
+  inner.appendChild(header);
+
+  // Date and the complete/undo action live together in one footer row,
+  // not mixed into the wrapping tag row above - that was leaving the
+  // done-button stranded on its own wrapped line with a large empty
+  // gap before the date, making it read as an unrelated leftover.
+  const footer = document.createElement('div');
+  footer.className = 'archive-item-footer';
+
+  const dateText = formatDate(idea);
+  const dateEl = document.createElement('span');
+  dateEl.className = 'archive-item-date';
+  dateEl.textContent = dateText;
+  footer.appendChild(dateEl);
+
   if (idea.completedAt) {
     const undoBtn = document.createElement('button');
     undoBtn.type = 'button';
@@ -382,7 +397,7 @@ function renderItem(idea, onItemClick, index = 0) {
       e.stopPropagation();
       await uncompleteIdea(idea.id);
     });
-    header.appendChild(undoBtn);
+    footer.appendChild(undoBtn);
   } else {
     const doneBtn = document.createElement('button');
     doneBtn.type = 'button';
@@ -394,18 +409,10 @@ function renderItem(idea, onItemClick, index = 0) {
       if (navigator.vibrate) navigator.vibrate(15);
       await markIdeaCompleted(idea.id);
     });
-    header.appendChild(doneBtn);
+    footer.appendChild(doneBtn);
   }
 
-  inner.appendChild(header);
-
-  const dateText = formatDate(idea);
-  if (dateText) {
-    const meta = document.createElement('div');
-    meta.className = 'archive-item-meta';
-    meta.textContent = dateText;
-    inner.appendChild(meta);
-  }
+  inner.appendChild(footer);
 
   if (idea.sourceLink) {
     const linkRow = document.createElement('div');
