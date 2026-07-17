@@ -232,6 +232,25 @@ exports.getTokenUsage = onCall({ region: 'us-central1' }, async (request) => {
   };
 });
 
+// Feedback is submitted fully anonymously (no ownerUid stored at all) and
+// firestore.rules blocks client-side reads entirely on purpose - the only
+// way to actually read it back is server-side, through this admin-only
+// function.
+exports.getFeedback = onCall({ region: 'us-central1' }, async (request) => {
+  if (!request.auth || request.auth.token.email !== ADMIN_EMAIL) {
+    throw new HttpsError('permission-denied', 'התכונה הזו זמינה כרגע רק למנהלת');
+  }
+  const snap = await db.collection('feedback').orderBy('createdAt', 'desc').limit(200).get();
+  const items = snap.docs.map((doc) => {
+    const d = doc.data();
+    return {
+      text: d.text || '',
+      createdAt: d.createdAt && d.createdAt.toDate ? d.createdAt.toDate().toISOString() : null,
+    };
+  });
+  return { items };
+});
+
 exports.checkIdea = onCall({ secrets: [anthropicApiKey], region: 'us-central1' }, async (request) => {
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'יש להתחבר כדי להשתמש בתכונה הזו');

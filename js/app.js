@@ -199,6 +199,29 @@ document.getElementById('token-usage-btn').addEventListener('click', async () =>
   }
 });
 
+const getFeedback = httpsCallable(functions, 'getFeedback');
+document.getElementById('view-feedback-btn').addEventListener('click', async () => {
+  const btn = document.getElementById('view-feedback-btn');
+  btn.disabled = true;
+  try {
+    const { data } = await getFeedback();
+    if (!data.items.length) {
+      alert('עדיין לא התקבלו חוות דעת.');
+      return;
+    }
+    const lines = data.items.map((item) => {
+      const dateText = item.createdAt ? new Date(item.createdAt).toLocaleDateString('he-IL') : '';
+      return `[${dateText}]\n${item.text}`;
+    });
+    alert(`${data.items.length} חוות דעת (מהחדש לישן):\n\n${lines.join('\n\n---\n\n')}`);
+  } catch (err) {
+    console.error('getFeedback failed:', err);
+    alert('משהו השתבש בשליפת חוות הדעת.');
+  } finally {
+    btn.disabled = false;
+  }
+});
+
 function openPolicyModal() {
   document.getElementById('policy-modal').hidden = false;
 }
@@ -413,6 +436,7 @@ onAuthChange(async (user) => {
   document.getElementById('bottomnav-script').hidden = user.email !== ADMIN_EMAIL;
   document.getElementById('send-notification-btn').hidden = user.email !== ADMIN_EMAIL;
   document.getElementById('token-usage-btn').hidden = user.email !== ADMIN_EMAIL;
+  document.getElementById('view-feedback-btn').hidden = user.email !== ADMIN_EMAIL;
 
   const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent);
   const isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
