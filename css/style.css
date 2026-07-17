@@ -191,7 +191,7 @@ h1, h2, h3 {
 .field-hint { color: var(--muted); font-size: 0.85rem; margin: -0.5rem 0 0.9rem; }
 
 .app-header {
-  background: linear-gradient(135deg, #10163a 0%, #2a2361 55%, #d68fd6 100%);
+  background: linear-gradient(135deg, #0b1240 0%, #0b1240 55%, #ff2ea8 100%);
   box-shadow: 0 6px 22px rgba(16, 22, 58, 0.4);
   border-radius: 0 0 24px 24px;
   position: sticky;
@@ -259,8 +259,6 @@ h1, h2, h3 {
 .bottom-nav { display: none; }
 
 .bottom-nav[hidden] { display: none !important; }
-
-.bottom-nav.keyboard-open { display: none !important; }
 
 body.focus-mode .app-header { display: none; }
 body.focus-mode .bottom-nav { display: none !important; }

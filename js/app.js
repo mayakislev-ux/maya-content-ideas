@@ -284,21 +284,6 @@ document.getElementById('focus-mode-btn').addEventListener('click', (e) => {
   e.target.textContent = isFocused ? '✕ יציאה ממיקוד' : '🎯 מצב מיקוד';
 });
 
-// Smart keyboard: the bottom nav has nothing to do while the on-screen
-// keyboard is open over a text field, and on some phones it ends up
-// floating awkwardly above the keyboard instead of staying pinned to the
-// real screen edge - just get it out of the way whenever a text field in
-// the main content (not a modal, which already has its own layout) is focused.
-const bottomNav = document.getElementById('bottom-nav');
-document.addEventListener('focusin', (e) => {
-  const isTextField = e.target.matches('input, textarea');
-  const inModal = e.target.closest('.modal');
-  if (isTextField && !inModal) bottomNav.classList.add('keyboard-open');
-});
-document.addEventListener('focusout', (e) => {
-  if (e.target.matches('input, textarea')) bottomNav.classList.remove('keyboard-open');
-});
-
 // Keyboard accessibility: Escape closes whatever overlay is currently open,
 // same as clicking outside it - previously only the mouse/touch path worked.
 document.addEventListener('keydown', (e) => {
