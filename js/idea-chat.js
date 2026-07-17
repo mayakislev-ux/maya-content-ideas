@@ -33,6 +33,15 @@ let draftProfile = {};
 let started = false;
 let originalIdeaText = null;
 let lastIdeaSummary = null;
+// Set when the chat was opened directly from an existing idea's "בדיקה
+// חוזרת" button - saveFinalIdea then updates that exact idea instead of
+// relying on fuzzy title-matching (or asking via a confirm() dialog) to
+// guess which idea the finished chat belongs to.
+let editingIdeaId = null;
+// The idea text to auto-send as the first message once the chat is ready
+// (profile loaded, onboarding done if needed) - set by
+// startIdeaChatWithExistingIdea, consumed by greetAndAskForIdea.
+let pendingIdeaToCheck = null;
 
 const RECOGNIZED_MARKER = '[[RECOGNIZED_EXCELLENT]]';
 const SUMMARY_MARKER = '[[IDEA_SUMMARY]]';
@@ -77,8 +86,18 @@ function extractIdeaSummary(reply) {
 }
 
 function saveFinalIdea(finalizedText) {
-  const match = findSimilarIdea(getCurrentIdeas(), originalIdeaText || '');
   showView('archive');
+
+  if (editingIdeaId) {
+    const idea = getCurrentIdeas().find((i) => i.id === editingIdeaId);
+    editingIdeaId = null;
+    if (idea) {
+      openEditModal(idea, finalizedText);
+      return;
+    }
+  }
+
+  const match = findSimilarIdea(getCurrentIdeas(), originalIdeaText || '');
   if (match) {
     const wantsUpdate = confirm(`זיהיתי שזה כנראה עדכון לרעיון הקיים "${match.title}" - לעדכן אותו?\n\n(ביטול ← יצירת רעיון חדש בנפרד)`);
     if (wantsUpdate) {
@@ -114,6 +133,8 @@ function resetChat() {
   history = [];
   originalIdeaText = null;
   lastIdeaSummary = null;
+  editingIdeaId = null;
+  pendingIdeaToCheck = null;
   messagesEl().innerHTML = '';
   greetAndAskForIdea();
 }
@@ -153,12 +174,61 @@ async function finishOnboarding() {
 }
 
 function greetAndAskForIdea() {
+  if (pendingIdeaToCheck) {
+    const text = pendingIdeaToCheck;
+    pendingIdeaToCheck = null;
+    sendIdeaMessage(text);
+    return;
+  }
   const registerVerb = profile.pronoun === 'אתה' ? 'רשום' : 'רשמי';
   addBubble(
     messagesEl(),
     `${profile.name}, ${registerVerb} לי מה הרעיון שלך ואדייק אותך.\n\n💡 טיפ: אם קשה לך להמציא רעיון מ-0 (וזה רוב האנשים!) - הכי מומלץ להתחיל משכפול רעיון וזווית הנגשה שראית ברשת ומצאו חן בעיניך. ככה לא צריך לשבור את הראש על רעיון חדש, לא צריך לחשוב לבד איך לצלם כי הפורמט כבר מוכח, וזה גם עוזר לפתח הבנה שיווקית של מה עובד. מדריך מלא לשכפול תוכן: https://docs.google.com/document/d/16E3UA0ukElNLcxHT_5C84XrWUZJ3iN0AVPD4BiNphx8/edit?tab=t.0`,
     'assistant'
   );
+}
+
+// Shared between the chat form's own submit handler and
+// startIdeaChatWithExistingIdea (which auto-sends an existing idea's text
+// as if the user had just typed and submitted it).
+async function sendIdeaMessage(text) {
+  const input = document.getElementById('chat-input');
+  input.disabled = true;
+  addBubble(messagesEl(), text, 'user');
+  if (navigator.vibrate) navigator.vibrate(15);
+  if (history.length === 0) originalIdeaText = text;
+  history.push({ role: 'user', content: text });
+  const thinkingBubble = addThinkingBubble(messagesEl());
+
+  try {
+    const result = await checkIdea({ messages: history, profile });
+    let reply = result.data.reply;
+    if (reply.startsWith(RECOGNIZED_MARKER)) {
+      reply = reply.slice(RECOGNIZED_MARKER.length).trimStart();
+      thinkingBubble.classList.add('chat-bubble-excellent');
+      playSuccessSound();
+      burstConfetti();
+    }
+    const { visibleReply, summary, idea, angle, story } = extractIdeaSummary(reply);
+    const specialLinks = [
+      { label: '🗺️ למפת הדרכים ליצירת תוכן', url: ROADMAP_URL, onClick: () => showView('roadmap') },
+    ];
+    setBubbleText(thinkingBubble, visibleReply, specialLinks);
+    if (summary) {
+      lastIdeaSummary = { idea, angle, story };
+      addPostIdeaButtons(thinkingBubble, summary, lastIdeaSummary);
+    } else if (visibleReply.includes(ROADMAP_URL)) {
+      addPostIdeaButtons(thinkingBubble, visibleReply.split(ROADMAP_URL)[0].trim(), lastIdeaSummary);
+    }
+    messagesEl().scrollTop = messagesEl().scrollHeight;
+    history.push({ role: 'assistant', content: visibleReply });
+  } catch (err) {
+    console.error('checkIdea failed:', err);
+    setBubbleText(thinkingBubble, 'משהו השתבש, נסו שוב בבקשה.');
+  } finally {
+    input.disabled = false;
+    input.focus();
+  }
 }
 
 function startOnboarding() {
@@ -186,6 +256,44 @@ export async function startIdeaChat() {
     loadingBubble.closest('.chat-row').remove();
     started = false;
     addBubble(messagesEl(), 'משהו השתבש בטעינת הצ\'אט (יכול לקרות אחרי שהאפליקציה הייתה ברקע זמן ארוך) - נסו לצאת וללחוץ שוב על "בדיקת רעיון", ואם זה חוזר - רעננו את הדף.', 'assistant');
+  }
+}
+
+// Opened directly from an existing idea's "בדיקה חוזרת" button in the
+// archive - starts a fresh chat, immediately sends that idea's own text as
+// the first message (no need to retype/copy-paste it), and marks it so
+// saveFinalIdea updates this exact idea instead of guessing by fuzzy title
+// matching or asking via a confirm() popup.
+export async function startIdeaChatWithExistingIdea(idea) {
+  document.getElementById('edit-profile-btn').hidden = !isAdmin();
+  document.getElementById('replay-tour-btn').hidden = !isAdmin();
+
+  history = [];
+  lastIdeaSummary = null;
+  editingIdeaId = idea.id;
+  pendingIdeaToCheck = idea.title;
+  messagesEl().innerHTML = '';
+
+  if (started && profile) {
+    greetAndAskForIdea();
+    return;
+  }
+
+  started = true;
+  const loadingBubble = addThinkingBubble(messagesEl());
+  try {
+    profile = await withTimeout(getProfile(), 10000);
+    loadingBubble.closest('.chat-row').remove();
+    if (profile) {
+      greetAndAskForIdea();
+    } else {
+      startOnboarding(); // finishOnboarding() -> greetAndAskForIdea() picks up pendingIdeaToCheck
+    }
+  } catch (err) {
+    console.error('startIdeaChatWithExistingIdea failed:', err);
+    loadingBubble.closest('.chat-row').remove();
+    started = false;
+    addBubble(messagesEl(), 'משהו השתבש בטעינת הצ\'אט - נסו לצאת וללחוץ שוב על "בדיקת רעיון".', 'assistant');
   }
 }
 
@@ -228,41 +336,6 @@ export function wireIdeaChat() {
       return;
     }
 
-    input.disabled = true;
-    addBubble(messagesEl(), text, 'user');
-    if (navigator.vibrate) navigator.vibrate(15);
-    if (history.length === 0) originalIdeaText = text;
-    history.push({ role: 'user', content: text });
-    const thinkingBubble = addThinkingBubble(messagesEl());
-
-    try {
-      const result = await checkIdea({ messages: history, profile });
-      let reply = result.data.reply;
-      if (reply.startsWith(RECOGNIZED_MARKER)) {
-        reply = reply.slice(RECOGNIZED_MARKER.length).trimStart();
-        thinkingBubble.classList.add('chat-bubble-excellent');
-        playSuccessSound();
-        burstConfetti();
-      }
-      const { visibleReply, summary, idea, angle, story } = extractIdeaSummary(reply);
-      const specialLinks = [
-        { label: '🗺️ למפת הדרכים ליצירת תוכן', url: ROADMAP_URL, onClick: () => showView('roadmap') },
-      ];
-      setBubbleText(thinkingBubble, visibleReply, specialLinks);
-      if (summary) {
-        lastIdeaSummary = { idea, angle, story };
-        addPostIdeaButtons(thinkingBubble, summary, lastIdeaSummary);
-      } else if (visibleReply.includes(ROADMAP_URL)) {
-        addPostIdeaButtons(thinkingBubble, visibleReply.split(ROADMAP_URL)[0].trim(), lastIdeaSummary);
-      }
-      messagesEl().scrollTop = messagesEl().scrollHeight;
-      history.push({ role: 'assistant', content: visibleReply });
-    } catch (err) {
-      console.error('checkIdea failed:', err);
-      setBubbleText(thinkingBubble, 'משהו השתבש, נסו שוב בבקשה.');
-    } finally {
-      input.disabled = false;
-      input.focus();
-    }
+    await sendIdeaMessage(text);
   });
 }

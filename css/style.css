@@ -1607,9 +1607,9 @@ textarea:focus-visible,
 
 .archive-item-header {
   /* Reserve room on the far side (physical left, since RTL text starts
-     from the right) for the copy button pinned there, so a long
-     2-line-clamped title never runs underneath it. */
-  padding-inline-end: 1.9rem;
+     from the right) for the two pinned corner icons (copy + recheck), so
+     a long 2-line-clamped title never runs underneath either of them. */
+  padding-inline-end: 3.3rem;
   margin-bottom: 0.5rem;
 }
 
@@ -1639,6 +1639,23 @@ textarea:focus-visible,
 }
 
 .copy-idea-btn:hover { background: var(--surface); }
+
+/* Same corner-icon treatment as .copy-idea-btn, one slot further out. */
+.recheck-idea-btn {
+  position: absolute;
+  top: 0.7rem;
+  left: 2.1rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0.2rem 0.4rem;
+  border-radius: 6px;
+  color: var(--muted);
+  text-shadow: none;
+}
+
+.recheck-idea-btn:hover { background: var(--surface); }
 
 .card-category-tag {
   display: inline-block;

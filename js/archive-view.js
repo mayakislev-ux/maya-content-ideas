@@ -4,6 +4,8 @@ import { addQuickIdea, markIdeaCompleted, uncompleteIdea, deleteIdea, restoreIde
 import { showToast } from './toast.js';
 import { animateCountUp } from './count-up.js';
 import { burstConfetti } from './confetti.js';
+import { showView } from './view-router.js';
+import { startIdeaChatWithExistingIdea } from './idea-chat.js';
 
 const QUICK_ADD_TOASTS = [
   '📝 הרעיון נשמר כטיוטה - אפשר להשלים אותו בהמשך',
@@ -353,6 +355,22 @@ function renderItem(idea, onItemClick, index = 0) {
     });
   });
   inner.appendChild(copyBtn);
+
+  // Sends this exact idea straight into the "בדיקת רעיון" chat instead of
+  // needing to retype/copy-paste it there manually - and remembers which
+  // idea it came from, so finishing the chat updates this one directly
+  // instead of guessing by fuzzy title matching.
+  const recheckBtn = document.createElement('button');
+  recheckBtn.type = 'button';
+  recheckBtn.className = 'recheck-idea-btn';
+  recheckBtn.textContent = '🔍';
+  recheckBtn.setAttribute('aria-label', 'בדיקת הרעיון הזה מחדש בצ\'אט');
+  recheckBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    showView('chat');
+    startIdeaChatWithExistingIdea(idea);
+  });
+  inner.appendChild(recheckBtn);
 
   // Three genuinely different axes (what kind of idea / how strong / who
   // it's for) were all rendered as interchangeable pills - the rating had
