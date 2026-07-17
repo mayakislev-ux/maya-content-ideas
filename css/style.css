@@ -50,6 +50,35 @@
   }
 }
 
+/* Manual light/dark toggle - wins over the OS preference in both
+   directions once the person has actually chosen, instead of only
+   ever following prefers-color-scheme. */
+:root[data-theme="dark"] {
+  --bg: #17141f;
+  --surface: #211d2c;
+  --card-bg: #262233;
+  --border-color: #3a3450;
+  --text: #f1eef8;
+  --muted: #a89fc0;
+  --accent-2: #c4aefc;
+  --accent-strong: #c4aefc;
+  --accent-tint: #2e2740;
+  --warm-tint: #3a2c14;
+}
+
+:root[data-theme="light"] {
+  --bg: #faf7ff;
+  --surface: #f4f2fa;
+  --card-bg: #ffffff;
+  --border-color: #ddd8ee;
+  --text: #211d2e;
+  --muted: #706b85;
+  --accent-2: #a78bfa;
+  --accent-strong: #5b21b6;
+  --accent-tint: #f1ebfd;
+  --warm-tint: #fef1de;
+}
+
 * { box-sizing: border-box; }
 
 @media (prefers-reduced-motion: reduce) {
@@ -81,6 +110,22 @@ body {
       var(--bg);
     background-attachment: fixed;
   }
+}
+
+:root[data-theme="dark"] body {
+  background:
+    radial-gradient(circle at 12% 0%, rgba(245, 148, 31, 0.07), transparent 40%),
+    radial-gradient(circle at 90% 8%, rgba(167, 139, 250, 0.12), transparent 45%),
+    var(--bg);
+  background-attachment: fixed;
+}
+
+:root[data-theme="light"] body {
+  background:
+    radial-gradient(circle at 12% 0%, rgba(245, 148, 31, 0.14), transparent 40%),
+    radial-gradient(circle at 90% 8%, rgba(124, 58, 237, 0.16), transparent 50%),
+    var(--bg);
+  background-attachment: fixed;
 }
 
 h1, h2, h3 {
@@ -174,6 +219,36 @@ h1, h2, h3 {
   color: rgba(255, 255, 255, 0.85);
   margin-bottom: 0.15rem;
 }
+
+.app-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.app-logo {
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+}
+
+.theme-toggle-btn {
+  background: rgba(255, 255, 255, 0.15);
+  border: none;
+  color: white;
+  font-size: 1.1rem;
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 50%;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 150ms ease, transform 150ms var(--ease-snap);
+}
+
+.theme-toggle-btn:hover { background: rgba(255, 255, 255, 0.28); }
+.theme-toggle-btn:active { transform: scale(0.9); }
 
 .app-header .btn-text {
   color: rgba(255, 255, 255, 0.85);

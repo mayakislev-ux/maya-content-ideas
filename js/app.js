@@ -22,6 +22,31 @@ import {
 import { wireNotificationAdmin } from './notification-admin.js';
 import { showIosInstallOverlayIfNeeded } from './ios-install-overlay.js';
 
+const THEME_KEY = 'theme-preference';
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  const btn = document.getElementById('theme-toggle-btn');
+  if (btn) btn.textContent = theme === 'dark' ? '☀️' : '🌙';
+}
+
+const savedTheme = localStorage.getItem(THEME_KEY);
+if (savedTheme === 'dark' || savedTheme === 'light') {
+  applyTheme(savedTheme);
+} else {
+  const effective = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  const btn = document.getElementById('theme-toggle-btn');
+  if (btn) btn.textContent = effective === 'dark' ? '☀️' : '🌙';
+}
+
+document.getElementById('theme-toggle-btn').addEventListener('click', () => {
+  const current = document.documentElement.getAttribute('data-theme')
+    || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  const next = current === 'dark' ? 'light' : 'dark';
+  localStorage.setItem(THEME_KEY, next);
+  applyTheme(next);
+});
+
 function setGreeting(displayName) {
   const hour = new Date().getHours();
   const firstName = displayName ? displayName.split(' ')[0] : '';

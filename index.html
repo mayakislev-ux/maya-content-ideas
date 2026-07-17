@@ -31,10 +31,17 @@
 <div id="app-screen" class="screen" hidden>
   <header class="app-header">
     <div class="app-header-inner">
-      <div>
-        <span class="greeting-line" id="greeting-line"></span>
-        <h1>המוח השיווקי שנמצא איתך 24/7</h1>
+      <div class="app-brand">
+        <svg class="app-logo" viewBox="0 0 48 48" aria-hidden="true">
+          <circle cx="24" cy="24" r="23" fill="rgba(255,255,255,0.18)" stroke="rgba(255,255,255,0.55)" stroke-width="1.5"/>
+          <text x="24" y="32" text-anchor="middle" font-family="'Ploni Black', sans-serif" font-size="22" font-weight="900" fill="#fff">מ</text>
+        </svg>
+        <div>
+          <span class="greeting-line" id="greeting-line"></span>
+          <h1>המוח השיווקי שנמצא איתך 24/7</h1>
+        </div>
       </div>
+      <button type="button" id="theme-toggle-btn" class="theme-toggle-btn" aria-label="החלפת מצב תצוגה">🌙</button>
       <button type="button" id="mobile-menu-btn" class="mobile-menu-btn" aria-label="פתיחת תפריט">☰ תפריט</button>
       <nav class="view-tabs" id="view-tabs">
         <button type="button" id="close-menu-btn" class="close-menu-btn" aria-label="סגירת תפריט">✕</button>
