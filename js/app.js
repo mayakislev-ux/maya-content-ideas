@@ -10,6 +10,7 @@ import { wireIdeaChat, startIdeaChat } from './idea-chat.js';
 import { wireScriptChat, startScriptChat } from './script-chat.js';
 import { wireFeedbackForm } from './feedback.js';
 import { wireWarmingView } from './warming.js';
+import { wireContentPlanView } from './content-plan.js';
 import { showView, getLastView } from './view-router.js';
 import { showToast } from './toast.js';
 import { hasCompletedTour, showWelcomeTour } from './welcome-tour.js';
@@ -363,6 +364,7 @@ wireIdeaChat();
 wireScriptChat();
 wireFeedbackForm();
 wireWarmingView();
+wireContentPlanView();
 wireNotificationAdmin();
 
 document.getElementById('enable-notifications-btn').addEventListener('click', async () => {

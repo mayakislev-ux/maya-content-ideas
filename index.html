@@ -365,8 +365,38 @@
     <iframe src="https://mayakislev-ux.github.io/lehiyot-brand/מפת-דרכים-ליצירת-תוכן.html" class="embed-frame" title="מפת הדרכים ליצירת תוכן"></iframe>
   </main>
 
-  <main id="content-plan-view" class="view embed-view" hidden>
-    <iframe src="https://mayakislev-ux.github.io/lehiyot-brand/מפת-דרכים-לתכנית-תוכן.html" class="embed-frame" title="תכנית תוכן"></iframe>
+  <main id="content-plan-view" class="view warming-view content-plan-view" hidden>
+    <iframe src="https://mayakislev-ux.github.io/lehiyot-brand/מפת-דרכים-לתכנית-תוכן.html" class="embed-frame content-plan-embed-frame" title="תכנית תוכן"></iframe>
+
+    <div class="warming-header-row">
+      <h2>📅 בניית תכנית תוכן</h2>
+      <button type="button" id="content-plan-saved-toggle-btn" class="btn-text">📂 תוכניות שמורות</button>
+    </div>
+
+    <p id="content-plan-gate-msg" class="content-plan-gate-msg" hidden></p>
+
+    <div id="content-plan-saved-list" class="warming-saved-list" hidden></div>
+
+    <form id="content-plan-form" class="warming-form" hidden>
+      <label>כמה שבועות לתכנן?
+        <input id="content-plan-weeks" type="number" min="1" max="8" value="4">
+      </label>
+      <label>כמה פריטי תוכן כתובים בשבוע (מתוך הרעיונות באפליקציה)?
+        <input id="content-plan-posts-per-week" type="number" min="1" max="14" value="3">
+      </label>
+      <label>יש לך תוכן חי (לייבים/הופעות/פודקאסטים) בתקופה הזו שלא כתוב באפליקציה? ספרי לי בקצרה מתי ומה, ואשבץ את זה גם בתכנית (אופציונלי)
+        <textarea id="content-plan-live-note" rows="3" placeholder="לדוגמה: לייב אינסטגרם כל יום שלישי, פודקאסט אורח פעם בחודש..."></textarea>
+      </label>
+      <p id="content-plan-error" class="error-text" role="alert" hidden></p>
+      <button type="submit" class="btn-primary" id="content-plan-generate-btn">📅 בניית תכנית תוכן</button>
+    </form>
+
+    <div id="content-plan-loading" class="warming-loading" hidden>
+      <div class="warming-spinner">🕐</div>
+      <div>בונה תכנית תוכן...</div>
+    </div>
+    <div id="content-plan-result" class="warming-result"></div>
+    <button type="button" id="content-plan-save-btn" class="btn-primary warming-save-btn" hidden>💾 שמירת התכנית</button>
   </main>
 
   <main id="warming-view" class="view warming-view" hidden>

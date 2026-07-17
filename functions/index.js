@@ -5,6 +5,7 @@ const webpush = require('web-push');
 const { buildSystemPrompt } = require('./system-prompt');
 const { buildScriptSystemPrompt } = require('./script-system-prompt');
 const { buildOngoingWarmingPrompt, buildPresaleWarmingPrompt } = require('./warming-system-prompt');
+const { buildContentPlanPrompt } = require('./content-plan-system-prompt');
 const { fetchSheetsContent, sheetsServiceAccountKey } = require('./sheets-content');
 const { CATEGORIES, PERSUASION_STAGES, CATEGORY_DEFINITIONS, PERSUASION_STAGE_DEFINITIONS } = require('./ideas-constants');
 
@@ -20,6 +21,7 @@ const DAILY_LIMITS = {
   checkIdea: 60,
   classifyIdea: 40,
   generateWarmingPlan: 20,
+  generateContentPlan: 20,
   writeScript: 60,
 };
 
@@ -360,6 +362,50 @@ exports.generateWarmingPlan = onCall({ secrets: [anthropicApiKey, sheetsServiceA
   }
 
   return { plan: { week1: ongoing.week1, week2: ongoing.week2, week3: presale.week3 } };
+});
+
+exports.generateContentPlan = onCall({ secrets: [anthropicApiKey], region: 'us-central1', timeoutSeconds: 120 }, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'יש להתחבר כדי להשתמש בתכונה הזו');
+  }
+  await enforceRateLimit(request.auth.uid, 'generateContentPlan');
+
+  const ideas = (request.data && request.data.ideas) || [];
+  const weeksCount = Number(request.data && request.data.weeksCount) || 4;
+  const postsPerWeek = Number(request.data && request.data.postsPerWeek) || 3;
+  const liveContentNote = (request.data && request.data.liveContentNote) || '';
+
+  if (!Array.isArray(ideas) || ideas.length === 0) {
+    throw new HttpsError('invalid-argument', 'צריך לפחות רעיון אחד עם קטגוריה כדי לבנות תכנית תוכן');
+  }
+  if (weeksCount < 1 || weeksCount > 8 || postsPerWeek < 1 || postsPerWeek > 14) {
+    throw new HttpsError('invalid-argument', 'מספר שבועות/פריטים לא סביר');
+  }
+
+  const prompt = buildContentPlanPrompt({ weeksCount, postsPerWeek, liveContentNote, ideas: ideas.slice(0, 60) });
+
+  const data = await callAnthropic(
+    anthropicApiKey.value(),
+    { model: 'claude-haiku-4-5-20251001', max_tokens: 4096, messages: [{ role: 'user', content: prompt }] },
+    'generateContentPlan'
+  );
+
+  const text = (data.content && data.content[0] && data.content[0].text) || '{}';
+  let parsed;
+  try {
+    const match = text.match(/\{[\s\S]*\}/);
+    parsed = JSON.parse(match ? match[0] : text);
+  } catch (err) {
+    console.error('Failed to parse generateContentPlan response:', text);
+    throw new HttpsError('internal', 'לא הצלחתי לבנות את התכנית, נסו שוב');
+  }
+
+  if (!Array.isArray(parsed.weeks)) {
+    console.error('generateContentPlan response missing weeks:', JSON.stringify(parsed));
+    throw new HttpsError('internal', 'התקבלה תשובה לא תקינה, נסו שוב');
+  }
+
+  return { plan: { weeks: parsed.weeks } };
 });
 
 exports.sendNotification = onCall({ secrets: [vapidPrivateKey], region: 'us-central1' }, async (request) => {

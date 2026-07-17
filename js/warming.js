@@ -53,7 +53,7 @@ function autosaveCheckboxChange() {
   });
 }
 
-function makeEditable(el, onCommit) {
+export function makeEditable(el, onCommit) {
   el.contentEditable = 'true';
   el.classList.add('warming-editable');
   el.addEventListener('blur', () => onCommit(el.textContent.trim()));

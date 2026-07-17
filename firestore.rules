@@ -27,6 +27,10 @@ service cloud.firestore {
       allow read, update, delete: if isAdmin() && request.auth.uid == resource.data.ownerUid;
       allow create: if isAdmin() && request.auth.uid == request.resource.data.ownerUid;
     }
+    match /contentPlans/{planId} {
+      allow read, update, delete: if isAllowed() && request.auth.uid == resource.data.ownerUid;
+      allow create: if isAllowed() && request.auth.uid == request.resource.data.ownerUid;
+    }
     match /pushSubscriptions/{uid} {
       allow read, write: if isAllowed() && request.auth.uid == uid;
     }

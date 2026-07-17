@@ -2489,6 +2489,52 @@ textarea:focus-visible,
   gap: 0.8rem;
 }
 
+/* content-plan-view keeps the .warming-view column layout (same
+   max-width/padding as the warming builder) so the whole screen reads
+   as one flow instead of a full-bleed iframe with unrelated content
+   bolted on below it. */
+.content-plan-embed-frame {
+  width: 100%;
+  height: 42vh;
+  min-height: 320px;
+  border: none;
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+  margin-bottom: 1.5rem;
+  display: block;
+}
+
+.content-plan-gate-msg {
+  background: var(--warm-tint, var(--surface));
+  border-radius: var(--card-radius);
+  padding: 1rem 1.2rem;
+  line-height: 1.6;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+}
+
+.content-plan-gate-msg[hidden] { display: none; }
+
+.content-plan-live-tag {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: var(--accent-tint);
+  color: var(--accent-strong, var(--accent));
+  margin-bottom: 0.2rem;
+}
+
+.content-plan-week-note {
+  margin: 0 1.3rem 0.6rem;
+  padding: 0.6rem 0.8rem;
+  background: var(--warm-tint, var(--surface));
+  border-radius: 10px;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
 .warming-block {
   background: var(--card-bg);
   border-radius: 12px;
