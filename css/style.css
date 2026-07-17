@@ -1581,16 +1581,15 @@ textarea:focus-visible,
 .complete-idea-btn:hover { background: var(--accent-tint, var(--surface)); }
 
 .archive-item-header {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  margin-bottom: 0.4rem;
+  /* Reserve room on the far side (physical left, since RTL text starts
+     from the right) for the copy button pinned there, so a long
+     2-line-clamped title never runs underneath it. */
+  padding-inline-end: 1.9rem;
+  margin-bottom: 0.5rem;
 }
 
 .archive-item-header strong {
   font-size: 0.95rem;
-  flex: 1 1 100%;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -1598,8 +1597,12 @@ textarea:focus-visible,
   line-height: 1.35;
 }
 
+/* Pinned to a corner as a utility action, not inline with the tag row -
+   it was forcing that row to wrap in ways that stranded other tags. */
 .copy-idea-btn {
-  margin-left: auto;
+  position: absolute;
+  top: 0.7rem;
+  left: 0.6rem;
   background: none;
   border: none;
   cursor: pointer;
@@ -1630,6 +1633,44 @@ textarea:focus-visible,
   background: var(--warm);
   color: #211d2e;
   font-weight: bold;
+}
+
+.archive-item-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.3rem;
+}
+
+/* Audience scope used to reuse .card-category-tag - visually
+   identical to the actual category, so it read as "a second category"
+   instead of a separate axis (who it's for, not what kind of idea it
+   is). An outlined pill instead of a filled one marks it as secondary,
+   supporting information. */
+.audience-tag {
+  display: inline-block;
+  font-size: 0.75rem;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  background: none;
+  border: 1px solid var(--border-color);
+  color: var(--muted);
+  font-weight: 600;
+}
+
+/* The rating had no container at all before - bare text floating in
+   the tag row, easy to miss and impossible to tell apart from a
+   caption. A third, distinct shape (soft warm tint, no border) makes
+   it read as "how strong" at a glance, same as the other two axes. */
+.rating-tag {
+  display: inline-block;
+  font-size: 0.75rem;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  background: var(--warm-tint, var(--surface));
+  color: var(--text);
+  font-weight: 700;
 }
 
 .archive-item-footer {

@@ -334,31 +334,11 @@ function renderItem(idea, onItemClick, index = 0) {
   const title = document.createElement('strong');
   title.textContent = idea.title;
   header.appendChild(title);
+  inner.appendChild(header);
 
-  if (idea.category) {
-    const tag = document.createElement('span');
-    tag.className = 'card-category-tag';
-    tag.textContent = `${categoryIcon(idea.category)} ${idea.category}`;
-    header.appendChild(tag);
-  } else {
-    const draftTag = document.createElement('span');
-    draftTag.className = 'draft-badge';
-    draftTag.textContent = '📝 טיוטה - להשלמה';
-    header.appendChild(draftTag);
-  }
-
-  if (idea.rating) {
-    const ratingEl = document.createElement('span');
-    ratingEl.textContent = idea.rating;
-    header.appendChild(ratingEl);
-  }
-  if (idea.audienceScope) {
-    const scopeEl = document.createElement('span');
-    scopeEl.className = idea.audienceScope === 'רחב' ? 'viral-badge' : 'card-category-tag';
-    scopeEl.textContent = idea.audienceScope === 'רחב' ? '🔥 קהל רחב' : `קהל ${idea.audienceScope}`;
-    header.appendChild(scopeEl);
-  }
-
+  // Pinned to a corner instead of sitting inline in the flex-wrapping tag
+  // row - it's a utility action, not "another tag", and inline it forced
+  // the row to wrap in ways that stranded other tags.
   const copyBtn = document.createElement('button');
   copyBtn.type = 'button';
   copyBtn.className = 'copy-idea-btn';
@@ -371,9 +351,46 @@ function renderItem(idea, onItemClick, index = 0) {
       setTimeout(() => (copyBtn.textContent = '📋'), 1500);
     });
   });
-  header.appendChild(copyBtn);
+  inner.appendChild(copyBtn);
 
-  inner.appendChild(header);
+  // Three genuinely different axes (what kind of idea / how strong / who
+  // it's for) were all rendered as interchangeable pills - the rating had
+  // no styling at all (bare floating text) and audience-scope reused the
+  // exact same class as category, so it visually read as "another
+  // category" instead of a separate piece of information. Each axis now
+  // gets its own consistent visual treatment, always in the same order,
+  // so the shape/color tells you which kind of tag it is before you even
+  // read the word.
+  const tagsRow = document.createElement('div');
+  tagsRow.className = 'archive-item-tags';
+
+  if (idea.category) {
+    const tag = document.createElement('span');
+    tag.className = 'card-category-tag';
+    tag.textContent = `${categoryIcon(idea.category)} ${idea.category}`;
+    tagsRow.appendChild(tag);
+  } else {
+    const draftTag = document.createElement('span');
+    draftTag.className = 'draft-badge';
+    draftTag.textContent = '📝 טיוטה - להשלמה';
+    tagsRow.appendChild(draftTag);
+  }
+
+  if (idea.audienceScope) {
+    const scopeEl = document.createElement('span');
+    scopeEl.className = idea.audienceScope === 'רחב' ? 'viral-badge' : 'audience-tag';
+    scopeEl.textContent = idea.audienceScope === 'רחב' ? '🔥 קהל רחב' : `קהל ${idea.audienceScope}`;
+    tagsRow.appendChild(scopeEl);
+  }
+
+  if (idea.rating) {
+    const ratingEl = document.createElement('span');
+    ratingEl.className = 'rating-tag';
+    ratingEl.textContent = idea.rating;
+    tagsRow.appendChild(ratingEl);
+  }
+
+  if (tagsRow.children.length) inner.appendChild(tagsRow);
 
   // Date and the complete/undo action live together in one footer row,
   // not mixed into the wrapping tag row above - that was leaving the
