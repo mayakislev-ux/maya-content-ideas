@@ -49,6 +49,7 @@
         <button type="button" id="close-menu-btn" class="close-menu-btn" aria-label="סגירת תפריט">✕</button>
         <div class="view-tabs-scroll" id="view-tabs-scroll">
           <button id="tab-archive" class="tab-btn active">הרעיונות שלי</button>
+          <button id="tab-progress" class="tab-btn">📊 ההתקדמות שלי</button>
           <button id="tab-chat" class="tab-btn">בדיקת רעיון</button>
           <button id="tab-guide" class="tab-btn">איך למצוא רעיון</button>
           <button id="tab-inspiration" class="tab-btn">מאגר להשראה</button>
@@ -85,19 +86,6 @@
   </nav>
 
   <main id="archive-view" class="view">
-    <section class="hero-section">
-      <span class="hero-greet" id="hero-greet"></span>
-      <div class="hero-ring-block">
-        <button type="button" id="add-idea-top-btn" class="hero-ring-wrap" aria-label="הוספת רעיון מלא">
-          <span class="hero-ring-plus">+</span>
-          <span id="hero-ring-svg-mount"></span>
-        </button>
-        <span class="hero-ring-hint">רעיון מלא +</span>
-      </div>
-    </section>
-
-    <div class="stat-scroll" id="stat-scroll"></div>
-
     <section class="quick-add-section">
       <div class="quick-add-box">
         <textarea id="quick-add-input" enterkeyhint="done" placeholder="רישום רעיון מהיר לטיוטה, השלמה בהמשך..." rows="1"></textarea>
@@ -110,6 +98,7 @@
       <div class="section-row">
         <span class="section-title">הרעיונות שלי · <span id="idea-count"></span></span>
         <div class="section-row-actions">
+          <button type="button" id="add-idea-top-btn" class="btn-text add-idea-full-btn">➕ רעיון מלא</button>
           <button type="button" id="completed-toggle-btn" class="btn-text">📦 שבוצעו</button>
           <button type="button" id="filters-toggle-btn" class="filters-toggle-btn">🔍 סינון</button>
         </div>
@@ -168,6 +157,20 @@
       <li class="archive-item skeleton-card" aria-hidden="true"></li>
       <li class="archive-item skeleton-card" aria-hidden="true"></li>
     </ul>
+  </main>
+
+  <main id="progress-view" class="view progress-view" hidden>
+    <h2 class="progress-view-title">📊 ההתקדמות שלי</h2>
+    <section class="hero-section">
+      <span class="hero-greet" id="hero-greet"></span>
+      <div class="hero-ring-block">
+        <div class="hero-ring-wrap">
+          <span id="hero-ring-svg-mount"></span>
+        </div>
+      </div>
+    </section>
+
+    <div class="stat-scroll" id="stat-scroll"></div>
   </main>
 
   <main id="chat-view" class="view" hidden>
