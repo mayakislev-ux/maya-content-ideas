@@ -114,6 +114,7 @@ async function runAiClassification() {
 export function wireIdeaForm() {
   wireInfoModal();
   document.getElementById('cancel-idea-btn').addEventListener('click', closeModal);
+  document.getElementById('idea-modal-close-x').addEventListener('click', closeModal);
 
   const ideaModal = document.getElementById('idea-modal');
   ideaModal.addEventListener('click', (e) => {

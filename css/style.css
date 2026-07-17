@@ -425,6 +425,13 @@ body.focus-mode .chat-input-row { bottom: 0; }
   z-index: 1;
 }
 
+.hero-ring-block { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.hero-ring-hint {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
 /* ---- horizontal-scroll stat row (was: stacked cards) ---- */
 .stat-scroll {
   display: flex;
@@ -1507,7 +1514,33 @@ textarea:focus-visible,
   max-width: 480px;
   margin-bottom: 2rem;
   box-shadow: 0 16px 48px rgba(38, 62, 168, 0.22);
+  position: relative;
 }
+
+/* A guaranteed, always-reachable way out of a modal regardless of scroll
+   position or form length - position:fixed relative to the actual
+   viewport (not the modal's own scrolling content box), so it can never
+   scroll out of reach no matter how long the form is or how far down
+   someone has scrolled. */
+.modal-close-x {
+  position: fixed;
+  top: calc(1rem + env(safe-area-inset-top, 0px));
+  left: 1rem;
+  width: 2.4rem;
+  height: 2.4rem;
+  border: none;
+  border-radius: 50%;
+  background: var(--card-bg);
+  color: var(--muted);
+  font-size: 1.1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba(38, 62, 168, 0.2);
+  z-index: 60;
+}
+.modal-close-x:hover { background: var(--accent-tint); color: var(--accent-strong); }
 
 /* Full-screen takeover on mobile instead of a centered floating card - a
    centered card sized by 100vh/visualViewport math kept getting reported as

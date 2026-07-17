@@ -87,10 +87,13 @@
   <main id="archive-view" class="view">
     <section class="hero-section">
       <span class="hero-greet" id="hero-greet"></span>
-      <button type="button" id="add-idea-top-btn" class="hero-ring-wrap" aria-label="הוספת רעיון מלא">
-        <span class="hero-ring-plus">+</span>
-        <span id="hero-ring-svg-mount"></span>
-      </button>
+      <div class="hero-ring-block">
+        <button type="button" id="add-idea-top-btn" class="hero-ring-wrap" aria-label="הוספת רעיון מלא">
+          <span class="hero-ring-plus">+</span>
+          <span id="hero-ring-svg-mount"></span>
+        </button>
+        <span class="hero-ring-hint">רעיון מלא +</span>
+      </div>
     </section>
 
     <div class="stat-scroll" id="stat-scroll"></div>
@@ -408,6 +411,19 @@
   </footer>
 </div>
 
+<div id="goal-edit-modal" class="modal" hidden>
+  <div class="modal-content">
+    <h2>🎯 יעד שבועי</h2>
+    <label>כמה רעיונות לקבוע כיעד לשבוע?
+      <input id="goal-edit-input" type="number" min="1" max="99" inputmode="numeric">
+    </label>
+    <div class="modal-actions">
+      <button type="button" id="goal-edit-cancel-btn" class="btn-text">ביטול</button>
+      <button type="button" id="goal-edit-save-btn" class="btn-primary">שמירה</button>
+    </div>
+  </div>
+</div>
+
 <div id="about-modal" class="modal" hidden>
   <div class="modal-content">
     <h2>ℹ️ אודות המוח השיווקי</h2>
@@ -441,6 +457,7 @@
 
 <div id="idea-modal" class="modal" hidden>
   <div class="modal-content idea-modal-content">
+    <button type="button" id="idea-modal-close-x" class="modal-close-x" aria-label="סגירה">✕</button>
     <h2 id="modal-title">רעיון חדש</h2>
     <form id="idea-form">
 

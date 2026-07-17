@@ -133,13 +133,37 @@ function renderStatScroll() {
   `;
 
   document.getElementById('goal-edit-btn').addEventListener('click', () => {
-    const input = prompt('כמה רעיונות לקבוע כיעד שבועי?', String(goal));
-    const parsed = Number(input);
+    const modal = document.getElementById('goal-edit-modal');
+    document.getElementById('goal-edit-input').value = String(goal);
+    modal.hidden = false;
+    document.getElementById('goal-edit-input').focus();
+  });
+}
+
+export function wireGoalEditModal() {
+  const modal = document.getElementById('goal-edit-modal');
+  const input = document.getElementById('goal-edit-input');
+  const save = () => {
+    const parsed = Number(input.value);
     if (Number.isFinite(parsed) && parsed > 0) {
       localStorage.setItem(WEEKLY_GOAL_KEY, String(Math.round(parsed)));
+      modal.hidden = true;
       renderHero();
       renderStatScroll();
     }
+  };
+  document.getElementById('goal-edit-save-btn').addEventListener('click', save);
+  document.getElementById('goal-edit-cancel-btn').addEventListener('click', () => {
+    modal.hidden = true;
+  });
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      save();
+    }
+  });
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) modal.hidden = true;
   });
 }
 
