@@ -535,10 +535,19 @@ body.focus-mode .chat-input-row { bottom: 0; }
 
 /* ---- horizontal-scroll stat row (was: stacked cards) ---- */
 .stat-scroll {
+  /* Every sibling section (quick-add, controls, the idea list) is
+     constrained to the same centered content column - this one was
+     missing that constraint entirely, so on a wide desktop screen it
+     stretched to the full unconstrained width and its flex row (with
+     no justify-content set) pinned itself to the actual right edge of
+     the browser window, floating completely disconnected from the
+     rest of the (centered, narrower) page content. */
+  width: min(var(--content-max), 100% - 3rem);
+  margin-inline: auto;
   display: flex;
   gap: 10px;
   overflow-x: auto;
-  padding: 2px 1rem 10px;
+  padding: 2px 0 10px;
   scrollbar-width: none;
 }
 .stat-scroll::-webkit-scrollbar { display: none; }
