@@ -206,6 +206,14 @@ document.getElementById('close-menu-btn').addEventListener('click', closeMobileM
 menuOverlay.addEventListener('click', closeMobileMenu);
 viewTabsNav.querySelectorAll('.tab-btn').forEach((btn) => btn.addEventListener('click', closeMobileMenu));
 
+document.getElementById('bottomnav-archive').addEventListener('click', () => showView('archive'));
+document.getElementById('bottomnav-chat').addEventListener('click', () => showView('chat'));
+document.getElementById('bottomnav-script').addEventListener('click', () => showView('script'));
+document.getElementById('bottomnav-more').addEventListener('click', () => {
+  const isOpen = viewTabsNav.classList.toggle('open');
+  menuOverlay.hidden = !isOpen;
+});
+
 let drawerTouchStartX = null;
 viewTabsNav.addEventListener('touchstart', (e) => {
   drawerTouchStartX = e.touches[0].clientX;
@@ -284,6 +292,7 @@ onAuthChange(async (user) => {
   setGreeting(user.displayName);
   document.getElementById('tab-warming').hidden = user.email !== ADMIN_EMAIL;
   document.getElementById('tab-script').hidden = user.email !== ADMIN_EMAIL;
+  document.getElementById('bottomnav-script').hidden = user.email !== ADMIN_EMAIL;
   document.getElementById('send-notification-btn').hidden = user.email !== ADMIN_EMAIL;
   document.getElementById('token-usage-btn').hidden = user.email !== ADMIN_EMAIL;
 
