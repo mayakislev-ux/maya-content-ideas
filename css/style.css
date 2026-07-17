@@ -1749,6 +1749,25 @@ textarea:focus-visible,
   margin-top: 1rem;
 }
 
+.whats-new-list {
+  padding-inline-start: 1.3rem;
+  line-height: 1.8;
+  color: var(--text);
+}
+
+.has-update-dot { position: relative; }
+.has-update-dot::after {
+  content: '';
+  position: absolute;
+  top: 0.1rem;
+  left: 0.1rem;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--warm);
+  box-shadow: 0 0 0 2px var(--bg);
+}
+
 .feedback-view {
   max-width: 600px;
   margin: 0 auto;

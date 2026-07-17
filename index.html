@@ -341,7 +341,7 @@
     <form id="feedback-form">
       <textarea id="feedback-input" placeholder="כתבו כאן את חוות הדעת שלכם..." required></textarea>
       <button type="submit" class="btn-primary">שליחת פידבק</button>
-      <p id="feedback-success" class="feedback-success" hidden>תודה! הפידבק נשלח בהצלחה 💜</p>
+      <p id="feedback-success" class="feedback-success" hidden>תודה! אני קוראת כל פידבק שמגיע לכאן בעצמי, וזה ממש משפיע על מה שנבנה בהמשך 💜</p>
     </form>
   </main>
 
@@ -394,8 +394,39 @@
     <button type="button" id="enable-notifications-btn" class="btn-text" hidden>🔔 הפעלת התראות</button>
     <button type="button" id="send-notification-btn" class="btn-text" hidden>📣 שליחת התראה (מנהלת)</button>
     <button type="button" id="token-usage-btn" class="btn-text" hidden>📊 שימוש ב-AI (מנהלת)</button>
+    <button type="button" id="open-whats-new-btn" class="btn-text">✨ מה חדש</button>
+    <button type="button" id="open-about-btn" class="btn-text">ℹ️ אודות ותמיכה</button>
     <button type="button" id="open-policy-btn-app" class="btn-text policy-link">מדיניות פרטיות</button>
   </footer>
+</div>
+
+<div id="about-modal" class="modal" hidden>
+  <div class="modal-content">
+    <h2>ℹ️ אודות המוח השיווקי</h2>
+    <p>המוח השיווקי היא אפליקציית ליווי צמוד ליצירת תוכן שיווקי - עוזרת לזהות רעיונות חזקים, לדייק אותם, ולהפוך אותם לתסריטים מוכנים לצילום. נבנתה על ידי מאיה קיסלב, כחלק מאקדמיית "המהלך השיווקי".</p>
+    <h3>תקועה? צריכה עזרה?</h3>
+    <p>אפשר לפנות ישירות למאיה בכל שאלה - טכנית או תוכנית. הפידבק שלך על האפליקציה תמיד מוזמן דרך לשונית "חוות דעת".</p>
+    <div class="modal-actions">
+      <button type="button" id="about-close-btn" class="btn-primary">סגירה</button>
+    </div>
+  </div>
+</div>
+
+<div id="whats-new-modal" class="modal" hidden>
+  <div class="modal-content">
+    <h2>✨ מה חדש</h2>
+    <ul class="whats-new-list">
+      <li>עיצוב מחודש לכל האפליקציה - צבעים, טיפוגרפיה, וכרטיסים אחידים בכל מסך</li>
+      <li>תפריט תחתון נוח יותר במובייל</li>
+      <li>טבעת התקדמות ליעד רעיונות שבועי + פילוח קטגוריות ויזואלי</li>
+      <li>תג רמה, חגיגת אבני דרך עם קונפטי, וסינון מהיר בלחיצה אחת</li>
+      <li>מצב מיקוד לכתיבת תסריטים במסך מלא</li>
+      <li>אפשרות למצב כהה/בהיר ידני</li>
+    </ul>
+    <div class="modal-actions">
+      <button type="button" id="whats-new-close-btn" class="btn-primary">סגירה</button>
+    </div>
+  </div>
 </div>
 
 <div id="offline-banner" class="offline-banner" hidden>📡 אין חיבור לאינטרנט כרגע - הנתונים לא יתעדכנו עד שהחיבור יחזור</div>
