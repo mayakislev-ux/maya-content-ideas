@@ -93,10 +93,17 @@ h1, h2, h3 {
 .login-card {
   margin: auto;
   text-align: center;
-  background: var(--surface);
+  background: var(--card-bg);
   padding: 2.5rem;
-  border-radius: 16px;
-  box-shadow: 0 6px 24px rgba(33, 29, 46, 0.12);
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+}
+
+#login-screen {
+  background:
+    radial-gradient(circle at 12% 0%, rgba(245, 148, 31, 0.14), transparent 40%),
+    radial-gradient(circle at 90% 8%, rgba(124, 58, 237, 0.16), transparent 50%),
+    var(--bg);
 }
 
 .btn-primary {
@@ -1253,12 +1260,12 @@ textarea:focus-visible,
 
 .modal-content {
   background: var(--card-bg);
-  border-radius: 16px;
+  border-radius: var(--card-radius);
   padding: 1.5rem;
   width: 100%;
   max-width: 480px;
   margin-bottom: 2rem;
-  box-shadow: 0 10px 40px rgba(33, 29, 46, 0.25);
+  box-shadow: 0 16px 48px rgba(124, 58, 237, 0.22);
 }
 
 /* Full-screen takeover on mobile instead of a centered floating card - a
@@ -1510,8 +1517,9 @@ textarea:focus-visible,
 }
 
 .guide-intro {
-  background: var(--surface);
-  border-radius: 16px;
+  background: var(--card-bg);
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
   padding: 1.3rem 1.5rem;
   margin-bottom: 1.5rem;
 }
@@ -1537,12 +1545,17 @@ textarea:focus-visible,
 }
 
 .guide-item {
-  background: var(--surface);
-  border-radius: 16px;
+  background: var(--card-bg);
+  border-radius: var(--card-radius);
   margin-bottom: 0.8rem;
   padding: 0;
   overflow: hidden;
-  box-shadow: 0 2px 10px rgba(33, 29, 46, 0.05);
+  box-shadow: var(--card-shadow);
+  transition: transform 200ms var(--ease-snap), box-shadow 200ms var(--ease-snap);
+}
+
+@media (hover: hover) {
+  .guide-item:hover { transform: translateY(-2px); }
 }
 
 .guide-item summary {
@@ -1631,11 +1644,11 @@ textarea:focus-visible,
 
 .construction-box {
   text-align: center;
-  background: var(--surface);
-  border-radius: 20px;
+  background: var(--card-bg);
+  border-radius: var(--card-radius);
   padding: 3rem 1.5rem;
   margin-top: 2rem;
-  box-shadow: 0 4px 16px rgba(33, 29, 46, 0.06);
+  box-shadow: var(--card-shadow);
 }
 
 .construction-sticker {
@@ -1666,8 +1679,9 @@ textarea:focus-visible,
 .warming-header-row h2 { margin: 0; }
 
 .warming-saved-list {
-  background: var(--surface);
-  border-radius: 12px;
+  background: var(--card-bg);
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
   padding: 1rem 1.2rem;
   margin-bottom: 1.2rem;
   display: flex;
@@ -1714,8 +1728,9 @@ textarea:focus-visible,
 }
 
 .warming-form {
-  background: var(--surface);
-  border-radius: 16px;
+  background: var(--card-bg);
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
   padding: 1.3rem 1.5rem;
   display: flex;
   flex-direction: column;
