@@ -116,6 +116,43 @@ body {
   background-attachment: fixed;
   color: var(--text);
   direction: rtl;
+  position: relative;
+}
+
+/* Very subtle floating decorative blobs behind all content - barely
+   perceptible consciously, adds a sense of ambient life to the
+   background instead of a perfectly static page. */
+body::before,
+body::after {
+  content: '';
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(60px);
+  pointer-events: none;
+  z-index: -1;
+}
+
+body::before {
+  width: 220px;
+  height: 220px;
+  top: 12%;
+  right: 6%;
+  background: rgba(255, 46, 168, 0.10);
+  animation: floatSlow 22s ease-in-out infinite;
+}
+
+body::after {
+  width: 260px;
+  height: 260px;
+  bottom: 8%;
+  left: 4%;
+  background: rgba(38, 62, 168, 0.10);
+  animation: floatSlow 26s ease-in-out infinite reverse;
+}
+
+@keyframes floatSlow {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(20px, -30px); }
 }
 
 @media (prefers-color-scheme: dark) {
@@ -212,6 +249,8 @@ h1, h2, h3 {
   cursor: pointer;
 }
 
+.accent-word { color: var(--warm); }
+
 .error-text { color: var(--cat-mechirti); font-weight: bold; }
 .field-hint { color: var(--muted); font-size: 0.85rem; margin: -0.5rem 0 0.9rem; }
 
@@ -258,6 +297,13 @@ h1, h2, h3 {
   width: 42px;
   height: 42px;
   flex-shrink: 0;
+  animation: logoReveal 900ms var(--ease-snap) both;
+}
+
+@keyframes logoReveal {
+  from { opacity: 0; transform: scale(0.6) rotate(-25deg); }
+  60% { transform: scale(1.08) rotate(6deg); }
+  to { opacity: 1; transform: scale(1) rotate(0deg); }
 }
 
 .app-avatar {
@@ -305,6 +351,12 @@ body.focus-mode .chat-input-row { bottom: 0; }
 .view {
   animation: viewIn 260ms var(--ease-snap);
 }
+
+/* Faint per-view background tint - not decorative for its own sake,
+   it's a second, ambient orientation signal (in addition to the
+   active nav highlight) for which screen you're actually on. */
+#chat-view { background: linear-gradient(180deg, rgba(38, 62, 168, 0.035), transparent 200px); }
+#script-view { background: linear-gradient(180deg, rgba(255, 46, 168, 0.035), transparent 200px); }
 
 @keyframes viewIn {
   from { opacity: 0; }
@@ -494,7 +546,13 @@ body.focus-mode .chat-input-row { bottom: 0; }
 .stat-pill .n { font-family: 'Ploni Black', sans-serif; font-weight: 900; font-size: 1.05rem; display: block; white-space: nowrap; }
 .stat-pill .l { font-size: 0.7rem; color: var(--muted); white-space: nowrap; }
 .stat-pill-level {
-  background: linear-gradient(135deg, var(--accent-tint), var(--card-bg));
+  /* The one card that gets the glass treatment - deliberately just
+     this one, so it stays a distinguishing "special" surface instead
+     of glassmorphism becoming background noise everywhere. */
+  background: linear-gradient(135deg, rgba(232, 234, 252, 0.75), rgba(255, 255, 255, 0.55));
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-color: rgba(255, 255, 255, 0.6);
   cursor: pointer;
 }
 
@@ -1642,6 +1700,14 @@ textarea:focus-visible,
 }
 .modal-close-x:hover { background: var(--accent-tint); color: var(--accent-strong); }
 
+.modal-breadcrumb {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-bottom: 0.6rem;
+}
+.modal-breadcrumb span:first-of-type { margin: 0 0.3rem; opacity: 0.6; }
+.modal-breadcrumb #modal-breadcrumb-current { color: var(--accent-strong, var(--accent)); font-weight: 700; }
+
 /* Full-screen takeover on mobile instead of a centered floating card - a
    centered card sized by 100vh/visualViewport math kept getting reported as
    "can't see/scroll to the rest of it" across every modal in the app. A
@@ -2490,4 +2556,46 @@ textarea:focus-visible,
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
+}
+
+/* Print stylesheet - mainly for printing a written script to bring to a
+   shoot. Hides all app chrome (nav, buttons, header) and reflows the
+   conversation as plain readable text instead of chat bubbles. */
+@media print {
+  .app-header,
+  .bottom-nav,
+  .chat-toolbar,
+  .chat-input-row,
+  .menu-overlay,
+  .view-tabs,
+  .fab,
+  .scroll-top-btn,
+  .offline-banner,
+  .modal {
+    display: none !important;
+  }
+
+  body { background: #fff !important; }
+
+  .chat-messages {
+    max-width: none;
+    padding: 0;
+  }
+
+  .chat-row { animation: none; break-inside: avoid; }
+  .chat-avatar { display: none; }
+
+  .chat-bubble {
+    background: none !important;
+    box-shadow: none !important;
+    color: #000 !important;
+    max-width: 100%;
+    padding: 0.4rem 0;
+    border-bottom: 1px solid #ccc;
+  }
+
+  .chat-bubble-user::before { content: 'את/ה: '; font-weight: bold; }
+  .chat-bubble-assistant::before { content: 'המוח השיווקי: '; font-weight: bold; }
+
+  .chat-cta-btn, .chat-save-btn, .chat-choice-buttons { display: none !important; }
 }

@@ -19,6 +19,7 @@ function setCategoryChip(value) {
 export function openAddModal(prefillTitle = '') {
   editingId = null;
   document.getElementById('modal-title').textContent = 'רעיון חדש';
+  document.getElementById('modal-breadcrumb-current').textContent = 'רעיון חדש';
   document.getElementById('idea-form').reset();
   setCategoryChip('');
   if (prefillTitle) document.getElementById('field-title').value = prefillTitle;
@@ -30,6 +31,7 @@ export function openAddModal(prefillTitle = '') {
 export function openEditModal(idea, overrideTitle = '') {
   editingId = idea.id;
   document.getElementById('modal-title').textContent = 'עריכת רעיון';
+  document.getElementById('modal-breadcrumb-current').textContent = 'עריכת רעיון';
   document.getElementById('field-title').value = overrideTitle || idea.title;
   setCategoryChip(idea.category);
   document.getElementById('field-link').value = idea.sourceLink || '';
