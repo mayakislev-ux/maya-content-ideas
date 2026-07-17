@@ -61,6 +61,16 @@ function messagesEl() {
   return document.getElementById('script-messages');
 }
 
+// Same defensive timeout as idea-chat.js - a stale Firestore connection
+// (tab backgrounded a while on mobile) can otherwise leave getProfile()
+// hanging forever with the "thinking" bubble frozen and no error shown.
+function withTimeout(promise, ms) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms)),
+  ]);
+}
+
 function extractScriptSummary(reply) {
   const markerIndex = reply.indexOf(SUMMARY_MARKER);
   if (markerIndex === -1) return { visibleReply: reply, summary: null };
@@ -230,7 +240,7 @@ async function sendMessage(text) {
 async function ensureProfileAndGreet() {
   const loadingBubble = addThinkingBubble(messagesEl());
   try {
-    profile = await getProfile();
+    profile = await withTimeout(getProfile(), 10000);
     loadingBubble.closest('.chat-row').remove();
     if (profile) {
       greetAndAskForIdea();
@@ -241,7 +251,7 @@ async function ensureProfileAndGreet() {
     console.error('script-chat profile load failed:', err);
     loadingBubble.closest('.chat-row').remove();
     started = false;
-    addBubble(messagesEl(), 'משהו השתבש בטעינת הצ\'אט - נסו לצאת וללחוץ שוב על "כתיבת תסריטים".', 'assistant');
+    addBubble(messagesEl(), 'משהו השתבש בטעינת הצ\'אט (יכול לקרות אחרי שהאפליקציה הייתה ברקע זמן ארוך) - נסו לצאת וללחוץ שוב על "כתיבת תסריטים", ואם זה חוזר - רעננו את הדף.', 'assistant');
   }
 }
 

@@ -42,6 +42,19 @@ function messagesEl() {
   return document.getElementById('chat-messages');
 }
 
+// A stale Firestore connection (e.g. the tab was backgrounded on mobile
+// for a while and the realtime connection didn't cleanly resume) can leave
+// getProfile() neither resolving nor rejecting - the "thinking" bubble then
+// sits there forever with no error, no retry, nothing. Racing it against a
+// timeout guarantees the user always gets SOME outcome instead of a
+// permanently frozen "מקליד..." indicator.
+function withTimeout(promise, ms) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms)),
+  ]);
+}
+
 function extractIdeaSummary(reply) {
   const markerIndex = reply.indexOf(SUMMARY_MARKER);
   if (markerIndex === -1) return { visibleReply: reply, summary: null };
@@ -161,7 +174,7 @@ export async function startIdeaChat() {
   started = true;
   const loadingBubble = addThinkingBubble(messagesEl());
   try {
-    profile = await getProfile();
+    profile = await withTimeout(getProfile(), 10000);
     loadingBubble.closest('.chat-row').remove();
     if (profile) {
       greetAndAskForIdea();
@@ -172,7 +185,7 @@ export async function startIdeaChat() {
     console.error('startIdeaChat failed:', err);
     loadingBubble.closest('.chat-row').remove();
     started = false;
-    addBubble(messagesEl(), 'משהו השתבש בטעינת הצ\'אט - נסו לצאת וללחוץ שוב על "בדיקת רעיון".', 'assistant');
+    addBubble(messagesEl(), 'משהו השתבש בטעינת הצ\'אט (יכול לקרות אחרי שהאפליקציה הייתה ברקע זמן ארוך) - נסו לצאת וללחוץ שוב על "בדיקת רעיון", ואם זה חוזר - רעננו את הדף.', 'assistant');
   }
 }
 
