@@ -140,6 +140,47 @@ async function callAnthropic(apiKey, body, fnName) {
   return data;
 }
 
+// The system prompt already instructs Hebrew-only, but an LLM following a
+// prompt is a strong nudge, not a guarantee - this is a real enforcement
+// mechanism on top of it: if stray English slipped through anyway, ask the
+// model (once) to rewrite the exact same message in pure Hebrew instead of
+// just hoping the instruction was followed. URLs and the app's own
+// technical [[MARKER]] tokens are expected to contain Latin characters and
+// must not trigger this.
+const URL_REGEX = /https?:\/\/[^\s]+/g;
+const TECH_MARKER_REGEX = /\[\[[A-Z_]+\]\]/g;
+
+function containsStrayEnglish(text) {
+  const stripped = text.replace(URL_REGEX, ' ').replace(TECH_MARKER_REGEX, ' ');
+  return /[a-zA-Z]{2,}/.test(stripped);
+}
+
+async function rewriteInHebrewIfNeeded(text, apiKey, fnName) {
+  if (!text || !containsStrayEnglish(text)) return text;
+  console.warn(`${fnName}: reply contained stray English, attempting one corrective rewrite`);
+  try {
+    const data = await callAnthropic(
+      apiKey,
+      {
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1536,
+        messages: [
+          {
+            role: 'user',
+            content: `ההודעה הבאה נכתבה בטעות עם כמה אותיות לועזיות (אנגלית) בתוכה, חוץ מקישורי URL שמותר שיישארו כמו שהם:\n\n"""${text}"""\n\nכתבי אותה מחדש - אותו תוכן, אותו אורך, אותו מבנה בדיוק. אם יש שורה טכנית שמתחילה ב-[[ (כמו [[IDEA_SUMMARY]] או [[SCRIPT_SUMMARY]]) - השאירי את התחילית [[...]] עצמה בדיוק כמו שהיא, שמרי בדיוק על אותם מפרידי "||" באותה שורה, ותרגמי לעברית רק את התוכן שבין המפרידים אם יש בו אנגלית. בכל שאר ההודעה - אך ורק אותיות עבריות, מלבד בתוך קישורי URL. השיבי אך ורק בטקסט המתוקן, בלי שום הקדמה או הסבר נוסף.`,
+          },
+        ],
+      },
+      `${fnName}_hebrewFix`
+    );
+    const fixed = (data.content && data.content[0] && data.content[0].text) || '';
+    return fixed.trim() || text;
+  } catch (err) {
+    console.error(`${fnName}: corrective Hebrew rewrite failed:`, err);
+    return text;
+  }
+}
+
 exports.getTokenUsage = onCall({ region: 'us-central1' }, async (request) => {
   if (!request.auth || request.auth.token.email !== ADMIN_EMAIL) {
     throw new HttpsError('permission-denied', 'התכונה הזו זמינה כרגע רק למנהלת');
@@ -220,7 +261,8 @@ exports.checkIdea = onCall({ secrets: [anthropicApiKey], region: 'us-central1' }
     'checkIdea'
   );
 
-  const reply = (data.content && data.content[0] && data.content[0].text) || '';
+  let reply = (data.content && data.content[0] && data.content[0].text) || '';
+  reply = await rewriteInHebrewIfNeeded(reply, anthropicApiKey.value(), 'checkIdea');
   return { reply };
 });
 
@@ -253,7 +295,8 @@ exports.writeScript = onCall({ secrets: [anthropicApiKey], region: 'us-central1'
     'writeScript'
   );
 
-  const reply = (data.content && data.content[0] && data.content[0].text) || '';
+  let reply = (data.content && data.content[0] && data.content[0].text) || '';
+  reply = await rewriteInHebrewIfNeeded(reply, anthropicApiKey.value(), 'writeScript');
   return { reply };
 });
 

@@ -2,6 +2,7 @@
 // (SpeechRecognition). No server round-trip, no extra dependency - but only
 // available in Chromium-based browsers (Chrome/Edge) and Safari; feature-detected
 // below, and the mic button simply stays hidden where it isn't supported.
+import { showToast } from './toast.js';
 
 const SpeechRecognitionImpl = window.SpeechRecognition || window.webkitSpeechRecognition;
 
@@ -10,6 +11,16 @@ const SpeechRecognitionImpl = window.SpeechRecognition || window.webkitSpeechRec
 // keeps the mic open (and the pulsing red button on) indefinitely until the
 // browser eventually times it out on its own, which reads as "stuck".
 const SILENCE_TIMEOUT_MS = 2500;
+
+// Errors that mean the session truly cannot continue (permission/hardware) -
+// anything else (most commonly 'no-speech', which Chrome fires surprisingly
+// often even mid-sentence during a short natural pause, and 'aborted'/
+// 'network' blips) gets a silent, seamless restart instead of cutting the
+// recording off. A hard stop on every error was very likely the real cause
+// behind "doesn't always recognize well" - it wasn't transcription accuracy,
+// it was the session ending mid-sentence and silently dropping the rest.
+const FATAL_ERRORS = new Set(['not-allowed', 'service-not-allowed', 'audio-capture']);
+const MAX_CONSECUTIVE_RESTARTS = 6;
 
 export function voiceInputSupported() {
   return Boolean(SpeechRecognitionImpl);
@@ -38,6 +49,7 @@ export function wireVoiceInput({ buttonId, textareaId }) {
   let listening = false;
   let baseText = '';
   let silenceTimer = null;
+  let consecutiveRestarts = 0;
 
   function clearSilenceTimer() {
     if (silenceTimer) {
@@ -58,23 +70,14 @@ export function wireVoiceInput({ buttonId, textareaId }) {
     silenceTimer = setTimeout(stopListening, SILENCE_TIMEOUT_MS);
   }
 
-  button.addEventListener('click', () => {
-    if (listening) {
-      stopListening();
-      return;
-    }
-
+  function startSession() {
     recognition = new SpeechRecognitionImpl();
     recognition.lang = 'he-IL';
     recognition.continuous = true;
     recognition.interimResults = true;
 
-    baseText = textarea.value ? `${textarea.value} ` : '';
-    listening = true;
-    button.classList.add('mic-btn-active');
-    armSilenceTimer();
-
     recognition.onresult = (event) => {
+      consecutiveRestarts = 0;
       armSilenceTimer();
       let finalText = '';
       let interimText = '';
@@ -88,13 +91,32 @@ export function wireVoiceInput({ buttonId, textareaId }) {
 
     recognition.onerror = (event) => {
       console.error('Speech recognition error:', event.error);
-      stopListening();
+      if (FATAL_ERRORS.has(event.error)) {
+        stopListening();
+        showToast('לא הצלחתי לגשת למיקרופון - בדקו הרשאות מיקרופון בדפדפן');
+      }
+      // Anything else (no-speech, aborted, network) - let onend below decide
+      // whether to restart; still "listening" as far as user intent goes.
     };
 
     recognition.onend = () => {
-      listening = false;
-      clearSilenceTimer();
       button.classList.remove('mic-btn-active');
+      if (!listening) return; // stopListening() already ran - a real, intended stop.
+
+      // The engine ended the session on its own while the user still wants
+      // to keep talking - carry forward whatever was already transcribed
+      // and start a fresh session seamlessly, instead of losing the rest of
+      // the sentence.
+      consecutiveRestarts++;
+      if (consecutiveRestarts > MAX_CONSECUTIVE_RESTARTS) {
+        listening = false;
+        clearSilenceTimer();
+        showToast('ההקלטה נתקעה, נסו ללחוץ שוב על המיקרופון');
+        return;
+      }
+      baseText = textarea.value ? `${textarea.value} ` : '';
+      button.classList.add('mic-btn-active');
+      startSession();
     };
 
     try {
@@ -103,6 +125,20 @@ export function wireVoiceInput({ buttonId, textareaId }) {
       console.error('Failed to start speech recognition:', err);
       stopListening();
     }
+  }
+
+  button.addEventListener('click', () => {
+    if (listening) {
+      stopListening();
+      return;
+    }
+
+    baseText = textarea.value ? `${textarea.value} ` : '';
+    listening = true;
+    consecutiveRestarts = 0;
+    button.classList.add('mic-btn-active');
+    armSilenceTimer();
+    startSession();
   });
 
   return { stop: stopListening };
