@@ -191,7 +191,7 @@ h1, h2, h3 {
 .field-hint { color: var(--muted); font-size: 0.85rem; margin: -0.5rem 0 0.9rem; }
 
 .app-header {
-  background: linear-gradient(135deg, var(--accent), var(--warm) 130%);
+  background: linear-gradient(135deg, var(--accent-strong, var(--accent)), var(--accent));
   box-shadow: 0 6px 22px rgba(124, 58, 237, 0.28);
   border-radius: 0 0 24px 24px;
   position: sticky;

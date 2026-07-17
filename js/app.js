@@ -266,8 +266,14 @@ menuOverlay.addEventListener('click', closeMobileMenu);
 viewTabsNav.querySelectorAll('.tab-btn').forEach((btn) => btn.addEventListener('click', closeMobileMenu));
 
 document.getElementById('bottomnav-archive').addEventListener('click', () => showView('archive'));
-document.getElementById('bottomnav-chat').addEventListener('click', () => showView('chat'));
-document.getElementById('bottomnav-script').addEventListener('click', () => showView('script'));
+document.getElementById('bottomnav-chat').addEventListener('click', () => {
+  showView('chat');
+  startIdeaChat();
+});
+document.getElementById('bottomnav-script').addEventListener('click', () => {
+  showView('script');
+  startScriptChat();
+});
 document.getElementById('bottomnav-more').addEventListener('click', () => {
   const isOpen = viewTabsNav.classList.toggle('open');
   menuOverlay.hidden = !isOpen;
