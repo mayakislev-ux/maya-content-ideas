@@ -315,7 +315,7 @@ body.focus-mode .chat-input-row { bottom: 0; }
 .quick-add-section,
 .archive-controls-section {
   width: min(var(--content-max), 100% - 3rem);
-  margin: 0.8rem auto;
+  margin: 0.5rem auto;
   padding: 1.4rem 1.5rem;
   background: var(--card-bg);
   border-radius: var(--card-radius);
@@ -367,18 +367,32 @@ body.focus-mode .chat-input-row { bottom: 0; }
 /* ---- hero: one dominant focus element, not a card among cards ---- */
 .hero-section {
   text-align: center;
-  padding: 12px 1rem 20px;
+  padding: 10px 1rem 12px;
 }
 
 .hero-greet {
   display: block;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   font-weight: 700;
   color: var(--accent-strong, var(--accent));
-  margin-bottom: 14px;
+  margin-bottom: 8px;
 }
 
-.hero-ring-wrap { position: relative; width: 180px; height: 180px; margin: 0 auto; }
+/* The ring itself is now the "add a full idea" button - one clear
+   affordance instead of a ring plus a separate CTA row underneath it
+   repeating the same action. */
+.hero-ring-wrap {
+  position: relative;
+  width: 150px;
+  height: 150px;
+  margin: 0 auto;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: transform 150ms var(--ease-snap);
+}
+.hero-ring-wrap:active { transform: scale(0.96); }
 .hero-ring-wrap svg { transform: rotate(-90deg); }
 .hero-ring-center {
   position: absolute;
@@ -387,36 +401,36 @@ body.focus-mode .chat-input-row { bottom: 0; }
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  pointer-events: none;
 }
-.hero-ring-num { font-family: 'Ploni Black', sans-serif; font-weight: 900; font-size: 2.1rem; color: var(--accent-strong, var(--accent)); line-height: 1; }
-.hero-ring-label { font-size: 0.8rem; color: var(--muted); margin-top: 4px; }
+.hero-ring-num { font-family: 'Ploni Black', sans-serif; font-weight: 900; font-size: 1.8rem; color: var(--accent-strong, var(--accent)); line-height: 1; }
+.hero-ring-label { font-size: 0.75rem; color: var(--muted); margin-top: 4px; }
 
-.hero-cta {
-  margin-top: 18px;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
+.hero-ring-plus {
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
   background: var(--accent);
   color: #fff;
+  font-size: 1.2rem;
   font-weight: 700;
-  font-size: 0.9rem;
-  font-family: inherit;
-  padding: 12px 26px;
-  border-radius: 999px;
-  border: none;
-  cursor: pointer;
-  box-shadow: 0 10px 24px rgba(124, 58, 237, 0.32);
-  transition: transform 150ms var(--ease-snap), box-shadow 150ms var(--ease-snap);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 16px rgba(124, 58, 237, 0.4);
+  z-index: 1;
 }
-.hero-cta:hover { transform: translateY(-2px); box-shadow: 0 14px 28px rgba(124, 58, 237, 0.4); }
-.hero-cta:active { transform: translateY(0) scale(0.96); }
 
 /* ---- horizontal-scroll stat row (was: stacked cards) ---- */
 .stat-scroll {
   display: flex;
   gap: 10px;
   overflow-x: auto;
-  padding: 2px 1rem 18px;
+  padding: 2px 1rem 10px;
   scrollbar-width: none;
 }
 .stat-scroll::-webkit-scrollbar { display: none; }
@@ -749,7 +763,7 @@ body.focus-mode .chat-input-row { bottom: 0; }
 
   .menu-overlay:not([hidden]) { display: block; }
 
-  .quick-add-section, .archive-controls-section { width: auto; margin: 0.8rem 1rem; padding: 1rem; }
+  .quick-add-section, .archive-controls-section { width: auto; margin: 0.5rem 1rem; padding: 1rem; }
   .quick-add-section { padding: 0.5rem 0.7rem; }
 
   .filters-toggle-btn {
@@ -1268,6 +1282,12 @@ textarea:focus-visible,
   font-weight: 900;
   font-size: 1.05rem;
   color: var(--text);
+}
+
+.section-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
 }
 
 .idea-count-badge {

@@ -79,17 +79,17 @@ function weeklyProgress() {
 }
 
 function renderHero() {
-  const ringWrap = document.getElementById('hero-ring-wrap');
+  const ringMount = document.getElementById('hero-ring-svg-mount');
   const { thisWeekCount, goal } = weeklyProgress();
   const progress = Math.min(thisWeekCount / goal, 1);
-  const radius = 78;
+  const radius = 64;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference * (1 - progress);
 
-  ringWrap.innerHTML = `
-    <svg width="180" height="180" viewBox="0 0 180 180">
-      <circle cx="90" cy="90" r="${radius}" fill="none" stroke="var(--accent-tint)" stroke-width="14"/>
-      <circle cx="90" cy="90" r="${radius}" fill="none" stroke="url(#hero-ring-grad)" stroke-width="14" stroke-linecap="round"
+  ringMount.innerHTML = `
+    <svg width="150" height="150" viewBox="0 0 150 150">
+      <circle cx="75" cy="75" r="${radius}" fill="none" stroke="var(--accent-tint)" stroke-width="12"/>
+      <circle cx="75" cy="75" r="${radius}" fill="none" stroke="url(#hero-ring-grad)" stroke-width="12" stroke-linecap="round"
         stroke-dasharray="${circumference}" stroke-dashoffset="${offset}" style="transition: stroke-dashoffset 700ms var(--ease-snap);"/>
       <defs>
         <linearGradient id="hero-ring-grad" x1="0" y1="0" x2="1" y2="1">
