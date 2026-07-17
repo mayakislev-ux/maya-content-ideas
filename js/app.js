@@ -55,8 +55,11 @@ function setGreeting(displayName) {
   else if (hour < 12) greeting = 'בוקר טוב';
   else if (hour < 18) greeting = 'צהריים טובים';
   else greeting = 'ערב טוב';
+  const text = firstName ? `${greeting}, ${firstName}` : greeting;
   const el = document.getElementById('greeting-line');
-  if (el) el.textContent = firstName ? `${greeting}, ${firstName}` : greeting;
+  if (el) el.textContent = text;
+  const heroEl = document.getElementById('hero-greet');
+  if (heroEl) heroEl.textContent = text;
 }
 
 // iOS Safari doesn't reliably resize a position:fixed element (like our

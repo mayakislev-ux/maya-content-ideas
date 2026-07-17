@@ -83,25 +83,27 @@
   </nav>
 
   <main id="archive-view" class="view">
+    <section class="hero-section">
+      <span class="hero-greet" id="hero-greet"></span>
+      <div class="hero-ring-wrap" id="hero-ring-wrap"></div>
+      <button type="button" id="add-idea-top-btn" class="hero-cta">✍️ כתיבת רעיון עכשיו</button>
+    </section>
+
+    <div class="stat-scroll" id="stat-scroll"></div>
+
     <section class="quick-add-section">
-      <h3 class="section-label">⚡ הוספה מהירה</h3>
       <div class="quick-add-box">
-        <textarea id="quick-add-input" enterkeyhint="done" placeholder="רשמו כאן רעיון מהיר לטיוטה, ותשלימו אותו אחר כך..." rows="2"></textarea>
-        <button type="button" id="quick-add-btn" class="btn-primary">+ הוספה מהירה</button>
+        <textarea id="quick-add-input" enterkeyhint="done" placeholder="רישום רעיון מהיר לטיוטה, השלמה בהמשך..." rows="1"></textarea>
+        <button type="button" id="quick-add-btn" class="btn-primary quick-add-btn-icon" aria-label="שמירת רעיון מהיר">+</button>
       </div>
       <span class="draft-saved-indicator" id="draft-saved-indicator" hidden>נשמר ✓</span>
     </section>
 
     <section class="archive-controls-section">
-      <h3 class="section-label">📚 הרעיונות שלי</h3>
-      <div class="archive-header-row">
-        <span id="idea-count" class="idea-count-badge"></span>
-        <span id="level-badge" class="level-badge"></span>
-        <button type="button" id="add-idea-top-btn" class="btn-primary add-idea-top-btn">+ רעיון מלא</button>
+      <div class="section-row">
+        <span id="idea-count" class="section-title"></span>
         <button type="button" id="completed-toggle-btn" class="btn-text">📦 רעיונות שבוצעו</button>
       </div>
-
-      <div class="goal-dashboard" id="goal-dashboard"></div>
 
       <div class="archive-search-row">
         <input id="search-input" type="text" enterkeyhint="search" placeholder="חיפוש לפי כותרת או טקסט...">

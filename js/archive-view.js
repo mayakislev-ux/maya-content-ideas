@@ -24,12 +24,6 @@ function currentLevel(count) {
   return [...LEVELS].reverse().find((level) => count >= level.min);
 }
 
-function renderLevelBadge(count) {
-  const el = document.getElementById('level-badge');
-  if (!el) return;
-  const level = currentLevel(count);
-  el.textContent = `${level.icon} ${level.name}`;
-}
 
 const MILESTONES = [10, 25, 50, 100];
 const seenMilestones = new Set(JSON.parse(localStorage.getItem('idea-milestones-seen') || '[]'));
@@ -55,8 +49,8 @@ export function renderArchive(ideas, { onItemClick }) {
   currentIdeas = ideas.filter((idea) => !idea.deletedAt);
   applyFilters(onItemClick);
   celebrateMilestone(currentIdeas.length);
-  renderGoalDashboard();
-  renderLevelBadge(currentIdeas.length);
+  renderHero();
+  renderStatScroll();
 }
 
 const WEEKLY_GOAL_KEY = 'weekly-idea-goal';
@@ -73,77 +67,69 @@ function startOfWeek() {
   return start;
 }
 
-function renderGoalDashboard() {
-  const container = document.getElementById('goal-dashboard');
+function weeklyProgress() {
   const active = getCurrentIdeas();
-  if (active.length < 2) {
-    container.hidden = true;
-    return;
-  }
-  container.hidden = false;
-
   const weekStart = startOfWeek();
   const thisWeekCount = active.filter((idea) => {
     if (!idea.createdAt || typeof idea.createdAt.toDate !== 'function') return false;
     return idea.createdAt.toDate() >= weekStart;
   }).length;
   const goal = getWeeklyGoal();
+  return { thisWeekCount, goal };
+}
+
+function renderHero() {
+  const ringWrap = document.getElementById('hero-ring-wrap');
+  const { thisWeekCount, goal } = weeklyProgress();
   const progress = Math.min(thisWeekCount / goal, 1);
-  const radius = 60;
+  const radius = 78;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference * (1 - progress);
+
+  ringWrap.innerHTML = `
+    <svg width="180" height="180" viewBox="0 0 180 180">
+      <circle cx="90" cy="90" r="${radius}" fill="none" stroke="var(--accent-tint)" stroke-width="14"/>
+      <circle cx="90" cy="90" r="${radius}" fill="none" stroke="url(#hero-ring-grad)" stroke-width="14" stroke-linecap="round"
+        stroke-dasharray="${circumference}" stroke-dashoffset="${offset}" style="transition: stroke-dashoffset 700ms var(--ease-snap);"/>
+      <defs>
+        <linearGradient id="hero-ring-grad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="var(--accent-2)"/>
+          <stop offset="100%" stop-color="var(--accent)"/>
+        </linearGradient>
+      </defs>
+    </svg>
+    <div class="hero-ring-center">
+      <span class="hero-ring-num">${thisWeekCount}/${goal}</span>
+      <span class="hero-ring-label">רעיונות השבוע</span>
+    </div>
+  `;
+}
+
+function renderStatScroll() {
+  const container = document.getElementById('stat-scroll');
+  const active = getCurrentIdeas();
+  const level = currentLevel(active.length);
+  const { goal } = weeklyProgress();
 
   const counts = CATEGORIES.map((category) => ({
     category,
     count: active.filter((idea) => idea.category === category).length,
   })).filter((row) => row.count > 0);
-  const total = counts.reduce((sum, row) => sum + row.count, 0);
-
-  let cumulativePercent = 0;
-  const gradientStops = counts
-    .map(({ category, count }) => {
-      const from = cumulativePercent;
-      cumulativePercent += (count / total) * 100;
-      return `${categoryColorVar(category)} ${from}% ${cumulativePercent}%`;
-    })
-    .join(', ');
 
   container.innerHTML = `
-    <div class="goal-card goal-ring-card">
-      <div class="goal-ring-wrap">
-        <svg width="140" height="140" viewBox="0 0 140 140">
-          <circle cx="70" cy="70" r="${radius}" fill="none" stroke="var(--surface)" stroke-width="12"/>
-          <circle cx="70" cy="70" r="${radius}" fill="none" stroke="var(--accent)" stroke-width="12" stroke-linecap="round"
-            stroke-dasharray="${circumference}" stroke-dashoffset="${offset}" style="transition: stroke-dashoffset 700ms var(--ease-snap);"/>
-        </svg>
-        <div class="goal-ring-center">
-          <span class="goal-ring-num">${thisWeekCount}/${goal}</span>
-          <span class="goal-ring-label">רעיונות השבוע</span>
-        </div>
-      </div>
-      <div class="goal-ring-stats">
-        <div class="goal-ring-stat"><span class="n">${thisWeekCount}</span><span class="l">נכתבו השבוע</span></div>
-        <div class="goal-ring-stat"><span class="n">${Math.max(goal - thisWeekCount, 0)}</span><span class="l">נשארו ליעד</span></div>
-      </div>
-      <button type="button" class="goal-edit-btn" id="goal-edit-btn">שינוי יעד שבועי (${goal})</button>
-    </div>
-    ${
-      counts.length
-        ? `<div class="goal-card goal-donut-card">
-      <div style="width:96px;height:96px;border-radius:50%;background:conic-gradient(${gradientStops});display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-        <div style="width:56px;height:56px;border-radius:50%;background:var(--card-bg);display:flex;align-items:center;justify-content:center;font-family:'Ploni Black',sans-serif;font-weight:900;color:var(--accent-strong, var(--accent));">${total}</div>
-      </div>
-      <div class="goal-donut-legend">
-        ${counts
-          .map(
-            ({ category, count }) =>
-              `<div class="goal-donut-legend-item"><span class="goal-donut-dot" style="background:${categoryColorVar(category)}"></span>${categoryIcon(category)} ${category} · ${count}</div>`
-          )
-          .join('')}
-      </div>
-    </div>`
-        : ''
-    }
+    <button type="button" class="stat-pill stat-pill-level" id="goal-edit-btn">
+      <span class="n">${level.icon} ${level.name}</span>
+      <span class="l">יעד שבועי: ${goal} · לשינוי</span>
+    </button>
+    ${counts
+      .map(
+        ({ category, count }) => `
+      <div class="stat-pill" style="border-color: ${categoryColorVar(category)};">
+        <span class="n">${categoryIcon(category)} ${count}</span>
+        <span class="l">${category}</span>
+      </div>`
+      )
+      .join('')}
   `;
 
   document.getElementById('goal-edit-btn').addEventListener('click', () => {
@@ -151,7 +137,8 @@ function renderGoalDashboard() {
     const parsed = Number(input);
     if (Number.isFinite(parsed) && parsed > 0) {
       localStorage.setItem(WEEKLY_GOAL_KEY, String(Math.round(parsed)));
-      renderGoalDashboard();
+      renderHero();
+      renderStatScroll();
     }
   });
 }
