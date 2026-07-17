@@ -13,6 +13,10 @@ const generateContentPlan = httpsCallable(functions, 'generateContentPlan');
 // גולמית). מתחת לסף הזה תכנית תוכן פשוט לא תהיה בנויה על משהו ממשי.
 const MIN_READY_IDEAS = 6;
 
+// לא שאלה שהמשתמשת צריכה לחשב בעצמה (כמה כתוב מול כמה חי) - קצב ברירת
+// המחדל של תוכן כתוב, שסביבו משתלב תוכן החי לפי הימים שהיא כן מציינת.
+const DEFAULT_POSTS_PER_WEEK = 3;
+
 let currentPlan = null;
 let currentMeta = null;
 let currentPlanId = null;
@@ -182,7 +186,7 @@ export function wireContentPlanView() {
     errorEl.hidden = true;
 
     const weeksCount = Number(document.getElementById('content-plan-weeks').value) || 4;
-    const postsPerWeek = Number(document.getElementById('content-plan-posts-per-week').value) || 3;
+    const postsPerWeek = DEFAULT_POSTS_PER_WEEK;
     const liveContentNote = document.getElementById('content-plan-live-note').value.trim();
 
     const readyIdeas = getReadyIdeas().map((idea) => ({
