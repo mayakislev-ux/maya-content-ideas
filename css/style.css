@@ -6,7 +6,7 @@
 }
 
 :root {
-  --bg: #ffffff;
+  --bg: #faf7ff;
   --surface: #f4f2fa;
   --card-bg: #ffffff;
   --border-color: #ddd8ee;
@@ -26,6 +26,8 @@
   --cat-default: var(--accent);
   --ease-snap: cubic-bezier(.16,1,.3,1);
   --content-max: 1100px;
+  --card-shadow: 0 10px 26px rgba(124, 58, 237, 0.13);
+  --card-radius: 20px;
 }
 
 .content-width {
@@ -63,8 +65,8 @@ body {
   margin: 0;
   font-family: 'Heebo', 'Segoe UI', Arial, sans-serif;
   background:
-    radial-gradient(circle at 12% 0%, rgba(245, 148, 31, 0.09), transparent 40%),
-    radial-gradient(circle at 90% 8%, rgba(124, 58, 237, 0.10), transparent 45%),
+    radial-gradient(circle at 12% 0%, rgba(245, 148, 31, 0.14), transparent 40%),
+    radial-gradient(circle at 90% 8%, rgba(124, 58, 237, 0.16), transparent 50%),
     var(--bg);
   background-attachment: fixed;
   color: var(--text);
@@ -138,7 +140,8 @@ h1, h2, h3 {
 
 .app-header {
   background: linear-gradient(135deg, var(--accent), var(--warm) 130%);
-  box-shadow: 0 2px 16px rgba(124, 58, 237, 0.25);
+  box-shadow: 0 6px 22px rgba(124, 58, 237, 0.28);
+  border-radius: 0 0 24px 24px;
   position: sticky;
   top: var(--offline-banner-height, 0px);
   z-index: 5;
@@ -221,10 +224,11 @@ h1, h2, h3 {
 .quick-add-section,
 .archive-controls-section {
   width: min(var(--content-max), 100% - 3rem);
-  margin: 1.2rem auto;
-  padding: 1.1rem 1.3rem;
-  background: var(--surface);
-  border-radius: 16px;
+  margin: 1.5rem auto;
+  padding: 1.4rem 1.5rem;
+  background: var(--card-bg);
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
 }
 
 .section-label {
@@ -284,9 +288,9 @@ h1, h2, h3 {
 
 .goal-card {
   background: var(--card-bg);
-  border-radius: 18px;
+  border-radius: var(--card-radius);
   padding: 16px;
-  box-shadow: 0 10px 24px rgba(124, 58, 237, 0.12);
+  box-shadow: var(--card-shadow);
 }
 
 .goal-ring-card {
@@ -972,13 +976,12 @@ h1, h2, h3 {
   touch-action: pan-y;
   cursor: pointer;
   background: var(--card-bg);
-  border: 1px solid var(--border-color);
-  border-inline-end: 4px solid var(--card-color, var(--accent));
+  border-inline-end: 5px solid var(--card-color, var(--accent));
   color: var(--text);
-  border-radius: 16px;
-  padding: 1rem;
+  border-radius: var(--card-radius);
+  padding: 1.1rem 1.2rem;
   opacity: 0;
-  box-shadow: 0 2px 8px rgba(33, 29, 46, 0.06);
+  box-shadow: var(--card-shadow);
   animation: archiveItemIn 420ms var(--ease-snap) both;
   animation-delay: calc(var(--stagger-i, 0) * 60ms);
   transition: transform 200ms var(--ease-snap), box-shadow 200ms var(--ease-snap);
