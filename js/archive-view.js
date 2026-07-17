@@ -28,13 +28,22 @@ function currentLevel(count) {
 const MILESTONES = [10, 25, 50, 100];
 const seenMilestones = new Set(JSON.parse(localStorage.getItem('idea-milestones-seen') || '[]'));
 
-function celebrateMilestone(count) {
+function celebrateMilestone(count, ideas) {
   if (!MILESTONES.includes(count) || seenMilestones.has(count)) return;
   seenMilestones.add(count);
   localStorage.setItem('idea-milestones-seen', JSON.stringify([...seenMilestones]));
   burstConfetti();
   if (navigator.vibrate) navigator.vibrate([20, 40, 20]);
-  showToast(`🎉 וואו, ${count} רעיונות במאגר שלך!`, { duration: 6000 });
+
+  const counts = CATEGORIES.map((category) => ({
+    category,
+    n: ideas.filter((idea) => idea.category === category).length,
+  })).sort((a, b) => b.n - a.n);
+  const leader = counts[0];
+  const detail = leader && leader.n > 0
+    ? `הכי הרבה כתבת ב"${leader.category}" (${leader.n})`
+    : 'המשיכי ככה';
+  showToast(`🎉 ${count} רעיונות במאגר שלך! ${detail}`, { duration: 6000 });
 }
 
 let currentIdeas = [];
@@ -48,7 +57,7 @@ function formatDate(idea) {
 export function renderArchive(ideas, { onItemClick }) {
   currentIdeas = ideas.filter((idea) => !idea.deletedAt);
   applyFilters(onItemClick);
-  celebrateMilestone(currentIdeas.length);
+  celebrateMilestone(currentIdeas.length, currentIdeas);
   renderHero();
   renderStatScroll();
 }
@@ -268,7 +277,7 @@ function applyFilters(onItemClick) {
   const filtered = filterIdeas(scoped, { text, category, audienceScope, persuasionStage, rating });
   const sorted = sortIdeas(filtered, sortOrder);
 
-  animateCountUp(document.getElementById('idea-count'), sorted.length, ' רעיונות במאגר שלך');
+  animateCountUp(document.getElementById('idea-count'), sorted.length, '');
 
   const list = document.getElementById('archive-list');
   list.innerHTML = '';

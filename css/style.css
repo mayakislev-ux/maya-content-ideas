@@ -19,10 +19,26 @@
   --warm: #ff2ea8;
   --warm-strong: #c91687;
   --warm-tint: #ffe3f3;
-  --cat-baal-erech: #2ecc71;
-  --cat-ishi: #ff4d9d;
-  --cat-mechirti: #e63946;
-  --cat-biduri: #3a86ff;
+  /* Full tonal scale for the two brand colors - the base --accent/--warm
+     tokens above stay as the "500" for backwards compatibility, these
+     add the finer steps for glows, hovers, and tints without inventing
+     one-off colors at each usage site. */
+  --accent-100: #d7dcf5;
+  --accent-300: #8b98d9;
+  --accent-700: #1c2f82;
+  --warm-100: #ffc2e3;
+  --warm-300: #ff7ac8;
+  --warm-700: #d1157f;
+  /* Category colors kept as distinct hues (they need to read apart from
+     each other at a glance), but pulled to a shared saturation/lightness
+     family so they feel like siblings of the brand palette instead of
+     four unrelated neon values - ishi in particular moved off of almost
+     the exact same pink as --warm/--accent-2, which was confusable with
+     the brand accent itself. */
+  --cat-baal-erech: #2f9e64;
+  --cat-ishi: #d6549e;
+  --cat-mechirti: #d1495b;
+  --cat-biduri: #3568c9;
   --cat-default: var(--accent);
   --ease-snap: cubic-bezier(.16,1,.3,1);
   --content-max: 1100px;
@@ -152,7 +168,12 @@ h1, h2, h3 {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  /* Flat, not a gradient - the gradient is reserved as the header's
+     one signature moment (see #17 in the visual list) so it stays
+     special instead of appearing on every button in the app. The glow
+     below (a soft halo in the lighter tonal step, not just a plain
+     drop shadow) is what gives the button its "alive" feel instead. */
+  background: var(--accent);
   color: white;
   font-weight: bold;
   border: none;
@@ -160,8 +181,12 @@ h1, h2, h3 {
   padding: 0.8rem 1.6rem;
   font-size: 1rem;
   cursor: pointer;
-  box-shadow: 0 4px 14px rgba(38, 62, 168, 0.3);
-  transition: transform 150ms var(--ease-snap), box-shadow 150ms var(--ease-snap);
+  box-shadow: 0 4px 14px rgba(38, 62, 168, 0.3), 0 0 0 0 rgba(139, 152, 217, 0);
+  transition: transform 150ms var(--ease-snap), box-shadow 250ms var(--ease-snap);
+}
+
+.btn-primary:hover {
+  box-shadow: 0 4px 14px rgba(38, 62, 168, 0.3), 0 0 18px 4px rgba(139, 152, 217, 0.5);
 }
 
 .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(38, 62, 168, 0.4); }
@@ -191,7 +216,10 @@ h1, h2, h3 {
 .field-hint { color: var(--muted); font-size: 0.85rem; margin: -0.5rem 0 0.9rem; }
 
 .app-header {
-  background: linear-gradient(135deg, #0b1240 0%, #0b1240 55%, #ff2ea8 100%);
+  background:
+    radial-gradient(circle at 88% 100%, rgba(255, 46, 168, 0.85), transparent 55%),
+    radial-gradient(circle at 20% -10%, rgba(60, 80, 200, 0.6), transparent 60%),
+    linear-gradient(135deg, #0b1240 0%, #10184e 100%);
   box-shadow: 0 6px 22px rgba(16, 22, 58, 0.4);
   border-radius: 0 0 24px 24px;
   position: sticky;
@@ -590,7 +618,7 @@ body.focus-mode .chat-input-row { bottom: 0; }
 
 @media (max-width: 720px) {
   html { font-size: 18px; }
-  :root { --bottom-nav-h: calc(58px + env(safe-area-inset-bottom, 0px)); }
+  :root { --bottom-nav-h: calc(66px + env(safe-area-inset-bottom, 0px)); }
 
   .app-header {
     z-index: 25;
@@ -679,7 +707,11 @@ body.focus-mode .chat-input-row { bottom: 0; }
   .scroll-top-btn {
     bottom: calc(4.6rem + env(safe-area-inset-bottom, 0px)) !important;
   }
-  .archive-list { padding-bottom: 5.5rem; }
+  /* Same specificity-tie pattern as .chat-input-row: the unconditional
+     base rule further down sets padding via shorthand (which touches
+     padding-bottom too) and, appearing later, would silently win the
+     tie over this longhand override. */
+  .archive-list.archive-list { padding-bottom: 5.5rem; }
 
   .view-tabs {
     position: fixed;
@@ -823,13 +855,21 @@ body.focus-mode .chat-input-row { bottom: 0; }
   }
 
   .chat-input-row {
-    /* The bottom nav is now always present (including on the chat/
-       script views) instead of hiding itself there, so the input row
-       sits just above it instead of at the very bottom edge - avoids
-       stacking two fixed bars on top of each other. */
-    bottom: var(--bottom-nav-h, 62px);
     padding: 1rem 1.2rem 1.6rem;
     gap: 0.8rem;
+  }
+
+  /* .chat-input-row.chat-input-row (repeating the class) bumps
+     specificity above the unconditional base rule further down the
+     file (bottom: 0) - without this, that later rule wins the
+     cascade tie regardless of being outside this media query, and
+     silently cancels this offset, letting the bottom nav overlap and
+     hide the send button. Same specificity-tie bug class already
+     seen with .modal-content.modal-content and .random-btn earlier -
+     a real, reported bug this time (send button was hidden behind
+     the bottom nav), not just a theoretical risk. */
+  .chat-input-row.chat-input-row {
+    bottom: var(--bottom-nav-h, 70px);
   }
 
   .chat-input-row textarea {
@@ -837,7 +877,13 @@ body.focus-mode .chat-input-row { bottom: 0; }
     font-size: 1.05rem;
   }
 
-  .chat-messages { padding-bottom: calc(6rem + var(--bottom-nav-h, 62px)); }
+  /* Same specificity-tie issue as .chat-input-row above - the
+     unconditional base .chat-messages rule further down the file sets
+     its own padding-bottom and, appearing later in source order,
+     would otherwise silently win the tie and cancel this extra
+     clearance, leaving the last message hidden behind the input row
+     + bottom nav stack. */
+  .chat-messages.chat-messages { padding-bottom: calc(6rem + var(--bottom-nav-h, 70px)); }
 
   #add-idea-fab.fab { display: none; }
 }
@@ -890,11 +936,19 @@ body.focus-mode .chat-input-row { bottom: 0; }
   z-index: 3;
   background: var(--bg);
   display: flex;
-  justify-content: center;
+  align-items: center;
+  justify-content: space-between;
   gap: 1.2rem;
   padding: 0.8rem 1rem;
   flex-wrap: wrap;
   border-bottom: 1px solid rgba(38, 62, 168, 0.1);
+}
+
+.chat-view-title {
+  font-family: 'Ploni Black', sans-serif;
+  font-weight: 900;
+  font-size: 1rem;
+  color: var(--accent-strong, var(--accent));
 }
 
 .chat-thinking-dots {
@@ -1621,8 +1675,13 @@ textarea:focus-visible,
   .modal-content input,
   .modal-content select,
   .modal-content textarea { font-size: 1.1rem; padding: 0.7rem; }
-  .category-chip { font-size: 1rem; padding: 0.6rem 1.1rem; }
-  .category-chips { gap: 0.8rem; }
+  /* Same specificity-tie pattern as .chat-input-row/.archive-list above -
+     the unconditional base rules for these two selectors, further down
+     the file, were silently winning this tie and shrinking the category
+     picker's tap targets back down on mobile. Pre-existing (not from
+     this session), found while sweeping for this bug class. */
+  .category-chip.category-chip { font-size: 1rem; padding: 0.6rem 1.1rem; }
+  .category-chips.category-chips { gap: 0.8rem; }
   .archive-item-header { gap: 0.7rem; }
   .copy-idea-btn { padding: 0.5rem 0.6rem; font-size: 1.1rem; }
   .complete-idea-btn { padding: 0.5rem 0.9rem; font-size: 0.9rem; }
