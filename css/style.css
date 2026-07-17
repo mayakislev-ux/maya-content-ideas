@@ -606,6 +606,22 @@ body.focus-mode .chat-input-row { bottom: 0; }
   color: #fff;
 }
 
+/* Each content category already has its own color everywhere else in
+   the app (the tag on every idea card) - relying on generic emoji here
+   instead of that same color made the filter row read as a jumble of
+   near-identical pills. Same colors, no emoji: color is the fast visual
+   match, the word is still there for anyone who wants to read it. */
+.quick-chip-category {
+  border-inline-start: 4px solid var(--chip-color, var(--border-color));
+  color: var(--chip-color, var(--muted));
+}
+
+.quick-chip-category.active {
+  background: var(--chip-color, var(--accent));
+  border-color: var(--chip-color, var(--accent));
+  color: #fff;
+}
+
 .quick-chip-viral.active {
   background: var(--warm);
   border-color: var(--warm);
@@ -1203,10 +1219,12 @@ body.focus-mode .chat-input-row { bottom: 0; }
 }
 
 .chat-bubble-excellent {
-  background: linear-gradient(135deg, #ff9f43, #ffb85c);
-  color: #2b1a05;
-  box-shadow: 0 2px 10px rgba(255, 159, 67, 0.4);
+  background: linear-gradient(135deg, var(--accent-2), var(--warm));
+  color: white;
+  box-shadow: 0 2px 14px rgba(255, 46, 168, 0.45);
 }
+.chat-bubble-excellent strong { color: white; }
+.chat-bubble-excellent a { color: white; text-decoration: underline; }
 
 .chat-input-row {
   position: fixed;

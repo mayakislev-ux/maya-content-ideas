@@ -4,6 +4,7 @@ import { getProfile, saveProfile } from './user-profile.js';
 import { showView } from './view-router.js';
 import { addBubble, addThinkingBubble, addChoiceBubble, setBubbleText, playSuccessSound } from './chat-ui.js';
 import { wireVoiceInput } from './voice-input.js';
+import { burstConfetti } from './confetti.js';
 import { showToast } from './toast.js';
 import { startIdeaChat } from './idea-chat.js';
 
@@ -160,9 +161,18 @@ function greetAndAskForIdea() {
   addBubble(messagesEl(), `${registerVerb} לי מה הרעיון שעליו נכתוב תסריט.`, 'assistant');
 }
 
+// There's rarely one single "correct" format for an idea - forcing a pick
+// with no way out was the complaint. This option asks the AI to suggest a
+// few fitting options instead of committing to one blind.
+const NOT_SURE_FORMAT_CHOICE = 'לא בטוח/ה 🤔 תני לי כמה אפשרויות';
+
 function askFormat() {
   formatChosen = false;
-  addChoiceBubble(messagesEl(), 'איזה פורמט הכי מתאים לתסריט הזה?', FORMAT_CHOICES, (choice) => {
+  addChoiceBubble(messagesEl(), 'איזה פורמט הכי מתאים לתסריט הזה?', [...FORMAT_CHOICES, NOT_SURE_FORMAT_CHOICE], (choice) => {
+    if (choice === NOT_SURE_FORMAT_CHOICE) {
+      sendMessage('לא בטוח/ה איזה פורמט הכי מתאים לרעיון הזה - תציעי כמה אפשרויות שיתאימו, עם הסבר קצר לכל אחת למה היא מתאימה, ואז אבחר.');
+      return;
+    }
     formatChosen = true;
     sendMessage(`הפורמט שבחרתי: ${choice}`);
   });
@@ -203,6 +213,7 @@ async function sendMessage(text) {
     if (summary) {
       thinkingBubble.classList.add('chat-bubble-excellent');
       playSuccessSound();
+      burstConfetti();
       addCopyScriptButton(thinkingBubble, summary);
     }
     messagesEl().scrollTop = messagesEl().scrollHeight;
@@ -252,7 +263,7 @@ export async function startScriptChatWithIdea(idea) {
 export function wireScriptChat() {
   const form = document.getElementById('script-form');
   const input = document.getElementById('script-input');
-  wireVoiceInput({ buttonId: 'script-mic-btn', textareaId: 'script-input' });
+  const voiceInput = wireVoiceInput({ buttonId: 'script-mic-btn', textareaId: 'script-input' });
 
   document.getElementById('new-script-btn').addEventListener('click', resetChat);
 
@@ -267,6 +278,7 @@ export function wireScriptChat() {
     e.preventDefault();
     const text = input.value.trim();
     if (!text) return;
+    voiceInput.stop();
     input.value = '';
 
     if (onboardingStep) {

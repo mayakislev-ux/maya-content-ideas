@@ -40,6 +40,19 @@ function stopCountdown() {
   countdownInterval = null;
 }
 
+// Checking off a story/day only ever updated the in-memory plan object -
+// it looked "not saved" the moment she left the screen or reloaded, since
+// nothing wrote it back to Firestore until she pressed the save button
+// again herself. Once a plan has been saved once (currentPlanId exists),
+// every checkbox toggle now persists immediately on its own.
+function autosaveCheckboxChange() {
+  if (!currentPlanId || !currentPlan) return;
+  updateWarmingPlan(currentPlanId, { plan: currentPlan }).catch((err) => {
+    console.error('Warming checkbox autosave failed:', err);
+    showToast('הסימון לא נשמר - בדקו חיבור לאינטרנט ונסו שוב');
+  });
+}
+
 function makeEditable(el, onCommit) {
   el.contentEditable = 'true';
   el.classList.add('warming-editable');
@@ -58,6 +71,7 @@ function renderDayRow(item) {
   checkbox.addEventListener('change', () => {
     item.done = checkbox.checked;
     row.classList.toggle('warming-done', checkbox.checked);
+    autosaveCheckboxChange();
   });
   row.appendChild(checkbox);
 
@@ -122,6 +136,7 @@ function renderBlock(block) {
   checkbox.addEventListener('change', () => {
     block.done = checkbox.checked;
     wrap.classList.toggle('warming-done', checkbox.checked);
+    autosaveCheckboxChange();
   });
   header.appendChild(checkbox);
 

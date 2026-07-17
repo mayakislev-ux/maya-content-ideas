@@ -8,6 +8,7 @@ import { findSimilarIdea } from './ideas-logic.js';
 import { showWelcomeTour } from './welcome-tour.js';
 import { addBubble, addThinkingBubble, addChoiceBubble, setBubbleText, playSuccessSound } from './chat-ui.js';
 import { wireVoiceInput } from './voice-input.js';
+import { burstConfetti } from './confetti.js';
 import { startScriptChatWithIdea } from './script-chat.js';
 
 const ADMIN_EMAIL = 'mayakislev@gmail.com';
@@ -178,7 +179,7 @@ export async function startIdeaChat() {
 export function wireIdeaChat() {
   const form = document.getElementById('chat-form');
   const input = document.getElementById('chat-input');
-  wireVoiceInput({ buttonId: 'chat-mic-btn', textareaId: 'chat-input' });
+  const voiceInput = wireVoiceInput({ buttonId: 'chat-mic-btn', textareaId: 'chat-input' });
 
   document.getElementById('edit-profile-btn').addEventListener('click', () => {
     messagesEl().innerHTML = '';
@@ -200,6 +201,11 @@ export function wireIdeaChat() {
     e.preventDefault();
     const text = input.value.trim();
     if (!text) return;
+    // A still-running speech recognition session (continuous mode has no
+    // natural end) would otherwise keep writing transcribed text into the
+    // textarea after it's already been cleared and sent, which looked like
+    // the send action "duplicating" or getting stuck.
+    voiceInput.stop();
     input.value = '';
 
     if (onboardingStep) {
@@ -223,6 +229,7 @@ export function wireIdeaChat() {
         reply = reply.slice(RECOGNIZED_MARKER.length).trimStart();
         thinkingBubble.classList.add('chat-bubble-excellent');
         playSuccessSound();
+        burstConfetti();
       }
       const { visibleReply, summary, idea, angle, story } = extractIdeaSummary(reply);
       const specialLinks = [
