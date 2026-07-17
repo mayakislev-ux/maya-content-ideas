@@ -327,6 +327,7 @@ function renderItem(idea, onItemClick, index = 0) {
   inner.style.setProperty('--stagger-i', Math.min(index, 12));
   inner.className = 'archive-item';
   if (!idea.category) inner.classList.add('archive-item-draft');
+  if (idea.completedAt) inner.classList.add('archive-item-completed');
   li.appendChild(inner);
 
   const header = document.createElement('div');

@@ -1504,6 +1504,13 @@ textarea:focus-visible,
   border-inline-end: 2px dashed var(--border-color);
 }
 
+/* A muted look for completed ideas - viewed via the "שבוצעו" toggle,
+   where every card on screen is completed, but still worth a visual
+   cue that these are done rather than active. */
+.archive-item-completed {
+  opacity: 0.7;
+}
+
 .archive-header-row,
 .section-row {
   display: flex;
