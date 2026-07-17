@@ -973,6 +973,7 @@ h1, h2, h3 {
 .archive-item {
   position: relative;
   z-index: 1;
+  height: 100%;
   touch-action: pan-y;
   cursor: pointer;
   background: var(--card-bg);
