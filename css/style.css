@@ -260,6 +260,8 @@ h1, h2, h3 {
 
 .bottom-nav[hidden] { display: none !important; }
 
+.bottom-nav.keyboard-open { display: none !important; }
+
 body.focus-mode .app-header { display: none; }
 body.focus-mode .bottom-nav { display: none !important; }
 body.focus-mode .chat-toolbar { top: 0; }
