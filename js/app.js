@@ -23,6 +23,33 @@ import {
 import { wireNotificationAdmin } from './notification-admin.js';
 import { showIosInstallOverlayIfNeeded } from './ios-install-overlay.js';
 
+// Google blocks OAuth sign-in inside in-app webviews (WhatsApp/Instagram/
+// Facebook/Messenger) for security reasons - it either shows its own "this
+// browser may not be secure" block or silently fails, which from inside the
+// app just looked like "click sign-in, nothing happens" / "bounces back."
+// Links sent to clients are opened from WhatsApp constantly, so detect this
+// up front and tell her exactly what to do instead of leaving the Google
+// button there to fail mysteriously.
+function isInAppBrowser() {
+  const ua = navigator.userAgent || '';
+  return /FBAN|FBAV|Instagram|WhatsApp|Line\/|Messenger/i.test(ua);
+}
+
+if (isInAppBrowser()) {
+  document.getElementById('google-signin-btn').hidden = true;
+  const warning = document.getElementById('inapp-browser-warning');
+  warning.hidden = false;
+  document.getElementById('copy-link-btn').addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(location.href);
+    } catch {
+      // clipboard API unavailable/blocked - fall back to selecting nothing,
+      // the confirm text still tells her the button was pressed
+    }
+    document.getElementById('copy-link-confirm').hidden = false;
+  });
+}
+
 const THEME_KEY = 'theme-preference';
 
 function applyTheme(theme) {

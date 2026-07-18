@@ -254,6 +254,19 @@ h1, h2, h3 {
 .error-text { color: var(--cat-mechirti); font-weight: bold; }
 .field-hint { color: var(--muted); font-size: 0.85rem; margin: -0.5rem 0 0.9rem; }
 
+.inapp-warning {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 12px;
+  background: #fff4e0;
+  color: #6b4a00;
+  font-size: 0.9rem;
+  text-align: right;
+}
+.inapp-warning p { margin: 0 0 0.6rem; }
+.inapp-warning .btn-primary { width: 100%; }
+.copy-confirm { color: var(--cat-erech, #1a7a3c); font-weight: bold; margin-top: 0.5rem !important; }
+
 .app-header {
   /* Fixed-pixel radius (not a percentage) - a percentage-sized radial
      gradient scales to the element's own farthest-corner distance,
