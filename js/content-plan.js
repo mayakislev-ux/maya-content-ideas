@@ -178,8 +178,17 @@ export function wireContentPlanView() {
   const savedToggleBtn = document.getElementById('content-plan-saved-toggle-btn');
   const savedListEl = document.getElementById('content-plan-saved-list');
 
-  refreshGate();
-  document.getElementById('tab-content-plan').addEventListener('click', refreshGate);
+  const modal = document.getElementById('content-plan-modal');
+  document.getElementById('content-plan-open-builder-btn').addEventListener('click', () => {
+    refreshGate();
+    modal.hidden = false;
+  });
+  document.getElementById('content-plan-modal-close-btn').addEventListener('click', () => {
+    modal.hidden = true;
+  });
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) modal.hidden = true;
+  });
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();

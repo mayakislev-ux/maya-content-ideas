@@ -17,6 +17,7 @@ export function showView(name) {
   document.getElementById('random-idea-btn').hidden = name !== 'archive';
   document.getElementById('add-idea-fab').hidden = name !== 'archive';
   document.getElementById('embed-back-btn').hidden = !EMBED_VIEWS.includes(name);
+  document.getElementById('content-plan-open-builder-btn').hidden = name !== 'content-plan';
   if (name !== 'script') {
     document.body.classList.remove('focus-mode');
     const focusBtn = document.getElementById('focus-mode-btn');
