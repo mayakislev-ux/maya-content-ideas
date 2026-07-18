@@ -192,12 +192,18 @@ async function isEmailAllowed(email) {
   return snap.exists();
 }
 
+const IGNORABLE_LOGIN_ERROR_CODES = new Set(['auth/popup-closed-by-user', 'auth/cancelled-popup-request']);
+
 document.getElementById('google-signin-btn').addEventListener('click', async () => {
   try {
     await signInWithGoogle();
   } catch (err) {
+    if (IGNORABLE_LOGIN_ERROR_CODES.has(err.code)) return;
+    console.error('signInWithGoogle failed:', err);
     const errorEl = document.getElementById('login-error');
-    errorEl.textContent = 'ההתחברות נכשלה, נסו שוב';
+    // Show the real code, not a generic message - a generic "try again" is
+    // exactly what made an earlier real failure look like "nothing happens."
+    errorEl.textContent = `ההתחברות נכשלה: ${err.code || err.message || err}`;
     errorEl.hidden = false;
   }
 });
