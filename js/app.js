@@ -503,11 +503,12 @@ onAuthChange(async (user) => {
   const tourDone = await hasCompletedTour();
   if (!tourDone) showWelcomeTour();
 
-  // Nudge to install to the home screen after she's actually had a moment
-  // to use the app, not the instant she logs in - and again a bit later if
-  // she dismissed or missed it the first time. showIosInstallOverlayIfNeeded
-  // already no-ops if she dismissed it (sessionStorage flag) or already
-  // installed (standalone mode) by the time either of these fires.
+  // Nudge to install to the home screen right at login, then again at 2
+  // and 5 minutes in case she dismissed or missed it the first time.
+  // showIosInstallOverlayIfNeeded already no-ops if she dismissed it
+  // (sessionStorage flag) or already installed (standalone mode) by the
+  // time any of these fires.
+  showIosInstallOverlayIfNeeded();
   setTimeout(showIosInstallOverlayIfNeeded, 2 * 60 * 1000);
   setTimeout(showIosInstallOverlayIfNeeded, 5 * 60 * 1000);
   setTimeout(showNotificationNudgeIfNeeded, 3000);
