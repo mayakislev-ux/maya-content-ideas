@@ -319,9 +319,13 @@ document.getElementById('tab-script').addEventListener('click', () => {
 document.getElementById('tab-guide').addEventListener('click', () => showView('guide'));
 document.getElementById('tab-inspiration').addEventListener('click', () => showView('inspiration'));
 document.getElementById('tab-feedback').addEventListener('click', () => showView('feedback'));
-document.getElementById('tab-roadmap').addEventListener('click', () => showView('roadmap'));
-document.getElementById('tab-content-plan').addEventListener('click', () => showView('content-plan'));
 document.getElementById('tab-warming').addEventListener('click', () => showView('warming'));
+// Reference-only guides, reached from inside "איך למצוא רעיון" instead of
+// being top-level nav tabs - they were competing for attention with the
+// real daily-use tools, and "תכנית תוכן" collided in name with the
+// separate AI content-plan-builder FAB.
+document.getElementById('open-roadmap-link-btn').addEventListener('click', () => showView('roadmap'));
+document.getElementById('open-content-plan-link-btn').addEventListener('click', () => showView('content-plan'));
 
 const viewTabsNav = document.getElementById('view-tabs');
 const menuOverlay = document.getElementById('menu-overlay');

@@ -225,7 +225,7 @@ export function wireArchiveControls(onItemClick) {
   const toggleBtn = document.getElementById('completed-toggle-btn');
   toggleBtn.addEventListener('click', () => {
     showingCompleted = !showingCompleted;
-    toggleBtn.textContent = showingCompleted ? '🔙 חזרה לרעיונות פעילים' : '📦 רעיונות שבוצעו';
+    toggleBtn.textContent = showingCompleted ? 'חזרה לרעיונות פעילים' : 'רעיונות שבוצעו';
     applyFilters(onItemClick);
   });
 
