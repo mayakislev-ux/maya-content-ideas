@@ -140,6 +140,18 @@ async function callAnthropic(apiKey, body, fnName) {
   return data;
 }
 
+// Claude sometimes prepends a "thinking" content block before the actual
+// text response (confirmed happening for some inputs on claude-sonnet-5;
+// possible in principle on any model) - content[0] is not reliably the text
+// block. Reading content[0].text directly would silently return undefined
+// whenever a thinking block comes first, which looks identical to "the AI
+// gave a broken/empty answer" from the outside. Used everywhere a reply is
+// read, regardless of which model that call happens to use.
+function getResponseText(data) {
+  const block = data.content && data.content.find((b) => b.type === 'text');
+  return (block && block.text) || '';
+}
+
 // The system prompt already instructs Hebrew-only, but an LLM following a
 // prompt is a strong nudge, not a guarantee - this is a real enforcement
 // mechanism on top of it: if stray English slipped through anyway, ask the
@@ -162,7 +174,7 @@ async function rewriteInHebrewIfNeeded(text, apiKey, fnName) {
     const data = await callAnthropic(
       apiKey,
       {
-        model: 'claude-haiku-4-5-20251001',
+        model: 'claude-sonnet-5',
         max_tokens: 1536,
         messages: [
           {
@@ -173,7 +185,7 @@ async function rewriteInHebrewIfNeeded(text, apiKey, fnName) {
       },
       `${fnName}_hebrewFix`
     );
-    const fixed = (data.content && data.content[0] && data.content[0].text) || '';
+    const fixed = getResponseText(data) || '';
     return fixed.trim() || text;
   } catch (err) {
     console.error(`${fnName}: corrective Hebrew rewrite failed:`, err);
@@ -272,7 +284,7 @@ exports.checkIdea = onCall({ secrets: [anthropicApiKey], region: 'us-central1' }
   const data = await callAnthropic(
     anthropicApiKey.value(),
     {
-      model: 'claude-haiku-4-5-20251001',
+      model: 'claude-sonnet-5',
       max_tokens: 1024,
       system: cachedText(systemPrompt),
       messages: withCacheControl(messages),
@@ -280,7 +292,7 @@ exports.checkIdea = onCall({ secrets: [anthropicApiKey], region: 'us-central1' }
     'checkIdea'
   );
 
-  let reply = (data.content && data.content[0] && data.content[0].text) || '';
+  let reply = getResponseText(data) || '';
   reply = await rewriteInHebrewIfNeeded(reply, anthropicApiKey.value(), 'checkIdea');
   return { reply };
 });
@@ -301,12 +313,16 @@ exports.writeScript = onCall({ secrets: [anthropicApiKey], region: 'us-central1'
 
   const profile = (request.data && request.data.profile) || null;
   const ideaContext = (request.data && request.data.ideaContext) || null;
-  const systemPrompt = buildScriptSystemPrompt(profile, ideaContext);
+  let systemPrompt = buildScriptSystemPrompt(profile, ideaContext);
+
+  if (messages.filter((m) => m.role === 'assistant').length >= 3) {
+    systemPrompt += '\n\n⚠️ הנחיה דחופה: כבר נשלחו 3 הודעות או יותר בשיחה הזו בשלב חילוץ התוכן. אסור לשאול עוד שאלת הבהרה נוספת - חובה לעבור עכשיו, בהודעה הזו, ישירות לשלב הבא (שער הוק, ואז כתיבת הוקים) על סמך מה שכבר נמסר, גם אם אין בדיוק 5 פרטים מושלמים. עדיף להשתמש במה שיש מאשר להמשיך לשאול עוד.';
+  }
 
   const data = await callAnthropic(
     anthropicApiKey.value(),
     {
-      model: 'claude-haiku-4-5-20251001',
+      model: 'claude-sonnet-5',
       max_tokens: 4096,
       system: cachedText(systemPrompt),
       messages: withCacheControl(messages),
@@ -314,7 +330,7 @@ exports.writeScript = onCall({ secrets: [anthropicApiKey], region: 'us-central1'
     'writeScript'
   );
 
-  let reply = (data.content && data.content[0] && data.content[0].text) || '';
+  let reply = getResponseText(data) || '';
   reply = await rewriteInHebrewIfNeeded(reply, anthropicApiKey.value(), 'writeScript');
   return { reply };
 });
@@ -353,7 +369,7 @@ ${PERSUASION_STAGES.map((s) => `- ${s}: ${PERSUASION_STAGE_DEFINITIONS[s]}`).joi
     'classifyIdea'
   );
 
-  const text = (data.content && data.content[0] && data.content[0].text) || '{}';
+  const text = getResponseText(data) || '{}';
   let parsed;
   try {
     const match = text.match(/\{[\s\S]*\}/);
@@ -405,7 +421,7 @@ exports.generateWarmingPlan = onCall({ secrets: [anthropicApiKey, sheetsServiceA
       { model: 'claude-haiku-4-5-20251001', max_tokens: 4096, messages: [{ role: 'user', content: prompt }] },
       'generateWarmingPlan'
     );
-    const text = (data.content && data.content[0] && data.content[0].text) || '{}';
+    const text = getResponseText(data) || '{}';
     try {
       const match = text.match(/\{[\s\S]*\}/);
       return JSON.parse(match ? match[0] : text);
@@ -454,7 +470,7 @@ exports.generateContentPlan = onCall({ secrets: [anthropicApiKey], region: 'us-c
     'generateContentPlan'
   );
 
-  const text = (data.content && data.content[0] && data.content[0].text) || '{}';
+  const text = getResponseText(data) || '{}';
   let parsed;
   try {
     const match = text.match(/\{[\s\S]*\}/);
