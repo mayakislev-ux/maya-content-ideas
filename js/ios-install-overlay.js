@@ -31,6 +31,13 @@ function buildSteps() {
 export function showIosInstallOverlayIfNeeded() {
   if (!isIos() || isStandalone()) return;
   if (sessionStorage.getItem(DISMISS_KEY)) return;
+  // This fires immediately on login and again at 2 and 5 minutes - without
+  // this guard, if she hadn't dismissed it yet, each of those three calls
+  // stacked another full-screen overlay on top of the last one instead of
+  // replacing it. Dismissing the topmost card would still leave 1-2 more
+  // identical blocking overlays sitting underneath, which would look like
+  // the app got stuck/broken.
+  if (document.querySelector('.ios-install-overlay')) return;
 
   const overlay = document.createElement('div');
   overlay.className = 'ios-install-overlay';
