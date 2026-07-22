@@ -268,36 +268,6 @@ policyModal.addEventListener('click', (e) => {
   if (e.target === policyModal) policyModal.hidden = true;
 });
 
-const aboutModal = document.getElementById('about-modal');
-document.getElementById('open-about-btn').addEventListener('click', () => {
-  aboutModal.hidden = false;
-});
-document.getElementById('about-close-btn').addEventListener('click', () => {
-  aboutModal.hidden = true;
-});
-aboutModal.addEventListener('click', (e) => {
-  if (e.target === aboutModal) aboutModal.hidden = true;
-});
-
-const WHATS_NEW_SEEN_KEY = 'whats-new-seen-v1';
-const whatsNewModal = document.getElementById('whats-new-modal');
-const whatsNewBtn = document.getElementById('open-whats-new-btn');
-function openWhatsNew() {
-  whatsNewModal.hidden = false;
-  localStorage.setItem(WHATS_NEW_SEEN_KEY, '1');
-  whatsNewBtn.classList.remove('has-update-dot');
-}
-whatsNewBtn.addEventListener('click', openWhatsNew);
-document.getElementById('whats-new-close-btn').addEventListener('click', () => {
-  whatsNewModal.hidden = true;
-});
-whatsNewModal.addEventListener('click', (e) => {
-  if (e.target === whatsNewModal) whatsNewModal.hidden = true;
-});
-if (!localStorage.getItem(WHATS_NEW_SEEN_KEY)) {
-  whatsNewBtn.classList.add('has-update-dot');
-}
-
 // Wrapped in arrow functions - passing openAddModal directly to
 // addEventListener means the browser invokes it with the click/pointer
 // event as the first argument, which becomes the modal's "prefillTitle"

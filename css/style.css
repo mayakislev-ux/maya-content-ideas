@@ -626,21 +626,37 @@ body.focus-mode .chat-input-row { bottom: 0; }
   flex: 1;
   text-align: center;
   border: none;
-  border-inline-start: none !important;
   background: none;
   border-radius: 999px;
   padding: 0.5rem 0.3rem;
   font-size: 0.8rem;
+  font-weight: 700;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  opacity: 0.55;
+  transition: opacity 150ms ease;
 }
 
 .category-tabs .quick-chip.active {
-  background: var(--card-bg);
-  color: var(--text) !important;
+  color: var(--text);
   box-shadow: var(--card-shadow);
-  font-weight: 700;
+  opacity: 1;
+}
+
+/* Color is the identity here, not an emoji - each category always shows
+   as its own solid-colored button, not just a colored label on a neutral
+   tab. The "active" state above only changes emphasis (opacity/shadow),
+   never the color itself, so the mapping stays recognizable at a glance
+   whether selected or not. */
+.category-tabs .quick-chip-category {
+  border-inline-start: none;
+  background: var(--chip-color, var(--muted));
+  color: white;
+}
+
+.category-tabs .quick-chip-category.active {
+  color: white;
 }
 
 /* Everything that isn't "which category" (audience/persuasion/rating/
@@ -829,13 +845,6 @@ body.focus-mode .chat-input-row { bottom: 0; }
 .close-menu-btn { display: none; }
 .drawer-signout-btn { display: none; }
 
-.drawer-divider {
-  width: 1px;
-  align-self: stretch;
-  background: rgba(255, 255, 255, 0.2);
-  margin: 0 0.2rem;
-  flex-shrink: 0;
-}
 
 @media (max-width: 720px) {
   html { font-size: 18px; }
@@ -1031,12 +1040,6 @@ body.focus-mode .chat-input-row { bottom: 0; }
     background: white;
   }
 
-  .drawer-divider {
-    width: auto;
-    height: 1px;
-    align-self: stretch;
-    margin: 0.4rem 1.1rem;
-  }
 
   .drawer-signout-btn {
     display: block;
