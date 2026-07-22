@@ -117,8 +117,15 @@
    whole page past the viewport, which on a RTL mobile page reads as
    "everything is shifted and cut off" rather than an obvious local
    glitch. This doesn't replace fixing the actual cause, but stops a
-   future instance of the same bug class from taking down the whole page. */
-html, body { overflow-x: hidden; }
+   future instance of the same bug class from taking down the whole page.
+   Deliberately only on body, not html: setting it on BOTH html and body
+   is a known trigger for iOS Safari specifically to mishandle the sticky
+   header's scroll-boundary calculation and produce a *real*, draggable
+   horizontal scroll/shift of the whole page - a WebKit-only interaction
+   that a Chromium-based test can't reproduce, which is exactly why this
+   safety net risked making the real device experience worse instead of
+   better. */
+body { overflow-x: hidden; }
 
 /* Mobile Safari has its own "font boosting" heuristic that can silently
    inflate text size in some text blocks beyond what the CSS actually
