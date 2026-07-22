@@ -120,6 +120,19 @@
    future instance of the same bug class from taking down the whole page. */
 html, body { overflow-x: hidden; }
 
+/* Mobile Safari has its own "font boosting" heuristic that can silently
+   inflate text size in some text blocks beyond what the CSS actually
+   specifies, in a way that's entirely invisible in Chromium (including
+   Chromium's own mobile-device emulation) - it's WebKit-only. That's a
+   real, known candidate for layout breaking specifically in real Safari
+   on a real device while looking perfect in every other testing method.
+   Disabling the auto-adjustment forces text to render at exactly the
+   size the CSS specifies, everywhere, consistently. */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 body {
   margin: 0;
   font-family: 'Heebo', 'Segoe UI', Arial, sans-serif;
