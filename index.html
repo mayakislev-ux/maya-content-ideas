@@ -19,7 +19,21 @@
 </head>
 <body>
 
-<div id="login-screen" class="screen">
+<!-- Shown instantly on load, before Firebase has resolved whether there's
+     already a signed-in session - without this, a returning (already
+     logged-in) user briefly saw the full login form flash on screen every
+     single time before the real app appeared, which is most of what made
+     opening this feel slower than a native notes app. -->
+<div id="launch-splash" class="screen launch-splash">
+  <svg class="app-logo launch-splash-logo" viewBox="0 0 48 48" aria-hidden="true">
+    <circle cx="24" cy="24" r="23" fill="rgba(255,255,255,0.18)" stroke="rgba(255,255,255,0.55)" stroke-width="1.5"/>
+    <circle cx="24" cy="16" r="4.5" fill="#fff"/>
+    <polygon points="20,21 28,21 31,31 17,31" fill="#fff"/>
+    <rect x="14" y="31" width="20" height="4" rx="2" fill="#fff"/>
+  </svg>
+</div>
+
+<div id="login-screen" class="screen" hidden>
   <div class="login-card">
     <h1>המוח <span class="accent-word">השיווקי</span><br>שנמצא איתך 24/7</h1>
     <button id="google-signin-btn" class="btn-primary">התחברות עם Google</button>
@@ -70,6 +84,10 @@
             <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polygon points="15 9 13 13 9 15 11 11 15 9"/></svg>
             <span>מרכז למידה</span>
           </button>
+          <button id="tab-feedback" class="tab-btn">
+            <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-8.4 8.4 8.3 8.3 0 0 1-3.8-.9L3 21l1.9-5.8a8.3 8.3 0 0 1-.9-3.8A8.4 8.4 0 0 1 12.5 3h.1a8.4 8.4 0 0 1 8.4 8.4z"/></svg>
+            <span>חוות דעת</span>
+          </button>
           <button id="tab-inspiration" class="tab-btn" hidden>מאגר להשראה</button>
 
           <button type="button" id="drawer-signout-btn" class="drawer-signout-btn">
@@ -107,7 +125,10 @@
       <h2 class="home-capture-title">✨ מה הרעיון שקפץ לך עכשיו?</h2>
       <div class="quick-add-box home-quick-add-box">
         <textarea id="quick-add-input" enterkeyhint="done" placeholder="התחילו לכתוב..." rows="3"></textarea>
-        <button type="button" id="quick-add-btn" class="btn-primary quick-add-btn-icon" aria-label="שמירת רעיון מהיר">+</button>
+        <button type="button" id="quick-add-btn" class="btn-primary quick-add-btn-icon" aria-label="שמירת רעיון מהיר">
+          <span class="quick-add-btn-plus" aria-hidden="true">+</span>
+          <span class="quick-add-btn-label">שמירת רעיון</span>
+        </button>
       </div>
       <span class="draft-saved-indicator" id="draft-saved-indicator" hidden>נשמר ✓</span>
     </section>
@@ -132,7 +153,7 @@
   <main id="archive-view" class="view" hidden>
     <section class="archive-controls-section">
       <div class="section-row">
-        <span class="section-title">הרעיונות שלי · <span id="idea-count"></span></span>
+        <span class="section-title"><span id="archive-title-label">הרעיונות שלי</span> · <span id="idea-count"></span></span>
         <div class="section-row-actions">
           <button type="button" id="add-idea-top-btn" class="btn-text add-idea-full-btn">+ רעיון מלא</button>
           <button type="button" id="completed-toggle-btn" class="btn-text">רעיונות שבוצעו</button>
@@ -288,16 +309,6 @@
       </div>
     </section>
 
-    <section class="hub-section">
-      <h3 class="hub-section-title">💬 קבלת פידבק</h3>
-      <div class="hub-action-grid">
-        <button type="button" id="hub-link-feedback" class="hub-action-card">
-          <span class="hub-action-icon">💬</span>
-          <span class="hub-action-label">חוות דעת</span>
-          <span class="hub-action-desc">שתפו מה עובד ומה לא</span>
-        </button>
-      </div>
-    </section>
   </main>
 
   <main id="ideas-guide-view" class="view guide-view" hidden>

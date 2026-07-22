@@ -287,10 +287,20 @@ export function wireArchiveControls(onItemClick) {
   const categoryChips = document.querySelectorAll('.quick-chip[data-category]');
   const viralChip = document.getElementById('quick-chip-viral');
 
+  const archiveTitleLabel = document.getElementById('archive-title-label');
   categoryChips.forEach((chip) => {
     chip.addEventListener('click', () => {
       categorySelect.value = chip.dataset.category;
       categoryChips.forEach((c) => c.classList.toggle('active', c === chip));
+      // Tapping a category should feel like landing on "the ideas for
+      // this category", not just applying a filter to the same screen -
+      // updating the heading plus a brief fade on the list itself is a
+      // lightweight way to sell that without a real route/screen change.
+      archiveTitleLabel.textContent = chip.dataset.category || 'הרעיונות שלי';
+      const list = document.getElementById('archive-list');
+      list.classList.remove('archive-list-switch');
+      void list.offsetWidth;
+      list.classList.add('archive-list-switch');
       applyFilters(onItemClick);
     });
   });

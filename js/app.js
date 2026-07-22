@@ -297,7 +297,7 @@ document.getElementById('hub-link-chat').addEventListener('click', () => {
   showView('chat');
   startIdeaChat();
 });
-document.getElementById('hub-link-feedback').addEventListener('click', () => showView('feedback'));
+document.getElementById('tab-feedback').addEventListener('click', () => showView('feedback'));
 document.getElementById('hub-link-script').addEventListener('click', () => {
   showView('script');
   startScriptChat();
@@ -417,6 +417,8 @@ document.getElementById('enable-notifications-btn').addEventListener('click', as
 });
 
 onAuthChange(async (user) => {
+  document.getElementById('launch-splash').hidden = true;
+
   if (unsubscribeIdeas) {
     unsubscribeIdeas();
     unsubscribeIdeas = null;
