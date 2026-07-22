@@ -54,35 +54,27 @@
       <nav class="view-tabs" id="view-tabs">
         <button type="button" id="close-menu-btn" class="close-menu-btn" aria-label="סגירת תפריט">✕</button>
         <div class="view-tabs-scroll" id="view-tabs-scroll">
-          <button id="tab-archive" class="tab-btn active">
+          <button id="tab-home" class="tab-btn active">
+            <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10l9-7 9 7"/><path d="M5 9.5V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.5"/></svg>
+            <span>בית</span>
+          </button>
+          <button id="tab-archive" class="tab-btn">
             <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
             <span>הרעיונות שלי</span>
-          </button>
-          <button id="tab-progress" class="tab-btn">
-            <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="12" width="4" height="8"/><rect x="10" y="8" width="4" height="12"/><rect x="16" y="4" width="4" height="16"/></svg>
-            <span>ההתקדמות שלי</span>
           </button>
           <button id="tab-chat" class="tab-btn">
             <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
             <span>בדיקת רעיון</span>
           </button>
+          <button id="tab-progress" class="tab-btn">
+            <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="12" width="4" height="8"/><rect x="10" y="8" width="4" height="12"/><rect x="16" y="4" width="4" height="16"/></svg>
+            <span>ההתקדמות שלי</span>
+          </button>
           <button id="tab-guide" class="tab-btn">
             <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polygon points="15 9 13 13 9 15 11 11 15 9"/></svg>
-            <span>איך למצוא רעיון</span>
+            <span>מרכז למידה</span>
           </button>
           <button id="tab-inspiration" class="tab-btn" hidden>מאגר להשראה</button>
-          <button id="tab-script" class="tab-btn" hidden>
-            <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
-            <span>כתיבת תסריטים (מנהלת)</span>
-          </button>
-          <button id="tab-warming" class="tab-btn" hidden>
-            <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2c1.2 3-1.8 4.2-1.8 7.2a3.8 3.8 0 0 0 7.6 0c0-1-.4-1.8-.9-2.7 1 0 2.9 1.9 2.9 5.7a5.8 5.8 0 0 1-11.6 0c0-4.8 3.8-5.8 3.8-10.2z"/></svg>
-            <span>חימום בסטורי (מנהלת)</span>
-          </button>
-          <button id="tab-feedback" class="tab-btn">
-            <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-8.4 8.4 8.3 8.3 0 0 1-3.8-.9L3 21l1.9-5.8a8.3 8.3 0 0 1-.9-3.8A8.4 8.4 0 0 1 12.5 3h.1a8.4 8.4 0 0 1 8.4 8.4z"/></svg>
-            <span>חוות דעת</span>
-          </button>
           <button type="button" id="drawer-signout-btn" class="drawer-signout-btn">
             <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
             <span>התנתקות</span>
@@ -95,7 +87,11 @@
   <div id="menu-overlay" class="menu-overlay" hidden></div>
 
   <nav class="bottom-nav" id="bottom-nav">
-    <button type="button" id="bottomnav-archive" class="bottom-nav-btn active" aria-label="הרעיונות שלי">
+    <button type="button" id="bottomnav-home" class="bottom-nav-btn active" aria-label="בית">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10l9-7 9 7"/><path d="M5 9.5V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.5"/></svg>
+      <span>בית</span>
+    </button>
+    <button type="button" id="bottomnav-archive" class="bottom-nav-btn" aria-label="הרעיונות שלי">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
       <span>רעיונות</span>
     </button>
@@ -103,25 +99,32 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
       <span>בדיקת רעיון</span>
     </button>
-    <button type="button" id="bottomnav-script" class="bottom-nav-btn" aria-label="כתיבת תסריטים" hidden>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
-      <span>תסריטים</span>
-    </button>
     <button type="button" id="bottomnav-more" class="bottom-nav-btn" aria-label="עוד">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
       <span>עוד</span>
     </button>
   </nav>
 
-  <main id="archive-view" class="view">
-    <section class="quick-add-section">
-      <div class="quick-add-box">
-        <textarea id="quick-add-input" enterkeyhint="done" placeholder="רישום רעיון מהיר לטיוטה, השלמה בהמשך..." rows="1"></textarea>
+  <main id="home-view" class="view home-view">
+    <section class="home-capture-card">
+      <h2 class="home-capture-title">✨ מה הרעיון שקפץ לך עכשיו?</h2>
+      <div class="quick-add-box home-quick-add-box">
+        <textarea id="quick-add-input" enterkeyhint="done" placeholder="התחילו לכתוב..." rows="3"></textarea>
         <button type="button" id="quick-add-btn" class="btn-primary quick-add-btn-icon" aria-label="שמירת רעיון מהיר">+</button>
       </div>
       <span class="draft-saved-indicator" id="draft-saved-indicator" hidden>נשמר ✓</span>
     </section>
 
+    <section class="home-recent-section">
+      <div class="section-row">
+        <span class="section-title">הרעיונות האחרונים</span>
+        <button type="button" id="home-see-all-btn" class="btn-text">כל הרעיונות ←</button>
+      </div>
+      <ul class="home-recent-list" id="home-recent-list"></ul>
+    </section>
+  </main>
+
+  <main id="archive-view" class="view" hidden>
     <section class="archive-controls-section">
       <div class="section-row">
         <span class="section-title">הרעיונות שלי · <span id="idea-count"></span></span>
@@ -196,6 +199,7 @@
           <span id="hero-ring-svg-mount"></span>
         </div>
       </div>
+      <span class="hero-remaining" id="hero-remaining"></span>
     </section>
 
     <div class="stat-scroll" id="stat-scroll"></div>
@@ -231,7 +235,32 @@
   </main>
 
   <main id="guide-view" class="view guide-view" hidden>
-    <h2>מאיפה להביא רעיונות לתוכן?</h2>
+    <h2>מרכז למידה</h2>
+
+    <div class="hub-action-grid" id="hub-action-grid">
+      <button type="button" id="hub-link-chat" class="hub-action-card">
+        <span class="hub-action-icon">🔍</span>
+        <span class="hub-action-label">בדיקת רעיון</span>
+        <span class="hub-action-desc">לבדוק אם רעיון חדש חזק מספיק</span>
+      </button>
+      <button type="button" id="hub-link-feedback" class="hub-action-card">
+        <span class="hub-action-icon">💬</span>
+        <span class="hub-action-label">חוות דעת</span>
+        <span class="hub-action-desc">לשתף מה עובד ומה לא</span>
+      </button>
+      <button type="button" id="hub-link-script" class="hub-action-card" hidden>
+        <span class="hub-action-icon">✍️</span>
+        <span class="hub-action-label">כתיבת תסריטים</span>
+        <span class="hub-action-desc">(מנהלת)</span>
+      </button>
+      <button type="button" id="hub-link-warming" class="hub-action-card" hidden>
+        <span class="hub-action-icon">🔥</span>
+        <span class="hub-action-label">חימום בסטורי</span>
+        <span class="hub-action-desc">(מנהלת)</span>
+      </button>
+    </div>
+
+    <h3>מאיפה להביא רעיונות לתוכן?</h3>
     <div class="guide-intro">
       <p>אפשר להביא רעיונות <strong>מכל דבר בעולם</strong> - העיקר: לקשור את זה לתחום העיסוק שלכם (קשר ישיר או עקיף) או לדמות שאתם (תוכן אישי).</p>
       <p>למשל אם אתם מאמני כושר - מן הסתם תדברו על כל עולם הכושר והתזונה, אבל אפשר גם לייצר תוכן שלא קשור רק לעסק שלכם כדי לבדל את עצמכם ברשת - תוכן שקשור לדמות שאתם ולערכים שלכם. אם עכשיו יצאתם לדייט והייתה סיטואציה שהפריעה לכם, אתם יכולים לפתוח מצלמה בלייב ולהפוך את זה לתוכן.</p>
@@ -243,6 +272,10 @@
       </div>
     </div>
 
+    <div class="guide-callout">
+      <strong>קהל היעד שלכם:</strong> לא סתם עשיתם את המשימה של ניתוח קהל היעד - זו המשימה הכי חשובה. בלי ניתוח מדויק של קהל היעד שלכם, התוכן שלכם לא יעבוד! חייב להיות לכם המון סרטונים בפיד שמדברים בדיוק את מה שהקהל שלכם צריך לשמוע.
+    </div>
+
     <div class="guide-reference-links">
       <button type="button" id="open-roadmap-link-btn" class="guide-reference-link">מפת הדרכים ליצירת תוכן <span>מדריך מלא לתהליך יצירת תוכן, שלב אחר שלב</span></button>
       <button type="button" id="open-content-plan-link-btn" class="guide-reference-link">מדריך לבניית תכנית תוכן <span>איך בונים תכנית חודשית שלמה (זה שונה מ"🤖 בניית תכנית תוכן" - זה המדריך התיאורטי, זה כלי ה-AI שבונה בפועל)</span></button>
@@ -250,6 +283,7 @@
 
     <h3>11 דרכים להביא רעיונות לתוכן</h3>
 
+    <div class="guide-item-grid">
     <details class="guide-item">
       <summary>1. רעיונות מאחרים</summary>
       <div class="guide-item-body">
@@ -298,10 +332,6 @@
         </ul>
       </div>
     </details>
-
-    <div class="guide-callout">
-      <strong>קהל היעד שלכם:</strong> לא סתם עשיתם את המשימה של ניתוח קהל היעד - זו המשימה הכי חשובה. בלי ניתוח מדויק של קהל היעד שלכם, התוכן שלכם לא יעבוד! חייב להיות לכם המון סרטונים בפיד שמדברים בדיוק את מה שהקהל שלכם צריך לשמוע.
-    </div>
 
     <details class="guide-item">
       <summary>4. המתחרים שלכם</summary>
@@ -364,6 +394,7 @@
         <p>בזמן שיחת מכירה עם הלקוחות שלכם, ממליצה לשמור בקובץ מסודר את כל מה שהם אומרים לכם - זה התוכן הכי זהב שלכם. זה בין הרעיונות שהכי יכניסו לכם כסף, כי זה בדיוק מה שקהל היעד שלכם צריך לשמוע!</p>
       </div>
     </details>
+    </div>
   </main>
 
   <main id="inspiration-view" class="view inspiration-view" hidden>

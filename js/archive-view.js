@@ -51,6 +51,21 @@ function celebrateMilestone(count, ideas) {
 let currentIdeas = [];
 let showingCompleted = false;
 
+// Approximation: counts today's already-synced ideas +1 for the one just
+// submitted (whose Firestore snapshot hasn't come back yet at toast time) -
+// close enough for a quick dopamine hit, not meant to be a precise ledger.
+function todaysIdeaCountLabel() {
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const todayCount =
+    1 +
+    currentIdeas.filter((idea) => {
+      if (!idea.createdAt || typeof idea.createdAt.toDate !== 'function') return false;
+      return idea.createdAt.toDate() >= startOfToday;
+    }).length;
+  return todayCount === 1 ? 'רעיון ראשון היום!' : `${todayCount} רעיונות היום!`;
+}
+
 function formatDate(idea) {
   if (!idea.createdAt || typeof idea.createdAt.toDate !== 'function') return '';
   return idea.createdAt.toDate().toLocaleDateString('he-IL');
@@ -59,9 +74,51 @@ function formatDate(idea) {
 export function renderArchive(ideas, { onItemClick }) {
   currentIdeas = ideas.filter((idea) => !idea.deletedAt);
   applyFilters(onItemClick);
+  renderHomeRecent(onItemClick);
   celebrateMilestone(currentIdeas.length, currentIdeas);
   renderHero();
   renderStatScroll();
+}
+
+// The home screen is deliberately a calm capture-first moment, not a
+// second full list - just enough of a peek at the last few ideas to feel
+// "it's saved, it's here" without repeating archive-view's tags/dates/
+// filters. Full browsing (search, filters, tags) stays on the "רעיונות" view.
+function renderHomeRecent(onItemClick) {
+  const list = document.getElementById('home-recent-list');
+  if (!list) return;
+  const recent = getCurrentIdeas()
+    .slice()
+    .sort((a, b) => {
+      const time = (idea) => (idea.createdAt && typeof idea.createdAt.toMillis === 'function' ? idea.createdAt.toMillis() : 0);
+      return time(b) - time(a);
+    })
+    .slice(0, 3);
+
+  list.innerHTML = '';
+  if (!recent.length) {
+    const empty = document.createElement('li');
+    empty.className = 'home-recent-empty';
+    empty.textContent = 'עדיין אין רעיונות - הראשון מחכה שיכתבו אותו למעלה';
+    list.appendChild(empty);
+    return;
+  }
+
+  recent.forEach((idea) => {
+    const li = document.createElement('li');
+    li.className = 'home-recent-item';
+    li.style.setProperty('--card-color', categoryColorVar(idea.category));
+    const title = document.createElement('span');
+    title.className = 'home-recent-item-title';
+    title.textContent = idea.title;
+    li.appendChild(title);
+    const chevron = document.createElement('span');
+    chevron.className = 'home-recent-item-chevron';
+    chevron.textContent = '‹';
+    li.appendChild(chevron);
+    li.addEventListener('click', () => onItemClick(idea));
+    list.appendChild(li);
+  });
 }
 
 const WEEKLY_GOAL_KEY = 'weekly-idea-goal';
@@ -114,6 +171,12 @@ function renderHero() {
       <span class="hero-ring-label">רעיונות השבוע</span>
     </div>
   `;
+
+  const remainingEl = document.getElementById('hero-remaining');
+  if (remainingEl) {
+    const remaining = Math.max(goal - thisWeekCount, 0);
+    remainingEl.textContent = remaining === 0 ? '🎉 היעד השבועי הושג!' : `נותרו ${remaining} להשלמת היעד השבועי`;
+  }
 }
 
 let lastSeenLevelName = localStorage.getItem('last-seen-level-name');
@@ -262,7 +325,7 @@ export function wireArchiveControls(onItemClick) {
     localStorage.removeItem(QUICK_ADD_DRAFT_KEY);
     if (navigator.vibrate) navigator.vibrate(15);
     await addQuickIdea(title);
-    showToast(QUICK_ADD_TOASTS[Math.floor(Math.random() * QUICK_ADD_TOASTS.length)]);
+    showToast(`⭐ ${todaysIdeaCountLabel()} ${QUICK_ADD_TOASTS[Math.floor(Math.random() * QUICK_ADD_TOASTS.length)]}`);
   };
   quickAddBtn.addEventListener('click', submitQuickAdd);
   quickAddInput.addEventListener('keydown', (e) => {

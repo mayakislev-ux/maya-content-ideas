@@ -306,26 +306,32 @@ if (!localStorage.getItem(WHATS_NEW_SEEN_KEY)) {
 // that entirely.
 document.getElementById('add-idea-fab').addEventListener('click', () => openAddModal());
 document.getElementById('add-idea-top-btn').addEventListener('click', () => openAddModal());
+document.getElementById('tab-home').addEventListener('click', () => showView('home'));
 document.getElementById('tab-archive').addEventListener('click', () => showView('archive'));
 document.getElementById('tab-progress').addEventListener('click', () => showView('progress'));
 document.getElementById('tab-chat').addEventListener('click', () => {
   showView('chat');
   startIdeaChat();
 });
-document.getElementById('tab-script').addEventListener('click', () => {
+document.getElementById('tab-guide').addEventListener('click', () => showView('guide'));
+document.getElementById('tab-inspiration').addEventListener('click', () => showView('inspiration'));
+document.getElementById('home-see-all-btn').addEventListener('click', () => showView('archive'));
+// Reference-only guides and secondary tools, reached from inside "מרכז
+// למידה" instead of being top-level nav tabs - they were competing for
+// attention with the real daily-use tools (בית/רעיונות/בדיקת רעיון), and
+// "תכנית תוכן" collided in name with the separate AI content-plan-builder FAB.
+document.getElementById('open-roadmap-link-btn').addEventListener('click', () => showView('roadmap'));
+document.getElementById('open-content-plan-link-btn').addEventListener('click', () => showView('content-plan'));
+document.getElementById('hub-link-chat').addEventListener('click', () => {
+  showView('chat');
+  startIdeaChat();
+});
+document.getElementById('hub-link-feedback').addEventListener('click', () => showView('feedback'));
+document.getElementById('hub-link-script').addEventListener('click', () => {
   showView('script');
   startScriptChat();
 });
-document.getElementById('tab-guide').addEventListener('click', () => showView('guide'));
-document.getElementById('tab-inspiration').addEventListener('click', () => showView('inspiration'));
-document.getElementById('tab-feedback').addEventListener('click', () => showView('feedback'));
-document.getElementById('tab-warming').addEventListener('click', () => showView('warming'));
-// Reference-only guides, reached from inside "איך למצוא רעיון" instead of
-// being top-level nav tabs - they were competing for attention with the
-// real daily-use tools, and "תכנית תוכן" collided in name with the
-// separate AI content-plan-builder FAB.
-document.getElementById('open-roadmap-link-btn').addEventListener('click', () => showView('roadmap'));
-document.getElementById('open-content-plan-link-btn').addEventListener('click', () => showView('content-plan'));
+document.getElementById('hub-link-warming').addEventListener('click', () => showView('warming'));
 
 const viewTabsNav = document.getElementById('view-tabs');
 const menuOverlay = document.getElementById('menu-overlay');
@@ -343,14 +349,11 @@ document.getElementById('close-menu-btn').addEventListener('click', closeMobileM
 menuOverlay.addEventListener('click', closeMobileMenu);
 viewTabsNav.querySelectorAll('.tab-btn').forEach((btn) => btn.addEventListener('click', closeMobileMenu));
 
+document.getElementById('bottomnav-home').addEventListener('click', () => showView('home'));
 document.getElementById('bottomnav-archive').addEventListener('click', () => showView('archive'));
 document.getElementById('bottomnav-chat').addEventListener('click', () => {
   showView('chat');
   startIdeaChat();
-});
-document.getElementById('bottomnav-script').addEventListener('click', () => {
-  showView('script');
-  startScriptChat();
 });
 document.getElementById('bottomnav-more').addEventListener('click', () => {
   const isOpen = viewTabsNav.classList.toggle('open');
@@ -468,9 +471,8 @@ onAuthChange(async (user) => {
       logo.insertAdjacentElement('afterend', avatar);
     }
   }
-  document.getElementById('tab-warming').hidden = user.email !== ADMIN_EMAIL;
-  document.getElementById('tab-script').hidden = user.email !== ADMIN_EMAIL;
-  document.getElementById('bottomnav-script').hidden = user.email !== ADMIN_EMAIL;
+  document.getElementById('hub-link-warming').hidden = user.email !== ADMIN_EMAIL;
+  document.getElementById('hub-link-script').hidden = user.email !== ADMIN_EMAIL;
   document.getElementById('send-notification-btn').hidden = user.email !== ADMIN_EMAIL;
   document.getElementById('token-usage-btn').hidden = user.email !== ADMIN_EMAIL;
   document.getElementById('view-feedback-btn').hidden = user.email !== ADMIN_EMAIL;
@@ -494,9 +496,9 @@ onAuthChange(async (user) => {
     showView('chat');
     startIdeaChat();
   } else {
-    const restorableViews = ['guide', 'inspiration', 'feedback', 'roadmap', 'content-plan'];
+    const restorableViews = ['guide', 'inspiration', 'feedback', 'roadmap', 'content-plan', 'archive'];
     const lastView = getLastView();
-    showView(restorableViews.includes(lastView) ? lastView : 'archive');
+    showView(restorableViews.includes(lastView) ? lastView : 'home');
   }
   if (params.has('action') || params.has('view')) {
     window.history.replaceState({}, '', window.location.pathname);

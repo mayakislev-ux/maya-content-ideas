@@ -1,7 +1,7 @@
 // Chronological order matching the actual workflow: save an idea, check it,
 // learn how to find more, browse inspiration, plan the content roadmap,
 // write the script, plan the month, then warm up the audience beforehand.
-const VIEWS = ['archive', 'progress', 'chat', 'guide', 'inspiration', 'roadmap', 'script', 'content-plan', 'warming', 'feedback'];
+const VIEWS = ['home', 'archive', 'progress', 'chat', 'guide', 'inspiration', 'roadmap', 'script', 'content-plan', 'warming', 'feedback'];
 const EMBED_VIEWS = ['roadmap', 'content-plan'];
 const LAST_VIEW_KEY = 'last-view';
 
@@ -15,7 +15,7 @@ export function showView(name) {
     if (bottomTab) bottomTab.classList.toggle('active', view === name);
   }
   document.getElementById('random-idea-btn').hidden = name !== 'archive';
-  document.getElementById('add-idea-fab').hidden = name !== 'archive';
+  document.getElementById('add-idea-fab').hidden = !['home', 'archive'].includes(name);
   document.getElementById('embed-back-btn').hidden = !EMBED_VIEWS.includes(name);
   document.getElementById('content-plan-open-builder-btn').hidden = name !== 'content-plan';
   if (name !== 'script') {
@@ -28,5 +28,5 @@ export function showView(name) {
 
 export function getLastView() {
   const saved = sessionStorage.getItem(LAST_VIEW_KEY);
-  return VIEWS.includes(saved) ? saved : 'archive';
+  return VIEWS.includes(saved) ? saved : 'home';
 }
