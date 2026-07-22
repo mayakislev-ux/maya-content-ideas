@@ -75,9 +75,25 @@ export function renderArchive(ideas, { onItemClick }) {
   currentIdeas = ideas.filter((idea) => !idea.deletedAt);
   applyFilters(onItemClick);
   renderHomeRecent(onItemClick);
+  renderHomeProgressWidget();
   celebrateMilestone(currentIdeas.length, currentIdeas);
   renderHero();
   renderStatScroll();
+}
+
+// Compact bar version of the same weekly-progress data the full
+// progress-view's ring shows - lives on home now since a full standalone
+// screen for one number was more navigation than the data warranted.
+// Tapping it still opens progress-view for the fuller level/category
+// breakdown.
+function renderHomeProgressWidget() {
+  const label = document.getElementById('home-progress-label');
+  const fill = document.getElementById('home-progress-bar-fill');
+  if (!label || !fill) return;
+  const { thisWeekCount, goal } = weeklyProgress();
+  const pct = Math.min((thisWeekCount / goal) * 100, 100);
+  label.textContent = `${thisWeekCount} מתוך ${goal} רעיונות`;
+  fill.style.width = `${pct}%`;
 }
 
 // The home screen is deliberately a calm capture-first moment, not a
@@ -290,13 +306,6 @@ export function wireArchiveControls(onItemClick) {
     showingCompleted = !showingCompleted;
     toggleBtn.textContent = showingCompleted ? 'חזרה לרעיונות פעילים' : 'רעיונות שבוצעו';
     applyFilters(onItemClick);
-  });
-
-  const filtersToggleBtn = document.getElementById('filters-toggle-btn');
-  const archiveFilters = document.getElementById('archive-filters');
-  filtersToggleBtn.addEventListener('click', () => {
-    const isOpen = archiveFilters.classList.toggle('open');
-    filtersToggleBtn.classList.toggle('active', isOpen);
   });
 
   const quickAddInput = document.getElementById('quick-add-input');

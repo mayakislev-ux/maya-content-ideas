@@ -35,9 +35,9 @@ export function categoryColorVar(category) {
 
 const CATEGORY_ICONS = {
   'בעל ערך': '💡',
-  'אישי': '🫶',
-  'מכירתי': '🛍️',
-  'בידורי': '🎬',
+  'אישי': '❤️',
+  'מכירתי': '💰',
+  'בידורי': '🎭',
 };
 
 export function categoryIcon(category) {

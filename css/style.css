@@ -249,6 +249,27 @@ h1, h2, h3 {
   cursor: pointer;
 }
 
+/* Delete needs to read as the least important action in the row, not
+   a peer of Save - a solid filled pink button was reading as almost as
+   prominent as Save itself, risking an accidental tap on the wrong one. */
+.btn-danger-subtle {
+  background: none;
+  border: none;
+  color: var(--cat-mechirti);
+  opacity: 0.75;
+  font-size: 0.85rem;
+  padding: 0.5rem 0.4rem;
+  cursor: pointer;
+  transition: opacity 150ms ease, transform 150ms var(--ease-snap);
+}
+.btn-danger-subtle:hover { opacity: 1; }
+.btn-danger-subtle:active { transform: scale(0.94); }
+
+.btn-primary-lg {
+  padding: 1rem 2.2rem;
+  font-size: 1.05rem;
+}
+
 .accent-word { color: var(--warm); }
 
 .error-text { color: var(--cat-mechirti); font-weight: bold; }
@@ -588,6 +609,65 @@ body.focus-mode .chat-input-row { bottom: 0; }
   margin-bottom: 0.8rem;
 }
 
+/* WhatsApp-style equal-width category tabs - one row, one tap, whole
+   list swaps. Deliberately not wrapping pills of varying width like the
+   old chip row - every tab is the same size so there's nothing to scan,
+   just pick one. */
+.category-tabs {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.3rem;
+  background: var(--surface);
+  border-radius: 999px;
+  padding: 0.25rem;
+}
+
+.category-tabs .quick-chip {
+  flex: 1;
+  text-align: center;
+  border: none;
+  border-inline-start: none !important;
+  background: none;
+  border-radius: 999px;
+  padding: 0.5rem 0.3rem;
+  font-size: 0.8rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.category-tabs .quick-chip.active {
+  background: var(--card-bg);
+  color: var(--text) !important;
+  box-shadow: var(--card-shadow);
+  font-weight: 700;
+}
+
+/* Everything that isn't "which category" (audience/persuasion/rating/
+   sort) is secondary browsing refinement, not needed on every visit -
+   a native <details> needs no JS and collapses by default so it never
+   competes with the always-visible category tabs above it. */
+.more-filters-details {
+  margin-bottom: 0.8rem;
+}
+
+.more-filters-details summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 0.3rem 0;
+  list-style: none;
+}
+
+.more-filters-details summary::-webkit-details-marker { display: none; }
+.more-filters-details summary::before { content: '▾ '; }
+.more-filters-details[open] summary::before { content: '▴ '; }
+
+.more-filters-details select {
+  margin-top: 0.5rem;
+}
+
 .quick-chip {
   font-family: inherit;
   font-size: 0.85rem;
@@ -748,6 +828,14 @@ body.focus-mode .chat-input-row { bottom: 0; }
 
 .close-menu-btn { display: none; }
 .drawer-signout-btn { display: none; }
+
+.drawer-divider {
+  width: 1px;
+  align-self: stretch;
+  background: rgba(255, 255, 255, 0.2);
+  margin: 0 0.2rem;
+  flex-shrink: 0;
+}
 
 @media (max-width: 720px) {
   html { font-size: 18px; }
@@ -941,6 +1029,13 @@ body.focus-mode .chat-input-row { bottom: 0; }
     width: 4px;
     border-radius: 999px;
     background: white;
+  }
+
+  .drawer-divider {
+    width: auto;
+    height: 1px;
+    align-self: stretch;
+    margin: 0.4rem 1.1rem;
   }
 
   .drawer-signout-btn {
@@ -2047,6 +2142,127 @@ textarea:focus-visible,
   margin-bottom: 1rem;
 }
 
+/* Fewer nested boxes: the idea field itself and the optional link no
+   longer sit inside a colored .form-section frame - only the fields that
+   benefit from visual grouping (rating/audience/category/persuasion)
+   keep it, at a lighter weight than before. */
+.form-section-secondary {
+  background: none;
+  padding: 0 0 0.2rem;
+}
+
+.idea-modal-content .form-section {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  padding: 0.9rem 1rem 0.6rem;
+}
+
+.idea-modal-content .modal-actions {
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* The idea itself is the one thing on this screen that should dominate -
+   no frame, no background box, just large text directly on the card,
+   like a document rather than a form field. */
+.field-hero-label {
+  display: block;
+  font-family: 'Ploni Black', sans-serif;
+  font-weight: 900;
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-bottom: 0.3rem;
+}
+
+/* Descendant selector (not a bare class) so this legitimately outranks
+   the generic ".modal-content textarea" rule on specificity instead of
+   reaching for !important - same convention used elsewhere in this file
+   for these cascade ties (see .modal-content.modal-content above). */
+.idea-modal-content .field-hero-textarea {
+  border: none;
+  background: transparent;
+  padding: 0;
+  font-size: 1.3rem;
+  line-height: 1.5;
+  min-height: 132px;
+  font-weight: 600;
+  margin-bottom: 1.2rem;
+}
+
+.field-hero-textarea:focus { outline: none; }
+
+.field-subhint {
+  margin: -0.3rem 0 0.5rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+/* A quick "how this'll look in the list" confidence check, updated live
+   from whatever's currently filled in - answers "what now?" right after
+   editing instead of only finding out back on the list screen. */
+.idea-preview-card {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 0.7rem 0.9rem;
+  margin-bottom: 1.2rem;
+}
+
+.idea-preview-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.idea-preview-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.idea-preview-rating { flex-shrink: 0; }
+
+.rating-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+  margin-bottom: 0.4rem;
+}
+
+.rating-chip {
+  border: 2px solid var(--border-color);
+  background: var(--card-bg);
+  color: var(--text);
+  font-weight: bold;
+  padding: 0.4rem 0.9rem;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.rating-chip.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+@keyframes chipPop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.12); }
+  100% { transform: scale(1); }
+}
+
+.chip-pop { animation: chipPop 280ms var(--ease-snap); }
+
 .field-label-row {
   display: flex;
   align-items: center;
@@ -2887,6 +3103,48 @@ textarea:focus-visible,
   max-height: none;
 }
 
+/* A compact bar, not a full screen, for one number - tapping it still
+   reaches the fuller ring/level/category breakdown on progress-view. */
+.home-progress-widget {
+  display: block;
+  width: 100%;
+  text-align: right;
+  background: var(--card-bg);
+  border: none;
+  border-radius: 14px;
+  box-shadow: var(--card-shadow);
+  padding: 0.9rem 1.1rem;
+  margin-bottom: 1.4rem;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--text);
+}
+
+.home-progress-widget-top {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 700;
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+}
+
+.home-progress-widget-top span:last-child { color: var(--muted); font-weight: 600; }
+
+.home-progress-bar {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--accent-tint);
+  overflow: hidden;
+}
+
+.home-progress-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent-2), var(--accent));
+  transition: width 500ms var(--ease-snap);
+}
+
 .home-recent-section .section-row { margin-bottom: 0.8rem; }
 
 .home-recent-list {
@@ -2932,18 +3190,43 @@ textarea:focus-visible,
   padding: 1rem;
 }
 
-/* Learning-center hub quick links - functional shortcuts to real
-   views/actions (not documentation), so they get a bolder, icon-led
-   treatment distinct from .guide-reference-link's quieter "read a doc"
-   style right below them. */
+/* Learning-center hub: one question ("what happens if I tap this?") per
+   card, grouped into 3 same-kind sections (tools / guides / feedback) so
+   nothing mixes an interactive tool with a static article in the same
+   row - each card is icon + title + one short line + an arrow, nothing
+   else, and generous section spacing instead of one dense block. */
+.hub-intro {
+  color: var(--muted);
+  margin: -0.6rem 0 1.6rem;
+}
+
+.hub-section { margin-bottom: 2.2rem; }
+.hub-section:last-child { margin-bottom: 0.5rem; }
+
+.hub-section-title {
+  font-size: 0.95rem;
+  margin: 0 0 0.9rem;
+}
+
+.hub-back-btn {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 1rem;
+}
+
 .hub-action-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 0.8rem;
-  margin-bottom: 1.6rem;
 }
 
 .hub-action-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2953,7 +3236,7 @@ textarea:focus-visible,
   border: none;
   border-radius: var(--card-radius);
   box-shadow: var(--card-shadow);
-  padding: 1.1rem 0.8rem;
+  padding: 1.3rem 0.9rem 1.1rem;
   cursor: pointer;
   font-family: inherit;
   color: var(--text);
@@ -2962,6 +3245,15 @@ textarea:focus-visible,
 
 .hub-action-card:active { transform: scale(0.96); }
 .hub-action-card[hidden] { display: none; }
+
+.hub-action-card::after {
+  content: '‹';
+  position: absolute;
+  bottom: 0.6rem;
+  left: 0.7rem;
+  color: var(--muted);
+  font-size: 1.1rem;
+}
 
 .hub-action-icon { font-size: 1.6rem; }
 .hub-action-label { font-weight: 700; font-size: 0.9rem; }
@@ -2979,6 +3271,53 @@ textarea:focus-visible,
 }
 
 .guide-item-grid .guide-item { margin-bottom: 0; }
+
+@media (max-width: 720px) {
+  .home-view {
+    padding: 1.2rem 1rem calc(6rem + var(--bottom-nav-h, 70px));
+  }
+
+  .home-capture-card {
+    padding: 1.4rem 1.1rem;
+  }
+
+  .home-capture-title {
+    font-size: 1.1rem;
+  }
+
+  /* A tiny circular button stuck to the corner of a tall multi-line
+     capture box looked like a misaligned afterthought on a narrow
+     screen - stacking the button full-width below the textarea reads
+     as a clear, deliberate "save" action instead. */
+  .home-quick-add-box {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .home-quick-add-box textarea {
+    min-height: 84px;
+  }
+
+  .home-quick-add-box .quick-add-btn-icon {
+    width: 100%;
+    height: 2.9rem;
+    border-radius: 999px;
+    font-size: 1.4rem;
+  }
+
+  .hub-action-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.6rem;
+  }
+
+  .hub-action-card {
+    padding: 0.9rem 0.6rem;
+  }
+
+  .guide-item-grid {
+    grid-template-columns: 1fr;
+  }
+}
 
 /* Print stylesheet - mainly for printing a written script to bring to a
    shoot. Hides all app chrome (nav, buttons, header) and reflows the

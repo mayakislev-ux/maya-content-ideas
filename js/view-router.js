@@ -1,7 +1,7 @@
 // Chronological order matching the actual workflow: save an idea, check it,
 // learn how to find more, browse inspiration, plan the content roadmap,
 // write the script, plan the month, then warm up the audience beforehand.
-const VIEWS = ['home', 'archive', 'progress', 'chat', 'guide', 'inspiration', 'roadmap', 'script', 'content-plan', 'warming', 'feedback'];
+const VIEWS = ['home', 'archive', 'progress', 'chat', 'guide', 'ideas-guide', 'inspiration', 'roadmap', 'script', 'content-plan', 'warming', 'feedback'];
 const EMBED_VIEWS = ['roadmap', 'content-plan'];
 const LAST_VIEW_KEY = 'last-view';
 

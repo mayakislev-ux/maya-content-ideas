@@ -1,4 +1,4 @@
-import { validateIdea, CATEGORY_DEFINITIONS, PERSUASION_STAGE_DEFINITIONS } from './ideas-logic.js';
+import { validateIdea, CATEGORY_DEFINITIONS, PERSUASION_STAGE_DEFINITIONS, categoryColorVar, categoryIcon } from './ideas-logic.js';
 import { addIdea, updateIdea, deleteIdea, restoreIdea } from './ideas-store.js';
 import { functions } from './firebase-init.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
@@ -14,6 +14,33 @@ function setCategoryChip(value) {
   document.querySelectorAll('.category-chip').forEach((chip) => {
     chip.classList.toggle('active', chip.dataset.value === value);
   });
+  updateIdeaPreview();
+}
+
+function setRatingChip(value) {
+  document.getElementById('field-rating').value = value;
+  document.querySelectorAll('.rating-chip').forEach((chip) => {
+    chip.classList.toggle('active', chip.dataset.value === value);
+  });
+  updateIdeaPreview();
+}
+
+// Live "how this will look in the list" preview - a quick confidence check
+// after filling in the form, instead of only finding out at the list screen
+// after saving. Reads straight from the form fields, so it's always in sync
+// with whatever's currently selected, no separate state to keep in sync.
+function updateIdeaPreview() {
+  const title = document.getElementById('field-title').value.trim();
+  const category = document.getElementById('field-category').value;
+  const rating = document.getElementById('field-rating').value;
+
+  const swatch = document.getElementById('idea-preview-swatch');
+  const titleEl = document.getElementById('idea-preview-title');
+  const ratingEl = document.getElementById('idea-preview-rating');
+
+  swatch.style.background = category ? categoryColorVar(category) : 'var(--border-color)';
+  titleEl.textContent = title || 'כך זה ייראה ברשימה';
+  ratingEl.textContent = rating ? rating.split(' ')[0] : (category ? categoryIcon(category) : '');
 }
 
 export function openAddModal(prefillTitle = '') {
@@ -22,10 +49,12 @@ export function openAddModal(prefillTitle = '') {
   document.getElementById('modal-breadcrumb-current').textContent = 'רעיון חדש';
   document.getElementById('idea-form').reset();
   setCategoryChip('');
+  setRatingChip('');
   if (prefillTitle) document.getElementById('field-title').value = prefillTitle;
   document.getElementById('delete-idea-btn').hidden = true;
   document.getElementById('form-error').hidden = true;
   document.getElementById('idea-modal').hidden = false;
+  updateIdeaPreview();
 }
 
 export function openEditModal(idea, overrideTitle = '') {
@@ -34,13 +63,14 @@ export function openEditModal(idea, overrideTitle = '') {
   document.getElementById('modal-breadcrumb-current').textContent = 'עריכת רעיון';
   document.getElementById('field-title').value = overrideTitle || idea.title;
   setCategoryChip(idea.category);
+  setRatingChip(idea.rating || '');
   document.getElementById('field-link').value = idea.sourceLink || '';
   document.getElementById('field-persuasion').value = idea.persuasionStage || '';
-  document.getElementById('field-rating').value = idea.rating || '';
   document.getElementById('field-audience-scope').value = idea.audienceScope || '';
   document.getElementById('delete-idea-btn').hidden = false;
   document.getElementById('form-error').hidden = true;
   document.getElementById('idea-modal').hidden = false;
+  updateIdeaPreview();
 }
 
 export function closeModal() {
@@ -127,6 +157,7 @@ export function wireIdeaForm() {
   const titleHint = document.getElementById('field-title-hint');
   titleInput.addEventListener('input', () => {
     titleHint.hidden = titleInput.value.length <= 280;
+    updateIdeaPreview();
   });
 
   document.getElementById('delete-idea-btn').addEventListener('click', async () => {
@@ -146,7 +177,19 @@ export function wireIdeaForm() {
         runAiClassification();
       } else {
         setCategoryChip(chip.dataset.value);
+        chip.classList.remove('chip-pop');
+        void chip.offsetWidth;
+        chip.classList.add('chip-pop');
       }
+    });
+  });
+
+  document.querySelectorAll('.rating-chip').forEach((chip) => {
+    chip.addEventListener('click', () => {
+      setRatingChip(chip.dataset.value);
+      chip.classList.remove('chip-pop');
+      void chip.offsetWidth;
+      chip.classList.add('chip-pop');
     });
   });
 

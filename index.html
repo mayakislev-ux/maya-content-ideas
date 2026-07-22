@@ -66,15 +66,20 @@
             <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
             <span>בדיקת רעיון</span>
           </button>
-          <button id="tab-progress" class="tab-btn">
-            <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="12" width="4" height="8"/><rect x="10" y="8" width="4" height="12"/><rect x="16" y="4" width="4" height="16"/></svg>
-            <span>ההתקדמות שלי</span>
-          </button>
           <button id="tab-guide" class="tab-btn">
             <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polygon points="15 9 13 13 9 15 11 11 15 9"/></svg>
             <span>מרכז למידה</span>
           </button>
           <button id="tab-inspiration" class="tab-btn" hidden>מאגר להשראה</button>
+
+          <button type="button" id="token-usage-btn" class="tab-btn" hidden>🤖 שימוש ב-AI</button>
+          <button type="button" id="view-feedback-btn" class="tab-btn" hidden>💬 חוות דעת שהתקבלו</button>
+          <button type="button" id="send-notification-btn" class="tab-btn" hidden>🔔 שליחת התראה</button>
+          <div class="drawer-divider"></div>
+          <button type="button" id="open-whats-new-btn" class="tab-btn">🆕 מה חדש</button>
+          <button type="button" id="open-about-btn" class="tab-btn">❓ אודות ותמיכה</button>
+          <button type="button" id="open-policy-btn-app" class="tab-btn">🔒 מדיניות פרטיות</button>
+
           <button type="button" id="drawer-signout-btn" class="drawer-signout-btn">
             <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
             <span>התנתקות</span>
@@ -115,6 +120,14 @@
       <span class="draft-saved-indicator" id="draft-saved-indicator" hidden>נשמר ✓</span>
     </section>
 
+    <button type="button" id="home-progress-widget" class="home-progress-widget">
+      <div class="home-progress-widget-top">
+        <span>🎯 השבוע</span>
+        <span id="home-progress-label"></span>
+      </div>
+      <div class="home-progress-bar"><span id="home-progress-bar-fill" class="home-progress-bar-fill"></span></div>
+    </button>
+
     <section class="home-recent-section">
       <div class="section-row">
         <span class="section-title">הרעיונות האחרונים</span>
@@ -131,7 +144,6 @@
         <div class="section-row-actions">
           <button type="button" id="add-idea-top-btn" class="btn-text add-idea-full-btn">+ רעיון מלא</button>
           <button type="button" id="completed-toggle-btn" class="btn-text">רעיונות שבוצעו</button>
-          <button type="button" id="filters-toggle-btn" class="filters-toggle-btn">סינון</button>
         </div>
       </div>
 
@@ -139,14 +151,22 @@
         <input id="search-input" type="text" enterkeyhint="search" placeholder="חיפוש לפי כותרת או טקסט...">
       </div>
 
-      <div class="archive-controls" id="archive-filters">
-        <div class="quick-filter-chips" id="quick-filter-chips">
-          <button type="button" class="quick-chip active" data-category="">הכל</button>
-          <button type="button" class="quick-chip quick-chip-category" data-category="בעל ערך" style="--chip-color: var(--cat-baal-erech)">בעל ערך</button>
-          <button type="button" class="quick-chip quick-chip-category" data-category="אישי" style="--chip-color: var(--cat-ishi)">אישי</button>
-          <button type="button" class="quick-chip quick-chip-category" data-category="מכירתי" style="--chip-color: var(--cat-mechirti)">מכירתי</button>
-          <button type="button" class="quick-chip quick-chip-category" data-category="בידורי" style="--chip-color: var(--cat-biduri)">בידורי</button>
-          <button type="button" class="quick-chip quick-chip-viral" id="quick-chip-viral">🔥 קהל רחב</button>
+      <!-- One-tap category tabs (WhatsApp-style) - the always-visible way
+           to slice the list. Everything else (audience/persuasion/rating/
+           sort) moved behind a details-style "עוד סינון" since day-to-day
+           browsing almost never needs 5 simultaneous filter dropdowns. -->
+      <div class="quick-filter-chips category-tabs" id="quick-filter-chips">
+        <button type="button" class="quick-chip active" data-category="">הכל</button>
+        <button type="button" class="quick-chip quick-chip-category" data-category="בעל ערך" style="--chip-color: var(--cat-baal-erech)">💡 בעל ערך</button>
+        <button type="button" class="quick-chip quick-chip-category" data-category="אישי" style="--chip-color: var(--cat-ishi)">❤️ אישי</button>
+        <button type="button" class="quick-chip quick-chip-category" data-category="בידורי" style="--chip-color: var(--cat-biduri)">🎭 בידורי</button>
+        <button type="button" class="quick-chip quick-chip-category" data-category="מכירתי" style="--chip-color: var(--cat-mechirti)">💰 מכירתי</button>
+      </div>
+
+      <details class="more-filters-details">
+        <summary>עוד סינון</summary>
+        <div class="quick-filter-chips" id="quick-filter-chips-viral">
+          <button type="button" class="quick-chip quick-chip-viral" id="quick-chip-viral">🔥 קהל רחב בלבד</button>
         </div>
         <select id="filter-category" hidden aria-hidden="true">
           <option value="">כל הקטגוריות</option>
@@ -178,7 +198,7 @@
           <option value="oldest">הכי ישן קודם</option>
           <option value="rating">🔥 הכי חזק קודם</option>
         </select>
-      </div>
+      </details>
 
       <button id="random-idea-btn" class="random-btn">🎲 אין לי רעיון</button>
     </section>
@@ -191,6 +211,7 @@
   </main>
 
   <main id="progress-view" class="view progress-view" hidden>
+    <button type="button" id="progress-back-btn" class="hub-back-btn">‹ חזרה לבית</button>
     <h2 class="progress-view-title">📊 ההתקדמות שלי</h2>
     <section class="hero-section">
       <span class="hero-greet" id="hero-greet"></span>
@@ -236,31 +257,60 @@
 
   <main id="guide-view" class="view guide-view" hidden>
     <h2>מרכז למידה</h2>
+    <p class="hub-intro">מצאו את הכלי או המדריך שאתם צריכים.</p>
 
-    <div class="hub-action-grid" id="hub-action-grid">
-      <button type="button" id="hub-link-chat" class="hub-action-card">
-        <span class="hub-action-icon">🔍</span>
-        <span class="hub-action-label">בדיקת רעיון</span>
-        <span class="hub-action-desc">לבדוק אם רעיון חדש חזק מספיק</span>
-      </button>
-      <button type="button" id="hub-link-feedback" class="hub-action-card">
-        <span class="hub-action-icon">💬</span>
-        <span class="hub-action-label">חוות דעת</span>
-        <span class="hub-action-desc">לשתף מה עובד ומה לא</span>
-      </button>
-      <button type="button" id="hub-link-script" class="hub-action-card" hidden>
-        <span class="hub-action-icon">✍️</span>
-        <span class="hub-action-label">כתיבת תסריטים</span>
-        <span class="hub-action-desc">(מנהלת)</span>
-      </button>
-      <button type="button" id="hub-link-warming" class="hub-action-card" hidden>
-        <span class="hub-action-icon">🔥</span>
-        <span class="hub-action-label">חימום בסטורי</span>
-        <span class="hub-action-desc">(מנהלת)</span>
-      </button>
-    </div>
+    <section class="hub-section">
+      <h3 class="hub-section-title">🛠️ כלי עבודה</h3>
+      <div class="hub-action-grid">
+        <button type="button" id="hub-link-chat" class="hub-action-card">
+          <span class="hub-action-icon">🔍</span>
+          <span class="hub-action-label">בדיקת רעיון</span>
+          <span class="hub-action-desc">בדקו אם הרעיון מספיק חזק</span>
+        </button>
+        <button type="button" id="hub-link-script" class="hub-action-card" hidden>
+          <span class="hub-action-icon">✍️</span>
+          <span class="hub-action-label">כתיבת תסריטים</span>
+          <span class="hub-action-desc">הפכו רעיון לתסריט מלא</span>
+        </button>
+        <button type="button" id="hub-link-content-plan" class="hub-action-card">
+          <span class="hub-action-icon">📅</span>
+          <span class="hub-action-label">תוכנית תוכן</span>
+          <span class="hub-action-desc">בנו תכנית חודשית עם AI</span>
+        </button>
+        <button type="button" id="hub-link-warming" class="hub-action-card" hidden>
+          <span class="hub-action-icon">🔥</span>
+          <span class="hub-action-label">חימום בסטורי</span>
+          <span class="hub-action-desc">חממו קהל לפני מכירה</span>
+        </button>
+      </div>
+    </section>
 
-    <h3>מאיפה להביא רעיונות לתוכן?</h3>
+    <section class="hub-section">
+      <h3 class="hub-section-title">📚 מדריכים</h3>
+      <div class="hub-action-grid">
+        <button type="button" id="hub-link-ideas-guide" class="hub-action-card">
+          <span class="hub-action-icon">📖</span>
+          <span class="hub-action-label">מאיפה להביא רעיונות</span>
+          <span class="hub-action-desc">11 מקורות למציאת רעיונות</span>
+        </button>
+      </div>
+    </section>
+
+    <section class="hub-section">
+      <h3 class="hub-section-title">💬 קבלת פידבק</h3>
+      <div class="hub-action-grid">
+        <button type="button" id="hub-link-feedback" class="hub-action-card">
+          <span class="hub-action-icon">💬</span>
+          <span class="hub-action-label">חוות דעת</span>
+          <span class="hub-action-desc">שתפו מה עובד ומה לא</span>
+        </button>
+      </div>
+    </section>
+  </main>
+
+  <main id="ideas-guide-view" class="view guide-view" hidden>
+    <button type="button" id="ideas-guide-back-btn" class="hub-back-btn">‹ חזרה למרכז למידה</button>
+    <h2>מאיפה להביא רעיונות לתוכן?</h2>
     <div class="guide-intro">
       <p>אפשר להביא רעיונות <strong>מכל דבר בעולם</strong> - העיקר: לקשור את זה לתחום העיסוק שלכם (קשר ישיר או עקיף) או לדמות שאתם (תוכן אישי).</p>
       <p>למשל אם אתם מאמני כושר - מן הסתם תדברו על כל עולם הכושר והתזונה, אבל אפשר גם לייצר תוכן שלא קשור רק לעסק שלכם כדי לבדל את עצמכם ברשת - תוכן שקשור לדמות שאתם ולערכים שלכם. אם עכשיו יצאתם לדייט והייתה סיטואציה שהפריעה לכם, אתם יכולים לפתוח מצלמה בלייב ולהפוך את זה לתוכן.</p>
@@ -278,7 +328,7 @@
 
     <div class="guide-reference-links">
       <button type="button" id="open-roadmap-link-btn" class="guide-reference-link">מפת הדרכים ליצירת תוכן <span>מדריך מלא לתהליך יצירת תוכן, שלב אחר שלב</span></button>
-      <button type="button" id="open-content-plan-link-btn" class="guide-reference-link">מדריך לבניית תכנית תוכן <span>איך בונים תכנית חודשית שלמה (זה שונה מ"🤖 בניית תכנית תוכן" - זה המדריך התיאורטי, זה כלי ה-AI שבונה בפועל)</span></button>
+      <button type="button" id="open-content-plan-link-btn" class="guide-reference-link">מדריך לבניית תכנית תוכן <span>איך בונים תכנית חודשית שלמה (המדריך התיאורטי - לכלי ה-AI עצמו יש כרטיס נפרד ב"כלי עבודה")</span></button>
     </div>
 
     <h3>11 דרכים להביא רעיונות לתוכן</h3>
@@ -475,12 +525,6 @@
     <button type="button" id="install-app-btn" class="btn-text install-app-btn" hidden>להתקין את האפליקציה</button>
     <p id="ios-install-hint" class="ios-install-hint" hidden>באייפון: כדי לקבל התראות צריך קודם להוסיף את האפליקציה למסך הבית - לחצי על כפתור השיתוף בספארי, ואז "הוספה למסך הבית"</p>
     <button type="button" id="enable-notifications-btn" class="btn-text" hidden>הפעלת התראות</button>
-    <button type="button" id="send-notification-btn" class="btn-text" hidden>שליחת התראה (מנהלת)</button>
-    <button type="button" id="token-usage-btn" class="btn-text" hidden>שימוש ב-AI (מנהלת)</button>
-    <button type="button" id="view-feedback-btn" class="btn-text" hidden>חוות דעת שהתקבלו (מנהלת)</button>
-    <button type="button" id="open-whats-new-btn" class="btn-text">מה חדש</button>
-    <button type="button" id="open-about-btn" class="btn-text">אודות ותמיכה</button>
-    <button type="button" id="open-policy-btn-app" class="btn-text policy-link">מדיניות פרטיות</button>
   </footer>
 </div>
 
@@ -566,18 +610,45 @@
     <button type="button" id="idea-modal-close-x" class="modal-close-x" aria-label="סגירה">✕</button>
     <div class="modal-breadcrumb">הרעיונות שלי <span>›</span> <span id="modal-breadcrumb-current">רעיון חדש</span></div>
     <h2 id="modal-title">רעיון חדש</h2>
+
+    <div class="idea-preview-card" id="idea-preview-card">
+      <span class="idea-preview-swatch" id="idea-preview-swatch"></span>
+      <span class="idea-preview-title" id="idea-preview-title">כך זה ייראה ברשימה</span>
+      <span class="idea-preview-rating" id="idea-preview-rating"></span>
+    </div>
+
     <form id="idea-form">
 
+      <label class="field-hero-label" for="field-title">הרעיון</label>
+      <textarea id="field-title" class="field-title-textarea field-hero-textarea" placeholder="על מה הסרטון הזה?" required></textarea>
+      <p id="field-title-hint" class="field-hint" hidden>רעיון ארוך - אפשר גם, אבל שקלי אם יש לקצר לשם קריאות נוחה יותר</p>
+
       <div class="form-section">
-        <label>הרעיון *<textarea id="field-title" class="field-title-textarea" required></textarea></label>
-        <p id="field-title-hint" class="field-hint" hidden>רעיון ארוך - אפשר גם, אבל שקלי אם יש לקצר לשם קריאות נוחה יותר</p>
-        <label>לינק לסרטון (במידה ויש)<input id="field-link" type="url"></label>
+        <label class="field-label-row">כמה הרעיון הזה חזק לדעתך? *</label>
+        <div class="rating-chips" id="rating-chips">
+          <button type="button" class="rating-chip" data-value="🔥 חייב לצלם">🔥 חייב לצלם</button>
+          <button type="button" class="rating-chip" data-value="⭐ שווה לצלם">⭐ שווה לצלם</button>
+          <button type="button" class="rating-chip" data-value="💭 רעיון לעתיד">💭 רעיון לעתיד</button>
+        </div>
+        <input type="hidden" id="field-rating">
       </div>
 
       <div class="form-section">
-        <label class="field-label-row">קטגוריה *
+        <label>למי הסרטון מדבר? *
+          <select id="field-audience-scope" required>
+            <option value="">בחרו</option>
+            <option value="עיקרי">קהל עיקרי</option>
+            <option value="משני">קהל משני</option>
+            <option value="רחב">קהל רחב (ויראלי)</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="form-section">
+        <label class="field-label-row">איזה סוג רעיון זה? *
           <button type="button" id="category-info-btn" class="info-btn" aria-label="מה זה אומר?">ⓘ</button>
         </label>
+        <p class="field-subhint">בוחרים אחת</p>
         <div class="category-chips" id="category-chips">
           <button type="button" class="category-chip" data-value="בעל ערך" style="--chip-color: var(--cat-baal-erech)">בעל ערך</button>
           <button type="button" class="category-chip" data-value="אישי" style="--chip-color: var(--cat-ishi)">אישי</button>
@@ -599,33 +670,17 @@
           <option value="שלב שכנוע 3 - למה דווקא אני">שלב שכנוע 3 - למה דווקא אני</option>
           <option value="__ai__">🤖 שה-AI יציע</option>
         </select>
-
-        <label>למי הסרטון מדבר? *
-          <select id="field-audience-scope" required>
-            <option value="">בחרו</option>
-            <option value="עיקרי">קהל עיקרי</option>
-            <option value="משני">קהל משני</option>
-            <option value="רחב">קהל רחב (ויראלי)</option>
-          </select>
-        </label>
       </div>
 
-      <div class="form-section">
-        <label>דירוג *
-          <select id="field-rating" required>
-            <option value="">בחרו דירוג</option>
-            <option value="🔥 חייב לצלם">🔥 חייב לצלם</option>
-            <option value="⭐ שווה לצלם">⭐ שווה לצלם</option>
-            <option value="💭 רעיון לעתיד">💭 רעיון לעתיד</option>
-          </select>
-        </label>
+      <div class="form-section form-section-secondary">
+        <label>לינק לסרטון (אופציונלי)<input id="field-link" type="url"></label>
       </div>
 
       <p id="form-error" class="error-text" role="alert" hidden></p>
       <div class="modal-actions">
-        <button type="button" id="delete-idea-btn" class="btn-danger" hidden>מחיקה</button>
+        <button type="button" id="delete-idea-btn" class="btn-danger-subtle" hidden>🗑️ מחיקה</button>
         <button type="button" id="cancel-idea-btn" class="btn-text">ביטול</button>
-        <button type="submit" class="btn-primary">שמירה</button>
+        <button type="submit" class="btn-primary btn-primary-lg">💾 שמירה</button>
       </div>
     </form>
   </div>

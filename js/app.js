@@ -308,7 +308,8 @@ document.getElementById('add-idea-fab').addEventListener('click', () => openAddM
 document.getElementById('add-idea-top-btn').addEventListener('click', () => openAddModal());
 document.getElementById('tab-home').addEventListener('click', () => showView('home'));
 document.getElementById('tab-archive').addEventListener('click', () => showView('archive'));
-document.getElementById('tab-progress').addEventListener('click', () => showView('progress'));
+document.getElementById('home-progress-widget').addEventListener('click', () => showView('progress'));
+document.getElementById('progress-back-btn').addEventListener('click', () => showView('home'));
 document.getElementById('tab-chat').addEventListener('click', () => {
   showView('chat');
   startIdeaChat();
@@ -332,6 +333,16 @@ document.getElementById('hub-link-script').addEventListener('click', () => {
   startScriptChat();
 });
 document.getElementById('hub-link-warming').addEventListener('click', () => showView('warming'));
+document.getElementById('hub-link-ideas-guide').addEventListener('click', () => showView('ideas-guide'));
+document.getElementById('ideas-guide-back-btn').addEventListener('click', () => showView('guide'));
+// Reuses the existing gate-check + modal-open logic wired in
+// wireContentPlanView() instead of duplicating it - the button itself
+// stays hidden (its own visibility is tied to the now-secondary embedded
+// guide view), this just fires the same click handler directly from the
+// hub's tools section.
+document.getElementById('hub-link-content-plan').addEventListener('click', () => {
+  document.getElementById('content-plan-open-builder-btn').click();
+});
 
 const viewTabsNav = document.getElementById('view-tabs');
 const menuOverlay = document.getElementById('menu-overlay');
