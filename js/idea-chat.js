@@ -9,7 +9,10 @@ import { showWelcomeTour } from './welcome-tour.js';
 import { addBubble, addThinkingBubble, addChoiceBubble, setBubbleText, playSuccessSound } from './chat-ui.js';
 import { wireVoiceInput } from './voice-input.js';
 import { burstConfetti } from './confetti.js';
-import { startScriptChatWithIdea } from './script-chat.js';
+// Dynamically imported instead of a static top-level import - script-chat.js
+// (and the admin-only writeScript feature it drives) is otherwise dead
+// weight fetched by every single user of this file, even though the button
+// that actually calls it only ever renders for the admin (isAdmin() below).
 
 const ADMIN_EMAIL = 'mayakislev@gmail.com';
 const checkIdea = httpsCallable(functions, 'checkIdea');
@@ -121,8 +124,9 @@ function addPostIdeaButtons(bubble, finalizedText, ideaSummary) {
     scriptBtn.type = 'button';
     scriptBtn.className = 'chat-cta-btn';
     scriptBtn.textContent = '✍️ כתיבת תסריט על הרעיון הזה';
-    scriptBtn.addEventListener('click', () => {
+    scriptBtn.addEventListener('click', async () => {
       showView('script');
+      const { startScriptChatWithIdea } = await import('./script-chat.js');
       startScriptChatWithIdea(ideaSummary);
     });
     bubble.appendChild(scriptBtn);

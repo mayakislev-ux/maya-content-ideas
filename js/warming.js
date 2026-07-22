@@ -3,6 +3,7 @@ import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/fireba
 import { getCurrentIdeas } from './archive-view.js';
 import { saveWarmingPlan, updateWarmingPlan, listWarmingPlans, deleteWarmingPlan } from './warming-store.js';
 import { showToast } from './toast.js';
+import { makeEditable } from './editable.js';
 
 const generateWarmingPlan = httpsCallable(functions, 'generateWarmingPlan', { timeout: 170000 });
 
@@ -51,12 +52,6 @@ function autosaveCheckboxChange() {
     console.error('Warming checkbox autosave failed:', err);
     showToast('הסימון לא נשמר - בדקו חיבור לאינטרנט ונסו שוב');
   });
-}
-
-export function makeEditable(el, onCommit) {
-  el.contentEditable = 'true';
-  el.classList.add('warming-editable');
-  el.addEventListener('blur', () => onCommit(el.textContent.trim()));
 }
 
 function renderDayRow(item) {

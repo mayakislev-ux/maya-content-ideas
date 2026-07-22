@@ -7,9 +7,7 @@ import { renderArchive, wireArchiveControls, getCurrentIdeas, wirePullToRefresh,
 import { openAddModal, openEditModal, wireIdeaForm } from './idea-form.js';
 import { wireRandomIdeaModal } from './random-idea-modal.js';
 import { wireIdeaChat, startIdeaChat } from './idea-chat.js';
-import { wireScriptChat, startScriptChat } from './script-chat.js';
 import { wireFeedbackForm } from './feedback.js';
-import { wireWarmingView } from './warming.js';
 import { wireContentPlanView } from './content-plan.js';
 import { showView, getLastView } from './view-router.js';
 import { showToast } from './toast.js';
@@ -20,8 +18,27 @@ import {
   notificationPermission,
   showNotificationNudgeIfNeeded,
 } from './push-notifications.js';
-import { wireNotificationAdmin } from './notification-admin.js';
 import { showIosInstallOverlayIfNeeded } from './ios-install-overlay.js';
+
+// script-chat.js / warming.js / notification-admin.js are real code, not
+// stubs - they were previously imported (and fetched over the network)
+// unconditionally for every visitor, even though writeScript/generate-
+// WarmingPlan/sendNotification are all admin-only (see ADMIN_EMAIL checks
+// in these files and in functions/index.js). For the vast majority of
+// real users (her clients, not her), that's dead weight on the critical
+// path of every single app load. Loaded on demand instead, once we
+// actually know the signed-in user is the admin (see onAuthChange below).
+let adminModulesPromise = null;
+function loadAdminModules() {
+  if (!adminModulesPromise) {
+    adminModulesPromise = Promise.all([
+      import('./script-chat.js'),
+      import('./warming.js'),
+      import('./notification-admin.js'),
+    ]);
+  }
+  return adminModulesPromise;
+}
 
 // Google blocks OAuth sign-in inside in-app webviews (WhatsApp/Instagram/
 // Facebook/Messenger) for security reasons - it either shows its own "this
@@ -157,6 +174,7 @@ if ('serviceWorker' in navigator) {
 
 const ADMIN_EMAIL = 'mayakislev@gmail.com';
 let unsubscribeIdeas = null;
+let adminModulesWired = false;
 
 const offlineBanner = document.getElementById('offline-banner');
 function updateOnlineStatus() {
@@ -298,11 +316,9 @@ document.getElementById('hub-link-chat').addEventListener('click', () => {
   startIdeaChat();
 });
 document.getElementById('tab-feedback').addEventListener('click', () => showView('feedback'));
-document.getElementById('hub-link-script').addEventListener('click', () => {
-  showView('script');
-  startScriptChat();
-});
-document.getElementById('hub-link-warming').addEventListener('click', () => showView('warming'));
+// hub-link-script/hub-link-warming click handlers are wired inside
+// onAuthChange, once we've confirmed the signed-in user is the admin and
+// the lazy-loaded modules are ready - see loadAdminModules() above.
 document.getElementById('hub-link-ideas-guide').addEventListener('click', () => showView('ideas-guide'));
 document.getElementById('ideas-guide-back-btn').addEventListener('click', () => showView('guide'));
 // Reuses the existing gate-check + modal-open logic wired in
@@ -405,11 +421,8 @@ wireGoalEditModal();
 wirePullToRefresh();
 wireRandomIdeaModal({ getIdeas: getCurrentIdeas, onOpenIdea: openEditModal });
 wireIdeaChat();
-wireScriptChat();
 wireFeedbackForm();
-wireWarmingView();
 wireContentPlanView();
-wireNotificationAdmin();
 
 document.getElementById('enable-notifications-btn').addEventListener('click', async () => {
   const ok = await enableNotifications();
@@ -454,11 +467,32 @@ onAuthChange(async (user) => {
       logo.insertAdjacentElement('afterend', avatar);
     }
   }
-  document.getElementById('hub-link-warming').hidden = user.email !== ADMIN_EMAIL;
-  document.getElementById('hub-link-script').hidden = user.email !== ADMIN_EMAIL;
-  document.getElementById('send-notification-btn').hidden = user.email !== ADMIN_EMAIL;
-  document.getElementById('token-usage-btn').hidden = user.email !== ADMIN_EMAIL;
-  document.getElementById('view-feedback-btn').hidden = user.email !== ADMIN_EMAIL;
+  const isAdmin = user.email === ADMIN_EMAIL;
+  document.getElementById('hub-link-warming').hidden = !isAdmin;
+  document.getElementById('hub-link-script').hidden = !isAdmin;
+  document.getElementById('send-notification-btn').hidden = !isAdmin;
+  document.getElementById('token-usage-btn').hidden = !isAdmin;
+  document.getElementById('view-feedback-btn').hidden = !isAdmin;
+
+  // onAuthChange can in principle fire more than once for the same
+  // signed-in session - the adminModulesWired guard keeps this a true
+  // one-time wire-up instead of risking duplicate event listeners on a
+  // second firing. Deliberately not awaited - this runs in the background
+  // so loading these admin-only modules never delays the view-restoration
+  // logic below, even for the admin's own account.
+  if (isAdmin && !adminModulesWired) {
+    adminModulesWired = true;
+    loadAdminModules().then(([scriptChatModule, warmingModule, notificationAdminModule]) => {
+      scriptChatModule.wireScriptChat();
+      warmingModule.wireWarmingView();
+      notificationAdminModule.wireNotificationAdmin();
+      document.getElementById('hub-link-script').addEventListener('click', () => {
+        showView('script');
+        scriptChatModule.startScriptChat();
+      });
+      document.getElementById('hub-link-warming').addEventListener('click', () => showView('warming'));
+    });
+  }
 
   const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent);
   const isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;

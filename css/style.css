@@ -112,6 +112,14 @@
   }
 }
 
+/* Safety net: one overflowing flex child anywhere in the app (the real
+   bug this fixed - see .home-recent-item-title) can otherwise widen the
+   whole page past the viewport, which on a RTL mobile page reads as
+   "everything is shifted and cut off" rather than an obvious local
+   glitch. This doesn't replace fixing the actual cause, but stops a
+   future instance of the same bug class from taking down the whole page. */
+html, body { overflow-x: hidden; }
+
 body {
   margin: 0;
   font-family: 'Heebo', 'Segoe UI', Arial, sans-serif;
@@ -651,6 +659,7 @@ body.focus-mode .chat-input-row { bottom: 0; }
 
 .category-tabs .quick-chip {
   flex: 1;
+  min-width: 0;
   text-align: center;
   border: none;
   background: none;
@@ -3225,6 +3234,15 @@ textarea:focus-visible,
 .home-recent-item:active { transform: scale(0.98); }
 
 .home-recent-item-title {
+  /* Missing flex/min-width was the real bug behind the "everything looks
+     cut off on mobile" report - without min-width:0, a flex item's
+     default min-width is auto, which means white-space:nowrap keeps the
+     box exactly as wide as its full unwrapped text (never actually
+     truncating), pushing the whole row - and with it the entire page -
+     wider than the viewport. That's what caused genuine horizontal
+     overflow, not just a visual truncation issue. */
+  flex: 1;
+  min-width: 0;
   font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;

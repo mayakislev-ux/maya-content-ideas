@@ -3,7 +3,7 @@ import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/fireba
 import { getCurrentIdeas } from './archive-view.js';
 import { categoryColorVar, categoryIcon } from './ideas-logic.js';
 import { saveContentPlan, updateContentPlan, listContentPlans, deleteContentPlan } from './content-plan-store.js';
-import { makeEditable } from './warming.js';
+import { makeEditable } from './editable.js';
 import { showToast } from './toast.js';
 
 const generateContentPlan = httpsCallable(functions, 'generateContentPlan');
