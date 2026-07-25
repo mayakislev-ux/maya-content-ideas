@@ -543,3 +543,4 @@ exports.sendNotification = onCall({ secrets: [vapidPrivateKey], region: 'us-cent
 });
 
 Object.assign(exports, require('./grow-payment-webhook'));
+Object.assign(exports, require('./quick-deal'));
