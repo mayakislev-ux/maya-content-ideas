@@ -52,7 +52,9 @@ async function updateFireberryPartner(recordId, partnerName, partnerPhone) {
   const getJson = await getRes.json();
   if (!getRes.ok || !getJson.success) throw new Error('record not found');
   const currentName = (getJson.data && getJson.data.Record && getJson.data.Record.name) || '';
-  const baseName = currentName.replace(/\s*\(זוגי[^)]*\)\s*$/, '').trim();
+  // The pending marker can land mid-string (e.g. "... (זוגי - ממתין...) - 2026-07-25"),
+  // not just at the end - strip it wherever it appears, not just as a trailing suffix.
+  const baseName = currentName.replace(/\s*\(זוגי[^)]*\)\s*/, ' ').replace(/\s+/g, ' ').trim();
   const newName = `${baseName} (זוגי - עם: ${partnerName}, ${partnerPhone})`;
 
   const putRes = await fetch(`https://api.fireberry.com/api/record/${FIREBERRY_TRANSACTION_OBJECT}/${recordId}`, {
