@@ -55,14 +55,6 @@ async function createFireberryTransaction({ fullName, phone, email, amount, isCo
     pcfsystemfield123: today, // תאריך סגירה
     pcfdate: today, // תאריך שסגר
     pcfsystemfield118: amount || '', // סכום ששולם
-    // Fireberry auto-fills pcfsum ("שווי עסקה") from the linked product's CATALOG price
-    // the moment pcfproduct is set - it ignores what was actually charged. Real bug found
-    // 2026-07-25: a real 0.1 ₪ test transaction still showed pcfsum=197 (the catalog
-    // price) with a computed "יתרת גבייה" of 196.9, as if 196.9 ₪ were still owed on a
-    // transaction that was actually paid in full. Explicitly overriding pcfsum with the
-    // REAL charged amount fixes this - the price actually charged can differ from the
-    // catalog price (discounts, price changes on Grow's side, etc.), so pcfsum must
-    // always come from the payload, never be left to Fireberry's product-link default.
     pcfsum: amount || '',
     pcfproduct: FIREBERRY_PRODUCT_ID, // משוייך למוצר
   };
@@ -74,7 +66,27 @@ async function createFireberryTransaction({ fullName, phone, email, amount, isCo
   const text = await res.text();
   if (!res.ok) throw new Error(`Fireberry create failed (${res.status}): ${text}`);
   const parsed = JSON.parse(text);
-  return parsed && parsed.data && (parsed.data.Record ? parsed.data.Record.customobject1001id : parsed.data.customobject1001id);
+  const recordId = parsed && parsed.data && (parsed.data.Record ? parsed.data.Record.customobject1001id : parsed.data.customobject1001id);
+
+  // Fireberry auto-fills pcfsum ("שווי עסקה") from the linked product's CATALOG price the
+  // instant pcfproduct is set - and it does this AFTER processing the create payload, so it
+  // silently overwrites pcfsum even when it's included in the SAME create request above (real
+  // bug found 2026-07-25 and confirmed to still reproduce even with pcfsum in the create body -
+  // a live 0.1 ₪ transaction still landed with pcfsum=197). The only way found to make it stick
+  // is a separate PUT right after create, which is NOT overwritten. Two real transactions were
+  // manually corrected this way and verified to persist.
+  if (recordId && amount) {
+    const putRes = await fetch(`https://api.fireberry.com/api/record/${FIREBERRY_TRANSACTION_OBJECT}/${recordId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', tokenid: fireberryApiKey.value() },
+      body: JSON.stringify({ pcfsum: amount }),
+    });
+    if (!putRes.ok) {
+      console.error(`Fireberry pcfsum fixup PUT failed (${putRes.status}): ${await putRes.text()}`);
+    }
+  }
+
+  return recordId;
 }
 
 async function sendTicketEmail({ email, fullName, ticketType, orderId, isCouple, fireberryRecordId }) {
