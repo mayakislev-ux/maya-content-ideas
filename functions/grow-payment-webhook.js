@@ -69,20 +69,33 @@ async function createFireberryTransaction({ fullName, phone, email, amount, isCo
   const recordId = parsed && parsed.data && (parsed.data.Record ? parsed.data.Record.customobject1001id : parsed.data.customobject1001id);
 
   // Fireberry auto-fills pcfsum ("שווי עסקה") from the linked product's CATALOG price the
-  // instant pcfproduct is set - and it does this AFTER processing the create payload, so it
-  // silently overwrites pcfsum even when it's included in the SAME create request above (real
-  // bug found 2026-07-25 and confirmed to still reproduce even with pcfsum in the create body -
-  // a live 0.1 ₪ transaction still landed with pcfsum=197). The only way found to make it stick
-  // is a separate PUT right after create, which is NOT overwritten. Two real transactions were
-  // manually corrected this way and verified to persist.
+  // instant pcfproduct is set, overwriting whatever was sent - and this override does not
+  // always happen synchronously within the create request. A same-request PUT fixup usually
+  // sticks, but was confirmed 2026-07-25 to sometimes lose a race against Fireberry's own
+  // async default-fill (two real couple tickets, both 297, deployed under identical code 7
+  // minutes apart: one landed correctly, one silently reverted to the 197 catalog price).
+  // So: PUT, then re-check and retry a few times with a short delay, instead of trusting a
+  // single PUT to be final.
   if (recordId && amount) {
-    const putRes = await fetch(`https://api.fireberry.com/api/record/${FIREBERRY_TRANSACTION_OBJECT}/${recordId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json', tokenid: fireberryApiKey.value() },
-      body: JSON.stringify({ pcfsum: amount }),
-    });
-    if (!putRes.ok) {
-      console.error(`Fireberry pcfsum fixup PUT failed (${putRes.status}): ${await putRes.text()}`);
+    const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const putRes = await fetch(`https://api.fireberry.com/api/record/${FIREBERRY_TRANSACTION_OBJECT}/${recordId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', tokenid: fireberryApiKey.value() },
+        body: JSON.stringify({ pcfsum: amount }),
+      });
+      if (!putRes.ok) {
+        console.error(`Fireberry pcfsum fixup PUT failed (${putRes.status}): ${await putRes.text()}`);
+        break;
+      }
+      await sleep(1500);
+      const checkRes = await fetch(`https://api.fireberry.com/api/record/${FIREBERRY_TRANSACTION_OBJECT}/${recordId}`, {
+        headers: { 'Content-Type': 'application/json', tokenid: fireberryApiKey.value() },
+      });
+      const checkJson = await checkRes.json();
+      const currentSum = checkJson && checkJson.data && checkJson.data.Record && checkJson.data.Record.pcfsum;
+      if (Number(currentSum) === Number(amount)) break;
+      console.warn(`Fireberry pcfsum fixup: attempt ${attempt + 1} did not stick (got ${currentSum}, wanted ${amount}), retrying.`);
     }
   }
 
