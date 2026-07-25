@@ -7,7 +7,7 @@ const webhookSecret = defineSecret('GROW_WEBHOOK_SECRET');
 const fireberryApiKey = defineSecret('FIREBERRY_API_KEY');
 const gmailAppPassword = defineSecret('GMAIL_APP_PASSWORD');
 
-const SENDER_EMAIL = 'mayakislev@gmail.com';
+const SENDER_EMAIL = 'kislevmaya@gmail.com';
 const FIREBERRY_PRODUCT_ID = '04b62103-c047-48af-8d2d-c3ffdbede82c'; // "סמינר להיות מותג" product, created 2026-07-25
 const FIREBERRY_TRANSACTION_OBJECT = '1001'; // custom object "עסקה"
 
