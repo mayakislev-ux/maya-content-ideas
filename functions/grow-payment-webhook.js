@@ -55,6 +55,15 @@ async function createFireberryTransaction({ fullName, phone, email, amount, isCo
     pcfsystemfield123: today, // תאריך סגירה
     pcfdate: today, // תאריך שסגר
     pcfsystemfield118: amount || '', // סכום ששולם
+    // Fireberry auto-fills pcfsum ("שווי עסקה") from the linked product's CATALOG price
+    // the moment pcfproduct is set - it ignores what was actually charged. Real bug found
+    // 2026-07-25: a real 0.1 ₪ test transaction still showed pcfsum=197 (the catalog
+    // price) with a computed "יתרת גבייה" of 196.9, as if 196.9 ₪ were still owed on a
+    // transaction that was actually paid in full. Explicitly overriding pcfsum with the
+    // REAL charged amount fixes this - the price actually charged can differ from the
+    // catalog price (discounts, price changes on Grow's side, etc.), so pcfsum must
+    // always come from the payload, never be left to Fireberry's product-link default.
+    pcfsum: amount || '',
     pcfproduct: FIREBERRY_PRODUCT_ID, // משוייך למוצר
   };
   const res = await fetch(`https://api.fireberry.com/api/record/${FIREBERRY_TRANSACTION_OBJECT}`, {
