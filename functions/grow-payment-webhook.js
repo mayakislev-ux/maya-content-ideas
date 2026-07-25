@@ -1,7 +1,6 @@
 const { onRequest } = require('firebase-functions/v2/https');
 const { defineSecret } = require('firebase-functions/params');
 const nodemailer = require('nodemailer');
-const admin = require('firebase-admin');
 const { buildTicketPdf } = require('./ticket-pdf');
 
 const webhookSecret = defineSecret('GROW_WEBHOOK_SECRET');
@@ -9,6 +8,7 @@ const fireberryApiKey = defineSecret('FIREBERRY_API_KEY');
 const gmailAppPassword = defineSecret('GMAIL_APP_PASSWORD');
 
 const SENDER_EMAIL = 'kislevmaya@gmail.com';
+const PARTNER_FORM_BASE_URL = 'https://us-central1-content-ideas-becd7.cloudfunctions.net/partnerDetails';
 const FIREBERRY_PRODUCT_ID = '04b62103-c047-48af-8d2d-c3ffdbede82c'; // "סמינר להיות מותג" product, created 2026-07-25
 const FIREBERRY_TRANSACTION_OBJECT = '1001'; // custom object "עסקה"
 
@@ -69,14 +69,15 @@ async function createFireberryTransaction({ fullName, phone, email, amount, isCo
   return parsed && parsed.data && (parsed.data.Record ? parsed.data.Record.customobject1001id : parsed.data.customobject1001id);
 }
 
-async function sendTicketEmail({ email, fullName, ticketType, orderId, isCouple }) {
+async function sendTicketEmail({ email, fullName, ticketType, orderId, isCouple, fireberryRecordId }) {
   const pdfBuffer = await buildTicketPdf({ fullName, ticketType, orderId, isCouple });
   const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: { user: SENDER_EMAIL, pass: gmailAppPassword.value() },
   });
-  const coupleAsk = isCouple
-    ? `\n\nשמנו לב שרכשת כרטיס זוגי 💛 כדי שנוכל להכניס גם את בן/בת הזוג שמגיע/ה איתך, תוכל/י פשוט להשיב למייל הזה עם השם המלא ומספר הנייד שלו/ה?\n`
+  const partnerFormLink = `${PARTNER_FORM_BASE_URL}?id=${encodeURIComponent(fireberryRecordId || '')}`;
+  const coupleAsk = isCouple && fireberryRecordId
+    ? `\n\nשמנו לב שרכשת כרטיס זוגי 💛 כדי שנוכל להכניס גם את בן/בת הזוג שמגיע/ה איתך, נשמח שתמלא/י את הפרטים שלו/ה כאן (לוקח חצי דקה):\n${partnerFormLink}\n`
     : '';
   await transporter.sendMail({
     from: `מאיה קיסלב <${SENDER_EMAIL}>`,
@@ -84,18 +85,6 @@ async function sendTicketEmail({ email, fullName, ticketType, orderId, isCouple 
     subject: isCouple ? 'הכרטיס הזוגי שלך לסמינר להיות מותג 🎟️' : 'הכרטיס שלך לסמינר להיות מותג 🎟️',
     text: `היי ${fullName || ''},\n\nתודה שנרשמת לסמינר "להיות מותג"! מצורף כרטיס הכניסה שלך.${coupleAsk}\nמתי: יום חמישי, 3.9.2026, 15:30-21:00\nאיפה: בני ברק (הכתובת המדויקת תישלח בהודעה נפרדת קרוב לאירוע)\n\nנתראה שם!\nמאיה`,
     attachments: [{ filename: 'כרטיס-להיות-מותג.pdf', content: pdfBuffer, contentType: 'application/pdf' }],
-  });
-}
-
-/** Remembers a couple-ticket purchase so a later reply with the partner's details can be
- * matched back to the right Fireberry record. Read by the (separate, not-yet-buildable
- * without a Gmail OAuth grant - see partner-reply-followup.js) reply-processing function. */
-async function rememberPendingPartnerInfo({ email, fullName, fireberryRecordId }) {
-  if (!email || !fireberryRecordId) return;
-  await admin.firestore().collection('pendingCoupleTicketPartners').doc(email.toLowerCase()).set({
-    fullName: fullName || '',
-    fireberryRecordId,
-    createdAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 }
 
@@ -130,18 +119,16 @@ exports.growPaymentWebhook = onRequest(
       return;
     }
 
+    let fireberryRecordId = null;
     try {
-      const recordId = await createFireberryTransaction(fields);
-      if (fields.isCouple && recordId) {
-        await rememberPendingPartnerInfo({ email: fields.email, fullName: fields.fullName, fireberryRecordId: recordId });
-      }
+      fireberryRecordId = await createFireberryTransaction(fields);
     } catch (err) {
       console.error('Fireberry record creation failed:', err);
       // continue anyway - the customer should still get their ticket even if the CRM write failed
     }
 
     try {
-      await sendTicketEmail(fields);
+      await sendTicketEmail({ ...fields, fireberryRecordId });
     } catch (err) {
       console.error('Ticket email send failed:', err);
       res.status(500).send('email failed');
