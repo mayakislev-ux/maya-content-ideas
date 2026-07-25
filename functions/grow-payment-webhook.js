@@ -1,6 +1,7 @@
 const { onRequest } = require('firebase-functions/v2/https');
 const { defineSecret } = require('firebase-functions/params');
 const nodemailer = require('nodemailer');
+const admin = require('firebase-admin');
 const { buildTicketPdf } = require('./ticket-pdf');
 
 const webhookSecret = defineSecret('GROW_WEBHOOK_SECRET');
@@ -28,21 +29,28 @@ function extractFields(body) {
     return '';
   };
   const customer = b.customer || b.client || b.payer || {};
+  const ticketType = pick(b.product_name, b.item_name, b.offer_name) || 'כרטיס יחיד';
+  const amount = pick(b.amount, b.total, b.sum, b.price, b.transaction_amount);
+  // "כרטיס זוגי" detection is best-effort until a real Grow payload is seen: checks the
+  // product/item name text first, falls back to the couple-ticket price (297 ₪, per the
+  // seminar page's own JSON-LD offers) if the name doesn't say it outright.
+  const isCouple = /זוג/.test(ticketType) || amount === '297';
   return {
     fullName: pick(b.full_name, b.fullName, b.customer_name, b.name, customer.full_name, customer.name,
       [b.first_name, b.last_name].filter(Boolean).join(' '), [customer.first_name, customer.last_name].filter(Boolean).join(' ')),
     phone: pick(b.phone, b.phone_number, b.customer_phone, customer.phone, customer.phone_number),
     email: pick(b.email, b.customer_email, b.payer_email, customer.email),
-    amount: pick(b.amount, b.total, b.sum, b.price, b.transaction_amount),
+    amount,
     orderId: pick(b.transaction_id, b.order_id, b.payment_id, b.id, b.reference),
-    ticketType: pick(b.product_name, b.item_name, b.offer_name) || 'כרטיס יחיד',
+    ticketType,
+    isCouple,
   };
 }
 
-async function createFireberryTransaction({ fullName, phone, email, amount, orderId }) {
+async function createFireberryTransaction({ fullName, phone, email, amount, isCouple }) {
   const today = new Date().toISOString().slice(0, 10);
   const record = {
-    name: `${fullName || 'לקוח'} - סמינר להיות מותג - ${today}`,
+    name: `${fullName || 'לקוח'} - סמינר להיות מותג${isCouple ? ' (זוגי - ממתין לפרטי בן/בת זוג)' : ''} - ${today}`,
     pcfsystemfield102: phone || '',
     pcfsystemfield105: email || '',
     pcfsystemfield123: today, // תאריך סגירה
@@ -57,21 +65,37 @@ async function createFireberryTransaction({ fullName, phone, email, amount, orde
   });
   const text = await res.text();
   if (!res.ok) throw new Error(`Fireberry create failed (${res.status}): ${text}`);
-  return text;
+  const parsed = JSON.parse(text);
+  return parsed && parsed.data && (parsed.data.Record ? parsed.data.Record.customobject1001id : parsed.data.customobject1001id);
 }
 
-async function sendTicketEmail({ email, fullName, ticketType, orderId }) {
-  const pdfBuffer = await buildTicketPdf({ fullName, ticketType, orderId });
+async function sendTicketEmail({ email, fullName, ticketType, orderId, isCouple }) {
+  const pdfBuffer = await buildTicketPdf({ fullName, ticketType, orderId, isCouple });
   const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: { user: SENDER_EMAIL, pass: gmailAppPassword.value() },
   });
+  const coupleAsk = isCouple
+    ? `\n\nשמנו לב שרכשת כרטיס זוגי 💛 כדי שנוכל להכניס גם את בן/בת הזוג שמגיע/ה איתך, תוכל/י פשוט להשיב למייל הזה עם השם המלא ומספר הנייד שלו/ה?\n`
+    : '';
   await transporter.sendMail({
     from: `מאיה קיסלב <${SENDER_EMAIL}>`,
     to: email,
-    subject: 'הכרטיס שלך לסמינר להיות מותג 🎟️',
-    text: `היי ${fullName || ''},\n\nתודה שנרשמת לסמינר "להיות מותג"! מצורף כרטיס הכניסה שלך.\n\nמתי: יום חמישי, 3.9.2026, 15:30-21:00\nאיפה: בני ברק (הכתובת המדויקת תישלח בהודעה נפרדת קרוב לאירוע)\n\nנתראה שם!\nמאיה`,
+    subject: isCouple ? 'הכרטיס הזוגי שלך לסמינר להיות מותג 🎟️' : 'הכרטיס שלך לסמינר להיות מותג 🎟️',
+    text: `היי ${fullName || ''},\n\nתודה שנרשמת לסמינר "להיות מותג"! מצורף כרטיס הכניסה שלך.${coupleAsk}\nמתי: יום חמישי, 3.9.2026, 15:30-21:00\nאיפה: בני ברק (הכתובת המדויקת תישלח בהודעה נפרדת קרוב לאירוע)\n\nנתראה שם!\nמאיה`,
     attachments: [{ filename: 'כרטיס-להיות-מותג.pdf', content: pdfBuffer, contentType: 'application/pdf' }],
+  });
+}
+
+/** Remembers a couple-ticket purchase so a later reply with the partner's details can be
+ * matched back to the right Fireberry record. Read by the (separate, not-yet-buildable
+ * without a Gmail OAuth grant - see partner-reply-followup.js) reply-processing function. */
+async function rememberPendingPartnerInfo({ email, fullName, fireberryRecordId }) {
+  if (!email || !fireberryRecordId) return;
+  await admin.firestore().collection('pendingCoupleTicketPartners').doc(email.toLowerCase()).set({
+    fullName: fullName || '',
+    fireberryRecordId,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 }
 
@@ -80,10 +104,11 @@ async function sendTicketEmail({ email, fullName, ticketType, orderId }) {
  * Grow can't do Firebase Auth, so this checks a shared secret instead - the URL Maya
  * pastes into Grow's dashboard must include ?secret=<GROW_WEBHOOK_SECRET value>.
  *
- * NOT deployed yet. Needs 3 real secrets set before it can go live:
- *   GROW_WEBHOOK_SECRET  - any random string Maya picks, put in the webhook URL too
- *   FIREBERRY_API_KEY    - from Fireberry Settings -> API -> Personal Access Token
- *   GMAIL_APP_PASSWORD   - a Gmail App Password for mayakislev@gmail.com (needs 2FA on)
+ * LIVE as of 2026-07-25 - deployed, all 3 secrets set with real values, and verified
+ * end-to-end with a real test transaction (Fireberry record created correctly, ticket
+ * PDF emailed successfully from kislevmaya@gmail.com). Fireberry TokenID retrieved from
+ * Fireberry's own gear icon -> "ממשקי אינטרנט" (not a "Settings -> API" path as first
+ * guessed).
  */
 exports.growPaymentWebhook = onRequest(
   { region: 'us-central1', secrets: [webhookSecret, fireberryApiKey, gmailAppPassword] },
@@ -106,7 +131,10 @@ exports.growPaymentWebhook = onRequest(
     }
 
     try {
-      await createFireberryTransaction(fields);
+      const recordId = await createFireberryTransaction(fields);
+      if (fields.isCouple && recordId) {
+        await rememberPendingPartnerInfo({ email: fields.email, fullName: fields.fullName, fireberryRecordId: recordId });
+      }
     } catch (err) {
       console.error('Fireberry record creation failed:', err);
       // continue anyway - the customer should still get their ticket even if the CRM write failed

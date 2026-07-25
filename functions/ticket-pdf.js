@@ -42,7 +42,7 @@ function drawMixedRight(doc, hebrewPart, ltrPart, x, y, width, font, size, color
  * at the city level). Do not fill in a guessed address; get the real one from Maya
  * before this goes out to real customers.
  */
-function buildTicketPdf({ fullName, ticketType, orderId }) {
+function buildTicketPdf({ fullName, ticketType, orderId, isCouple }) {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ size: 'A4', margin: 0 });
     const chunks = [];
@@ -84,7 +84,7 @@ function buildTicketPdf({ fullName, ticketType, orderId }) {
     row('תאריך', 'יום חמישי,', '3.9.2026');
     row('שעה', '', '15:30–21:00');
     row('מיקום', 'בני ברק - הכתובת המדויקת תישלח בהודעה נפרדת סמוך לאירוע', '');
-    row('סוג כרטיס', ticketType || 'כרטיס יחיד', '');
+    row('סוג כרטיס', isCouple ? 'כרטיס זוגי' : (ticketType || 'כרטיס יחיד'), '');
     if (orderId) row('מספר הזמנה', '', orderId);
 
     doc.moveTo(left, y).lineTo(right, y).strokeColor('#e5ddf0').stroke();
