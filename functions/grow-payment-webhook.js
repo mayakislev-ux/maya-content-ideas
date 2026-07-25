@@ -14,34 +14,33 @@ const FIREBERRY_TRANSACTION_OBJECT = '1001'; // custom object "עסקה"
 
 /**
  * Pulls name/phone/email/amount out of an incoming Grow webhook payload.
- * The exact field names Grow actually sends were NOT verified against a real payload
- * (Grow's webhook feature was only confirmed to exist, not documented in detail) - this
- * tries several plausible candidates defensively. Whatever comes in is logged in full
- * either way, so the real field names can be read from the logs on the first real (or
- * test) transaction and this extraction tightened up afterward.
+ * Confirmed against a REAL Grow transaction on 2026-07-25 (a real 0.1 ₪ test purchase,
+ * transactionId 82148713) - the real shape is:
+ *   { err, status, data: { status, fullName, payerPhone, payerEmail, sum, transactionId,
+ *     productData: [{ name, sum, quantity, ... }], ... } }
+ * i.e. everything useful is nested one level under `data`, not at the top level as
+ * originally guessed - that first guess silently dropped this real transaction (logged
+ * but no Fireberry record/email), caught here and fixed.
  */
 function extractFields(body) {
   const b = body || {};
+  const d = b.data || b;
   const pick = (...candidates) => {
     for (const c of candidates) {
       if (c != null && String(c).trim() !== '') return String(c).trim();
     }
     return '';
   };
-  const customer = b.customer || b.client || b.payer || {};
-  const ticketType = pick(b.product_name, b.item_name, b.offer_name) || 'כרטיס יחיד';
-  const amount = pick(b.amount, b.total, b.sum, b.price, b.transaction_amount);
-  // "כרטיס זוגי" detection is best-effort until a real Grow payload is seen: checks the
-  // product/item name text first, falls back to the couple-ticket price (297 ₪, per the
-  // seminar page's own JSON-LD offers) if the name doesn't say it outright.
-  const isCouple = /זוג/.test(ticketType) || amount === '297';
+  const product = Array.isArray(d.productData) && d.productData[0] ? d.productData[0] : {};
+  const ticketType = pick(product.name, d.description) || 'כרטיס יחיד';
+  const amount = pick(d.sum, product.sum);
+  const isCouple = /זוג/.test(ticketType);
   return {
-    fullName: pick(b.full_name, b.fullName, b.customer_name, b.name, customer.full_name, customer.name,
-      [b.first_name, b.last_name].filter(Boolean).join(' '), [customer.first_name, customer.last_name].filter(Boolean).join(' ')),
-    phone: pick(b.phone, b.phone_number, b.customer_phone, customer.phone, customer.phone_number),
-    email: pick(b.email, b.customer_email, b.payer_email, customer.email),
+    fullName: pick(d.fullName, d.full_name),
+    phone: pick(d.payerPhone, d.phone),
+    email: pick(d.payerEmail, d.email),
     amount,
-    orderId: pick(b.transaction_id, b.order_id, b.payment_id, b.id, b.reference),
+    orderId: pick(d.transactionId, d.asmachta),
     ticketType,
     isCouple,
   };
