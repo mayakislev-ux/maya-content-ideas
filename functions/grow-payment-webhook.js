@@ -1,16 +1,20 @@
 const { onRequest } = require('firebase-functions/v2/https');
 const { defineSecret } = require('firebase-functions/params');
+const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 const { buildTicketPdf } = require('./ticket-pdf');
 
 const webhookSecret = defineSecret('GROW_WEBHOOK_SECRET');
 const fireberryApiKey = defineSecret('FIREBERRY_API_KEY');
 const gmailAppPassword = defineSecret('GMAIL_APP_PASSWORD');
+const metaCapiAccessToken = defineSecret('META_CAPI_ACCESS_TOKEN');
 
 const SENDER_EMAIL = 'kislevmaya@gmail.com';
 const PARTNER_FORM_BASE_URL = 'https://us-central1-content-ideas-becd7.cloudfunctions.net/partnerDetails';
 const FIREBERRY_PRODUCT_ID = '04b62103-c047-48af-8d2d-c3ffdbede82c'; // "סמינר להיות מותג" product, created 2026-07-25
 const FIREBERRY_TRANSACTION_OBJECT = '1001'; // custom object "עסקה"
+const META_PIXEL_ID = '896185345331438';
+const SEMINAR_LANDING_PAGE_URL = 'https://mayakislev-ux.github.io/lehiyot-brand/סמינר-להיות-מותג.html';
 
 /**
  * Pulls name/phone/email/amount out of an incoming Grow webhook payload.
@@ -102,6 +106,63 @@ async function createFireberryTransaction({ fullName, phone, email, amount, isCo
   return recordId;
 }
 
+function sha256Hex(value) {
+  return crypto.createHash('sha256').update(value).digest('hex');
+}
+
+// Meta requires E.164-ish digits only (country code, no +, no leading 0) before hashing.
+// Israeli numbers arrive from Grow as a local 0-prefixed number (e.g. 0525533679).
+function normalizeIsraeliPhoneForMeta(phone) {
+  const digits = String(phone || '').replace(/\D/g, '');
+  if (!digits) return '';
+  if (digits.startsWith('972')) return digits;
+  if (digits.startsWith('0')) return `972${digits.slice(1)}`;
+  return digits;
+}
+
+/**
+ * Reports a real purchase back to Meta server-side (Conversions API), keyed by hashed
+ * email/phone since Grow's checkout is a separate domain that never carries Meta's own
+ * click ID (fbc/fbp) through to the payment step - there is no browser-side click context
+ * available here at all, only who paid and how much, from the Grow webhook payload.
+ *
+ * Why this exists: the ad campaign is optimized for "Purchase" (OUTCOME_SALES), but the
+ * Meta Pixel installed on the landing page can only ever see a PageView/InitiateCheckout -
+ * the actual payment happens on Grow, off-site, so Meta never saw a single real Purchase
+ * event and had zero signal to learn who actually buys. Confirmed by comparing to Maya's
+ * past successful "אתגר" OUTCOME_SALES campaigns, which used a third-party tool ("Smart
+ * Leads") that did this same server-side reporting - this is the same fix, self-built.
+ */
+async function reportMetaPurchase({ email, phone, amount, orderId }) {
+  const userData = {};
+  if (email) userData.em = [sha256Hex(email.trim().toLowerCase())];
+  const normalizedPhone = normalizeIsraeliPhoneForMeta(phone);
+  if (normalizedPhone) userData.ph = [sha256Hex(normalizedPhone)];
+  if (!userData.em && !userData.ph) {
+    console.warn('reportMetaPurchase: no email or phone to match on, skipping.');
+    return;
+  }
+
+  const event = {
+    event_name: 'Purchase',
+    event_time: Math.floor(Date.now() / 1000),
+    event_id: orderId || undefined,
+    event_source_url: SEMINAR_LANDING_PAGE_URL,
+    action_source: 'website',
+    user_data: userData,
+    custom_data: { value: Number(amount) || 0, currency: 'ILS' },
+  };
+
+  const res = await fetch(`https://graph.facebook.com/v21.0/${META_PIXEL_ID}/events`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ data: [event], access_token: metaCapiAccessToken.value() }),
+  });
+  const text = await res.text();
+  if (!res.ok) throw new Error(`Meta Conversions API failed (${res.status}): ${text}`);
+  console.log('reportMetaPurchase: sent successfully:', text);
+}
+
 async function sendTicketEmail({ email, fullName, ticketType, orderId, isCouple, fireberryRecordId }) {
   const pdfBuffer = await buildTicketPdf({ fullName, ticketType, orderId, isCouple });
   const transporter = nodemailer.createTransport({
@@ -133,7 +194,7 @@ async function sendTicketEmail({ email, fullName, ticketType, orderId, isCouple,
  * guessed).
  */
 exports.growPaymentWebhook = onRequest(
-  { region: 'us-central1', secrets: [webhookSecret, fireberryApiKey, gmailAppPassword] },
+  { region: 'us-central1', secrets: [webhookSecret, fireberryApiKey, gmailAppPassword, metaCapiAccessToken] },
   async (req, res) => {
     console.log('Grow webhook raw payload:', JSON.stringify(req.body));
 
@@ -158,6 +219,13 @@ exports.growPaymentWebhook = onRequest(
     } catch (err) {
       console.error('Fireberry record creation failed:', err);
       // continue anyway - the customer should still get their ticket even if the CRM write failed
+    }
+
+    try {
+      await reportMetaPurchase(fields);
+    } catch (err) {
+      console.error('Meta Conversions API report failed:', err);
+      // continue anyway - a failed ad-optimization signal must never block the customer's ticket
     }
 
     try {
