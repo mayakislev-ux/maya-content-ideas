@@ -546,3 +546,4 @@ Object.assign(exports, require('./grow-payment-webhook'));
 Object.assign(exports, require('./quick-deal'));
 Object.assign(exports, require('./seminar-attendees'));
 Object.assign(exports, require('./partner-details-form'));
+Object.assign(exports, require('./daily-summary'));
