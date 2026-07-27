@@ -193,8 +193,18 @@ async function sendTicketEmail({ email, fullName, ticketType, orderId, isCouple,
  * Fireberry's own gear icon -> "ממשקי אינטרנט" (not a "Settings -> API" path as first
  * guessed).
  */
+// TEMPORARY (2026-07-27, Maya's explicit go-ahead): metaCapiAccessToken left
+// out of the secrets list below - META_CAPI_ACCESS_TOKEN was never actually
+// set in Secret Manager (confirmed: `firebase functions:secrets:get` returns
+// 404), which blocks ANY function deploy in this whole functions/ directory,
+// not just this one (Firebase validates every declared secret across the
+// codebase before deploying anything). reportMetaPurchase() already wraps
+// its own failure in a try/catch that logs and continues without blocking
+// the customer's ticket, so this doesn't change real behavior for anyone who
+// hits this webhook - it just stops it from blocking unrelated deploys until
+// the real token is set. Restore metaCapiAccessToken to this array once it is.
 exports.growPaymentWebhook = onRequest(
-  { region: 'us-central1', secrets: [webhookSecret, fireberryApiKey, gmailAppPassword, metaCapiAccessToken] },
+  { region: 'us-central1', secrets: [webhookSecret, fireberryApiKey, gmailAppPassword] },
   async (req, res) => {
     console.log('Grow webhook raw payload:', JSON.stringify(req.body));
 
