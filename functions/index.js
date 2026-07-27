@@ -547,3 +547,4 @@ Object.assign(exports, require('./quick-deal'));
 Object.assign(exports, require('./seminar-attendees'));
 Object.assign(exports, require('./partner-details-form'));
 Object.assign(exports, require('./daily-summary'));
+Object.assign(exports, require('./seminar-registration-count'));
