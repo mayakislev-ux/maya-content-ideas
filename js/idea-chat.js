@@ -1,5 +1,4 @@
-import { functions, auth } from './firebase-init.js';
-import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
+import { auth } from './firebase-init.js';
 import { getProfile, saveProfile } from './user-profile.js';
 import { showView } from './view-router.js';
 import { openAddModal, openEditModal } from './idea-form.js';
@@ -15,10 +14,88 @@ import { burstConfetti } from './confetti.js';
 // that actually calls it only ever renders for the admin (isAdmin() below).
 
 const ADMIN_EMAIL = 'mayakislev@gmail.com';
-const checkIdea = httpsCallable(functions, 'checkIdea');
+
+// checkIdea used to be a plain httpsCallable - converted to a raw streaming
+// HTTP endpoint so the reply appears progressively instead of behind a single
+// long "חושבת..." wait (that wait is what "מחכה הרבה זמן" was reporting).
+// Same region/project checkIdea was already deployed to, just the 2nd-gen
+// HTTP trigger URL instead of the callable SDK.
+const CHECK_IDEA_URL = 'https://us-central1-content-ideas-becd7.cloudfunctions.net/checkIdea';
 
 function isAdmin() {
   return auth.currentUser && auth.currentUser.email === ADMIN_EMAIL;
+}
+
+// Parses one chunk of raw SSE text against a carried-over buffer (a chunk can
+// split a "data: {...}\n\n" block mid-way) - mirrors the same parsing logic
+// the checkIdea Cloud Function itself uses server-side on the Anthropic
+// stream, just applied here to *our own* SSE protocol instead of Anthropic's.
+function parseSSEChunk(buffer, chunkText) {
+  const combined = buffer + chunkText;
+  const blocks = combined.split('\n\n');
+  const remainder = blocks.pop();
+  const events = [];
+  for (const block of blocks) {
+    const dataLine = block.split('\n').find((line) => line.startsWith('data:'));
+    if (!dataLine) continue;
+    try {
+      events.push(JSON.parse(dataLine.slice(5).trim()));
+    } catch (err) {
+      console.error('Failed to parse checkIdea SSE data line:', dataLine, err);
+    }
+  }
+  return { events, remainder };
+}
+
+// Streams a checkIdea reply, calling onDelta(text) as each piece arrives, and
+// resolving with the final canonical reply text once the stream completes
+// (which may differ slightly from the concatenated deltas if a corrective
+// Hebrew rewrite ran server-side - the caller should use the resolved value,
+// not its own concatenation, for anything beyond live display).
+async function streamCheckIdea(messages, ideaProfile, onDelta) {
+  const idToken = await auth.currentUser.getIdToken();
+  const response = await fetch(CHECK_IDEA_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${idToken}`,
+    },
+    body: JSON.stringify({ messages, profile: ideaProfile }),
+  });
+
+  if (!response.ok) {
+    let message = 'משהו השתבש, נסו שוב בבקשה.';
+    try {
+      const errData = await response.json();
+      if (errData && errData.error) message = errData.error;
+    } catch (err) {
+      // response body wasn't JSON - fall back to the generic message above
+    }
+    throw new Error(message);
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    const parsed = parseSSEChunk(buffer, decoder.decode(value, { stream: true }));
+    buffer = parsed.remainder;
+    for (const event of parsed.events) {
+      if (event.error) {
+        throw new Error(event.error);
+      }
+      if (typeof event.delta === 'string') {
+        onDelta(event.delta);
+      }
+      if (event.done) {
+        return event.reply || '';
+      }
+    }
+  }
+  throw new Error('משהו השתבש, נסו שוב בבקשה.');
 }
 
 export const ONBOARDING_STEPS = ['name', 'pronoun', 'business', 'primaryAudience', 'secondaryAudience'];
@@ -205,8 +282,26 @@ async function sendIdeaMessage(text) {
   const thinkingBubble = addThinkingBubble(messagesEl());
 
   try {
-    const result = await checkIdea({ messages: history, profile });
-    let reply = result.data.reply;
+    let liveText = '';
+    const finalReply = await streamCheckIdea(history, profile, (delta) => {
+      liveText += delta;
+      // Avoid flashing the raw "[[RECOGNIZED_EXCELLENT]]" marker text on
+      // screen: while the buffered text is still short enough that it could
+      // still turn out to BE (or not be) the marker, hold off rendering
+      // until it's resolved either way - only a few chars' worth of delay.
+      const stillAmbiguous = liveText.length < RECOGNIZED_MARKER.length && RECOGNIZED_MARKER.startsWith(liveText);
+      if (stillAmbiguous) return;
+      const display = liveText.startsWith(RECOGNIZED_MARKER)
+        ? liveText.slice(RECOGNIZED_MARKER.length).trimStart()
+        : liveText;
+      setBubbleText(thinkingBubble, display);
+      messagesEl().scrollTop = messagesEl().scrollHeight;
+    });
+
+    // From here on, use finalReply (the server-confirmed canonical text) -
+    // not liveText - since a rare corrective Hebrew rewrite can change the
+    // final text after streaming already displayed the original.
+    let reply = finalReply;
     if (reply.startsWith(RECOGNIZED_MARKER)) {
       reply = reply.slice(RECOGNIZED_MARKER.length).trimStart();
       thinkingBubble.classList.add('chat-bubble-excellent');
@@ -228,7 +323,7 @@ async function sendIdeaMessage(text) {
     history.push({ role: 'assistant', content: visibleReply });
   } catch (err) {
     console.error('checkIdea failed:', err);
-    setBubbleText(thinkingBubble, 'משהו השתבש, נסו שוב בבקשה.');
+    setBubbleText(thinkingBubble, err.message || 'משהו השתבש, נסו שוב בבקשה.');
   } finally {
     input.disabled = false;
     input.focus();

@@ -321,6 +321,12 @@ document.getElementById('tab-feedback').addEventListener('click', () => showView
 // the lazy-loaded modules are ready - see loadAdminModules() above.
 document.getElementById('hub-link-ideas-guide').addEventListener('click', () => showView('ideas-guide'));
 document.getElementById('ideas-guide-back-btn').addEventListener('click', () => showView('guide'));
+// "מפת הדרכים ליצירת תוכן" existed all along (same roadmap-view as
+// open-roadmap-link-btn below) but only as a secondary link buried inside
+// the "מאיפה להביא רעיונות" sub-page - not visible from the hub itself,
+// which read as "missing" even though nothing was actually removed. Gives
+// it its own direct hub card, same target view, zero new content.
+document.getElementById('hub-link-roadmap').addEventListener('click', () => showView('roadmap'));
 // Reuses the existing gate-check + modal-open logic wired in
 // wireContentPlanView() instead of duplicating it - the button itself
 // stays hidden (its own visibility is tied to the now-secondary embedded

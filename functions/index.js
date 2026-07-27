@@ -1,4 +1,4 @@
-const { onCall, HttpsError } = require('firebase-functions/v2/https');
+const { onCall, onRequest, HttpsError } = require('firebase-functions/v2/https');
 const { defineSecret } = require('firebase-functions/params');
 const admin = require('firebase-admin');
 const webpush = require('web-push');
@@ -16,6 +16,16 @@ const anthropicApiKey = defineSecret('ANTHROPIC_API_KEY');
 const vapidPrivateKey = defineSecret('VAPID_PRIVATE_KEY');
 const VAPID_PUBLIC_KEY = 'BJEiFPdCP25KUDW3COmcY0Y0noeC6tILFu4DoTjYW_v4mBwBshy4JyqivKa8pFE2f-36PpALDZ6_1zXnUGwKv94';
 const ADMIN_EMAIL = 'mayakislev@gmail.com';
+
+// המקור היחיד שממנו האפליקציה מוגשת בפועל (GitHub Pages) - צריך רשימה
+// מפורשת (לא cors:true הפתוח לכל מקור) כי checkIdea הוא onRequest גולמי
+// שמאמת בעצמו עם Bearer token, לא onCall עם אימות מובנה. localhost נשאר
+// לבדיקות מקומיות מול ה-emulator.
+const ALLOWED_STREAM_ORIGINS = [
+  'https://mayakislev-ux.github.io',
+  'http://localhost:5000',
+  'http://localhost:8080',
+];
 
 const DAILY_LIMITS = {
   checkIdea: 60,
@@ -140,6 +150,28 @@ async function callAnthropic(apiKey, body, fnName) {
   return data;
 }
 
+// Anthropic's stream can split one logical SSE event ("data: {...}\n\n")
+// across multiple TCP chunks - can't just JSON.parse each chunk on its own.
+// Buffers raw text across calls and only emits fully-received blocks;
+// whatever's left after the last "\n\n" is incomplete and stays in the
+// returned remainder for the next chunk to complete.
+function parseSSEChunk(buffer, chunkText) {
+  const combined = buffer + chunkText;
+  const blocks = combined.split('\n\n');
+  const remainder = blocks.pop();
+  const events = [];
+  for (const block of blocks) {
+    const dataLine = block.split('\n').find((line) => line.startsWith('data:'));
+    if (!dataLine) continue;
+    try {
+      events.push(JSON.parse(dataLine.slice(5).trim()));
+    } catch (err) {
+      console.error('Failed to parse Anthropic SSE data line:', dataLine, err);
+    }
+  }
+  return { events, remainder };
+}
+
 // Claude sometimes prepends a "thinking" content block before the actual
 // text response (confirmed happening for some inputs on claude-sonnet-5;
 // possible in principle on any model) - content[0] is not reliably the text
@@ -175,7 +207,11 @@ async function rewriteInHebrewIfNeeded(text, apiKey, fnName) {
       apiKey,
       {
         model: 'claude-sonnet-5',
-        max_tokens: 1536,
+        // Matches the largest caller (checkIdea/writeScript both now up to
+        // 4096) - this rewrites the ENTIRE original reply, so it needs at
+        // least as much headroom as whatever produced that reply, or the
+        // "fix" pass introduces its own truncated half-answer.
+        max_tokens: 4096,
         messages: [
           {
             role: 'user',
@@ -263,39 +299,142 @@ exports.getFeedback = onCall({ region: 'us-central1' }, async (request) => {
   return { items };
 });
 
-exports.checkIdea = onCall({ secrets: [anthropicApiKey], region: 'us-central1' }, async (request) => {
-  if (!request.auth) {
-    throw new HttpsError('unauthenticated', 'יש להתחבר כדי להשתמש בתכונה הזו');
+// checkIdea היה onCall עד עכשיו - הומר ל-onRequest גולמי כדי לתמוך בסטרימינג
+// אמיתי של תשובת ה-AI (טקסט מופיע תוך כ-1-2 שניות ומצטבר בהדרגה, במקום מסך
+// "חושבת..." חסום למשך כל משך היצירה - עד 4096 טוקנים ללא סטרימינג, שזה מה
+// שגרם לתלונה "מחכה הרבה זמן"). onCall בגרסת firebase-functions המותקנת כאן
+// (5.1.1) לא תומך בסטרימינג - זה נוסף רק בגרסה מאוחרת יותר, ושדרוג גרסה היה
+// מסכן את כל שאר הפונקציות בקובץ הזה (כולל אוטומציות תשלומים/כרטיסים
+// לא-קשורות שחיות באותו ריפו/functions - ראו grow-payment-webhook.js וכו').
+// לכן האימות כאן ידני (verifyIdToken) במקום האימות האוטומטי של onCall, וה-
+// CORS מוגבל במפורש למקור האמיתי שהאפליקציה מוגשת ממנו.
+exports.checkIdea = onRequest(
+  { secrets: [anthropicApiKey], region: 'us-central1', cors: ALLOWED_STREAM_ORIGINS },
+  async (req, res) => {
+    if (req.method !== 'POST') {
+      res.status(405).json({ error: 'Method not allowed' });
+      return;
+    }
+
+    const authHeader = req.get('Authorization') || '';
+    const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    if (!idToken) {
+      res.status(401).json({ error: 'יש להתחבר כדי להשתמש בתכונה הזו' });
+      return;
+    }
+
+    let uid;
+    try {
+      const decoded = await admin.auth().verifyIdToken(idToken);
+      uid = decoded.uid;
+    } catch (err) {
+      console.error('checkIdea: invalid ID token:', err.message);
+      res.status(401).json({ error: 'התחברות לא תקינה, נסו להתחבר מחדש' });
+      return;
+    }
+
+    try {
+      await enforceRateLimit(uid, 'checkIdea');
+    } catch (err) {
+      res.status(429).json({ error: err.message || 'הגעת למכסת השימוש היומית ב-AI, נסו שוב מחר' });
+      return;
+    }
+
+    const messages = req.body && req.body.messages;
+    if (!Array.isArray(messages) || messages.length === 0) {
+      res.status(400).json({ error: 'חסרות הודעות בשיחה' });
+      return;
+    }
+
+    const profile = (req.body && req.body.profile) || null;
+    let systemPrompt = buildSystemPrompt(profile);
+
+    if (countClarifyingRepliesSinceLastAngles(messages) >= 2) {
+      systemPrompt += '\n\n⚠️ הנחיה דחופה: כבר נשלחו 2 הודעות הבהרה או יותר על הרעיון הנוכחי בשיחה הזו. אסור לשאול שום שאלת הבהרה נוספת - חובה לעבור עכשיו, בהודעה הזו, ישירות לשלב ב\' (5 זוויות הנגשה) על סמך מה שכבר ידוע, גם אם זה לא מושלם. אם הרעיון כבר ברור מספיק, אפשר גם [[RECOGNIZED_EXCELLENT]] אם זה מתאים.';
+    }
+
+    let anthropicResponse;
+    try {
+      anthropicResponse = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'x-api-key': anthropicApiKey.value(),
+          'anthropic-version': '2023-06-01',
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-5',
+          max_tokens: 4096,
+          system: cachedText(systemPrompt),
+          messages: withCacheControl(messages),
+          stream: true,
+        }),
+      });
+    } catch (err) {
+      console.error('checkIdea: network error calling Anthropic API:', err);
+      res.set('Content-Type', 'text/event-stream');
+      res.write(`data: ${JSON.stringify({ error: 'לא ניתן להתחבר כרגע לשירות ה-AI, נסו שוב בעוד רגע' })}\n\n`);
+      res.end();
+      return;
+    }
+
+    if (!anthropicResponse.ok || !anthropicResponse.body) {
+      const errText = await anthropicResponse.text().catch(() => '');
+      console.error('checkIdea: Anthropic API error:', anthropicResponse.status, errText);
+      res.set('Content-Type', 'text/event-stream');
+      res.write(`data: ${JSON.stringify({ error: 'שגיאה בפנייה ל-AI, נסו שוב' })}\n\n`);
+      res.end();
+      return;
+    }
+
+    res.set('Content-Type', 'text/event-stream');
+    res.set('Cache-Control', 'no-cache');
+    res.set('Connection', 'keep-alive');
+    if (res.flushHeaders) res.flushHeaders();
+
+    const reader = anthropicResponse.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let fullText = '';
+    let usage = null;
+
+    try {
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const parsed = parseSSEChunk(buffer, decoder.decode(value, { stream: true }));
+        buffer = parsed.remainder;
+        for (const event of parsed.events) {
+          if (event.type === 'message_start' && event.message && event.message.usage) {
+            usage = { ...event.message.usage };
+          } else if (event.type === 'content_block_delta' && event.delta && event.delta.type === 'text_delta') {
+            fullText += event.delta.text;
+            res.write(`data: ${JSON.stringify({ delta: event.delta.text })}\n\n`);
+          } else if (event.type === 'message_delta' && event.usage) {
+            // message_delta's usage is cumulative but only carries the fields
+            // that changed (output_tokens) - merge onto message_start's base
+            // so input/cache-token counts from message_start aren't lost.
+            usage = { ...usage, ...event.usage };
+          } else if (event.type === 'error') {
+            console.error('checkIdea: Anthropic stream error event:', event.error);
+          }
+        }
+      }
+    } catch (err) {
+      console.error('checkIdea: error reading Anthropic stream:', err);
+    }
+
+    if (usage) await recordTokenUsage('checkIdea', usage);
+
+    // rewriteInHebrewIfNeeded already catches its own errors internally and
+    // falls back to the original text - no try/catch needed here.
+    const finalReply = await rewriteInHebrewIfNeeded(fullText, anthropicApiKey.value(), 'checkIdea');
+
+    res.write(`data: ${JSON.stringify({ done: true, reply: finalReply })}\n\n`);
+    res.end();
   }
-  await enforceRateLimit(request.auth.uid, 'checkIdea');
-
-  const messages = request.data && request.data.messages;
-  if (!Array.isArray(messages) || messages.length === 0) {
-    throw new HttpsError('invalid-argument', 'חסרות הודעות בשיחה');
-  }
-
-  const profile = (request.data && request.data.profile) || null;
-  let systemPrompt = buildSystemPrompt(profile);
-
-  if (countClarifyingRepliesSinceLastAngles(messages) >= 2) {
-    systemPrompt += '\n\n⚠️ הנחיה דחופה: כבר נשלחו 2 הודעות הבהרה או יותר על הרעיון הנוכחי בשיחה הזו. אסור לשאול שום שאלת הבהרה נוספת - חובה לעבור עכשיו, בהודעה הזו, ישירות לשלב ב\' (5 זוויות הנגשה) על סמך מה שכבר ידוע, גם אם זה לא מושלם. אם הרעיון כבר ברור מספיק, אפשר גם [[RECOGNIZED_EXCELLENT]] אם זה מתאים.';
-  }
-
-  const data = await callAnthropic(
-    anthropicApiKey.value(),
-    {
-      model: 'claude-sonnet-5',
-      max_tokens: 1024,
-      system: cachedText(systemPrompt),
-      messages: withCacheControl(messages),
-    },
-    'checkIdea'
-  );
-
-  let reply = getResponseText(data) || '';
-  reply = await rewriteInHebrewIfNeeded(reply, anthropicApiKey.value(), 'checkIdea');
-  return { reply };
-});
+);
 
 exports.writeScript = onCall({ secrets: [anthropicApiKey], region: 'us-central1' }, async (request) => {
   if (!request.auth) {
@@ -546,5 +685,7 @@ Object.assign(exports, require('./grow-payment-webhook'));
 Object.assign(exports, require('./quick-deal'));
 Object.assign(exports, require('./seminar-attendees'));
 Object.assign(exports, require('./partner-details-form'));
+Object.assign(exports, require('./daily-summary'));
+Object.assign(exports, require('./seminar-registration-count'));
 Object.assign(exports, require('./daily-summary'));
 Object.assign(exports, require('./seminar-registration-count'));
