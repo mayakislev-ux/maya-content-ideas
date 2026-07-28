@@ -527,9 +527,6 @@ exports.generateWarmingPlan = onCall({ secrets: [anthropicApiKey, sheetsServiceA
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'יש להתחבר כדי להשתמש בתכונה הזו');
   }
-  if (request.auth.token.email !== ADMIN_EMAIL) {
-    throw new HttpsError('permission-denied', 'התכונה הזו זמינה כרגע רק למנהלת');
-  }
   await enforceRateLimit(request.auth.uid, 'generateWarmingPlan');
 
   const product = ((request.data && request.data.product) || '').trim();
