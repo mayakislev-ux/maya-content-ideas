@@ -3152,6 +3152,21 @@ textarea:focus-visible,
    this needs to read as "the whole point of this screen", not one control
    among several. */
 .home-view {
+  /* width:100% was missing from this otherwise-standard "centered column"
+     pattern. Without it, #home-view (a display:block flex item of .screen,
+     display:flex/column) had no explicit width, and with a long enough
+     unbreakable idea title anywhere inside home-recent-item-title, its
+     computed width settled at content-based sizing capped only by
+     max-width - 640px - instead of stretching to the real ~390px mobile
+     viewport. That's the actual root cause of the long-running "need to
+     scroll sideways on mobile" report: real overflow that only appears
+     with genuinely long real idea titles loaded, which is exactly why
+     every earlier remote test (logged out, no real content) never
+     reproduced it. Verified with Playwright + real long titles fetched
+     from her actual account: scrollWidth went from 640 to 390 (viewport
+     width) once this was added, no min-width overrides needed anywhere
+     else in the tree. */
+  width: 100%;
   max-width: 640px;
   margin: 0 auto;
   padding: 1.5rem 1.5rem 6rem;
