@@ -299,6 +299,63 @@ exports.getFeedback = onCall({ region: 'us-central1' }, async (request) => {
   return { items };
 });
 
+// שולפת לכל לקוחה מה-allowlist: מתי התחברה לאחרונה (מ-Firebase Auth,
+// לא נשמר ב-Firestore) + כמה רעיונות כתבה ומתי (מ-collection ideas). 3
+// קריאות מרוכזות (allowlist מלא, ideas מלא, listUsers מלא) ואז חיבור
+// בזיכרון - עדיף על עשרות שאילתות בודדות אחת לכל לקוחה.
+exports.getClientUsageStats = onCall({ region: 'us-central1', timeoutSeconds: 60 }, async (request) => {
+  if (!request.auth || request.auth.token.email !== ADMIN_EMAIL) {
+    throw new HttpsError('permission-denied', 'התכונה הזו זמינה כרגע רק למנהלת');
+  }
+
+  const [allowlistSnap, ideasSnap, listUsersResult] = await Promise.all([
+    db.collection('allowlist').get(),
+    db.collection('ideas').get(),
+    admin.auth().listUsers(1000),
+  ]);
+
+  const authByEmail = new Map();
+  listUsersResult.users.forEach((u) => {
+    if (u.email) authByEmail.set(u.email, u);
+  });
+
+  const ideasByUid = new Map();
+  ideasSnap.forEach((doc) => {
+    const d = doc.data();
+    if (d.deletedAt || !d.ownerUid) return;
+    if (!ideasByUid.has(d.ownerUid)) ideasByUid.set(d.ownerUid, []);
+    ideasByUid.get(d.ownerUid).push({
+      title: d.title || '',
+      category: d.category || null,
+      createdAt: d.createdAt && d.createdAt.toDate ? d.createdAt.toDate().toISOString() : null,
+    });
+  });
+
+  const clients = allowlistSnap.docs.map((doc) => {
+    const email = doc.id;
+    const authUser = authByEmail.get(email);
+    const ideas = authUser ? ideasByUid.get(authUser.uid) || [] : [];
+    ideas.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+    return {
+      email,
+      lastSignInTime: (authUser && authUser.metadata.lastSignInTime) || null,
+      ideaCount: ideas.length,
+      lastIdeaAt: ideas.length ? ideas[0].createdAt : null,
+      ideas,
+    };
+  });
+
+  // הכי-ותיקה-קודם (מעולם לא התחברה, ואז מי שהתחברה הכי מזמן) - הכי
+  // שימושי כדי לאתר במבט מהיר מי דורשת מעקב, לא מי כבר פעילה ממילא.
+  clients.sort((a, b) => {
+    const aTime = a.lastSignInTime ? new Date(a.lastSignInTime).getTime() : 0;
+    const bTime = b.lastSignInTime ? new Date(b.lastSignInTime).getTime() : 0;
+    return aTime - bTime;
+  });
+
+  return { clients };
+});
+
 // checkIdea היה onCall עד עכשיו - הומר ל-onRequest גולמי כדי לתמוך בסטרימינג
 // אמיתי של תשובת ה-AI (טקסט מופיע תוך כ-1-2 שניות ומצטבר בהדרגה, במקום מסך
 // "חושבת..." חסום למשך כל משך היצירה - עד 4096 טוקנים ללא סטרימינג, שזה מה

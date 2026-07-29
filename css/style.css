@@ -3469,3 +3469,79 @@ textarea:focus-visible,
 
   .chat-cta-btn, .chat-save-btn, .chat-choice-buttons { display: none !important; }
 }
+
+/* מעקב לקוחות (מנהלת בלבד) - טופס עוד .view רגיל, בלי max-width/margin:auto
+   משלו (בניגוד ל-.home-view) - כדי לא לחזור על אותה מחלקת באג בדיוק שתוקנה
+   לאחרונה. גם בכוונה בלי white-space:nowrap בשום מקום - אימיילים/כותרות
+   רעיונות ארוכות אמורות פשוט לגלוש לשורה הבאה, לא לדחוף רוחב. */
+.client-usage-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  margin-bottom: 0.4rem;
+}
+
+.client-usage-status {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin: 0 0 1rem;
+}
+
+.client-usage-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.client-usage-item {
+  background: var(--card-bg);
+  border-radius: var(--card-radius-sm);
+  box-shadow: var(--card-shadow);
+  padding: 0.9rem 1.1rem;
+}
+
+.client-usage-item-clickable {
+  cursor: pointer;
+  transition: transform 150ms var(--ease-snap);
+}
+
+.client-usage-item-clickable:active { transform: scale(0.98); }
+
+.client-usage-email {
+  font-weight: 600;
+  word-break: break-word;
+  margin-bottom: 0.4rem;
+}
+
+.client-usage-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem 1.2rem;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.client-ideas-email {
+  word-break: break-word;
+  margin: 0 0 1rem;
+}
+
+.client-ideas-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.client-ideas-list li {
+  background: var(--bg-alt, rgba(38, 62, 168, 0.05));
+  border-radius: var(--card-radius-sm);
+  padding: 0.7rem 0.9rem;
+  font-size: 0.92rem;
+}

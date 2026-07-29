@@ -34,7 +34,11 @@ import { showIosInstallOverlayIfNeeded } from './ios-install-overlay.js';
 let adminModulesPromise = null;
 function loadAdminModules() {
   if (!adminModulesPromise) {
-    adminModulesPromise = Promise.all([import('./script-chat.js'), import('./notification-admin.js')]);
+    adminModulesPromise = Promise.all([
+      import('./script-chat.js'),
+      import('./notification-admin.js'),
+      import('./client-usage.js'),
+    ]);
   }
   return adminModulesPromise;
 }
@@ -480,6 +484,7 @@ onAuthChange(async (user) => {
   document.getElementById('send-notification-btn').hidden = !isAdmin;
   document.getElementById('token-usage-btn').hidden = !isAdmin;
   document.getElementById('view-feedback-btn').hidden = !isAdmin;
+  document.getElementById('client-usage-btn').hidden = !isAdmin;
 
   // onAuthChange can in principle fire more than once for the same
   // signed-in session - the adminModulesWired guard keeps this a true
@@ -489,13 +494,19 @@ onAuthChange(async (user) => {
   // logic below, even for the admin's own account.
   if (isAdmin && !adminModulesWired) {
     adminModulesWired = true;
-    loadAdminModules().then(([scriptChatModule, notificationAdminModule]) => {
+    loadAdminModules().then(([scriptChatModule, notificationAdminModule, clientUsageModule]) => {
       scriptChatModule.wireScriptChat();
       notificationAdminModule.wireNotificationAdmin();
+      clientUsageModule.wireClientUsageView();
       document.getElementById('hub-link-script').addEventListener('click', () => {
         showView('script');
         scriptChatModule.startScriptChat();
       });
+      document.getElementById('client-usage-btn').addEventListener('click', () => {
+        showView('client-usage');
+        clientUsageModule.loadClientUsage();
+      });
+      document.getElementById('client-usage-back-btn').addEventListener('click', () => showView('home'));
     });
   }
 

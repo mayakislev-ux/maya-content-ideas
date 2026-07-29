@@ -239,6 +239,16 @@
     <div class="stat-scroll" id="stat-scroll"></div>
   </main>
 
+  <main id="client-usage-view" class="view client-usage-view" hidden>
+    <button type="button" id="client-usage-back-btn" class="hub-back-btn">‹ חזרה</button>
+    <div class="client-usage-header-row">
+      <h2>👥 מעקב לקוחות</h2>
+      <button type="button" id="client-usage-refresh-btn" class="btn-text">🔄 רענון</button>
+    </div>
+    <p id="client-usage-status" class="client-usage-status"></p>
+    <ul id="client-usage-list" class="client-usage-list"></ul>
+  </main>
+
   <main id="chat-view" class="view" hidden>
     <div class="chat-toolbar">
       <span class="chat-view-title">🔍 בדיקת רעיון</span>
@@ -536,6 +546,7 @@
     <button type="button" id="send-notification-btn" class="btn-text" hidden>שליחת התראה (מנהלת)</button>
     <button type="button" id="token-usage-btn" class="btn-text" hidden>שימוש ב-AI (מנהלת)</button>
     <button type="button" id="view-feedback-btn" class="btn-text" hidden>חוות דעת שהתקבלו (מנהלת)</button>
+    <button type="button" id="client-usage-btn" class="btn-text" hidden>מעקב לקוחות (מנהלת)</button>
     <button type="button" id="open-policy-btn-app" class="btn-text policy-link">מדיניות פרטיות</button>
   </footer>
 </div>
@@ -550,6 +561,14 @@
       <button type="button" id="goal-edit-cancel-btn" class="btn-text">ביטול</button>
       <button type="button" id="goal-edit-save-btn" class="btn-primary">שמירה</button>
     </div>
+  </div>
+</div>
+
+<div id="client-ideas-modal" class="modal" hidden>
+  <div class="modal-content">
+    <button type="button" id="client-ideas-modal-close-btn" class="modal-close-x" aria-label="סגירה">✕</button>
+    <h2 id="client-ideas-email" class="client-ideas-email"></h2>
+    <ul id="client-ideas-list" class="client-ideas-list"></ul>
   </div>
 </div>
 
