@@ -2,12 +2,14 @@ const { google } = require('googleapis');
 const { defineSecret } = require('firebase-functions/params');
 
 const sheetsServiceAccountKey = defineSecret('SHEETS_SERVICE_ACCOUNT_KEY');
-const SHEETS_URL_PATTERN = /https:\/\/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/;
+const SHEETS_URL_PATTERN = /https:\/\/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/g;
+const DOCS_URL_PATTERN = /https:\/\/docs\.google\.com\/document\/d\/([a-zA-Z0-9_-]+)/g;
 const PRIORITY_TAB_KEYWORDS = ['פרסונה', 'קהל יעד', 'חימום', 'רעיונות', 'לידים'];
 const MAX_CHARS_PER_TAB = 7000;
 const MAX_SHEETS_CHARS = 120000;
+const MAX_DOC_CHARS = 40000;
 
-async function fetchViaServiceAccount(sheetId) {
+async function fetchSheetViaServiceAccount(sheetId) {
   let keyValue;
   try {
     keyValue = sheetsServiceAccountKey.value();
@@ -75,7 +77,7 @@ async function fetchViaServiceAccount(sheetId) {
   }
 }
 
-async function fetchViaPublicCsv(sheetId) {
+async function fetchSheetViaPublicCsv(sheetId) {
   const exportUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`;
   let response;
   try {
@@ -89,19 +91,59 @@ async function fetchViaPublicCsv(sheetId) {
   return csv.slice(0, 8000);
 }
 
-async function fetchSheetsContent(text) {
-  if (!text) return null;
-  const match = text.match(SHEETS_URL_PATTERN);
-  if (!match) return null;
-
-  const sheetId = match[1];
-  const viaServiceAccount = await fetchViaServiceAccount(sheetId);
-  if (viaServiceAccount) return { error: false, content: viaServiceAccount };
-
-  const viaCsv = await fetchViaPublicCsv(sheetId);
-  if (viaCsv) return { error: false, content: viaCsv };
-
-  return { error: true };
+async function fetchOneSheet(sheetId) {
+  const viaServiceAccount = await fetchSheetViaServiceAccount(sheetId);
+  if (viaServiceAccount) return viaServiceAccount;
+  return fetchSheetViaPublicCsv(sheetId);
 }
 
-module.exports = { fetchSheetsContent, sheetsServiceAccountKey };
+// Docs don't go through the service account (that key is only scoped for
+// Sheets, spreadsheets.readonly) - the public "export as plain text" link
+// works the same way the Sheets CSV fallback already does, and needs the
+// same "anyone with the link can view" sharing.
+async function fetchOneDoc(docId) {
+  const exportUrl = `https://docs.google.com/document/d/${docId}/export?format=txt`;
+  let response;
+  try {
+    response = await fetch(exportUrl);
+  } catch (err) {
+    console.error('Network error fetching Google Doc:', err);
+    return null;
+  }
+  if (!response.ok) return null;
+  const text = await response.text();
+  return text.slice(0, MAX_DOC_CHARS);
+}
+
+// A user can paste more than one link in the same free-text field (e.g. a
+// Sheets link for the audience table AND a Docs link with a pile of written
+// ideas) - matching only the first Sheets link and silently ignoring
+// everything else meant a real attached Docs file was never read at all.
+// Fetches every Sheets and every Docs link found, combines whatever
+// succeeded, and only reports an error if something was linked but nothing
+// could actually be read.
+async function fetchExtraContentLinks(text) {
+  if (!text) return null;
+
+  const sheetIds = [...text.matchAll(SHEETS_URL_PATTERN)].map((m) => m[1]);
+  const docIds = [...text.matchAll(DOCS_URL_PATTERN)].map((m) => m[1]);
+  if (!sheetIds.length && !docIds.length) return null;
+
+  const [sheetResults, docResults] = await Promise.all([
+    Promise.all(sheetIds.map((id) => fetchOneSheet(id))),
+    Promise.all(docIds.map((id) => fetchOneDoc(id))),
+  ]);
+
+  const sections = [];
+  sheetResults.forEach((content, i) => {
+    if (content) sections.push(`=== מתוך Google Sheets (${sheetIds[i]}) ===\n${content}`);
+  });
+  docResults.forEach((content, i) => {
+    if (content) sections.push(`=== מתוך Google Docs (${docIds[i]}) ===\n${content}`);
+  });
+
+  if (!sections.length) return { error: true };
+  return { error: false, content: sections.join('\n\n') };
+}
+
+module.exports = { fetchExtraContentLinks, sheetsServiceAccountKey };

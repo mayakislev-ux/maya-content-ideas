@@ -6,7 +6,7 @@ const { buildSystemPrompt } = require('./system-prompt');
 const { buildScriptSystemPrompt } = require('./script-system-prompt');
 const { buildOngoingWarmingPrompt, buildPresaleWarmingPrompt } = require('./warming-system-prompt');
 const { buildContentPlanPrompt } = require('./content-plan-system-prompt');
-const { fetchSheetsContent, sheetsServiceAccountKey } = require('./sheets-content');
+const { fetchExtraContentLinks, sheetsServiceAccountKey } = require('./sheets-content');
 const { CATEGORIES, PERSUASION_STAGES, CATEGORY_DEFINITIONS, PERSUASION_STAGE_DEFINITIONS } = require('./ideas-constants');
 
 admin.initializeApp();
@@ -595,15 +595,15 @@ exports.generateWarmingPlan = onCall({ secrets: [anthropicApiKey, sheetsServiceA
     throw new HttpsError('invalid-argument', 'צריך לפחות מוצר וקהל יעד כדי לבנות תוכנית חימום');
   }
 
-  const sheetResult = await fetchSheetsContent(extraContext);
-  if (sheetResult && sheetResult.error) {
+  const linkedContent = await fetchExtraContentLinks(extraContext);
+  if (linkedContent && linkedContent.error) {
     throw new HttpsError(
       'failed-precondition',
-      'לא הצלחתי לקרוא את קובץ ה-Sheets - ודאו שההרשאות שלו מוגדרות ל"כל מי שיש לו את הקישור - צופה" (Anyone with the link - Viewer) ונסו שוב'
+      'לא הצלחתי לקרוא את קובץ ה-Sheets/Docs שצוין - ודאו שההרשאות שלו מוגדרות ל"כל מי שיש לו את הקישור - צופה" (Anyone with the link - Viewer) ונסו שוב'
     );
   }
-  if (sheetResult && !sheetResult.error) {
-    extraContext = `${extraContext}\n\nתוכן שנשלף מתוך קובץ ה-Sheets המצורף:\n${sheetResult.content}`;
+  if (linkedContent && !linkedContent.error) {
+    extraContext = `${extraContext}\n\nתוכן שנשלף מתוך הקבצים המצורפים (Sheets/Docs):\n${linkedContent.content}`;
   }
 
   const promptArgs = { product, audience, extraContext, existingIdeasTitles: existingIdeasTitles.slice(0, 40) };
@@ -634,7 +634,12 @@ exports.generateWarmingPlan = onCall({ secrets: [anthropicApiKey, sheetsServiceA
     throw new HttpsError('internal', 'התקבלה תשובה לא תקינה, נסו שוב');
   }
 
-  return { plan: { week1: ongoing.week1, week2: ongoing.week2, week3: presale.week3 } };
+  // Both prompts run independently and can each flag their own gaps - dedupe
+  // since the same missing piece of info (e.g. no real client story) is
+  // very likely to show up from both the ongoing and presale generation.
+  const missingInfo = [...new Set([...(ongoing.missingInfo || []), ...(presale.missingInfo || [])])];
+
+  return { plan: { week1: ongoing.week1, week2: ongoing.week2, week3: presale.week3 }, missingInfo };
 });
 
 exports.generateContentPlan = onCall({ secrets: [anthropicApiKey], region: 'us-central1', timeoutSeconds: 120 }, async (request) => {
@@ -736,6 +741,7 @@ exports.sendNotification = onCall({ secrets: [vapidPrivateKey], region: 'us-cent
 });
 
 Object.assign(exports, require('./grow-payment-webhook'));
+Object.assign(exports, require('./gift-auto-reply'));
 Object.assign(exports, require('./quick-deal'));
 Object.assign(exports, require('./seminar-attendees'));
 Object.assign(exports, require('./partner-details-form'));

@@ -517,8 +517,8 @@
       <label>לאיזה קהל מתמקד הסבב הזה? *
         <input id="warming-audience" type="text" required placeholder="לדוגמה: נשים שכירות שרוצות להסב מקצוע">
       </label>
-      <label>מידע נוסף (אופציונלי) - הדביקו כאן את הקישור לקובץ ה-Google Sheets שקיבלת בתהליך, או כל מידע רלוונטי נוסף
-        <textarea id="warming-context" rows="3" placeholder="הדביקו כאן את הקישור לקובץ ה-Sheets שקיבלת בתהליך, פרטים על הקהל, מבצע ספציפי, דברים שקרו לאחרונה..."></textarea>
+      <label>מידע נוסף (אופציונלי) - הדביקו כאן קישור לקובץ Google Sheets ו/או Google Docs שקיבלת בתהליך (אפשר גם שניהם), או כל מידע רלוונטי נוסף
+        <textarea id="warming-context" rows="3" placeholder="הדביקו כאן קישור ל-Sheets ו/או ל-Docs שקיבלת בתהליך, פרטים על הקהל, מבצע ספציפי, דברים שקרו לאחרונה..."></textarea>
       </label>
       <p id="warming-error" class="error-text" role="alert" hidden></p>
       <button type="submit" class="btn-primary" id="warming-generate-btn">🔥 בניית תוכנית חימום</button>
@@ -528,6 +528,7 @@
       <div class="warming-spinner">🕐</div>
       <div id="warming-countdown">בונה תוכנית...</div>
     </div>
+    <div id="warming-missing-info" class="warming-missing-info" hidden></div>
     <div id="warming-result" class="warming-result"></div>
     <button type="button" id="warming-save-btn" class="btn-primary warming-save-btn" hidden>💾 שמירת התוכנית</button>
   </main>

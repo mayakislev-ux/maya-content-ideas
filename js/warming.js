@@ -210,6 +210,31 @@ function renderPlan(plan) {
   document.getElementById('warming-save-btn').hidden = false;
 }
 
+// Surfaces exactly what the AI itself flagged as missing (e.g. no real
+// client story for חוק הראי) instead of silently falling back to generic
+// placeholders throughout the plan - she can fill these in and regenerate
+// for a sharper result, without a whole separate clarifying-chat screen.
+function renderMissingInfo(missingInfo) {
+  const container = document.getElementById('warming-missing-info');
+  container.innerHTML = '';
+  if (!Array.isArray(missingInfo) || !missingInfo.length) {
+    container.hidden = true;
+    return;
+  }
+  const title = document.createElement('div');
+  title.className = 'warming-missing-info-title';
+  title.textContent = '💡 כדי לדייק את התוכנית עוד יותר, כדאי להוסיף:';
+  container.appendChild(title);
+  const list = document.createElement('ul');
+  missingInfo.forEach((q) => {
+    const li = document.createElement('li');
+    li.textContent = q;
+    list.appendChild(li);
+  });
+  container.appendChild(list);
+  container.hidden = false;
+}
+
 function renderSavedList(plans, onOpen, onDelete) {
   const container = document.getElementById('warming-saved-list');
   container.innerHTML = '';
@@ -288,13 +313,25 @@ export function wireWarmingView() {
     const extraContext = document.getElementById('warming-context').value.trim();
     if (!product || !audience) return;
 
+    // Bare titles gave the AI a one-line label with no real substance to
+    // actually "weave in" - the ideas collection has much richer fields
+    // (hookText, category, persuasionStage, rating) that were being
+    // silently dropped. Only ideas with real hookText content count as
+    // usable material, ranked by rating so the strongest ones lead - matches
+    // "if something strong fits," not "dump every quick-added title."
     const existingIdeasTitles = getCurrentIdeas()
-      .map((idea) => idea.title)
-      .filter(Boolean);
+      .filter((idea) => idea.hookText && idea.hookText.trim())
+      .sort((a, b) => (Number(b.rating) || 0) - (Number(a.rating) || 0))
+      .slice(0, 15)
+      .map((idea) => {
+        const tags = [idea.category, idea.persuasionStage].filter(Boolean).join(' | ');
+        return `${idea.title}${tags ? ` (${tags})` : ''}: ${idea.hookText.trim()}`;
+      });
 
     generateBtn.disabled = true;
     loadingEl.hidden = false;
     document.getElementById('warming-result').innerHTML = '';
+    document.getElementById('warming-missing-info').hidden = true;
     saveBtn.hidden = true;
     startCountdown();
 
@@ -304,6 +341,7 @@ export function wireWarmingView() {
       currentMeta = { product, audience, extraContext };
       currentPlanId = null;
       renderPlan(currentPlan);
+      renderMissingInfo(result.data.missingInfo);
     } catch (err) {
       console.error('generateWarmingPlan failed:', err);
       errorEl.textContent = 'משהו השתבש בבניית התוכנית, נסו שוב.';
@@ -326,6 +364,14 @@ export function wireWarmingView() {
         currentPlanId = ref.id;
       }
       showToast('💾 התוכנית נשמרה בהצלחה');
+      // The draft (product/audience/context) used to keep auto-filling the
+      // form on every future visit, saved or not - so "building a new plan"
+      // after saving one silently reused the exact same inputs and got back
+      // an almost-identical plan, which read as "it's not building anything
+      // new." Once a plan is actually saved, that input combination is
+      // done - clear the draft so the next visit starts blank and ready for
+      // a genuinely new product/audience, instead of stuck on repeat.
+      localStorage.removeItem(WARMING_DRAFT_KEY);
     } catch (err) {
       console.error('saveWarmingPlan failed:', err);
       showToast('משהו השתבש בשמירה, נסו שוב');
@@ -348,6 +394,7 @@ export function wireWarmingView() {
           document.getElementById('warming-audience').value = p.audience;
           document.getElementById('warming-context').value = p.extraContext || '';
           renderPlan(currentPlan);
+          document.getElementById('warming-missing-info').hidden = true;
           savedListEl.hidden = true;
         },
         async (p) => {

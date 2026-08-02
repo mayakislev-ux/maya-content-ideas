@@ -3545,3 +3545,25 @@ textarea:focus-visible,
   padding: 0.7rem 0.9rem;
   font-size: 0.92rem;
 }
+
+.warming-missing-info {
+  background: var(--warm-tint, var(--surface));
+  border-radius: var(--card-radius);
+  padding: 1rem 1.2rem;
+  margin-bottom: 1.2rem;
+  line-height: 1.6;
+}
+
+.warming-missing-info-title {
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.warming-missing-info ul {
+  margin: 0;
+  padding-inline-start: 1.3rem;
+}
+
+.warming-missing-info li {
+  margin-bottom: 0.3rem;
+}
