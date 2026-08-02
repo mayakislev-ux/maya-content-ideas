@@ -331,6 +331,10 @@ document.getElementById('ideas-guide-back-btn').addEventListener('click', () => 
 // which read as "missing" even though nothing was actually removed. Gives
 // it its own direct hub card, same target view, zero new content.
 document.getElementById('hub-link-roadmap').addEventListener('click', () => showView('roadmap'));
+// Same reasoning, same fix, for the second static guide (theoretical
+// content-plan guide - distinct from the real AI-builder tool, same
+// content-plan-view as open-content-plan-link-btn below).
+document.getElementById('hub-link-content-plan-guide').addEventListener('click', () => showView('content-plan'));
 // Reuses the existing gate-check + modal-open logic wired in
 // wireContentPlanView() instead of duplicating it - the button itself
 // stays hidden (its own visibility is tied to the now-secondary embedded
