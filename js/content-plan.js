@@ -503,7 +503,7 @@ function renderSavedList(plans, onOpen, onDelete) {
   }
 }
 
-function refreshGate() {
+export function refreshGate() {
   const readyCount = getReadyIdeas().length;
   const gateMsg = document.getElementById('content-plan-gate-msg');
   const form = document.getElementById('content-plan-form');

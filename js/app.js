@@ -8,7 +8,7 @@ import { openAddModal, openEditModal, wireIdeaForm } from './idea-form.js';
 import { wireRandomIdeaModal } from './random-idea-modal.js';
 import { wireIdeaChat, startIdeaChat } from './idea-chat.js';
 import { wireFeedbackForm } from './feedback.js';
-import { wireContentPlanView } from './content-plan.js';
+import { wireContentPlanView, refreshGate as refreshContentPlanGate } from './content-plan.js';
 import { wireWarmingView } from './warming.js';
 import { showView, getLastView } from './view-router.js';
 import { showToast } from './toast.js';
@@ -205,6 +205,7 @@ document.getElementById('install-app-btn').addEventListener('click', async () =>
 
 function onIdeasChanged(ideas) {
   renderArchive(ideas, { onItemClick: openEditModal });
+  refreshContentPlanGate();
 }
 
 async function isEmailAllowed(email) {
