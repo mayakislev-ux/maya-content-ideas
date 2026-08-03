@@ -15,10 +15,9 @@ function contentPlansCollection() {
   return collection(db, 'contentPlans');
 }
 
-export async function saveContentPlan({ pieceCount, liveContentNote, plan }) {
+export async function saveContentPlan({ pieceCount, plan }) {
   return addDoc(contentPlansCollection(), {
     pieceCount,
-    liveContentNote,
     plan,
     ownerUid: auth.currentUser.uid,
     createdAt: serverTimestamp(),

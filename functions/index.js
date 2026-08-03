@@ -650,7 +650,6 @@ exports.generateContentPlan = onCall({ secrets: [anthropicApiKey], region: 'us-c
 
   const ideas = (request.data && request.data.ideas) || [];
   const pieceCount = Number(request.data && request.data.pieceCount) || 16;
-  const liveContentNote = (request.data && request.data.liveContentNote) || '';
 
   if (!Array.isArray(ideas) || ideas.length === 0) {
     throw new HttpsError('invalid-argument', 'צריך לפחות רעיון אחד עם קטגוריה כדי לבנות תכנית תוכן');
@@ -659,7 +658,7 @@ exports.generateContentPlan = onCall({ secrets: [anthropicApiKey], region: 'us-c
     throw new HttpsError('invalid-argument', 'מספר תכנים לא סביר');
   }
 
-  const prompt = buildContentPlanPrompt({ pieceCount, liveContentNote, ideas: ideas.slice(0, 60) });
+  const prompt = buildContentPlanPrompt({ pieceCount, ideas: ideas.slice(0, 60) });
 
   const data = await callAnthropic(
     anthropicApiKey.value(),

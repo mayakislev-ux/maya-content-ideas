@@ -554,7 +554,6 @@ export function wireContentPlanView() {
     errorEl.hidden = true;
 
     const pieceCount = Number(document.getElementById('content-plan-piece-count').value) || MIN_PIECE_COUNT;
-    const liveContentNote = document.getElementById('content-plan-live-note').value.trim();
     const readyIdeas = [...getReadyIdeas()].sort((a, b) => ratingRank(a.rating) - ratingRank(b.rating));
     const cappedIdeas = readyIdeas.slice(0, MAX_IDEAS_SENT);
 
@@ -573,10 +572,10 @@ export function wireContentPlanView() {
     saveBtn.hidden = true;
 
     try {
-      const result = await generateContentPlan({ pieceCount, liveContentNote, ideas: ideasPayload });
+      const result = await generateContentPlan({ pieceCount, ideas: ideasPayload });
       currentPlan = enrichPlanFromBank(result.data.plan, cappedIdeas);
       if (readyIdeas.length > cappedIdeas.length) currentPlan.truncatedFrom = readyIdeas.length;
-      currentMeta = { pieceCount, liveContentNote };
+      currentMeta = { pieceCount };
       currentPlanId = null;
       renderPlan(currentPlan);
     } catch (err) {
@@ -616,7 +615,7 @@ export function wireContentPlanView() {
         plans,
         (p) => {
           currentPlan = p.plan;
-          currentMeta = { pieceCount: p.pieceCount || MIN_PIECE_COUNT, liveContentNote: p.liveContentNote };
+          currentMeta = { pieceCount: p.pieceCount || MIN_PIECE_COUNT };
           currentPlanId = p.id;
           renderPlan(currentPlan);
           savedListEl.hidden = true;
