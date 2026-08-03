@@ -598,7 +598,10 @@ export function wireContentPlanView() {
       renderPlan(currentPlan);
     } catch (err) {
       console.error('generateContentPlan failed:', err);
-      errorEl.textContent = `משהו השתבש בבניית התכנית: ${err.message || 'שגיאה לא ידועה'}. נסו שוב.`;
+      const hasHebrewText = /[\u0590-\u05FF]/.test(err.message || '');
+      errorEl.textContent = hasHebrewText
+        ? `משהו השתבש בבניית התכנית: ${err.message}. נסו שוב.`
+        : 'משהו השתבש בבניית התכנית, נסו שוב.';
       errorEl.hidden = false;
     } finally {
       generateBtn.disabled = false;
