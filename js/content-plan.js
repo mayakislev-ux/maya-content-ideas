@@ -8,8 +8,8 @@ import {
   PERSUASION_STAGES,
   AUDIENCE_SCOPES,
   MUST_INCLUDE_TYPES,
+  RATINGS,
   findSimilarIdea,
-  sortIdeas,
 } from './ideas-logic.js';
 import { saveContentPlan, updateContentPlan, listContentPlans, deleteContentPlan } from './content-plan-store.js';
 import { makeEditable } from './editable.js';
@@ -25,6 +25,19 @@ const MIN_READY_IDEAS = 6;
 // יעד המינימום שמאיה קבעה - "לפחות 16, זו תמיד ההמלצה לצמיחה מהירה".
 // המשתמשת יכולה להזין יותר, לא פחות (גם ולידציה בטופס וגם כאן כברירת מחדל).
 const MIN_PIECE_COUNT = 16;
+
+// תואם את ה-slice(0, 60) הקיים בצד השרת (functions/index.js) ואת
+// max="60" בטופס (index.html) - קבוע אחד כאן כדי שהודעת החיתוך
+// בסקורקארד לעולם לא תתייחס למספר שונה מזה שבאמת נשלח.
+const MAX_IDEAS_SENT = 60;
+
+// דירוג חסר (רעיונות ישנים, מלפני שהשדה rating נוסף) חייב להיחשב
+// הכי פחות דחוף, לא הכי דחוף - RATINGS.indexOf מחזיר -1 לרעיון בלי
+// rating, שבמיון רגיל היה קופץ לפני 🔥 בטעות.
+function ratingRank(rating) {
+  const i = RATINGS.indexOf(rating);
+  return i === -1 ? RATINGS.length : i;
+}
 
 const CATEGORY_TARGETS = {
   'בעל ערך': 0.4,
@@ -171,18 +184,29 @@ function renderScorecard(plan, readyIdeas) {
   for (const row of rows) renderScorecardRow(list, row);
   container.appendChild(list);
 
-  const gaps = checkBankGaps(readyIdeas);
+  const notes = checkBankGaps(readyIdeas).map((text) => ({ icon: '📦', text }));
   if (plan.unmatchedCount) {
-    gaps.push(`${plan.unmatchedCount} פריטים לא זוהו במאגר במדויק - כדאי לבדוק אותם בטבלה`);
+    const text =
+      plan.unmatchedCount === 1
+        ? 'פריט אחד לא זוהה במדויק במאגר בזמן הבנייה - כדאי לבדוק אותו בטבלה'
+        : `${plan.unmatchedCount} פריטים לא זוהו במדויק במאגר בזמן הבנייה - כדאי לבדוק אותם בטבלה`;
+    notes.push({ icon: '❓', text });
   }
   if (plan.truncatedFrom) {
-    gaps.push(`התכנית נבנתה מ-60 רעיונות מתוך ${plan.truncatedFrom} שיש לך (מדורגים לפי דירוג לפני חיתוך) - שאר הרעיונות לא נשקלו הפעם`);
+    notes.push({
+      icon: '✂️',
+      text: `התכנית נבנתה מתוך ${MAX_IDEAS_SENT} הרעיונות המדורגים הכי גבוה, מתוך ${plan.truncatedFrom} שיש לך במאגר`,
+    });
   }
-  if (gaps.length) {
-    const gapsBox = document.createElement('div');
-    gapsBox.className = 'scorecard-gaps';
-    gapsBox.textContent = `📦 מה חסר במאגר: ${gaps.join(' | ')}`;
-    container.appendChild(gapsBox);
+  if (notes.length) {
+    const notesBox = document.createElement('div');
+    notesBox.className = 'scorecard-gaps';
+    for (const note of notes) {
+      const line = document.createElement('div');
+      line.textContent = `${note.icon} ${note.text}`;
+      notesBox.appendChild(line);
+    }
+    container.appendChild(notesBox);
   }
 }
 
@@ -196,10 +220,8 @@ function enrichPlanFromBank(plan, readyIdeas) {
   for (const week of plan.weeks || []) {
     for (const item of week.items || []) {
       if (item.type === 'live') continue;
-      let source = byTitle.get(item.ideaTitle);
-      if (!source) source = findSimilarIdea(readyIdeas, item.ideaTitle);
+      const source = byTitle.get(item.ideaTitle) || findSimilarIdea(readyIdeas, item.ideaTitle);
       if (source) {
-        item.ideaTitle = source.title;
         item.category = source.category;
         item.persuasionStage = source.persuasionStage || '';
         item.audienceScope = source.audienceScope || '';
@@ -519,8 +541,8 @@ export function wireContentPlanView() {
 
     const pieceCount = Number(document.getElementById('content-plan-piece-count').value) || MIN_PIECE_COUNT;
     const liveContentNote = document.getElementById('content-plan-live-note').value.trim();
-    const readyIdeas = sortIdeas(getReadyIdeas(), 'rating');
-    const cappedIdeas = readyIdeas.slice(0, 60);
+    const readyIdeas = [...getReadyIdeas()].sort((a, b) => ratingRank(a.rating) - ratingRank(b.rating));
+    const cappedIdeas = readyIdeas.slice(0, MAX_IDEAS_SENT);
 
     const ideasPayload = cappedIdeas.map((idea) => ({
       title: idea.title,
