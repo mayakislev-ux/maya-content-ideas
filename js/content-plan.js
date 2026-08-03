@@ -521,13 +521,16 @@ function renderSavedList(plans, onOpen, onDelete) {
 }
 
 export function refreshGate() {
-  const readyCount = getReadyIdeas().length;
+  const readyIdeas = getReadyIdeas();
+  const readyCount = readyIdeas.length;
   const gateMsg = document.getElementById('content-plan-gate-msg');
   const form = document.getElementById('content-plan-form');
-  const enough = readyCount >= MIN_READY_IDEAS;
+  const enoughVolume = readyCount >= MIN_READY_IDEAS;
+  const missingCategories = CATEGORIES.filter((cat) => !readyIdeas.some((idea) => idea.category === cat));
+  const enough = enoughVolume && missingCategories.length === 0;
   gateMsg.hidden = enough;
   form.hidden = !enough;
-  if (!enough) {
+  if (!enoughVolume) {
     const unclassified = getCurrentIdeas().filter((idea) => !idea.category);
     let hint = '';
     if (unclassified.length) {
@@ -541,6 +544,8 @@ export function refreshGate() {
       hint = ` יש לך ${unclassified.length} רעיונות שכבר כתובים במאגר אבל עדיין בלי קטגוריה, למשל: ${sample}${unclassified.length > 3 ? ' ועוד' : ''} - לכי אליהם קודם, זה הכי מהיר.`;
     }
     gateMsg.textContent = `כדי לבנות תכנית תוכן צריך קודם מספיק רעיונות מסווגים (עם קטגוריה) במאגר - יש לך כרגע ${readyCount} מתוך ${MIN_READY_IDEAS} הדרושים.${hint} לכי ל"הרעיונות שלי" והוסיפי/סווגי עוד רעיונות קודם.`;
+  } else if (missingCategories.length) {
+    gateMsg.textContent = `כדי לבנות תכנית תוכן מאוזנת צריך לפחות רעיון אחד מסווג בכל קטגוריה - חסר לך לגמרי בקטגוריות: ${missingCategories.join(', ')}. לכי ל"הרעיונות שלי" והוסיפי/סווגי לפחות רעיון אחד בכל קטגוריה חסרה, ואז אפשר לבנות תכנית.`;
   }
 }
 
