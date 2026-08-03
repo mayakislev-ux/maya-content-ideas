@@ -9,6 +9,7 @@ import {
   AUDIENCE_SCOPES,
   MUST_INCLUDE_TYPES,
   RATINGS,
+  VIRAL_SCOPE,
   findSimilarIdea,
 } from './ideas-logic.js';
 import { saveContentPlan, updateContentPlan, listContentPlans, deleteContentPlan } from './content-plan-store.js';
@@ -104,7 +105,7 @@ function checkMustIncludeCoverage(appItems) {
 function checkVirality(appItems) {
   const total = appItems.length;
   if (!total) return null;
-  const actual = pct(appItems.filter((i) => i.audienceScope === 'רחב').length, total);
+  const actual = pct(appItems.filter((i) => i.audienceScope === VIRAL_SCOPE).length, total);
   return { label: `ויראליות: ${Math.round(actual * 100)}% (יעד כ-30%)`, ok: withinHalfDouble(actual, 0.3) };
 }
 
@@ -135,6 +136,7 @@ function checkSeries(plan) {
 
 function checkBankGaps(readyIdeas) {
   const total = readyIdeas.length;
+  if (!total) return [];
   const counts = {};
   for (const idea of readyIdeas) counts[idea.category] = (counts[idea.category] || 0) + 1;
   const gaps = [];
