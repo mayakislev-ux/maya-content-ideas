@@ -662,7 +662,7 @@ exports.generateContentPlan = onCall({ secrets: [anthropicApiKey], region: 'us-c
 
   const data = await callAnthropic(
     anthropicApiKey.value(),
-    { model: 'claude-sonnet-5', max_tokens: 4096, messages: [{ role: 'user', content: prompt }] },
+    { model: 'claude-sonnet-5', max_tokens: 8192, messages: [{ role: 'user', content: prompt }] },
     'generateContentPlan'
   );
 

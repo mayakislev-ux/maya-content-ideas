@@ -16,7 +16,7 @@ import { saveContentPlan, updateContentPlan, listContentPlans, deleteContentPlan
 import { makeEditable } from './editable.js';
 import { showToast } from './toast.js';
 
-const generateContentPlan = httpsCallable(functions, 'generateContentPlan');
+const generateContentPlan = httpsCallable(functions, 'generateContentPlan', { timeout: 170000 });
 
 // "רעיון עם זווית" אין לו שדה נפרד באפליקציה - הפרוקסי הכי אמין שיש
 // למאמץ שכבר הושקע ברעיון הוא שהוא כבר סווג לקטגוריה (לא נשאר טיוטה
@@ -56,6 +56,23 @@ const STAGE_SHORT_LABELS = {
 let currentPlan = null;
 let currentMeta = null;
 let currentPlanId = null;
+let countdownInterval = null;
+
+function startCountdown() {
+  const el = document.getElementById('content-plan-countdown');
+  let secondsLeft = 40;
+  el.textContent = `בונה תכנית תוכן... בערך ${secondsLeft} שניות נותרו`;
+  countdownInterval = setInterval(() => {
+    secondsLeft -= 1;
+    el.textContent =
+      secondsLeft > 0 ? `בונה תכנית תוכן... בערך ${secondsLeft} שניות נותרו` : 'כמעט מוכן, עוד רגע... 🔥';
+  }, 1000);
+}
+
+function stopCountdown() {
+  if (countdownInterval) clearInterval(countdownInterval);
+  countdownInterval = null;
+}
 
 function getReadyIdeas() {
   return getCurrentIdeas().filter((idea) => Boolean(idea.category));
@@ -570,6 +587,7 @@ export function wireContentPlanView() {
     document.getElementById('content-plan-result').innerHTML = '';
     scorecardEl.hidden = true;
     saveBtn.hidden = true;
+    startCountdown();
 
     try {
       const result = await generateContentPlan({ pieceCount, ideas: ideasPayload });
@@ -580,11 +598,12 @@ export function wireContentPlanView() {
       renderPlan(currentPlan);
     } catch (err) {
       console.error('generateContentPlan failed:', err);
-      errorEl.textContent = 'משהו השתבש בבניית התכנית, נסו שוב.';
+      errorEl.textContent = `משהו השתבש בבניית התכנית: ${err.message || 'שגיאה לא ידועה'}. נסו שוב.`;
       errorEl.hidden = false;
     } finally {
       generateBtn.disabled = false;
       loadingEl.hidden = true;
+      stopCountdown();
     }
   });
 
