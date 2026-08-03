@@ -3567,3 +3567,109 @@ textarea:focus-visible,
 .warming-missing-info li {
   margin-bottom: 0.3rem;
 }
+
+/* ===== Content plan v2: real table + scorecard (2026-08-02) ===== */
+
+.content-plan-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--card-bg);
+  border-radius: var(--card-radius);
+  overflow: hidden;
+  box-shadow: var(--card-shadow);
+  margin-bottom: 1.5rem;
+}
+
+.content-plan-table th {
+  background: var(--surface);
+  color: var(--accent-strong, var(--accent));
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 0.6rem 0.7rem;
+  text-align: right;
+  border-bottom: 1.5px solid var(--border-color);
+}
+
+.content-plan-table td {
+  padding: 0.6rem 0.7rem;
+  border-top: 1px solid var(--border-color);
+  vertical-align: top;
+  font-size: 0.9rem;
+}
+
+.content-plan-week-row td {
+  background: var(--accent-tint);
+  font-weight: bold;
+  padding: 0.7rem;
+}
+
+.content-plan-table tr.warming-done td { opacity: 0.55; }
+.content-plan-table tr.warming-done .warming-day-idea { text-decoration: line-through; }
+
+.table-editable-cell { cursor: pointer; border-radius: 8px; }
+.table-editable-cell:hover { background: rgba(38, 62, 168, 0.08); }
+
+.table-cell-select {
+  font-family: inherit;
+  font-size: 0.85rem;
+  padding: 0.2rem 0.3rem;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  width: 100%;
+}
+
+.type-tag {
+  display: inline-block;
+  font-size: 0.72rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: var(--warm-tint, var(--surface));
+  color: var(--text);
+  font-weight: 600;
+}
+
+.stage-tag {
+  display: inline-block;
+  font-size: 0.75rem;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  background: none;
+  border: 1px solid var(--border-color);
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.content-plan-scorecard {
+  background: var(--card-bg);
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+  padding: 1rem 1.2rem;
+  margin-bottom: 1.2rem;
+}
+
+.content-plan-scorecard[hidden] { display: none; }
+
+.scorecard-rows {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.scorecard-row {
+  font-size: 0.82rem;
+  padding: 0.3rem 0.6rem;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+.scorecard-row.scorecard-ok { background: rgba(47, 158, 100, 0.12); color: var(--cat-baal-erech); }
+.scorecard-row.scorecard-warn { background: rgba(209, 73, 91, 0.12); color: var(--cat-mechirti); }
+
+.scorecard-gaps {
+  margin-top: 0.7rem;
+  padding: 0.6rem 0.8rem;
+  background: var(--warm-tint, var(--surface));
+  border-radius: 10px;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
