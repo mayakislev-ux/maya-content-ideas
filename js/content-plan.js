@@ -1,7 +1,14 @@
 import { functions } from './firebase-init.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
 import { getCurrentIdeas } from './archive-view.js';
-import { categoryColorVar, categoryIcon } from './ideas-logic.js';
+import {
+  categoryColorVar,
+  categoryIcon,
+  CATEGORIES,
+  PERSUASION_STAGES,
+  AUDIENCE_SCOPES,
+  MUST_INCLUDE_TYPES,
+} from './ideas-logic.js';
 import { saveContentPlan, updateContentPlan, listContentPlans, deleteContentPlan } from './content-plan-store.js';
 import { makeEditable } from './editable.js';
 import { showToast } from './toast.js';
@@ -13,9 +20,22 @@ const generateContentPlan = httpsCallable(functions, 'generateContentPlan');
 // גולמית). מתחת לסף הזה תכנית תוכן פשוט לא תהיה בנויה על משהו ממשי.
 const MIN_READY_IDEAS = 6;
 
-// לא שאלה שהמשתמשת צריכה לחשב בעצמה (כמה כתוב מול כמה חי) - קצב ברירת
-// המחדל של תוכן כתוב, שסביבו משתלב תוכן החי לפי הימים שהיא כן מציינת.
-const DEFAULT_POSTS_PER_WEEK = 3;
+// יעד המינימום שמאיה קבעה - "לפחות 16, זו תמיד ההמלצה לצמיחה מהירה".
+// המשתמשת יכולה להזין יותר, לא פחות (גם ולידציה בטופס וגם כאן כברירת מחדל).
+const MIN_PIECE_COUNT = 16;
+
+const CATEGORY_TARGETS = {
+  'בעל ערך': 0.4,
+  'אישי': 0.3,
+  'מכירתי': 0.15,
+  'בידורי': 0.15,
+};
+
+const STAGE_SHORT_LABELS = {
+  [PERSUASION_STAGES[0]]: 'שלב 1',
+  [PERSUASION_STAGES[1]]: 'שלב 2',
+  [PERSUASION_STAGES[2]]: 'שלב 3',
+};
 
 let currentPlan = null;
 let currentMeta = null;
@@ -33,94 +53,336 @@ function autosaveCheckboxChange() {
   });
 }
 
-function renderItem(item) {
-  const row = document.createElement('div');
-  row.className = 'warming-day-row';
-  if (item.done) row.classList.add('warming-done');
+// ===== Scorecard: כל האחוזים מחושבים כאן ב-JS רגיל, לא ב-AI. =====
 
+function pct(count, total) {
+  return total ? count / total : 0;
+}
+
+function withinHalfDouble(actual, target) {
+  return actual >= target / 2 && actual <= target * 2;
+}
+
+function getAppItems(plan) {
+  return (plan.weeks || []).flatMap((w) => (w.items || []).filter((i) => i.type !== 'live'));
+}
+
+function checkCategoryRatio(appItems) {
+  const total = appItems.length;
+  const counts = {};
+  for (const item of appItems) counts[item.category] = (counts[item.category] || 0) + 1;
+  return Object.entries(CATEGORY_TARGETS).map(([cat, target]) => {
+    const actual = pct(counts[cat] || 0, total);
+    return { label: `${cat}: ${Math.round(actual * 100)}% (יעד ${Math.round(target * 100)}%)`, ok: withinHalfDouble(actual, target) };
+  });
+}
+
+function checkMustIncludeCoverage(appItems) {
+  const total = appItems.length;
+  if (!total) return null;
+  const tagged = appItems.filter((i) => MUST_INCLUDE_TYPES.includes(i.mustIncludeType)).length;
+  const actual = pct(tagged, total);
+  return { label: `כיסוי 8 סוגי התוכן: ${Math.round(actual * 100)}% (יעד 80%+)`, ok: actual >= 0.8 };
+}
+
+function checkVirality(appItems) {
+  const total = appItems.length;
+  if (!total) return null;
+  const actual = pct(appItems.filter((i) => i.audienceScope === 'רחב').length, total);
+  return { label: `ויראליות: ${Math.round(actual * 100)}% (יעד כ-30%)`, ok: withinHalfDouble(actual, 0.3) };
+}
+
+function checkAudience(appItems) {
+  const primary = appItems.filter((i) => i.audienceScope === 'עיקרי').length;
+  const secondary = appItems.filter((i) => i.audienceScope === 'משני').length;
+  const total = primary + secondary;
+  if (!total) return null;
+  const secondaryShare = pct(secondary, total);
+  return { label: `קהל משני: ${Math.round(secondaryShare * 100)}% (יעד עד כ-20%)`, ok: secondaryShare <= 0.4 };
+}
+
+function checkPersuasionStages(appItems) {
+  const total = appItems.length;
+  if (!total) return [];
+  const counts = {};
+  for (const item of appItems) counts[item.persuasionStage] = (counts[item.persuasionStage] || 0) + 1;
+  return PERSUASION_STAGES.map((stage, i) => {
+    const actual = pct(counts[stage] || 0, total);
+    return { label: `שלב שכנוע ${i + 1}: ${Math.round(actual * 100)}%`, ok: withinHalfDouble(actual, 1 / 3) };
+  });
+}
+
+function checkSeries(plan) {
+  const note = (plan.seriesNote || '').trim();
+  return { label: note ? `סדרה/פורמט חוזר: ${note}` : 'אין כרגע סדרה חוזרת - לא חובה אבל מומלץ לצמיחת עוקבים', ok: Boolean(note) };
+}
+
+function checkBankGaps(readyIdeas) {
+  const total = readyIdeas.length;
+  const counts = {};
+  for (const idea of readyIdeas) counts[idea.category] = (counts[idea.category] || 0) + 1;
+  const gaps = [];
+  for (const [cat, target] of Object.entries(CATEGORY_TARGETS)) {
+    const actual = pct(counts[cat] || 0, total);
+    if (actual < target / 2) {
+      gaps.push(`יש לך רק ${counts[cat] || 0} רעיונות בקטגוריית '${cat}' - כדאי להוסיף עוד`);
+    }
+  }
+  return gaps;
+}
+
+function checkAngleCoverage(readyIdeas) {
+  const total = readyIdeas.length;
+  if (!total) return null;
+  const withAngle = readyIdeas.filter((idea) => (idea.title || '').includes('זווית:')).length;
+  const actual = pct(withAngle, total);
+  return { label: `כיסוי זווית הנגשה במאגר: ${Math.round(actual * 100)}%`, ok: actual >= 0.5 };
+}
+
+function renderScorecardRow(list, row) {
+  if (!row || !row.label) return;
+  const el = document.createElement('div');
+  el.className = `scorecard-row ${row.ok ? 'scorecard-ok' : 'scorecard-warn'}`;
+  el.textContent = `${row.ok ? '✓' : '⚠'} ${row.label}`;
+  list.appendChild(el);
+}
+
+function renderScorecard(plan, readyIdeas) {
+  const container = document.getElementById('content-plan-scorecard');
+  container.innerHTML = '';
+  container.hidden = false;
+
+  const appItems = getAppItems(plan);
+  const rows = [
+    ...checkCategoryRatio(appItems),
+    checkMustIncludeCoverage(appItems),
+    checkVirality(appItems),
+    checkAudience(appItems),
+    ...checkPersuasionStages(appItems),
+    checkSeries(plan),
+    checkAngleCoverage(readyIdeas),
+  ];
+
+  const list = document.createElement('div');
+  list.className = 'scorecard-rows';
+  for (const row of rows) renderScorecardRow(list, row);
+  container.appendChild(list);
+
+  const gaps = checkBankGaps(readyIdeas);
+  if (gaps.length) {
+    const gapsBox = document.createElement('div');
+    gapsBox.className = 'scorecard-gaps';
+    gapsBox.textContent = `📦 מה חסר במאגר: ${gaps.join(' | ')}`;
+    container.appendChild(gapsBox);
+  }
+}
+
+// ===== העשרת הפלט מהשרת בנתונים מהמאגר - קטגוריה/קהל/שלב שכנוע נלקחים =====
+// ===== מהרעיון המקורי לפי התאמת כותרת מדויקת, לא נסמכים על ה-AI שיחזיר =====
+// ===== אותם נכון. mustIncludeType נשאר כמו שה-AI קבע - זה תפקידו החדש. =====
+
+function enrichPlanFromBank(plan, readyIdeas) {
+  const byTitle = new Map(readyIdeas.map((idea) => [idea.title, idea]));
+  for (const week of plan.weeks || []) {
+    for (const item of week.items || []) {
+      if (item.type === 'live') continue;
+      const source = byTitle.get(item.ideaTitle);
+      if (source) {
+        item.category = source.category;
+        item.persuasionStage = source.persuasionStage || '';
+        item.audienceScope = source.audienceScope || '';
+      }
+    }
+  }
+  return plan;
+}
+
+// ===== תא עריכה בלחיצה, גרסת select (קטגוריה/סוג-תוכן/קהל/שלב שכנוע) =====
+
+function makeEditableSelect(td, options, currentValue, onCommit, renderValue) {
+  td.classList.add('table-editable-cell');
+  td.title = 'לחיצה לעריכה';
+
+  const show = (value) => {
+    td.innerHTML = '';
+    td.appendChild(renderValue(value));
+  };
+  show(currentValue);
+
+  td.addEventListener('click', () => {
+    if (td.querySelector('select')) return;
+    const select = document.createElement('select');
+    select.className = 'table-cell-select';
+    for (const opt of options) {
+      const optionEl = document.createElement('option');
+      optionEl.value = opt;
+      optionEl.textContent = opt;
+      if (opt === currentValue) optionEl.selected = true;
+      select.appendChild(optionEl);
+    }
+    td.innerHTML = '';
+    td.appendChild(select);
+    select.focus();
+    select.addEventListener('change', () => {
+      currentValue = select.value;
+      onCommit(currentValue);
+      show(currentValue);
+    });
+    select.addEventListener('blur', () => show(currentValue));
+  });
+}
+
+function renderTitleCell(td, item) {
+  const span = document.createElement('span');
+  span.className = 'warming-day-idea';
+  span.textContent = item.ideaTitle || '';
+  span.title = 'לחיצה עורכת';
+  makeEditable(span, (val) => (item.ideaTitle = val));
+  td.appendChild(span);
+}
+
+function renderCategoryCell(td, item) {
+  makeEditableSelect(td, CATEGORIES, item.category || '', (val) => (item.category = val), (value) => {
+    const tag = document.createElement('span');
+    tag.className = 'card-category-tag';
+    tag.style.setProperty('--card-color', categoryColorVar(value));
+    tag.textContent = value ? `${categoryIcon(value)} ${value}` : '-';
+    return tag;
+  });
+}
+
+function renderTypeCell(td, item) {
+  makeEditableSelect(td, MUST_INCLUDE_TYPES, item.mustIncludeType || '', (val) => (item.mustIncludeType = val), (value) => {
+    const tag = document.createElement('span');
+    tag.className = 'type-tag';
+    tag.textContent = value || '-';
+    return tag;
+  });
+}
+
+function renderAudienceCell(td, item) {
+  makeEditableSelect(td, AUDIENCE_SCOPES, item.audienceScope || '', (val) => (item.audienceScope = val), (value) => {
+    const tag = document.createElement('span');
+    tag.className = 'audience-tag';
+    tag.textContent = value || '-';
+    return tag;
+  });
+}
+
+function renderStageCell(td, item) {
+  makeEditableSelect(td, PERSUASION_STAGES, item.persuasionStage || '', (val) => (item.persuasionStage = val), (value) => {
+    const tag = document.createElement('span');
+    tag.className = 'stage-tag';
+    tag.textContent = value ? STAGE_SHORT_LABELS[value] : '-';
+    tag.title = value || '';
+    return tag;
+  });
+}
+
+// ===== רינדור הטבלה =====
+
+function renderItemRow(item) {
+  const tr = document.createElement('tr');
+  if (item.done) tr.classList.add('warming-done');
+
+  const dayTd = document.createElement('td');
+  dayTd.className = 'warming-day-name';
+  dayTd.textContent = item.day || '';
+  tr.appendChild(dayTd);
+
+  if (item.type === 'live') {
+    const liveTd = document.createElement('td');
+    liveTd.colSpan = 5;
+    const liveTag = document.createElement('span');
+    liveTag.className = 'content-plan-live-tag';
+    liveTag.textContent = '🎤 תוכן חי';
+    liveTd.appendChild(liveTag);
+    liveTd.appendChild(document.createElement('br'));
+    const note = document.createElement('span');
+    note.className = 'warming-day-idea';
+    note.textContent = item.note || '';
+    note.title = 'לחיצה עורכת';
+    makeEditable(note, (val) => (item.note = val));
+    liveTd.appendChild(note);
+    tr.appendChild(liveTd);
+  } else {
+    const titleTd = document.createElement('td');
+    renderTitleCell(titleTd, item);
+    tr.appendChild(titleTd);
+
+    const categoryTd = document.createElement('td');
+    renderCategoryCell(categoryTd, item);
+    tr.appendChild(categoryTd);
+
+    const typeTd = document.createElement('td');
+    renderTypeCell(typeTd, item);
+    tr.appendChild(typeTd);
+
+    const audienceTd = document.createElement('td');
+    renderAudienceCell(audienceTd, item);
+    tr.appendChild(audienceTd);
+
+    const stageTd = document.createElement('td');
+    renderStageCell(stageTd, item);
+    tr.appendChild(stageTd);
+  }
+
+  const doneTd = document.createElement('td');
   const checkbox = document.createElement('input');
   checkbox.type = 'checkbox';
   checkbox.className = 'warming-checkbox';
   checkbox.checked = Boolean(item.done);
   checkbox.addEventListener('change', () => {
     item.done = checkbox.checked;
-    row.classList.toggle('warming-done', checkbox.checked);
+    tr.classList.toggle('warming-done', checkbox.checked);
     autosaveCheckboxChange();
   });
-  row.appendChild(checkbox);
+  doneTd.appendChild(checkbox);
+  tr.appendChild(doneTd);
 
-  const textWrap = document.createElement('div');
-  textWrap.className = 'warming-day-text';
-
-  const dayEl = document.createElement('div');
-  dayEl.className = 'warming-day-name';
-  dayEl.textContent = item.day || '';
-  textWrap.appendChild(dayEl);
-
-  if (item.type === 'live') {
-    const liveTag = document.createElement('span');
-    liveTag.className = 'content-plan-live-tag';
-    liveTag.textContent = '🎤 תוכן חי';
-    textWrap.appendChild(liveTag);
-
-    const note = document.createElement('div');
-    note.className = 'warming-day-idea';
-    note.textContent = item.note || '';
-    note.title = 'לחיצה עורכת';
-    makeEditable(note, (val) => (item.note = val));
-    textWrap.appendChild(note);
-  } else {
-    if (item.category) {
-      const tag = document.createElement('span');
-      tag.className = 'card-category-tag';
-      tag.style.setProperty('--card-color', categoryColorVar(item.category));
-      tag.textContent = `${categoryIcon(item.category)} ${item.category}`;
-      textWrap.appendChild(tag);
-    }
-    const title = document.createElement('div');
-    title.className = 'warming-day-idea';
-    title.textContent = item.ideaTitle || '';
-    title.title = 'לחיצה עורכת';
-    makeEditable(title, (val) => (item.ideaTitle = val));
-    textWrap.appendChild(title);
-  }
-
-  row.appendChild(textWrap);
-  return row;
+  return tr;
 }
 
-function renderWeek(week) {
-  const section = document.createElement('details');
-  section.className = 'warming-week';
-  section.open = true;
-
-  const summary = document.createElement('summary');
-  summary.textContent = week.label || '';
-  section.appendChild(summary);
-
+function renderWeekHeaderRow(week) {
+  const tr = document.createElement('tr');
+  tr.className = 'content-plan-week-row';
+  const td = document.createElement('td');
+  td.colSpan = 7;
+  td.textContent = week.label || '';
   if (week.note && week.note.trim()) {
-    const note = document.createElement('p');
+    const note = document.createElement('div');
     note.className = 'content-plan-week-note';
     note.textContent = `⚠️ ${week.note.trim()}`;
-    section.appendChild(note);
+    td.appendChild(note);
   }
-
-  const list = document.createElement('div');
-  list.className = 'warming-days';
-  for (const item of week.items || []) {
-    list.appendChild(renderItem(item));
-  }
-  section.appendChild(list);
-  return section;
+  tr.appendChild(td);
+  return tr;
 }
 
 function renderPlan(plan) {
   const container = document.getElementById('content-plan-result');
   container.innerHTML = '';
+
+  const table = document.createElement('table');
+  table.className = 'content-plan-table';
+
+  const thead = document.createElement('thead');
+  thead.innerHTML =
+    '<tr><th>יום</th><th>רעיון</th><th>קטגוריה</th><th>סוג תוכן</th><th>קהל</th><th>שלב שכנוע</th><th>בוצע</th></tr>';
+  table.appendChild(thead);
+
+  const tbody = document.createElement('tbody');
   for (const week of plan.weeks || []) {
-    container.appendChild(renderWeek(week));
+    tbody.appendChild(renderWeekHeaderRow(week));
+    for (const item of week.items || []) {
+      tbody.appendChild(renderItemRow(item));
+    }
   }
+  table.appendChild(tbody);
+
+  container.appendChild(table);
   document.getElementById('content-plan-save-btn').hidden = false;
+  renderScorecard(plan, getReadyIdeas());
 }
 
 function renderSavedList(plans, onOpen, onDelete) {
@@ -177,6 +439,7 @@ export function wireContentPlanView() {
   const saveBtn = document.getElementById('content-plan-save-btn');
   const savedToggleBtn = document.getElementById('content-plan-saved-toggle-btn');
   const savedListEl = document.getElementById('content-plan-saved-list');
+  const scorecardEl = document.getElementById('content-plan-scorecard');
 
   const modal = document.getElementById('content-plan-modal');
   document.getElementById('content-plan-open-builder-btn').addEventListener('click', () => {
@@ -194,26 +457,28 @@ export function wireContentPlanView() {
     e.preventDefault();
     errorEl.hidden = true;
 
-    const weeksCount = Number(document.getElementById('content-plan-weeks').value) || 4;
-    const postsPerWeek = DEFAULT_POSTS_PER_WEEK;
+    const pieceCount = Number(document.getElementById('content-plan-piece-count').value) || MIN_PIECE_COUNT;
     const liveContentNote = document.getElementById('content-plan-live-note').value.trim();
+    const readyIdeas = getReadyIdeas();
 
-    const readyIdeas = getReadyIdeas().map((idea) => ({
+    const ideasPayload = readyIdeas.map((idea) => ({
       title: idea.title,
       category: idea.category,
       persuasionStage: idea.persuasionStage || '',
+      audienceScope: idea.audienceScope || '',
       rating: idea.rating || '',
     }));
 
     generateBtn.disabled = true;
     loadingEl.hidden = false;
     document.getElementById('content-plan-result').innerHTML = '';
+    scorecardEl.hidden = true;
     saveBtn.hidden = true;
 
     try {
-      const result = await generateContentPlan({ weeksCount, postsPerWeek, liveContentNote, ideas: readyIdeas });
-      currentPlan = result.data.plan;
-      currentMeta = { weeksCount, postsPerWeek, liveContentNote };
+      const result = await generateContentPlan({ pieceCount, liveContentNote, ideas: ideasPayload });
+      currentPlan = enrichPlanFromBank(result.data.plan, readyIdeas);
+      currentMeta = { pieceCount, liveContentNote };
       currentPlanId = null;
       renderPlan(currentPlan);
     } catch (err) {
@@ -253,7 +518,7 @@ export function wireContentPlanView() {
         plans,
         (p) => {
           currentPlan = p.plan;
-          currentMeta = { weeksCount: p.weeksCount, postsPerWeek: p.postsPerWeek, liveContentNote: p.liveContentNote };
+          currentMeta = { pieceCount: p.pieceCount, liveContentNote: p.liveContentNote };
           currentPlanId = p.id;
           renderPlan(currentPlan);
           savedListEl.hidden = true;
