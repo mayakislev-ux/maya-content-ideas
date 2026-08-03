@@ -2689,6 +2689,8 @@ textarea:focus-visible,
   gap: 0.5rem;
 }
 
+.warming-saved-list[hidden] { display: none; }
+
 .warming-saved-row {
   display: flex;
   align-items: stretch;
@@ -2737,6 +2739,8 @@ textarea:focus-visible,
   gap: 1rem;
   margin-bottom: 2rem;
 }
+
+.warming-form[hidden] { display: none; }
 
 .warming-form label {
   display: flex;
