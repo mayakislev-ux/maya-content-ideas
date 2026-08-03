@@ -15,10 +15,9 @@ function contentPlansCollection() {
   return collection(db, 'contentPlans');
 }
 
-export async function saveContentPlan({ weeksCount, postsPerWeek, liveContentNote, plan }) {
+export async function saveContentPlan({ pieceCount, liveContentNote, plan }) {
   return addDoc(contentPlansCollection(), {
-    weeksCount,
-    postsPerWeek,
+    pieceCount,
     liveContentNote,
     plan,
     ownerUid: auth.currentUser.uid,
