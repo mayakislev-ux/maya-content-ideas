@@ -649,22 +649,21 @@ exports.generateContentPlan = onCall({ secrets: [anthropicApiKey], region: 'us-c
   await enforceRateLimit(request.auth.uid, 'generateContentPlan');
 
   const ideas = (request.data && request.data.ideas) || [];
-  const weeksCount = Number(request.data && request.data.weeksCount) || 4;
-  const postsPerWeek = Number(request.data && request.data.postsPerWeek) || 3;
+  const pieceCount = Number(request.data && request.data.pieceCount) || 16;
   const liveContentNote = (request.data && request.data.liveContentNote) || '';
 
   if (!Array.isArray(ideas) || ideas.length === 0) {
     throw new HttpsError('invalid-argument', 'צריך לפחות רעיון אחד עם קטגוריה כדי לבנות תכנית תוכן');
   }
-  if (weeksCount < 1 || weeksCount > 8 || postsPerWeek < 1 || postsPerWeek > 14) {
-    throw new HttpsError('invalid-argument', 'מספר שבועות/פריטים לא סביר');
+  if (pieceCount < 16 || pieceCount > 60) {
+    throw new HttpsError('invalid-argument', 'מספר תכנים לא סביר');
   }
 
-  const prompt = buildContentPlanPrompt({ weeksCount, postsPerWeek, liveContentNote, ideas: ideas.slice(0, 60) });
+  const prompt = buildContentPlanPrompt({ pieceCount, liveContentNote, ideas: ideas.slice(0, 60) });
 
   const data = await callAnthropic(
     anthropicApiKey.value(),
-    { model: 'claude-haiku-4-5-20251001', max_tokens: 4096, messages: [{ role: 'user', content: prompt }] },
+    { model: 'claude-sonnet-5', max_tokens: 4096, messages: [{ role: 'user', content: prompt }] },
     'generateContentPlan'
   );
 
@@ -683,7 +682,7 @@ exports.generateContentPlan = onCall({ secrets: [anthropicApiKey], region: 'us-c
     throw new HttpsError('internal', 'התקבלה תשובה לא תקינה, נסו שוב');
   }
 
-  return { plan: { weeks: parsed.weeks } };
+  return { plan: { weeks: parsed.weeks, seriesNote: parsed.seriesNote || '' } };
 });
 
 exports.sendNotification = onCall({ secrets: [vapidPrivateKey], region: 'us-central1' }, async (request) => {
