@@ -8,6 +8,8 @@ import {
   PERSUASION_STAGES,
   AUDIENCE_SCOPES,
   MUST_INCLUDE_TYPES,
+  findSimilarIdea,
+  sortIdeas,
 } from './ideas-logic.js';
 import { saveContentPlan, updateContentPlan, listContentPlans, deleteContentPlan } from './content-plan-store.js';
 import { makeEditable } from './editable.js';
@@ -69,6 +71,7 @@ function getAppItems(plan) {
 
 function checkCategoryRatio(appItems) {
   const total = appItems.length;
+  if (!total) return [];
   const counts = {};
   for (const item of appItems) counts[item.category] = (counts[item.category] || 0) + 1;
   return Object.entries(CATEGORY_TARGETS).map(([cat, target]) => {
@@ -169,6 +172,12 @@ function renderScorecard(plan, readyIdeas) {
   container.appendChild(list);
 
   const gaps = checkBankGaps(readyIdeas);
+  if (plan.unmatchedCount) {
+    gaps.push(`${plan.unmatchedCount} פריטים לא זוהו במאגר במדויק - כדאי לבדוק אותם בטבלה`);
+  }
+  if (plan.truncatedFrom) {
+    gaps.push(`התכנית נבנתה מ-60 רעיונות מתוך ${plan.truncatedFrom} שיש לך (מדורגים לפי דירוג לפני חיתוך) - שאר הרעיונות לא נשקלו הפעם`);
+  }
   if (gaps.length) {
     const gapsBox = document.createElement('div');
     gapsBox.className = 'scorecard-gaps';
@@ -183,17 +192,24 @@ function renderScorecard(plan, readyIdeas) {
 
 function enrichPlanFromBank(plan, readyIdeas) {
   const byTitle = new Map(readyIdeas.map((idea) => [idea.title, idea]));
+  let unmatchedCount = 0;
   for (const week of plan.weeks || []) {
     for (const item of week.items || []) {
       if (item.type === 'live') continue;
-      const source = byTitle.get(item.ideaTitle);
+      let source = byTitle.get(item.ideaTitle);
+      if (!source) source = findSimilarIdea(readyIdeas, item.ideaTitle);
       if (source) {
+        item.ideaTitle = source.title;
         item.category = source.category;
         item.persuasionStage = source.persuasionStage || '';
         item.audienceScope = source.audienceScope || '';
+      } else {
+        unmatchedCount++;
       }
+      item.mustIncludeType = MUST_INCLUDE_TYPES.includes(item.mustIncludeType) ? item.mustIncludeType : '';
     }
   }
+  plan.unmatchedCount = unmatchedCount;
   return plan;
 }
 
@@ -213,13 +229,17 @@ function makeEditableSelect(td, options, currentValue, onCommit, renderValue) {
     if (td.querySelector('select')) return;
     const select = document.createElement('select');
     select.className = 'table-cell-select';
+    const blankOption = document.createElement('option');
+    blankOption.value = '';
+    blankOption.textContent = '-';
+    select.appendChild(blankOption);
     for (const opt of options) {
       const optionEl = document.createElement('option');
       optionEl.value = opt;
       optionEl.textContent = opt;
-      if (opt === currentValue) optionEl.selected = true;
       select.appendChild(optionEl);
     }
+    select.value = options.includes(currentValue) ? currentValue : '';
     td.innerHTML = '';
     td.appendChild(select);
     select.focus();
@@ -232,6 +252,10 @@ function makeEditableSelect(td, options, currentValue, onCommit, renderValue) {
   });
 }
 
+function rescoreCard() {
+  if (currentPlan) renderScorecard(currentPlan, getReadyIdeas());
+}
+
 function renderTitleCell(td, item) {
   const span = document.createElement('span');
   span.className = 'warming-day-idea';
@@ -242,41 +266,77 @@ function renderTitleCell(td, item) {
 }
 
 function renderCategoryCell(td, item) {
-  makeEditableSelect(td, CATEGORIES, item.category || '', (val) => (item.category = val), (value) => {
-    const tag = document.createElement('span');
-    tag.className = 'card-category-tag';
-    tag.style.setProperty('--card-color', categoryColorVar(value));
-    tag.textContent = value ? `${categoryIcon(value)} ${value}` : '-';
-    return tag;
-  });
+  makeEditableSelect(
+    td,
+    CATEGORIES,
+    item.category || '',
+    (val) => {
+      item.category = val;
+      rescoreCard();
+    },
+    (value) => {
+      const tag = document.createElement('span');
+      tag.className = 'card-category-tag';
+      tag.style.setProperty('--card-color', categoryColorVar(value));
+      tag.textContent = value ? `${categoryIcon(value)} ${value}` : '-';
+      return tag;
+    }
+  );
 }
 
 function renderTypeCell(td, item) {
-  makeEditableSelect(td, MUST_INCLUDE_TYPES, item.mustIncludeType || '', (val) => (item.mustIncludeType = val), (value) => {
-    const tag = document.createElement('span');
-    tag.className = 'type-tag';
-    tag.textContent = value || '-';
-    return tag;
-  });
+  makeEditableSelect(
+    td,
+    MUST_INCLUDE_TYPES,
+    item.mustIncludeType || '',
+    (val) => {
+      item.mustIncludeType = val;
+      rescoreCard();
+    },
+    (value) => {
+      const tag = document.createElement('span');
+      tag.className = 'type-tag';
+      tag.textContent = value || '-';
+      return tag;
+    }
+  );
 }
 
 function renderAudienceCell(td, item) {
-  makeEditableSelect(td, AUDIENCE_SCOPES, item.audienceScope || '', (val) => (item.audienceScope = val), (value) => {
-    const tag = document.createElement('span');
-    tag.className = 'audience-tag';
-    tag.textContent = value || '-';
-    return tag;
-  });
+  makeEditableSelect(
+    td,
+    AUDIENCE_SCOPES,
+    item.audienceScope || '',
+    (val) => {
+      item.audienceScope = val;
+      rescoreCard();
+    },
+    (value) => {
+      const tag = document.createElement('span');
+      tag.className = 'audience-tag';
+      tag.textContent = value || '-';
+      return tag;
+    }
+  );
 }
 
 function renderStageCell(td, item) {
-  makeEditableSelect(td, PERSUASION_STAGES, item.persuasionStage || '', (val) => (item.persuasionStage = val), (value) => {
-    const tag = document.createElement('span');
-    tag.className = 'stage-tag';
-    tag.textContent = value ? STAGE_SHORT_LABELS[value] : '-';
-    tag.title = value || '';
-    return tag;
-  });
+  makeEditableSelect(
+    td,
+    PERSUASION_STAGES,
+    item.persuasionStage || '',
+    (val) => {
+      item.persuasionStage = val;
+      rescoreCard();
+    },
+    (value) => {
+      const tag = document.createElement('span');
+      tag.className = 'stage-tag';
+      tag.textContent = value ? STAGE_SHORT_LABELS[value] || '-' : '-';
+      tag.title = value || '';
+      return tag;
+    }
+  );
 }
 
 // ===== רינדור הטבלה =====
@@ -459,9 +519,10 @@ export function wireContentPlanView() {
 
     const pieceCount = Number(document.getElementById('content-plan-piece-count').value) || MIN_PIECE_COUNT;
     const liveContentNote = document.getElementById('content-plan-live-note').value.trim();
-    const readyIdeas = getReadyIdeas();
+    const readyIdeas = sortIdeas(getReadyIdeas(), 'rating');
+    const cappedIdeas = readyIdeas.slice(0, 60);
 
-    const ideasPayload = readyIdeas.map((idea) => ({
+    const ideasPayload = cappedIdeas.map((idea) => ({
       title: idea.title,
       category: idea.category,
       persuasionStage: idea.persuasionStage || '',
@@ -477,7 +538,8 @@ export function wireContentPlanView() {
 
     try {
       const result = await generateContentPlan({ pieceCount, liveContentNote, ideas: ideasPayload });
-      currentPlan = enrichPlanFromBank(result.data.plan, readyIdeas);
+      currentPlan = enrichPlanFromBank(result.data.plan, cappedIdeas);
+      if (readyIdeas.length > cappedIdeas.length) currentPlan.truncatedFrom = readyIdeas.length;
       currentMeta = { pieceCount, liveContentNote };
       currentPlanId = null;
       renderPlan(currentPlan);
@@ -518,7 +580,7 @@ export function wireContentPlanView() {
         plans,
         (p) => {
           currentPlan = p.plan;
-          currentMeta = { pieceCount: p.pieceCount, liveContentNote: p.liveContentNote };
+          currentMeta = { pieceCount: p.pieceCount || MIN_PIECE_COUNT, liveContentNote: p.liveContentNote };
           currentPlanId = p.id;
           renderPlan(currentPlan);
           savedListEl.hidden = true;
