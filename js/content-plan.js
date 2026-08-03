@@ -511,7 +511,19 @@ export function refreshGate() {
   gateMsg.hidden = enough;
   form.hidden = !enough;
   if (!enough) {
-    gateMsg.textContent = `כדי לבנות תכנית תוכן צריך קודם מספיק רעיונות מסווגים (עם קטגוריה) במאגר - יש לך כרגע ${readyCount} מתוך ${MIN_READY_IDEAS} הדרושים. לכי ל"הרעיונות שלי" והוסיפי/סווגי עוד רעיונות קודם.`;
+    const unclassified = getCurrentIdeas().filter((idea) => !idea.category);
+    let hint = '';
+    if (unclassified.length) {
+      const sample = unclassified
+        .slice(0, 3)
+        .map((idea) => {
+          const t = (idea.title || '').trim();
+          return `"${t.length > 40 ? `${t.slice(0, 40)}...` : t}"`;
+        })
+        .join(', ');
+      hint = ` יש לך ${unclassified.length} רעיונות שכבר כתובים במאגר אבל עדיין בלי קטגוריה, למשל: ${sample}${unclassified.length > 3 ? ' ועוד' : ''} - לכי אליהם קודם, זה הכי מהיר.`;
+    }
+    gateMsg.textContent = `כדי לבנות תכנית תוכן צריך קודם מספיק רעיונות מסווגים (עם קטגוריה) במאגר - יש לך כרגע ${readyCount} מתוך ${MIN_READY_IDEAS} הדרושים.${hint} לכי ל"הרעיונות שלי" והוסיפי/סווגי עוד רעיונות קודם.`;
   }
 }
 
