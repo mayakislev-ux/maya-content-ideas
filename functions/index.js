@@ -615,16 +615,16 @@ exports.classifyIdea = onCall({ secrets: [anthropicApiKey], region: 'us-central1
 
 סווג/י את הרעיון הזה לפי שתי המערכות הבאות (המבוססות על המתודולוגיה המדויקת של מאיה קיסלב - אקדמיית המהלך השיווקי):
 
-מערכת 1 - סוג תוכן ("category"), בחר/י בדיוק אחת:
-${CATEGORIES.map((c) => `- ${c}: ${CATEGORY_DEFINITIONS[c]}`).join('\n')}
+מערכת 1 - סוג תוכן, בחר/י בדיוק אחד לפי המספר שלו:
+${CATEGORIES.map((c, i) => `${i + 1}. ${c}: ${CATEGORY_DEFINITIONS[c]}`).join('\n')}
 
 **הבחנה קריטית שגורמת לטעויות סיווג בפועל - סיפור לקוח מול סיפור אישי:** "אישי" הוא **רק** על החיים/הסיפור/החוויות של **בעל/ת העסק עצמו/ה** - לא על לקוחות. סיפור שמתאר מה **קרה ללקוח/ה** (למשל "לקוחה הגיעה אליי מ...", "מטופל סיפר לי ש...", כל תיאור של תהליך/תוצאה/מקרה של מישהו אחר שפנה לעסק) הוא **לעולם לא "אישי"**, גם אם הוא מנוסח בגוף ראשון ("אליי", "אצלי") - הגוף הראשון כאן מתאר את הקשר בין הלקוח/ה לבעל/ת העסק, לא את החיים האישיים של בעל/ת העסק. סיפור לקוח כזה הוא "מכירתי" אם הוא מציג תוצאה/הוכחה/עדות שמטרתה לשכנע לרכוש, או "בעל ערך" אם הוא משמש כדוגמה להמחשת תובנה/טעות/עיקרון מקצועי בלי דגש מכירתי ישיר. דוגמה קונקרטית: "לא תאמינו שחר הגיעה אליי מבאר שבע עם [בעיה] ותוך [X זמן] הגיעה ל[תוצאה]" - זה **מכירתי** (סיפור הצלחה של לקוחה עם הוכחת תוצאה), **לא אישי**, למרות ה"אליי".
 
-מערכת 2 - שלב שכנוע ("persuasionStage"), בחר/י בדיוק אחת. לשים לב: לכל תוכן יש בדרך כלל שלב שכנוע דומיננטי אחד, גם אם הוא נוגע קצת גם באחרים - תבחר/י את זה שהכי מתאר את המטרה המרכזית של הרעיון הספציפי הזה:
-${PERSUASION_STAGES.map((s) => `- ${s}: ${PERSUASION_STAGE_DEFINITIONS[s]}`).join('\n')}
+מערכת 2 - שלב שכנוע, בחר/י בדיוק אחד לפי המספר שלו. לשים לב: לכל תוכן יש בדרך כלל שלב שכנוע דומיננטי אחד, גם אם הוא נוגע קצת גם באחרים - תבחר/י את זה שהכי מתאר את המטרה המרכזית של הרעיון הספציפי הזה:
+${PERSUASION_STAGES.map((s, i) => `${i + 1}. ${s}: ${PERSUASION_STAGE_DEFINITIONS[s]}`).join('\n')}
 
-השב/י אך ורק ב-JSON תקין בפורמט הבא, בלי שום טקסט נוסף לפני או אחרי:
-{"category": "...", "persuasionStage": "..."}`;
+השב/י אך ורק ב-JSON תקין בפורמט הבא, בלי שום טקסט נוסף לפני או אחרי - רק שני מספרים שלמים, לא את הטקסט של הקטגוריה/השלב עצמם:
+{"categoryIndex": <מספר בין 1 ל-${CATEGORIES.length}>, "persuasionStageIndex": <מספר בין 1 ל-${PERSUASION_STAGES.length}>}`;
 
   const data = await callAnthropic(
     anthropicApiKey.value(),
@@ -642,8 +642,20 @@ ${PERSUASION_STAGES.map((s) => `- ${s}: ${PERSUASION_STAGE_DEFINITIONS[s]}`).joi
     throw new HttpsError('internal', 'לא הצלחתי לסווג את הרעיון, נסו שוב');
   }
 
-  const category = CATEGORIES.includes(parsed.category) ? parsed.category : CATEGORIES[0];
-  const persuasionStage = PERSUASION_STAGES.includes(parsed.persuasionStage) ? parsed.persuasionStage : PERSUASION_STAGES[0];
+  // בעבר הותאמו מחרוזות תיאוריות ארוכות בהתאמה מדויקת (.includes) עם ברירת
+  // מחדל שקטה לאפשרות הראשונה בכל אי-התאמה - זה יצר הטיה שיטתית ל"שלב
+  // שכנוע 1" בכל פעם שה-AI סטה ולו במעט מהמחרוזת המדויקת (רווח, ניסוח
+  // שונה וכו'), בלי שום סימן שזו בכלל טעות ולא סיווג אמיתי. מספר שלם קצר
+  // הרבה יותר יציב להתאמה, ואי-התאמה עכשיו נכשלת בגלוי ומאפשרת ניסיון
+  // חוזר, במקום לתייג בשקט תווית שגויה.
+  const categoryIndex = Number(parsed.categoryIndex);
+  const stageIndex = Number(parsed.persuasionStageIndex);
+  const category = CATEGORIES[categoryIndex - 1];
+  const persuasionStage = PERSUASION_STAGES[stageIndex - 1];
+  if (!category || !persuasionStage) {
+    console.error('classifyIdea returned invalid indices:', text);
+    throw new HttpsError('internal', 'לא הצלחתי לסווג את הרעיון, נסו שוב');
+  }
   return { category, persuasionStage };
 });
 
