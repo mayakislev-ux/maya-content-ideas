@@ -1,4 +1,5 @@
-const DISMISS_KEY = 'ios-install-overlay-dismissed';
+const DISMISS_KEY = 'ios-install-overlay-dismissed-until';
+const DISMISS_DAYS = 3;
 
 function isIos() {
   return /iPad|iPhone|iPod/.test(navigator.userAgent);
@@ -30,7 +31,8 @@ function buildSteps() {
 
 export function showIosInstallOverlayIfNeeded() {
   if (!isIos() || isStandalone()) return;
-  if (sessionStorage.getItem(DISMISS_KEY)) return;
+  const dismissedUntil = Number(localStorage.getItem(DISMISS_KEY) || '0');
+  if (Date.now() < dismissedUntil) return;
   // This fires immediately on login and again at 2 and 5 minutes - without
   // this guard, if she hadn't dismissed it yet, each of those three calls
   // stacked another full-screen overlay on top of the last one instead of
@@ -56,7 +58,7 @@ export function showIosInstallOverlayIfNeeded() {
   document.body.appendChild(overlay);
 
   overlay.querySelector('.ios-install-dismiss-btn').addEventListener('click', () => {
-    sessionStorage.setItem(DISMISS_KEY, '1');
+    localStorage.setItem(DISMISS_KEY, String(Date.now() + DISMISS_DAYS * 24 * 60 * 60 * 1000));
     overlay.remove();
   });
 }

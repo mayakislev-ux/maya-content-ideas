@@ -60,7 +60,9 @@ const NUDGE_COUNT_KEY = 'notification-nudge-count';
 const MAX_NUDGES = 3;
 
 export function showNotificationNudgeIfNeeded() {
-  if (!notificationsSupported() || notificationPermission() === 'granted') return;
+  if (!notificationsSupported()) return;
+  const permission = notificationPermission();
+  if (permission === 'granted' || permission === 'denied') return;
 
   const shownCount = Number(localStorage.getItem(NUDGE_COUNT_KEY) || '0');
   if (shownCount >= MAX_NUDGES) return;

@@ -39,10 +39,13 @@ const STEPS = [
 ];
 
 const CURRENT_TOUR_VERSION = 3;
+const LAST_STEP_KEY = 'welcome-tour-last-step';
 
 let currentStep = 0;
 let blocker, spotlight, callout;
 let resizeHandler = null;
+let keydownHandler = null;
+let onDoneCallback = null;
 
 function isMobile() {
   return window.innerWidth <= 720;
@@ -72,6 +75,7 @@ function buildElements() {
     <h3></h3>
     <p></p>
     <div class="tour-callout-footer">
+      <button type="button" class="tour-skip-btn">דלגי ✕</button>
       <div class="tour-callout-dots"></div>
       <button type="button" class="tour-next-btn"></button>
     </div>
@@ -79,6 +83,7 @@ function buildElements() {
 
   document.body.append(blocker, spotlight, callout);
   callout.querySelector('.tour-next-btn').addEventListener('click', advance);
+  callout.querySelector('.tour-skip-btn').addEventListener('click', finish);
 }
 
 function positionForTarget(targetEl) {
@@ -130,6 +135,7 @@ function positionForTarget(targetEl) {
 }
 
 function renderStep() {
+  localStorage.setItem(LAST_STEP_KEY, String(currentStep));
   const step = STEPS[currentStep];
   callout.querySelector('.tour-callout-emoji').textContent = step.emoji;
   callout.querySelector('h3').textContent = step.title;
@@ -173,6 +179,8 @@ function advance() {
 async function finish() {
   setDrawerOpen(false);
   window.removeEventListener('resize', resizeHandler);
+  document.removeEventListener('keydown', keydownHandler);
+  localStorage.removeItem(LAST_STEP_KEY);
   blocker.remove();
   spotlight.remove();
   callout.remove();
@@ -181,6 +189,11 @@ async function finish() {
     { tourCompletedAt: serverTimestamp(), tourVersion: CURRENT_TOUR_VERSION },
     { merge: true }
   );
+  if (onDoneCallback) {
+    const cb = onDoneCallback;
+    onDoneCallback = null;
+    cb();
+  }
 }
 
 export async function hasCompletedTour() {
@@ -189,10 +202,16 @@ export async function hasCompletedTour() {
   return seenVersion >= CURRENT_TOUR_VERSION;
 }
 
-export function showWelcomeTour() {
-  currentStep = 0;
+export function showWelcomeTour(onDone) {
+  onDoneCallback = onDone || null;
+  const savedStep = Number(localStorage.getItem(LAST_STEP_KEY) || '0');
+  currentStep = savedStep >= 0 && savedStep < STEPS.length ? savedStep : 0;
   buildElements();
   renderStep();
   resizeHandler = () => renderStep();
   window.addEventListener('resize', resizeHandler);
+  keydownHandler = (e) => {
+    if (e.key === 'Escape') finish();
+  };
+  document.addEventListener('keydown', keydownHandler);
 }

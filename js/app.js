@@ -53,7 +53,7 @@ function loadAdminModules() {
 // button there to fail mysteriously.
 function isInAppBrowser() {
   const ua = navigator.userAgent || '';
-  return /FBAN|FBAV|Instagram|WhatsApp|Line\/|Messenger/i.test(ua);
+  return /FBAN|FBAV|Instagram|WhatsApp|Line\/|Messenger|TikTok|musical_ly|Twitter|LinkedInApp|GSA\/|Gmail/i.test(ua);
 }
 
 if (isInAppBrowser()) {
@@ -145,13 +145,12 @@ if (window.visualViewport) {
 }
 
 if ('serviceWorker' in navigator) {
-  let refreshedAlready = false;
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (refreshedAlready) return;
-    refreshedAlready = true;
-    window.location.reload();
-  });
-
+  // A new service worker taking control (self.skipWaiting() in sw.js makes
+  // this happen the moment install finishes) used to force an immediate
+  // reload - it could fire mid-action (typing in an open modal, mid-chat
+  // request) with only a 4s toast as the entire warning, no way to
+  // postpone it. Now it's a persistent toast with a real "עדכון עכשיו"
+  // action - the reload only happens when she actually clicks it.
   navigator.serviceWorker
     .register('./sw.js')
     .then((registration) => {
@@ -168,7 +167,10 @@ if ('serviceWorker' in navigator) {
         if (!newWorker) return;
         newWorker.addEventListener('statechange', () => {
           if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-            showToast('מעדכן לגרסה חדשה...', { duration: 4000 });
+            showToast('📦 גרסה חדשה מוכנה', {
+              actionLabel: 'עדכון עכשיו',
+              onAction: () => window.location.reload(),
+            });
           }
         });
       });
@@ -462,7 +464,19 @@ onAuthChange(async (user) => {
     return;
   }
 
-  const allowed = await isEmailAllowed(user.email);
+  let allowed;
+  try {
+    allowed = await isEmailAllowed(user.email);
+  } catch (err) {
+    console.error('isEmailAllowed check failed:', err);
+    document.getElementById('login-screen').hidden = false;
+    document.getElementById('app-screen').hidden = true;
+    const errorEl = document.getElementById('login-error');
+    errorEl.textContent = 'משהו השתבש בבדיקת ההרשאה - בדקו חיבור לאינטרנט ונסו להתחבר שוב';
+    errorEl.hidden = false;
+    await signOutUser();
+    return;
+  }
   if (!allowed) {
     const errorEl = document.getElementById('login-error');
     errorEl.textContent = 'מייל לא קיים במערכת, אנא פני/פנה למאיה';
@@ -524,8 +538,9 @@ onAuthChange(async (user) => {
     document.getElementById('enable-notifications-btn').hidden = true;
   } else {
     document.getElementById('ios-install-hint').hidden = true;
+    const permission = notificationPermission();
     document.getElementById('enable-notifications-btn').hidden =
-      !notificationsSupported() || notificationPermission() === 'granted';
+      !notificationsSupported() || permission === 'granted' || permission === 'denied';
   }
 
   const params = new URLSearchParams(window.location.search);
@@ -547,17 +562,24 @@ onAuthChange(async (user) => {
   unsubscribeIdeas = subscribeToIdeas(onIdeasChanged);
 
   const tourDone = await hasCompletedTour();
-  if (!tourDone) showWelcomeTour();
-
   // Nudge to install to the home screen right at login, then again at 2
   // and 5 minutes in case she dismissed or missed it the first time.
   // showIosInstallOverlayIfNeeded already no-ops if she dismissed it
-  // (sessionStorage flag) or already installed (standalone mode) by the
-  // time any of these fires.
-  showIosInstallOverlayIfNeeded();
-  setTimeout(showIosInstallOverlayIfNeeded, 2 * 60 * 1000);
-  setTimeout(showIosInstallOverlayIfNeeded, 5 * 60 * 1000);
-  setTimeout(showNotificationNudgeIfNeeded, 3000);
+  // recently or already installed (standalone mode) by the time any of
+  // these fires. Deferred until the welcome tour is actually closed
+  // (skipped or finished) on a first visit - firing them alongside an
+  // open tour could stack the install-overlay right on top of it.
+  const startPostLoginNudges = () => {
+    showIosInstallOverlayIfNeeded();
+    setTimeout(showIosInstallOverlayIfNeeded, 2 * 60 * 1000);
+    setTimeout(showIosInstallOverlayIfNeeded, 5 * 60 * 1000);
+    setTimeout(showNotificationNudgeIfNeeded, 3000);
+  };
+  if (tourDone) {
+    startPostLoginNudges();
+  } else {
+    showWelcomeTour(startPostLoginNudges);
+  }
 });
 
 const isPreciseInput = window.matchMedia('(pointer: fine)').matches;
