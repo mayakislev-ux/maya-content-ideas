@@ -3532,6 +3532,62 @@ textarea:focus-visible,
   font-size: 0.88rem;
 }
 
+.client-usage-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+
+.client-usage-search {
+  flex: 1;
+  min-width: 160px;
+  padding: 0.6rem 0.9rem;
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+  background: var(--card-bg);
+  color: var(--text);
+  font-size: 0.9rem;
+  font-family: inherit;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.client-usage-search:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-tint, rgba(38, 62, 168, 0.15));
+  outline: none;
+}
+
+.client-usage-sort-toggle {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.client-usage-sort-btn {
+  padding: 0.5rem 0.8rem;
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+  background: var(--card-bg);
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.client-usage-sort-btn.client-usage-sort-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.client-usage-empty {
+  color: var(--muted);
+  padding: 1.5rem;
+  text-align: center;
+}
+
 .client-ideas-email {
   word-break: break-word;
   margin: 0 0 1rem;
