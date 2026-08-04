@@ -167,9 +167,15 @@ if ('serviceWorker' in navigator) {
         if (!newWorker) return;
         newWorker.addEventListener('statechange', () => {
           if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            // Default toast duration (5s) would defeat the point of this fix -
+            // she should get to choose when to reload, not have the prompt
+            // vanish under her while she's still mid-action. Stays up 20
+            // minutes; the next 60s update-check / tab-refocus cycle will
+            // show it again anyway if she's still on the old version.
             showToast('📦 גרסה חדשה מוכנה', {
               actionLabel: 'עדכון עכשיו',
               onAction: () => window.location.reload(),
+              duration: 20 * 60 * 1000,
             });
           }
         });
