@@ -1,4 +1,5 @@
 import { pickRandomIdea, STRONG_RATING } from './ideas-logic.js';
+import { alertDialog } from './confirm-dialog.js';
 
 export function wireRandomIdeaModal({ getIdeas, onOpenIdea }) {
   const modal = document.getElementById('random-modal');
@@ -16,10 +17,16 @@ export function wireRandomIdeaModal({ getIdeas, onOpenIdea }) {
     modal.hidden = true;
   }
 
+  function openChosenIdea() {
+    if (!chosenIdea) return;
+    close();
+    onOpenIdea(chosenIdea);
+  }
+
   function spin() {
     const pool = getIdeas().filter((idea) => idea.rating === STRONG_RATING);
     if (!pool.length) {
-      alert('עוד אין לך רעיונות מדורגים "חייב לצלם" - סמנו כמה רעיונות ככה כדי שהכפתור יוכל להגריל!');
+      alertDialog('עוד אין לך רעיונות מדורגים "חייב לצלם" - סמנו כמה רעיונות ככה כדי שהכפתור יוכל להגריל!');
       return;
     }
 
@@ -50,10 +57,11 @@ export function wireRandomIdeaModal({ getIdeas, onOpenIdea }) {
   modal.addEventListener('click', (e) => {
     if (e.target === modal) close();
   });
-  result.addEventListener('click', () => {
-    if (chosenIdea) {
-      close();
-      onOpenIdea(chosenIdea);
+  result.addEventListener('click', openChosenIdea);
+  result.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      openChosenIdea();
     }
   });
 }

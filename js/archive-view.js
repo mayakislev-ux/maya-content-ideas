@@ -395,11 +395,31 @@ function renderItem(idea, onItemClick, index = 0) {
   const doneAction = document.createElement('div');
   doneAction.className = 'swipe-action swipe-action-done';
   doneAction.textContent = idea.completedAt ? '↩' : '✓';
+  doneAction.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    try {
+      if (idea.completedAt) await uncompleteIdea(idea.id);
+      else await markIdeaCompleted(idea.id);
+    } catch (err) {
+      console.error('toggle complete failed:', err);
+      showToast('הפעולה נכשלה, נסו שוב');
+    }
+  });
   li.appendChild(doneAction);
 
   const deleteAction = document.createElement('div');
   deleteAction.className = 'swipe-action swipe-action-delete';
   deleteAction.textContent = '🗑️';
+  deleteAction.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    try {
+      await deleteIdea(idea.id);
+      showToast('הרעיון נמחק', { actionLabel: 'בטלו', onAction: () => restoreIdea(idea.id) });
+    } catch (err) {
+      console.error('deleteIdea failed:', err);
+      showToast('המחיקה נכשלה, נסו שוב');
+    }
+  });
   li.appendChild(deleteAction);
 
   const trail = document.createElement('div');
@@ -434,6 +454,9 @@ function renderItem(idea, onItemClick, index = 0) {
     navigator.clipboard.writeText(idea.title).then(() => {
       copyBtn.textContent = '✓';
       setTimeout(() => (copyBtn.textContent = '📋'), 1500);
+    }).catch((err) => {
+      console.error('copy failed:', err);
+      showToast('ההעתקה נכשלה');
     });
   });
   inner.appendChild(copyBtn);

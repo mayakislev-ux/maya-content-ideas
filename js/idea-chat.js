@@ -8,6 +8,7 @@ import { showWelcomeTour } from './welcome-tour.js';
 import { addBubble, addThinkingBubble, addChoiceBubble, setBubbleText, playSuccessSound } from './chat-ui.js';
 import { wireVoiceInput } from './voice-input.js';
 import { burstConfetti } from './confetti.js';
+import { confirmDialog } from './confirm-dialog.js';
 // Dynamically imported instead of a static top-level import - script-chat.js
 // (and the admin-only writeScript feature it drives) is otherwise dead
 // weight fetched by every single user of this file, even though the button
@@ -165,7 +166,7 @@ function extractIdeaSummary(reply) {
   return { visibleReply, summary: composedTitle, idea, angle, story };
 }
 
-function saveFinalIdea(finalizedText) {
+async function saveFinalIdea(finalizedText) {
   showView('archive');
 
   if (editingIdeaId) {
@@ -179,7 +180,7 @@ function saveFinalIdea(finalizedText) {
 
   const match = findSimilarIdea(getCurrentIdeas(), originalIdeaText || '');
   if (match) {
-    const wantsUpdate = confirm(`זיהיתי שזה כנראה עדכון לרעיון הקיים "${match.title}" - לעדכן אותו?\n\n(ביטול ← יצירת רעיון חדש בנפרד)`);
+    const wantsUpdate = await confirmDialog(`זיהיתי שזה כנראה עדכון לרעיון הקיים "${match.title}" - לעדכן אותו?\n\n(ביטול ← יצירת רעיון חדש בנפרד)`, { okLabel: 'לעדכן', cancelLabel: 'רעיון חדש' });
     if (wantsUpdate) {
       openEditModal(match, finalizedText);
       return;

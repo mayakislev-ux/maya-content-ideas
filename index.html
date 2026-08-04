@@ -554,7 +554,7 @@
 
   <footer class="app-footer">
     <button type="button" id="install-app-btn" class="btn-text install-app-btn" hidden>להתקין את האפליקציה</button>
-    <p id="ios-install-hint" class="ios-install-hint" hidden>באייפון: כדי לקבל התראות צריך קודם להוסיף את האפליקציה למסך הבית - לחצי על כפתור השיתוף בספארי, ואז "הוספה למסך הבית"</p>
+    <p id="ios-install-hint" class="ios-install-hint" hidden>באייפון: כדי לקבל התראות צריך קודם להוסיף את האפליקציה למסך הבית - לחצי/לחץ על כפתור השיתוף בספארי, ואז "הוספה למסך הבית"</p>
     <button type="button" id="enable-notifications-btn" class="btn-text" hidden>הפעלת התראות</button>
     <button type="button" id="send-notification-btn" class="btn-text" hidden>שליחת התראה (מנהלת)</button>
     <button type="button" id="token-usage-btn" class="btn-text" hidden>שימוש ב-AI (מנהלת)</button>
@@ -635,7 +635,7 @@
 
       <label class="field-hero-label" for="field-title">הרעיון</label>
       <textarea id="field-title" class="field-title-textarea field-hero-textarea" placeholder="על מה הסרטון הזה?" required></textarea>
-      <p id="field-title-hint" class="field-hint" hidden>רעיון ארוך - אפשר גם, אבל שקלי אם יש לקצר לשם קריאות נוחה יותר</p>
+      <p id="field-title-hint" class="field-hint" hidden>רעיון ארוך - אפשר גם, אבל שקלי/שקול אם יש לקצר לשם קריאות נוחה יותר</p>
 
       <div class="form-section">
         <label class="field-label-row">כמה הרעיון הזה חזק לדעתך? *</label>
@@ -713,10 +713,20 @@
 <div id="random-modal" class="modal random-modal" hidden>
   <div class="modal-content random-modal-content">
     <div id="random-spinner" class="random-spinner" hidden></div>
-    <div id="random-result" class="random-result" hidden></div>
+    <div id="random-result" class="random-result" hidden tabindex="0" role="button"></div>
     <div class="modal-actions random-modal-actions">
       <button type="button" id="random-again-btn" class="btn-primary" hidden>רעיון אחר 🎲</button>
       <button type="button" id="random-close-btn" class="btn-text">סגירה</button>
+    </div>
+  </div>
+</div>
+
+<div id="confirm-dialog" class="modal confirm-dialog-modal" hidden>
+  <div class="modal-content confirm-dialog-content">
+    <p id="confirm-dialog-message" class="confirm-dialog-message"></p>
+    <div class="confirm-dialog-actions">
+      <button type="button" id="confirm-dialog-cancel" class="btn-text">ביטול</button>
+      <button type="button" id="confirm-dialog-ok" class="btn-primary">אישור</button>
     </div>
   </div>
 </div>

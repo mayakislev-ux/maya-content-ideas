@@ -9,6 +9,7 @@ import { wireRandomIdeaModal } from './random-idea-modal.js';
 import { wireIdeaChat, startIdeaChat } from './idea-chat.js';
 import { wireFeedbackForm } from './feedback.js';
 import { wireContentPlanView, refreshGate as refreshContentPlanGate } from './content-plan.js';
+import { wireConfirmDialog } from './confirm-dialog.js';
 import { wireWarmingView } from './warming.js';
 import { showView, getLastView } from './view-router.js';
 import { showToast } from './toast.js';
@@ -439,6 +440,7 @@ wireIdeaChat();
 wireFeedbackForm();
 wireContentPlanView();
 wireWarmingView();
+wireConfirmDialog();
 document.getElementById('hub-link-warming').addEventListener('click', () => showView('warming'));
 
 document.getElementById('enable-notifications-btn').addEventListener('click', async () => {
@@ -463,7 +465,7 @@ onAuthChange(async (user) => {
   const allowed = await isEmailAllowed(user.email);
   if (!allowed) {
     const errorEl = document.getElementById('login-error');
-    errorEl.textContent = 'מייל לא קיים במערכת, אנא פנה למאיה';
+    errorEl.textContent = 'מייל לא קיים במערכת, אנא פני/פנה למאיה';
     errorEl.hidden = false;
     await signOutUser();
     return;

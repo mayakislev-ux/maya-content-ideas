@@ -91,7 +91,14 @@ export function sortIdeas(ideas, order) {
   if (order === 'oldest') {
     sorted.sort((a, b) => time(a) - time(b));
   } else if (order === 'rating') {
-    sorted.sort((a, b) => RATINGS.indexOf(a.rating) - RATINGS.indexOf(b.rating));
+    // רעיון בלי דירוג (RATINGS.indexOf מחזיר -1) חייב להיחשב הכי פחות
+    // דחוף, לא הכי דחוף - אחרת "🔥 הכי חזק קודם" מציג טיוטות לא-מדורגות
+    // לפני רעיונות שבאמת מדורגים 🔥.
+    const rank = (idea) => {
+      const i = RATINGS.indexOf(idea.rating);
+      return i === -1 ? RATINGS.length : i;
+    };
+    sorted.sort((a, b) => rank(a) - rank(b));
   } else {
     sorted.sort((a, b) => time(b) - time(a));
   }

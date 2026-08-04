@@ -27,15 +27,23 @@ export function getInstantThumbnail(url) {
   return null;
 }
 
+// קריאה חיה ל-oEmbed של TikTok לא הייתה שמורה בשום מטמון - רצה מחדש בכל
+// רינדור של הכרטיס, כולל כל הקלדה בחיפוש. מטמון פשוט לפי URL מספיק כאן
+// (המידע לא משתנה בפועל תוך כדי שימוש רגיל באפליקציה).
+const thumbnailCache = new Map();
+
 export async function fetchThumbnail(url) {
   const instant = getInstantThumbnail(url);
   if (instant) return instant;
   if (isTikTokUrl(url)) {
+    if (thumbnailCache.has(url)) return thumbnailCache.get(url);
     try {
       const res = await fetch(`https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`);
       if (!res.ok) return null;
       const data = await res.json();
-      return data.thumbnail_url || null;
+      const thumb = data.thumbnail_url || null;
+      thumbnailCache.set(url, thumb);
+      return thumb;
     } catch {
       return null;
     }

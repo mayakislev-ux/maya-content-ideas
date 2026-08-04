@@ -3,6 +3,7 @@ import { addIdea, updateIdea, deleteIdea, restoreIdea } from './ideas-store.js';
 import { functions } from './firebase-init.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
 import { showToast } from './toast.js';
+import { alertDialog } from './confirm-dialog.js';
 
 const classifyIdea = httpsCallable(functions, 'classifyIdea');
 const AI_OPTION = '__ai__';
@@ -116,7 +117,7 @@ async function runAiClassification() {
   const aiChip = document.querySelector('.category-chip-ai');
 
   if (!titleEl.value.trim()) {
-    alert('קודם תכתבו את "הרעיון", ואז אני אוכל להציע.');
+    alertDialog('קודם תכתבו את "הרעיון", ואז אני אוכל להציע.');
     return;
   }
 
@@ -222,10 +223,17 @@ export function wireIdeaForm() {
       errorEl.hidden = false;
       return;
     }
-    if (editingId) {
-      await updateIdea(editingId, data);
-    } else {
-      await addIdea(data);
+    try {
+      if (editingId) {
+        await updateIdea(editingId, data);
+      } else {
+        await addIdea(data);
+      }
+    } catch (err) {
+      console.error('idea save failed:', err);
+      errorEl.textContent = 'שמירת הרעיון נכשלה, בדקו חיבור ונסו שוב';
+      errorEl.hidden = false;
+      return;
     }
     closeModal();
     showToast('✓ הרעיון נשמר בהצלחה');

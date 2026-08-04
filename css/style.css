@@ -3852,3 +3852,23 @@ textarea:focus-visible,
     border-radius: 10px;
   }
 }
+
+/* ===== Shared confirm/alert dialog (2026-08-04) ===== */
+
+.confirm-dialog-content {
+  max-width: 380px;
+  text-align: center;
+}
+
+.confirm-dialog-message {
+  font-size: 1rem;
+  line-height: 1.6;
+  margin: 0 0 1.2rem;
+  white-space: pre-line;
+}
+
+.confirm-dialog-actions {
+  display: flex;
+  gap: 0.6rem;
+  justify-content: center;
+}
