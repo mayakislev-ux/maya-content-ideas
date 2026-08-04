@@ -753,9 +753,17 @@ exports.generateContentPlan = onCall({ secrets: [anthropicApiKey], region: 'us-c
 
   const prompt = buildContentPlanPrompt({ pieceCount, ideas: ideas.slice(0, 60) });
 
+  // The ratio/breadth constraints added to the prompt make claude-sonnet-5
+  // reason a lot more before answering, and per getResponseText's own
+  // comment above, that reasoning can arrive as a separate "thinking"
+  // content block that counts against the same max_tokens budget as the
+  // actual text/JSON reply. Real Cloud Function logs showed exactly this:
+  // getResponseText returning '' (no text block at all) - the model was
+  // spending the whole 8192-token budget on thinking and never got to
+  // write the JSON. Raised the ceiling so there's real room for both.
   const data = await callAnthropic(
     anthropicApiKey.value(),
-    { model: 'claude-sonnet-5', max_tokens: 8192, messages: [{ role: 'user', content: prompt }] },
+    { model: 'claude-sonnet-5', max_tokens: 16000, messages: [{ role: 'user', content: prompt }] },
     'generateContentPlan'
   );
 
@@ -765,13 +773,19 @@ exports.generateContentPlan = onCall({ secrets: [anthropicApiKey], region: 'us-c
     const match = text.match(/\{[\s\S]*\}/);
     parsed = JSON.parse(match ? match[0] : text);
   } catch (err) {
-    console.error('Failed to parse generateContentPlan response:', text);
+    console.error(`Failed to parse generateContentPlan response (stop_reason: ${data.stop_reason}):`, text);
     throw new HttpsError('internal', 'לא הצלחתי לבנות את התכנית, נסו שוב');
   }
 
   if (!Array.isArray(parsed.weeks)) {
-    console.error('generateContentPlan response missing weeks:', JSON.stringify(parsed));
-    throw new HttpsError('internal', 'התקבלה תשובה לא תקינה, נסו שוב');
+    console.error(`generateContentPlan response missing weeks (stop_reason: ${data.stop_reason}):`, JSON.stringify(parsed));
+    // stop_reason "max_tokens" here means the model ran out of budget before
+    // writing any actual JSON (likely spent it on reasoning) - a smaller
+    // piece count needs less of that budget for idea-title reproduction and
+    // week/day structure, so it's a real, actionable suggestion, not a
+    // generic "try again" that's likely to fail the exact same way.
+    const hint = data.stop_reason === 'max_tokens' ? ' נסו עם מספר תכנים קטן יותר.' : '';
+    throw new HttpsError('internal', `התקבלה תשובה לא תקינה, נסו שוב.${hint}`);
   }
 
   return { plan: { weeks: parsed.weeks, seriesNote: parsed.seriesNote || '' } };
