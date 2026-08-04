@@ -665,7 +665,7 @@ exports.generateWarmingPlan = onCall({ secrets: [anthropicApiKey, sheetsServiceA
 
   const promptArgs = { product, audience, extraContext, existingIdeasTitles: existingIdeasTitles.slice(0, 40) };
 
-  async function callAndParse(prompt) {
+  async function callAndParse(prompt, attempt = 1) {
     const data = await callAnthropic(
       anthropicApiKey.value(),
       { model: 'claude-haiku-4-5-20251001', max_tokens: 4096, messages: [{ role: 'user', content: prompt }] },
@@ -676,7 +676,11 @@ exports.generateWarmingPlan = onCall({ secrets: [anthropicApiKey, sheetsServiceA
       const match = text.match(/\{[\s\S]*\}/);
       return JSON.parse(match ? match[0] : text);
     } catch (err) {
-      console.error('Failed to parse generateWarmingPlan response:', text);
+      console.error(`Failed to parse generateWarmingPlan response (attempt ${attempt}):`, text);
+      // שתי הקריאות (ongoing+presale) רצות יחד ב-Promise.all - כישלון פירוק
+      // JSON חד-פעמי באחת מהן מפיל את כל הבקשה ומבזבז את הטוקנים ששתיהן
+      // כבר צרכו. ניסיון חוזר יחיד קולט את רוב המקרים החולפים בלי לשלש עלות.
+      if (attempt < 2) return callAndParse(prompt, attempt + 1);
       throw new HttpsError('internal', 'לא הצלחתי לבנות את התוכנית, נסו שוב');
     }
   }

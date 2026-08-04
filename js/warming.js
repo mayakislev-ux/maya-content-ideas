@@ -3,7 +3,8 @@ import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/fireba
 import { getCurrentIdeas } from './archive-view.js';
 import { saveWarmingPlan, updateWarmingPlan, listWarmingPlans, deleteWarmingPlan } from './warming-store.js';
 import { showToast } from './toast.js';
-import { makeEditable } from './editable.js';
+import { makeEditable, makeEditableSelect } from './editable.js';
+import { confirmDialog } from './confirm-dialog.js';
 
 const generateWarmingPlan = httpsCallable(functions, 'generateWarmingPlan', { timeout: 170000 });
 
@@ -78,14 +79,12 @@ function renderDayRow(item) {
   dayName.textContent = item.day || '';
   textWrap.appendChild(dayName);
 
-  if (item.law) {
-    const law = document.createElement('div');
-    law.className = 'warming-law-label';
-    law.textContent = item.law;
-    law.title = 'לחיצה עורכת';
-    makeEditable(law, (val) => (item.law = val));
-    textWrap.appendChild(law);
-  }
+  const law = document.createElement('div');
+  law.className = 'warming-law-label';
+  law.textContent = item.law || '-';
+  law.title = 'לחיצה עורכת';
+  makeEditable(law, (val) => (item.law = val));
+  textWrap.appendChild(law);
 
   const idea = document.createElement('div');
   idea.className = 'warming-day-idea';
@@ -137,7 +136,15 @@ function renderBlock(block) {
 
   const stageTag = document.createElement('span');
   stageTag.className = 'warming-stage-tag';
-  stageTag.textContent = STAGE_LABELS[block.stage] || block.stage || '';
+  makeEditableSelect(
+    stageTag,
+    Object.keys(STAGE_LABELS),
+    block.stage || '',
+    (val) => {
+      block.stage = val;
+    },
+    (value) => document.createTextNode(value ? STAGE_LABELS[value] || value : '-')
+  );
   header.appendChild(stageTag);
 
   const label = document.createElement('div');
@@ -160,14 +167,12 @@ function renderBlock(block) {
     num.textContent = `סטורי ${i + 1}`;
     storyRow.appendChild(num);
 
-    if (story.format) {
-      const format = document.createElement('span');
-      format.className = 'warming-story-format';
-      format.textContent = `(${story.format})`;
-      format.title = 'לחיצה עורכת';
-      makeEditable(format, (val) => (story.format = val));
-      storyRow.appendChild(format);
-    }
+    const format = document.createElement('span');
+    format.className = 'warming-story-format';
+    format.textContent = story.format ? `(${story.format})` : '-';
+    format.title = 'לחיצה עורכת';
+    makeEditable(format, (val) => (story.format = val));
+    storyRow.appendChild(format);
 
     const idea = document.createElement('div');
     idea.className = 'warming-story-idea';
@@ -208,6 +213,7 @@ function renderPlan(plan) {
   if (Array.isArray(plan.week2)) container.appendChild(renderWeek('week2', plan.week2));
   if (Array.isArray(plan.week3)) container.appendChild(renderWeek3(plan.week3));
   document.getElementById('warming-save-btn').hidden = false;
+  document.getElementById('warming-save-btn-top').hidden = false;
 }
 
 // Surfaces exactly what the AI itself flagged as missing (e.g. no real
@@ -277,8 +283,10 @@ export function wireWarmingView() {
   const loadingEl = document.getElementById('warming-loading');
   const generateBtn = document.getElementById('warming-generate-btn');
   const saveBtn = document.getElementById('warming-save-btn');
+  const saveBtnTop = document.getElementById('warming-save-btn-top');
   const savedToggleBtn = document.getElementById('warming-saved-toggle-btn');
   const savedListEl = document.getElementById('warming-saved-list');
+  const truncationNoteEl = document.getElementById('warming-truncation-note');
 
   const productInput = document.getElementById('warming-product');
   const audienceInput = document.getElementById('warming-audience');
@@ -311,7 +319,11 @@ export function wireWarmingView() {
     const product = document.getElementById('warming-product').value.trim();
     const audience = document.getElementById('warming-audience').value.trim();
     const extraContext = document.getElementById('warming-context').value.trim();
-    if (!product || !audience) return;
+    if (!product || !audience) {
+      errorEl.textContent = 'צריך למלא מוצר/הצעה וקהל יעד כדי לבנות תוכנית (רווחים בלבד לא נספרים כמילוי)';
+      errorEl.hidden = false;
+      return;
+    }
 
     // Bare titles gave the AI a one-line label with no real substance to
     // actually "weave in" - the ideas collection has much richer fields
@@ -319,20 +331,21 @@ export function wireWarmingView() {
     // silently dropped. Only ideas with real hookText content count as
     // usable material, ranked by rating so the strongest ones lead - matches
     // "if something strong fits," not "dump every quick-added title."
-    const existingIdeasTitles = getCurrentIdeas()
+    const eligibleIdeas = getCurrentIdeas()
       .filter((idea) => idea.hookText && idea.hookText.trim())
-      .sort((a, b) => (Number(b.rating) || 0) - (Number(a.rating) || 0))
-      .slice(0, 15)
-      .map((idea) => {
-        const tags = [idea.category, idea.persuasionStage].filter(Boolean).join(' | ');
-        return `${idea.title}${tags ? ` (${tags})` : ''}: ${idea.hookText.trim()}`;
-      });
+      .sort((a, b) => (Number(b.rating) || 0) - (Number(a.rating) || 0));
+    const existingIdeasTitles = eligibleIdeas.slice(0, 15).map((idea) => {
+      const tags = [idea.category, idea.persuasionStage].filter(Boolean).join(' | ');
+      return `${idea.title}${tags ? ` (${tags})` : ''}: ${idea.hookText.trim()}`;
+    });
 
     generateBtn.disabled = true;
     loadingEl.hidden = false;
     document.getElementById('warming-result').innerHTML = '';
     document.getElementById('warming-missing-info').hidden = true;
+    truncationNoteEl.hidden = true;
     saveBtn.hidden = true;
+    saveBtnTop.hidden = true;
     startCountdown();
 
     try {
@@ -342,9 +355,16 @@ export function wireWarmingView() {
       currentPlanId = null;
       renderPlan(currentPlan);
       renderMissingInfo(result.data.missingInfo);
+      if (eligibleIdeas.length > 15) {
+        truncationNoteEl.textContent = `✂️ התוכנית נבנתה מתוך 15 הרעיונות המדורגים הכי גבוה עם טקסט זווית, מתוך ${eligibleIdeas.length} שיש לך במאגר`;
+        truncationNoteEl.hidden = false;
+      }
     } catch (err) {
       console.error('generateWarmingPlan failed:', err);
-      errorEl.textContent = 'משהו השתבש בבניית התוכנית, נסו שוב.';
+      const hasHebrewText = /[\u0590-\u05FF]/.test(err.message || '');
+      errorEl.textContent = hasHebrewText
+        ? `משהו השתבש בבניית התוכנית: ${err.message}. נסו שוב.`
+        : 'משהו השתבש בבניית התוכנית, נסו שוב.';
       errorEl.hidden = false;
     } finally {
       generateBtn.disabled = false;
@@ -353,9 +373,10 @@ export function wireWarmingView() {
     }
   });
 
-  saveBtn.addEventListener('click', async () => {
+  async function handleSaveClick() {
     if (!currentPlan || !currentMeta) return;
     saveBtn.disabled = true;
+    saveBtnTop.disabled = true;
     try {
       if (currentPlanId) {
         await updateWarmingPlan(currentPlanId, { plan: currentPlan });
@@ -377,8 +398,11 @@ export function wireWarmingView() {
       showToast('משהו השתבש בשמירה, נסו שוב');
     } finally {
       saveBtn.disabled = false;
+      saveBtnTop.disabled = false;
     }
-  });
+  }
+  saveBtn.addEventListener('click', handleSaveClick);
+  saveBtnTop.addEventListener('click', handleSaveClick);
 
   async function refreshSavedList() {
     savedListEl.textContent = 'טוען...';
@@ -395,12 +419,27 @@ export function wireWarmingView() {
           document.getElementById('warming-context').value = p.extraContext || '';
           renderPlan(currentPlan);
           document.getElementById('warming-missing-info').hidden = true;
+          truncationNoteEl.hidden = true;
           savedListEl.hidden = true;
         },
         async (p) => {
+          const confirmed = await confirmDialog(`למחוק את התוכנית "${p.product} - ${p.audience}"? הפעולה לא הפיכה.`, { okLabel: 'מחיקה', cancelLabel: 'ביטול' });
+          if (!confirmed) return;
           try {
             await deleteWarmingPlan(p.id);
-            if (currentPlanId === p.id) currentPlanId = null;
+            if (currentPlanId === p.id) {
+              // התוכנית שנמחקה היא בדיוק זו שמוצגת כרגע - בלי הניקוי הזה
+              // התצוגה נשארת עם כפתור שמירה זמין, ולחיצה עליו הייתה יוצרת
+              // בטעות מסמך חדש עם אותו תוכן שנמחק הרגע.
+              currentPlanId = null;
+              currentPlan = null;
+              currentMeta = null;
+              document.getElementById('warming-result').innerHTML = '';
+              document.getElementById('warming-missing-info').hidden = true;
+              truncationNoteEl.hidden = true;
+              saveBtn.hidden = true;
+              saveBtnTop.hidden = true;
+            }
             showToast('🗑️ התוכנית נמחקה');
             refreshSavedList();
           } catch (err) {

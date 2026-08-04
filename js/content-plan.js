@@ -13,8 +13,9 @@ import {
   findSimilarIdea,
 } from './ideas-logic.js';
 import { saveContentPlan, updateContentPlan, listContentPlans, deleteContentPlan } from './content-plan-store.js';
-import { makeEditable } from './editable.js';
+import { makeEditable, makeEditableSelect } from './editable.js';
 import { showToast } from './toast.js';
+import { confirmDialog } from './confirm-dialog.js';
 
 const generateContentPlan = httpsCallable(functions, 'generateContentPlan', { timeout: 170000 });
 
@@ -132,7 +133,9 @@ function checkAudience(appItems) {
   const total = primary + secondary;
   if (!total) return null;
   const secondaryShare = pct(secondary, total);
-  return { label: `קהל משני: ${Math.round(secondaryShare * 100)}% (יעד עד כ-20%)`, ok: secondaryShare <= 0.4 };
+  // הסף חייב להתאים למה שהתווית בפועל מבטיחה ("עד כ-20%") - זה גם התואם
+  // למפרט המקורי (80% קהל עיקרי / עד 20% משני), לא רק תיקון קוסמטי.
+  return { label: `קהל משני: ${Math.round(secondaryShare * 100)}% (יעד עד כ-20%)`, ok: secondaryShare <= 0.2 };
 }
 
 function checkPersuasionStages(appItems) {
@@ -255,45 +258,6 @@ function enrichPlanFromBank(plan, readyIdeas) {
   }
   plan.unmatchedCount = unmatchedCount;
   return plan;
-}
-
-// ===== תא עריכה בלחיצה, גרסת select (קטגוריה/סוג-תוכן/קהל/שלב שכנוע) =====
-
-function makeEditableSelect(td, options, currentValue, onCommit, renderValue) {
-  td.classList.add('table-editable-cell');
-  td.title = 'לחיצה לעריכה';
-
-  const show = (value) => {
-    td.innerHTML = '';
-    td.appendChild(renderValue(value));
-  };
-  show(currentValue);
-
-  td.addEventListener('click', () => {
-    if (td.querySelector('select')) return;
-    const select = document.createElement('select');
-    select.className = 'table-cell-select';
-    const blankOption = document.createElement('option');
-    blankOption.value = '';
-    blankOption.textContent = '-';
-    select.appendChild(blankOption);
-    for (const opt of options) {
-      const optionEl = document.createElement('option');
-      optionEl.value = opt;
-      optionEl.textContent = opt;
-      select.appendChild(optionEl);
-    }
-    select.value = options.includes(currentValue) ? currentValue : '';
-    td.innerHTML = '';
-    td.appendChild(select);
-    select.focus();
-    select.addEventListener('change', () => {
-      currentValue = select.value;
-      onCommit(currentValue);
-      show(currentValue);
-    });
-    select.addEventListener('blur', () => show(currentValue));
-  });
 }
 
 function rescoreCard() {
@@ -672,9 +636,22 @@ export function wireContentPlanView() {
           savedListEl.hidden = true;
         },
         async (p) => {
+          const confirmed = await confirmDialog('למחוק את התכנית הזו? הפעולה לא הפיכה.', { okLabel: 'מחיקה', cancelLabel: 'ביטול' });
+          if (!confirmed) return;
           try {
             await deleteContentPlan(p.id);
-            if (currentPlanId === p.id) currentPlanId = null;
+            if (currentPlanId === p.id) {
+              // התכנית שנמחקה היא בדיוק זו שמוצגת כרגע על המסך - בלי הניקוי
+              // הזה הטבלה/הסקורקארד/כפתורי השמירה נשארים גלויים, ולחיצה על
+              // שמירה הייתה יוצרת בטעות מסמך חדש עם אותו תוכן שנמחק הרגע.
+              currentPlanId = null;
+              currentPlan = null;
+              currentMeta = null;
+              document.getElementById('content-plan-result').innerHTML = '';
+              scorecardEl.hidden = true;
+              saveBtn.hidden = true;
+              saveBtnTop.hidden = true;
+            }
             showToast('🗑️ התכנית נמחקה');
             refreshSavedList();
           } catch (err) {

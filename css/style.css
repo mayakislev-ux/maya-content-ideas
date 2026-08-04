@@ -3872,3 +3872,11 @@ textarea:focus-visible,
   gap: 0.6rem;
   justify-content: center;
 }
+
+/* ===== Warming plan: truncation note (2026-08-04) ===== */
+
+.warming-truncation-note {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin: 0.4rem 0;
+}
