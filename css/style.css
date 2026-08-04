@@ -3573,74 +3573,110 @@ textarea:focus-visible,
 }
 
 /* ===== Content plan v2: real table + scorecard (2026-08-02) ===== */
+/* ===== Visual polish + mobile card layout (2026-08-04) ===== */
+
+.content-plan-table-wrap {
+  border-radius: var(--card-radius);
+  overflow: hidden;
+  box-shadow: var(--card-shadow);
+  margin-bottom: 1.5rem;
+  border: 1px solid var(--border-color);
+}
 
 .content-plan-table {
   width: 100%;
   border-collapse: collapse;
   background: var(--card-bg);
-  border-radius: var(--card-radius);
-  overflow: hidden;
-  box-shadow: var(--card-shadow);
-  margin-bottom: 1.5rem;
 }
 
 .content-plan-table th {
-  background: var(--surface);
-  color: var(--accent-strong, var(--accent));
-  font-size: 0.85rem;
+  background: linear-gradient(135deg, var(--accent), var(--accent-700));
+  color: #fff;
+  font-size: 0.82rem;
   font-weight: 700;
-  padding: 0.6rem 0.7rem;
+  padding: 0.85rem 0.9rem;
   text-align: right;
-  border-bottom: 1.5px solid var(--border-color);
 }
 
 .content-plan-table td {
-  padding: 0.6rem 0.7rem;
+  padding: 0.85rem 0.9rem;
   border-top: 1px solid var(--border-color);
   vertical-align: top;
-  font-size: 0.9rem;
+  font-size: 0.92rem;
+  transition: background 0.15s ease;
+}
+
+.content-plan-table tbody tr:not(.content-plan-week-row):hover td {
+  background: var(--surface);
 }
 
 .content-plan-week-row td {
-  background: var(--accent-tint);
-  font-weight: bold;
-  padding: 0.7rem;
+  background: linear-gradient(135deg, var(--accent-tint), var(--warm-tint, var(--accent-tint)));
+  color: var(--accent-strong, var(--accent));
+  font-weight: 800;
+  font-size: 0.95rem;
+  padding: 0.9rem;
+  border-top: none;
 }
 
-.content-plan-table tr.warming-done td { opacity: 0.55; }
+.content-plan-table tr.warming-done td { opacity: 0.5; }
 .content-plan-table tr.warming-done .warming-day-idea { text-decoration: line-through; }
 
-.table-editable-cell { cursor: pointer; border-radius: 8px; }
-.table-editable-cell:hover { background: rgba(38, 62, 168, 0.08); }
+.table-editable-cell {
+  cursor: pointer;
+  border-radius: 8px;
+  position: relative;
+}
+
+.table-editable-cell:hover {
+  background: var(--accent-tint);
+}
+
+.table-editable-cell:hover::after {
+  content: '✎';
+  position: absolute;
+  inset-inline-end: 4px;
+  top: 4px;
+  font-size: 0.7rem;
+  opacity: 0.55;
+  pointer-events: none;
+}
 
 .table-cell-select {
   font-family: inherit;
   font-size: 0.85rem;
-  padding: 0.2rem 0.3rem;
+  padding: 0.3rem 0.4rem;
   border-radius: 6px;
-  border: 1px solid var(--border-color);
+  border: 1.5px solid var(--accent);
   width: 100%;
+  background: var(--card-bg);
+  color: inherit;
 }
 
 .type-tag {
   display: inline-block;
   font-size: 0.72rem;
-  padding: 0.15rem 0.5rem;
+  padding: 0.2rem 0.6rem;
   border-radius: 999px;
-  background: var(--warm-tint, var(--surface));
-  color: var(--text);
-  font-weight: 600;
+  background: var(--accent-tint);
+  color: var(--accent-strong, var(--accent));
+  font-weight: 700;
+  border: 1px solid var(--accent-100, var(--border-color));
 }
 
 .stage-tag {
   display: inline-block;
   font-size: 0.75rem;
-  padding: 0.15rem 0.55rem;
+  padding: 0.18rem 0.6rem;
   border-radius: 999px;
   background: none;
-  border: 1px solid var(--border-color);
+  border: 1.5px solid var(--border-color);
   color: var(--muted);
-  font-weight: 600;
+  font-weight: 700;
+}
+
+.content-plan-save-btn-top {
+  margin-bottom: 1rem;
 }
 
 .content-plan-scorecard {
@@ -3676,4 +3712,60 @@ textarea:focus-visible,
   border-radius: 10px;
   font-size: 0.85rem;
   line-height: 1.5;
+}
+
+.scorecard-gaps > div + div {
+  margin-top: 0.35rem;
+}
+
+/* מסך צר - הטבלה הופכת לכרטיסים, כל שורה = כרטיס אחד עם תוויות שדה
+   (טכניקת data-label + attr()). */
+@media (max-width: 720px) {
+  .content-plan-table thead {
+    display: none;
+  }
+
+  .content-plan-table,
+  .content-plan-table tbody,
+  .content-plan-table tr,
+  .content-plan-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .content-plan-table tbody tr:not(.content-plan-week-row) {
+    padding: 0.7rem 0.9rem 0.9rem;
+    border-top: 1px solid var(--border-color);
+  }
+
+  .content-plan-table tbody tr:not(.content-plan-week-row):first-child {
+    border-top: none;
+  }
+
+  .content-plan-table td {
+    border-top: none;
+    padding: 0.3rem 0;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+  }
+
+  .content-plan-table td[data-label]::before {
+    content: attr(data-label);
+    flex: none;
+    width: 5.2rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--muted);
+    padding-top: 0.15rem;
+  }
+
+  .content-plan-week-row {
+    margin-bottom: 0.3rem;
+  }
+
+  .content-plan-week-row td {
+    display: block;
+    border-radius: 10px;
+  }
 }

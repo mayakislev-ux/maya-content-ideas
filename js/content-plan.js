@@ -161,6 +161,8 @@ function checkBankGaps(readyIdeas) {
     const actual = pct(counts[cat] || 0, total);
     if (actual < target / 2) {
       gaps.push(`יש לך רק ${counts[cat] || 0} רעיונות בקטגוריית '${cat}' - כדאי להוסיף עוד`);
+    } else if (actual > target * 2) {
+      gaps.push(`יש לך יחסית הרבה רעיונות בקטגוריית '${cat}' (${counts[cat]} מתוך ${total}) לעומת שאר הקטגוריות - כדאי לאזן עם עוד רעיונות בקטגוריות אחרות`);
     }
   }
   return gaps;
@@ -247,7 +249,8 @@ function enrichPlanFromBank(plan, readyIdeas) {
       } else {
         unmatchedCount++;
       }
-      item.mustIncludeType = MUST_INCLUDE_TYPES.includes(item.mustIncludeType) ? item.mustIncludeType : '';
+      const cleanedType = (item.mustIncludeType || '').replace(/^\d+[.)]\s*/, '').trim();
+      item.mustIncludeType = MUST_INCLUDE_TYPES.includes(cleanedType) ? cleanedType : '';
     }
   }
   plan.unmatchedCount = unmatchedCount;
@@ -388,12 +391,14 @@ function renderItemRow(item) {
 
   const dayTd = document.createElement('td');
   dayTd.className = 'warming-day-name';
+  dayTd.dataset.label = 'יום';
   dayTd.textContent = item.day || '';
   tr.appendChild(dayTd);
 
   if (item.type === 'live') {
     const liveTd = document.createElement('td');
     liveTd.colSpan = 5;
+    liveTd.dataset.label = 'תוכן חי';
     const liveTag = document.createElement('span');
     liveTag.className = 'content-plan-live-tag';
     liveTag.textContent = '🎤 תוכן חי';
@@ -408,27 +413,33 @@ function renderItemRow(item) {
     tr.appendChild(liveTd);
   } else {
     const titleTd = document.createElement('td');
+    titleTd.dataset.label = 'רעיון';
     renderTitleCell(titleTd, item);
     tr.appendChild(titleTd);
 
     const categoryTd = document.createElement('td');
+    categoryTd.dataset.label = 'קטגוריה';
     renderCategoryCell(categoryTd, item);
     tr.appendChild(categoryTd);
 
     const typeTd = document.createElement('td');
+    typeTd.dataset.label = 'סוג תוכן';
     renderTypeCell(typeTd, item);
     tr.appendChild(typeTd);
 
     const audienceTd = document.createElement('td');
+    audienceTd.dataset.label = 'קהל';
     renderAudienceCell(audienceTd, item);
     tr.appendChild(audienceTd);
 
     const stageTd = document.createElement('td');
+    stageTd.dataset.label = 'שלב שכנוע';
     renderStageCell(stageTd, item);
     tr.appendChild(stageTd);
   }
 
   const doneTd = document.createElement('td');
+  doneTd.dataset.label = 'בוצע';
   const checkbox = document.createElement('input');
   checkbox.type = 'checkbox';
   checkbox.className = 'warming-checkbox';
@@ -464,6 +475,9 @@ function renderPlan(plan) {
   const container = document.getElementById('content-plan-result');
   container.innerHTML = '';
 
+  const wrap = document.createElement('div');
+  wrap.className = 'content-plan-table-wrap';
+
   const table = document.createElement('table');
   table.className = 'content-plan-table';
 
@@ -481,8 +495,10 @@ function renderPlan(plan) {
   }
   table.appendChild(tbody);
 
-  container.appendChild(table);
+  wrap.appendChild(table);
+  container.appendChild(wrap);
   document.getElementById('content-plan-save-btn').hidden = false;
+  document.getElementById('content-plan-save-btn-top').hidden = false;
   renderScorecard(plan, getReadyIdeas());
 }
 
@@ -555,6 +571,7 @@ export function wireContentPlanView() {
   const loadingEl = document.getElementById('content-plan-loading');
   const generateBtn = document.getElementById('content-plan-generate-btn');
   const saveBtn = document.getElementById('content-plan-save-btn');
+  const saveBtnTop = document.getElementById('content-plan-save-btn-top');
   const savedToggleBtn = document.getElementById('content-plan-saved-toggle-btn');
   const savedListEl = document.getElementById('content-plan-saved-list');
   const scorecardEl = document.getElementById('content-plan-scorecard');
@@ -592,6 +609,7 @@ export function wireContentPlanView() {
     document.getElementById('content-plan-result').innerHTML = '';
     scorecardEl.hidden = true;
     saveBtn.hidden = true;
+    saveBtnTop.hidden = true;
     startCountdown();
 
     try {
@@ -615,9 +633,10 @@ export function wireContentPlanView() {
     }
   });
 
-  saveBtn.addEventListener('click', async () => {
+  async function handleSaveClick() {
     if (!currentPlan || !currentMeta) return;
     saveBtn.disabled = true;
+    saveBtnTop.disabled = true;
     try {
       if (currentPlanId) {
         await updateContentPlan(currentPlanId, { plan: currentPlan });
@@ -631,8 +650,11 @@ export function wireContentPlanView() {
       showToast('משהו השתבש בשמירה, נסו שוב');
     } finally {
       saveBtn.disabled = false;
+      saveBtnTop.disabled = false;
     }
-  });
+  }
+  saveBtn.addEventListener('click', handleSaveClick);
+  saveBtnTop.addEventListener('click', handleSaveClick);
 
   async function refreshSavedList() {
     savedListEl.textContent = 'טוען...';
