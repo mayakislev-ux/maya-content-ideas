@@ -35,6 +35,38 @@ const DAILY_LIMITS = {
   writeScript: 60,
 };
 
+// checkIdea/classifyIdea/generateWarmingPlan/generateContentPlan עד עכשיו רק
+// בדקו שיש התחברות תקינה, לא שהמייל בפועל ברשימת ה-allowlist - הבדיקה
+// הייתה קיימת רק בצד הלקוח (עוקפים בקלות עם קריאה ישירה לפונקציה) וב-
+// firestore.rules (לא רלוונטי - הפונקציות האלה משתמשות ב-Admin SDK, שעוקף
+// לגמרי את חוקי Firestore). זו הבדיקה האמיתית, בצד השרת, שמראה אותה לוגיקה
+// בדיוק כמו isAllowed() ב-firestore.rules.
+async function enforceAllowlist(email) {
+  if (!email) {
+    throw new HttpsError('permission-denied', 'יש להתחבר כדי להשתמש בתכונה הזו');
+  }
+  if (email === ADMIN_EMAIL) return;
+  const snap = await db.collection('allowlist').doc(email).get();
+  if (!snap.exists) {
+    throw new HttpsError('permission-denied', 'המייל הזה לא רשום במערכת, אנא פנו למאיה');
+  }
+}
+
+// שני עוזרי אימות אורך - אותה בעיה כמו שכבר תוקנה היום ל-pieceCount
+// (בדיקת טווח לפני שליחה ל-AI, לא לסמוך רק על מגבלת הקצב היומית).
+function assertMaxLength(value, max, fieldLabel) {
+  if (typeof value === 'string' && value.length > max) {
+    throw new HttpsError('invalid-argument', `השדה "${fieldLabel}" ארוך מדי (מקסימום ${max} תווים)`);
+  }
+}
+
+function assertMessagesWithinLimit(messages, maxTotalChars) {
+  const total = (messages || []).reduce((sum, m) => sum + String((m && m.content) || '').length, 0);
+  if (total > maxTotalChars) {
+    throw new HttpsError('invalid-argument', 'השיחה ארוכה מדי, התחילו שיחה חדשה');
+  }
+}
+
 async function enforceRateLimit(uid, fnName) {
   const today = new Date().toISOString().slice(0, 10);
   const ref = db.collection('rateLimits').doc(`${uid}_${today}_${fnName}`);
@@ -380,13 +412,21 @@ exports.checkIdea = onRequest(
       return;
     }
 
-    let uid;
+    let uid, email;
     try {
       const decoded = await admin.auth().verifyIdToken(idToken);
       uid = decoded.uid;
+      email = decoded.email;
     } catch (err) {
       console.error('checkIdea: invalid ID token:', err.message);
       res.status(401).json({ error: 'התחברות לא תקינה, נסו להתחבר מחדש' });
+      return;
+    }
+
+    try {
+      await enforceAllowlist(email);
+    } catch (err) {
+      res.status(403).json({ error: err.message || 'אין הרשאה להשתמש בתכונה הזו' });
       return;
     }
 
@@ -400,6 +440,12 @@ exports.checkIdea = onRequest(
     const messages = req.body && req.body.messages;
     if (!Array.isArray(messages) || messages.length === 0) {
       res.status(400).json({ error: 'חסרות הודעות בשיחה' });
+      return;
+    }
+    try {
+      assertMessagesWithinLimit(messages, 60000);
+    } catch (err) {
+      res.status(400).json({ error: err.message });
       return;
     }
 
@@ -506,6 +552,7 @@ exports.writeScript = onCall({ secrets: [anthropicApiKey], region: 'us-central1'
   if (!Array.isArray(messages) || messages.length === 0) {
     throw new HttpsError('invalid-argument', 'חסרות הודעות בשיחה');
   }
+  assertMessagesWithinLimit(messages, 60000);
 
   const profile = (request.data && request.data.profile) || null;
   const ideaContext = (request.data && request.data.ideaContext) || null;
@@ -535,6 +582,7 @@ exports.classifyIdea = onCall({ secrets: [anthropicApiKey], region: 'us-central1
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'יש להתחבר כדי להשתמש בתכונה הזו');
   }
+  await enforceAllowlist(request.auth.token.email);
   await enforceRateLimit(request.auth.uid, 'classifyIdea');
 
   const title = (request.data && request.data.title) || '';
@@ -542,6 +590,8 @@ exports.classifyIdea = onCall({ secrets: [anthropicApiKey], region: 'us-central1
   if (!title.trim()) {
     throw new HttpsError('invalid-argument', 'צריך לפחות כותרת כדי לסווג את הרעיון');
   }
+  assertMaxLength(title, 500, 'כותרת');
+  assertMaxLength(hookText, 5000, 'זווית/הוק');
 
   const prompt = `הרעיון לתוכן: "${title}"
 פירוט נוסף: "${hookText}"
@@ -584,6 +634,7 @@ exports.generateWarmingPlan = onCall({ secrets: [anthropicApiKey, sheetsServiceA
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'יש להתחבר כדי להשתמש בתכונה הזו');
   }
+  await enforceAllowlist(request.auth.token.email);
   await enforceRateLimit(request.auth.uid, 'generateWarmingPlan');
 
   const product = ((request.data && request.data.product) || '').trim();
@@ -594,6 +645,9 @@ exports.generateWarmingPlan = onCall({ secrets: [anthropicApiKey, sheetsServiceA
   if (!product || !audience) {
     throw new HttpsError('invalid-argument', 'צריך לפחות מוצר וקהל יעד כדי לבנות תוכנית חימום');
   }
+  assertMaxLength(product, 500, 'מוצר');
+  assertMaxLength(audience, 500, 'קהל יעד');
+  assertMaxLength(extraContext, 5000, 'הקשר נוסף');
 
   const linkedContent = await fetchExtraContentLinks(extraContext);
   if (linkedContent && linkedContent.error) {
@@ -646,6 +700,7 @@ exports.generateContentPlan = onCall({ secrets: [anthropicApiKey], region: 'us-c
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'יש להתחבר כדי להשתמש בתכונה הזו');
   }
+  await enforceAllowlist(request.auth.token.email);
   await enforceRateLimit(request.auth.uid, 'generateContentPlan');
 
   const ideas = (request.data && request.data.ideas) || [];
