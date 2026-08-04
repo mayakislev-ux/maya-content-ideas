@@ -55,7 +55,6 @@ let onboardingStep = null;
 let draftProfile = {};
 let started = false;
 let ideaContext = null;
-let formatChosen = false;
 
 function messagesEl() {
   return document.getElementById('script-messages');
@@ -116,7 +115,6 @@ function addGoToIdeaChatButton(bubble) {
 function resetChat() {
   history = [];
   ideaContext = null;
-  formatChosen = false;
   messagesEl().innerHTML = '';
   greetAndAskForIdea();
 }
@@ -177,20 +175,20 @@ function greetAndAskForIdea() {
 const NOT_SURE_FORMAT_CHOICE = 'לא בטוח/ה 🤔 תני לי כמה אפשרויות';
 
 function askFormat() {
-  formatChosen = false;
   addChoiceBubble(messagesEl(), 'איזה פורמט הכי מתאים לתסריט הזה?', [...FORMAT_CHOICES, NOT_SURE_FORMAT_CHOICE], (choice) => {
     if (choice === NOT_SURE_FORMAT_CHOICE) {
       sendMessage('לא בטוח/ה איזה פורמט הכי מתאים לרעיון הזה - תציעי כמה אפשרויות שיתאימו, עם הסבר קצר לכל אחת למה היא מתאימה, ואז אבחר.');
       return;
     }
-    formatChosen = true;
     sendMessage(`הפורמט שבחרתי: ${choice}`);
   });
 }
 
 async function sendMessage(text) {
   const input = document.getElementById('script-input');
+  const newScriptBtn = document.getElementById('new-script-btn');
   input.disabled = true;
+  newScriptBtn.disabled = true;
   history.push({ role: 'user', content: text });
   const thinkingBubble = addThinkingBubble(messagesEl());
 
@@ -233,6 +231,7 @@ async function sendMessage(text) {
     setBubbleText(thinkingBubble, 'משהו השתבש, נסו שוב בבקשה.');
   } finally {
     input.disabled = false;
+    newScriptBtn.disabled = false;
     input.focus();
   }
 }
@@ -264,7 +263,6 @@ export async function startScriptChat() {
 export async function startScriptChatWithIdea(idea) {
   history = [];
   ideaContext = idea;
-  formatChosen = false;
   messagesEl().innerHTML = '';
   started = true;
   await ensureProfileAndGreet();

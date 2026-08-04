@@ -335,19 +335,34 @@ exports.getFeedback = onCall({ region: 'us-central1' }, async (request) => {
 // לא נשמר ב-Firestore) + כמה רעיונות כתבה ומתי (מ-collection ideas). 3
 // קריאות מרוכזות (allowlist מלא, ideas מלא, listUsers מלא) ואז חיבור
 // בזיכרון - עדיף על עשרות שאילתות בודדות אחת לכל לקוחה.
+// admin.auth().listUsers() caps a single page at 1000 - beyond that it needs
+// pageToken-based pagination or accounts past the first page would silently
+// look like they've "never logged in." Not a real concern at current scale,
+// but cheap to make correct for whenever the allowlist grows past 1000.
+async function listAllAuthUsers() {
+  let users = [];
+  let pageToken;
+  do {
+    const result = await admin.auth().listUsers(1000, pageToken);
+    users = users.concat(result.users);
+    pageToken = result.pageToken;
+  } while (pageToken);
+  return users;
+}
+
 exports.getClientUsageStats = onCall({ region: 'us-central1', timeoutSeconds: 60 }, async (request) => {
   if (!request.auth || request.auth.token.email !== ADMIN_EMAIL) {
     throw new HttpsError('permission-denied', 'התכונה הזו זמינה כרגע רק למנהלת');
   }
 
-  const [allowlistSnap, ideasSnap, listUsersResult] = await Promise.all([
+  const [allowlistSnap, ideasSnap, allUsers] = await Promise.all([
     db.collection('allowlist').get(),
     db.collection('ideas').get(),
-    admin.auth().listUsers(1000),
+    listAllAuthUsers(),
   ]);
 
   const authByEmail = new Map();
-  listUsersResult.users.forEach((u) => {
+  allUsers.forEach((u) => {
     if (u.email) authByEmail.set(u.email, u);
   });
 
@@ -539,7 +554,7 @@ exports.checkIdea = onRequest(
   }
 );
 
-exports.writeScript = onCall({ secrets: [anthropicApiKey], region: 'us-central1' }, async (request) => {
+exports.writeScript = onCall({ secrets: [anthropicApiKey], region: 'us-central1', timeoutSeconds: 180 }, async (request) => {
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'יש להתחבר כדי להשתמש בתכונה הזו');
   }

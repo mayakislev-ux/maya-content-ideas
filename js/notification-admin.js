@@ -1,6 +1,7 @@
 import { functions } from './firebase-init.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
 import { showToast } from './toast.js';
+import { confirmDialog } from './confirm-dialog.js';
 
 const sendNotification = httpsCallable(functions, 'sendNotification');
 
@@ -45,6 +46,13 @@ export function wireNotificationAdmin() {
     const target = targetSelect.value;
     const targetEmail = document.getElementById('notification-email').value.trim();
 
+    const confirmMessage =
+      target === 'all'
+        ? `לשלוח את ההתראה "${title}" לכל המשתמשות שהפעילו התראות? הפעולה לא הפיכה.`
+        : `לשלוח את ההתראה "${title}" ל-${targetEmail}?`;
+    const confirmed = await confirmDialog(confirmMessage, { okLabel: 'שליחה', cancelLabel: 'ביטול' });
+    if (!confirmed) return;
+
     sendBtn.disabled = true;
     sendBtn.textContent = 'בשליחה...';
     try {
@@ -52,7 +60,6 @@ export function wireNotificationAdmin() {
       successEl.textContent = `נשלח בהצלחה ל-${result.data.sent} מכשירים${result.data.failed ? ` (${result.data.failed} נכשלו)` : ''}`;
       successEl.hidden = false;
       showToast('📣 ההתראה נשלחה');
-      setTimeout(closeModal, 2000);
     } catch (err) {
       console.error('sendNotification failed:', err);
       const friendlyMessage = err.message && err.message !== 'INTERNAL' ? err.message : 'משהו השתבש בשליחה, נסו שוב';

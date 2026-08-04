@@ -275,7 +275,9 @@ function greetAndAskForIdea() {
 // as if the user had just typed and submitted it).
 async function sendIdeaMessage(text) {
   const input = document.getElementById('chat-input');
+  const newIdeaBtn = document.getElementById('new-idea-btn');
   input.disabled = true;
+  newIdeaBtn.disabled = true;
   addBubble(messagesEl(), text, 'user');
   if (navigator.vibrate) navigator.vibrate(15);
   if (history.length === 0) originalIdeaText = text;
@@ -327,6 +329,7 @@ async function sendIdeaMessage(text) {
     setBubbleText(thinkingBubble, err.message || 'משהו השתבש, נסו שוב בבקשה.');
   } finally {
     input.disabled = false;
+    newIdeaBtn.disabled = false;
     input.focus();
   }
 }

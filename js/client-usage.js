@@ -75,7 +75,16 @@ function renderClientsList() {
     li.appendChild(stats);
 
     if (client.ideaCount > 0) {
+      li.tabIndex = 0;
+      li.setAttribute('role', 'button');
+      li.setAttribute('aria-label', `הצגת הרעיונות של ${client.email}`);
       li.addEventListener('click', () => showClientIdeas(client));
+      li.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          showClientIdeas(client);
+        }
+      });
     }
     list.appendChild(li);
   });
@@ -110,7 +119,15 @@ export async function loadClientUsage() {
 }
 
 export function wireClientUsageView() {
-  document.getElementById('client-usage-refresh-btn').addEventListener('click', loadClientUsage);
+  const refreshBtn = document.getElementById('client-usage-refresh-btn');
+  refreshBtn.addEventListener('click', async () => {
+    refreshBtn.disabled = true;
+    try {
+      await loadClientUsage();
+    } finally {
+      refreshBtn.disabled = false;
+    }
+  });
   document.getElementById('client-ideas-modal-close-btn').addEventListener('click', () => {
     document.getElementById('client-ideas-modal').hidden = true;
   });
