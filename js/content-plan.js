@@ -502,14 +502,32 @@ function renderSavedList(plans, onOpen, onDelete) {
   }
 }
 
+// "יש לפחות רעיון אחד בכל קטגוריה" לא מספיק - קטגוריה עם רעיון או שניים
+// בלבד תמיד תיצור תכנית לא מאוזנת, לא משנה כמה פעמים לוחצים "בנייה":
+// אי אפשר לשבץ יותר תוכן מ'אישי' ממה שבאמת קיים במאגר. הסף כאן הוא חצי
+// מהיעד עבור תכנית בגודל המינימלי (16) - אותה נוסחה בדיוק שכבר משמשת את
+// checkBankGaps בסקורקארד אחרי הבנייה, רק שכאן זה חוסם *לפני* שמבזבזים
+// קריאת AI על תכנית שמראש לא יכלה לצאת מאוזנת.
+function getCategoryVolumeGaps(readyIdeas) {
+  const counts = {};
+  for (const idea of readyIdeas) counts[idea.category] = (counts[idea.category] || 0) + 1;
+  const gaps = [];
+  for (const [cat, target] of Object.entries(CATEGORY_TARGETS)) {
+    const needed = Math.ceil((target * MIN_PIECE_COUNT) / 2);
+    const actual = counts[cat] || 0;
+    if (actual < needed) gaps.push({ category: cat, actual, needed });
+  }
+  return gaps;
+}
+
 export function refreshGate() {
   const readyIdeas = getReadyIdeas();
   const readyCount = readyIdeas.length;
   const gateMsg = document.getElementById('content-plan-gate-msg');
   const form = document.getElementById('content-plan-form');
   const enoughVolume = readyCount >= MIN_READY_IDEAS;
-  const missingCategories = CATEGORIES.filter((cat) => !readyIdeas.some((idea) => idea.category === cat));
-  const enough = enoughVolume && missingCategories.length === 0;
+  const volumeGaps = getCategoryVolumeGaps(readyIdeas);
+  const enough = enoughVolume && volumeGaps.length === 0;
   gateMsg.hidden = enough;
   form.hidden = !enough;
   if (!enoughVolume) {
@@ -526,8 +544,9 @@ export function refreshGate() {
       hint = ` יש לך ${unclassified.length} רעיונות שכבר כתובים במאגר אבל עדיין בלי קטגוריה, למשל: ${sample}${unclassified.length > 3 ? ' ועוד' : ''} - לכי אליהם קודם, זה הכי מהיר.`;
     }
     gateMsg.textContent = `כדי לבנות תכנית תוכן צריך קודם מספיק רעיונות מסווגים (עם קטגוריה) במאגר - יש לך כרגע ${readyCount} מתוך ${MIN_READY_IDEAS} הדרושים.${hint} לכי ל"הרעיונות שלי" והוסיפי/סווגי עוד רעיונות קודם.`;
-  } else if (missingCategories.length) {
-    gateMsg.textContent = `כדי לבנות תכנית תוכן מאוזנת צריך לפחות רעיון אחד מסווג בכל קטגוריה - חסר לך לגמרי בקטגוריות: ${missingCategories.join(', ')} (רעיונות שסומנו כ"בוצע" לא נספרים כאן). לכי ל"הרעיונות שלי" והוסיפי/סווגי לפחות רעיון אחד בכל קטגוריה חסרה, ואז אפשר לבנות תכנית.`;
+  } else if (volumeGaps.length) {
+    const gapText = volumeGaps.map((g) => `'${g.category}' (יש לך ${g.actual}, צריך לפחות ${g.needed})`).join(', ');
+    gateMsg.textContent = `כדי לבנות תכנית תוכן מאוזנת (ביחס 40/30/15/15) חסר לך מספיק רעיונות מסווגים בקטגוריות הבאות: ${gapText} (רעיונות שסומנו כ"בוצע" לא נספרים כאן). בלי זה כל תכנית שתיבנה תצא לא מאוזנת, כי אין ממה לשבץ. לכי ל"הרעיונות שלי" והוסיפי/סווגי עוד רעיונות בקטגוריות האלה, ואז אפשר לבנות תכנית מאוזנת באמת.`;
   }
 }
 
