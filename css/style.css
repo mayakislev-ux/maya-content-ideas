@@ -68,6 +68,7 @@
     --accent-2: #ff5cc0;
     --accent-strong: #b3befa;
     --accent-tint: #262c5e;
+    --accent-100: #3f4a8f;
     --warm-tint: #4a1a3a;
   }
 }
@@ -85,6 +86,7 @@
   --accent-2: #ff5cc0;
   --accent-strong: #b3befa;
   --accent-tint: #262c5e;
+  --accent-100: #3f4a8f;
   --warm-tint: #4a1a3a;
 }
 
@@ -3577,7 +3579,8 @@ textarea:focus-visible,
 
 .content-plan-table-wrap {
   border-radius: var(--card-radius);
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
   box-shadow: var(--card-shadow);
   margin-bottom: 1.5rem;
   border: 1px solid var(--border-color);
@@ -3622,27 +3625,47 @@ textarea:focus-visible,
 .content-plan-table tr.warming-done td { opacity: 0.5; }
 .content-plan-table tr.warming-done .warming-day-idea { text-decoration: line-through; }
 
+.content-plan-live-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
 .table-editable-cell {
   cursor: pointer;
   border-radius: 8px;
   position: relative;
 }
 
-.table-editable-cell:hover {
-  background: var(--accent-tint);
+@media (hover: hover) {
+  .table-editable-cell:hover {
+    background: var(--surface);
+  }
+
+  .table-editable-cell:hover::after {
+    content: '✎';
+    position: absolute;
+    inset-inline-end: 4px;
+    top: 4px;
+    font-size: 0.7rem;
+    opacity: 0.55;
+    pointer-events: none;
+  }
 }
 
-.table-editable-cell:hover::after {
-  content: '✎';
-  position: absolute;
-  inset-inline-end: 4px;
-  top: 4px;
-  font-size: 0.7rem;
-  opacity: 0.55;
-  pointer-events: none;
+@media (hover: none) {
+  .table-editable-cell::after {
+    content: '✎';
+    position: absolute;
+    inset-inline-end: 4px;
+    top: 4px;
+    font-size: 0.65rem;
+    opacity: 0.35;
+    pointer-events: none;
+  }
 }
 
-.table-cell-select {
+.table-cell-select.table-cell-select {
   font-family: inherit;
   font-size: 0.85rem;
   padding: 0.3rem 0.4rem;
@@ -3738,15 +3761,12 @@ textarea:focus-visible,
     border-top: 1px solid var(--border-color);
   }
 
-  .content-plan-table tbody tr:not(.content-plan-week-row):first-child {
-    border-top: none;
-  }
-
   .content-plan-table td {
     border-top: none;
     padding: 0.3rem 0;
     display: flex;
     align-items: flex-start;
+    flex-wrap: wrap;
     gap: 0.6rem;
   }
 
@@ -3766,6 +3786,7 @@ textarea:focus-visible,
 
   .content-plan-week-row td {
     display: block;
+    padding: 0.9rem;
     border-radius: 10px;
   }
 }

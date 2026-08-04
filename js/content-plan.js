@@ -249,7 +249,7 @@ function enrichPlanFromBank(plan, readyIdeas) {
       } else {
         unmatchedCount++;
       }
-      const cleanedType = (item.mustIncludeType || '').replace(/^\d+[.)]\s*/, '').trim();
+      const cleanedType = (item.mustIncludeType || '').replace(/^[\s\-–•*]*\d*\s*[.):\-]?\s*/, '').trim();
       item.mustIncludeType = MUST_INCLUDE_TYPES.includes(cleanedType) ? cleanedType : '';
     }
   }
@@ -399,17 +399,19 @@ function renderItemRow(item) {
     const liveTd = document.createElement('td');
     liveTd.colSpan = 5;
     liveTd.dataset.label = 'תוכן חי';
+    const liveWrap = document.createElement('div');
+    liveWrap.className = 'content-plan-live-wrap';
     const liveTag = document.createElement('span');
     liveTag.className = 'content-plan-live-tag';
     liveTag.textContent = '🎤 תוכן חי';
-    liveTd.appendChild(liveTag);
-    liveTd.appendChild(document.createElement('br'));
+    liveWrap.appendChild(liveTag);
     const note = document.createElement('span');
     note.className = 'warming-day-idea';
     note.textContent = item.note || '';
     note.title = 'לחיצה עורכת';
     makeEditable(note, (val) => (item.note = val));
-    liveTd.appendChild(note);
+    liveWrap.appendChild(note);
+    liveTd.appendChild(liveWrap);
     tr.appendChild(liveTd);
   } else {
     const titleTd = document.createElement('td');
