@@ -13,7 +13,9 @@ let editingId = null;
 function setCategoryChip(value) {
   document.getElementById('field-category').value = value;
   document.querySelectorAll('.category-chip').forEach((chip) => {
-    chip.classList.toggle('active', chip.dataset.value === value);
+    const isActive = chip.dataset.value === value;
+    chip.classList.toggle('active', isActive);
+    chip.setAttribute('aria-pressed', isActive ? 'true' : 'false');
   });
   updateIdeaPreview();
 }
@@ -21,7 +23,9 @@ function setCategoryChip(value) {
 function setRatingChip(value) {
   document.getElementById('field-rating').value = value;
   document.querySelectorAll('.rating-chip').forEach((chip) => {
-    chip.classList.toggle('active', chip.dataset.value === value);
+    const isActive = chip.dataset.value === value;
+    chip.classList.toggle('active', isActive);
+    chip.setAttribute('aria-pressed', isActive ? 'true' : 'false');
   });
   updateIdeaPreview();
 }

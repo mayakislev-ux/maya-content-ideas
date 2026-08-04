@@ -263,7 +263,7 @@
       <button id="edit-profile-btn" class="btn-text edit-profile-btn" hidden>✏️ ערכי פרטים (מנהלת)</button>
       <button id="replay-tour-btn" class="btn-text edit-profile-btn" hidden>🎓 הצגת הסיור (מנהלת)</button>
     </div>
-    <div class="chat-messages" id="chat-messages"></div>
+    <div class="chat-messages" id="chat-messages" role="log" aria-live="polite"></div>
     <form id="chat-form" class="chat-input-row">
       <textarea id="chat-input" enterkeyhint="send" placeholder="כתיבה כאן..." required></textarea>
       <button type="button" id="chat-mic-btn" class="mic-btn" aria-label="הקלטה קולית" hidden>🎤</button>
@@ -277,7 +277,7 @@
       <button id="new-script-btn" class="btn-text">🔄 תסריט חדש</button>
       <button type="button" id="focus-mode-btn" class="btn-text" aria-label="מצב מיקוד">🎯 מצב מיקוד</button>
     </div>
-    <div class="chat-messages" id="script-messages"></div>
+    <div class="chat-messages" id="script-messages" role="log" aria-live="polite"></div>
     <form id="script-form" class="chat-input-row">
       <textarea id="script-input" enterkeyhint="send" placeholder="כתיבה כאן..." required></textarea>
       <button type="button" id="script-mic-btn" class="mic-btn" aria-label="הקלטה קולית" hidden>🎤</button>
@@ -564,9 +564,9 @@
   </footer>
 </div>
 
-<div id="goal-edit-modal" class="modal" hidden>
+<div id="goal-edit-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="goal-edit-modal-title">
   <div class="modal-content">
-    <h2>🎯 יעד שבועי</h2>
+    <h2 id="goal-edit-modal-title">🎯 יעד שבועי</h2>
     <label>כמה רעיונות לקבוע כיעד לשבוע?
       <input id="goal-edit-input" type="number" min="1" max="99" inputmode="numeric">
     </label>
@@ -577,7 +577,7 @@
   </div>
 </div>
 
-<div id="client-ideas-modal" class="modal" hidden>
+<div id="client-ideas-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="client-ideas-email">
   <div class="modal-content">
     <button type="button" id="client-ideas-modal-close-btn" class="modal-close-x" aria-label="סגירה">✕</button>
     <h2 id="client-ideas-email" class="client-ideas-email"></h2>
@@ -585,12 +585,12 @@
   </div>
 </div>
 
-<div id="content-plan-modal" class="modal" hidden>
+<div id="content-plan-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="content-plan-modal-title">
   <div class="modal-content modal-content-wide">
     <button type="button" id="content-plan-modal-close-btn" class="modal-close-x" aria-label="סגירה">✕</button>
 
     <div class="warming-header-row">
-      <h2>📅 בניית תכנית תוכן</h2>
+      <h2 id="content-plan-modal-title">📅 בניית תכנית תוכן</h2>
       <button type="button" id="content-plan-saved-toggle-btn" class="btn-text">📂 תוכניות שמורות</button>
     </div>
 
@@ -619,7 +619,7 @@
 
 <div id="offline-banner" class="offline-banner" hidden>📡 אין חיבור לאינטרנט כרגע - הנתונים לא יתעדכנו עד שהחיבור יחזור</div>
 
-<div id="idea-modal" class="modal" hidden>
+<div id="idea-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="modal-title">
   <div class="modal-content idea-modal-content">
     <button type="button" id="idea-modal-close-x" class="modal-close-x" aria-label="סגירה">✕</button>
     <div class="modal-breadcrumb">הרעיונות שלי <span>›</span> <span id="modal-breadcrumb-current">רעיון חדש</span></div>
@@ -640,9 +640,9 @@
       <div class="form-section">
         <label class="field-label-row">כמה הרעיון הזה חזק לדעתך? *</label>
         <div class="rating-chips" id="rating-chips">
-          <button type="button" class="rating-chip" data-value="🔥 חייב לצלם">🔥 חייב לצלם</button>
-          <button type="button" class="rating-chip" data-value="⭐ שווה לצלם">⭐ שווה לצלם</button>
-          <button type="button" class="rating-chip" data-value="💭 רעיון לעתיד">💭 רעיון לעתיד</button>
+          <button type="button" class="rating-chip" data-value="🔥 חייב לצלם" aria-pressed="false">🔥 חייב לצלם</button>
+          <button type="button" class="rating-chip" data-value="⭐ שווה לצלם" aria-pressed="false">⭐ שווה לצלם</button>
+          <button type="button" class="rating-chip" data-value="💭 רעיון לעתיד" aria-pressed="false">💭 רעיון לעתיד</button>
         </div>
         <input type="hidden" id="field-rating">
       </div>
@@ -664,11 +664,11 @@
         </label>
         <p class="field-subhint">בוחרים אחת</p>
         <div class="category-chips" id="category-chips">
-          <button type="button" class="category-chip" data-value="בעל ערך" style="--chip-color: var(--cat-baal-erech)">בעל ערך</button>
-          <button type="button" class="category-chip" data-value="אישי" style="--chip-color: var(--cat-ishi)">אישי</button>
-          <button type="button" class="category-chip" data-value="מכירתי" style="--chip-color: var(--cat-mechirti)">מכירתי</button>
-          <button type="button" class="category-chip" data-value="בידורי" style="--chip-color: var(--cat-biduri)">בידורי</button>
-          <button type="button" class="category-chip category-chip-ai" data-value="__ai__">שה-AI יזהה</button>
+          <button type="button" class="category-chip" data-value="בעל ערך" style="--chip-color: var(--cat-baal-erech)" aria-pressed="false">בעל ערך</button>
+          <button type="button" class="category-chip" data-value="אישי" style="--chip-color: var(--cat-ishi)" aria-pressed="false">אישי</button>
+          <button type="button" class="category-chip" data-value="מכירתי" style="--chip-color: var(--cat-mechirti)" aria-pressed="false">מכירתי</button>
+          <button type="button" class="category-chip" data-value="בידורי" style="--chip-color: var(--cat-biduri)" aria-pressed="false">בידורי</button>
+          <button type="button" class="category-chip category-chip-ai" data-value="__ai__" aria-pressed="false">שה-AI יזהה</button>
         </div>
         <input type="hidden" id="field-category">
       </div>
@@ -700,7 +700,7 @@
   </div>
 </div>
 
-<div id="info-modal" class="modal" hidden>
+<div id="info-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="info-modal-title">
   <div class="modal-content info-modal-content">
     <h3 id="info-modal-title"></h3>
     <div id="info-modal-body"></div>
@@ -710,7 +710,7 @@
   </div>
 </div>
 
-<div id="random-modal" class="modal random-modal" hidden>
+<div id="random-modal" class="modal random-modal" hidden role="dialog" aria-modal="true" aria-label="רעיון אקראי">
   <div class="modal-content random-modal-content">
     <div id="random-spinner" class="random-spinner" hidden></div>
     <div id="random-result" class="random-result" hidden tabindex="0" role="button"></div>
@@ -721,7 +721,7 @@
   </div>
 </div>
 
-<div id="confirm-dialog" class="modal confirm-dialog-modal" hidden>
+<div id="confirm-dialog" class="modal confirm-dialog-modal" hidden role="alertdialog" aria-modal="true" aria-describedby="confirm-dialog-message">
   <div class="modal-content confirm-dialog-content">
     <p id="confirm-dialog-message" class="confirm-dialog-message"></p>
     <div class="confirm-dialog-actions">
@@ -731,9 +731,9 @@
   </div>
 </div>
 
-<div id="policy-modal" class="modal" hidden>
+<div id="policy-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="policy-modal-title">
   <div class="modal-content policy-modal-content">
-    <h2>מדיניות פרטיות ותנאי שימוש</h2>
+    <h2 id="policy-modal-title">מדיניות פרטיות ותנאי שימוש</h2>
 
     <h3>איזה מידע נשמר</h3>
     <p>האפליקציה שומרת: שם, תחום עיסוק וקהל היעד שסיפקת בשיחת ההיכרות; הרעיונות לתוכן שהוספת (כותרת, קטגוריה וכו'); וההודעות שאת/ה כותב/ת בלשונית "בדיקת רעיון". פידבק שנשלח דרך לשונית "חוות דעת" נשמר בלי כל פרט מזהה - אנונימי לחלוטין.</p>
@@ -762,9 +762,9 @@
   </div>
 </div>
 
-<div id="notification-modal" class="modal" hidden>
+<div id="notification-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="notification-modal-title">
   <div class="modal-content">
-    <h2>📣 שליחת התראה</h2>
+    <h2 id="notification-modal-title">📣 שליחת התראה</h2>
     <form id="notification-form">
       <label>כותרת ההתראה
         <input id="notification-title" type="text" required maxlength="60">
