@@ -575,6 +575,15 @@ body.focus-mode .chat-input-row { bottom: 0; }
   outline: none;
 }
 
+@media (max-width: 720px) {
+  /* Every other filter field already got this same treatment - iOS Safari
+     auto-zooms the whole page on focusing any input under ~16px real
+     pixels, and this was the one search field left at its desktop size. */
+  .archive-search-row input {
+    font-size: 1.05rem;
+  }
+}
+
 .filters-toggle-btn {
   display: none;
 }
@@ -1294,6 +1303,16 @@ body.focus-mode .chat-input-row { bottom: 0; }
   display: block;
 }
 
+@media (max-width: 720px) {
+  /* .embed-view used to run all the way to the viewport bottom - the fixed
+     bottom nav (z-index: 22, above this view's z-index: 4) permanently
+     covered that last strip of the iframe's own content (roadmap /
+     content-plan guide), not just while scrolled. */
+  .embed-view {
+    bottom: var(--bottom-nav-h, 70px);
+  }
+}
+
 .chat-toolbar {
   position: sticky;
   top: var(--header-height, 90px);
@@ -1810,7 +1829,7 @@ textarea:focus-visible,
   /* Reserve room on the far side (physical left, since RTL text starts
      from the right) for the two pinned corner icons (copy + recheck), so
      a long 2-line-clamped title never runs underneath either of them. */
-  padding-inline-end: 3.3rem;
+  padding-inline-end: 3.8rem;
   margin-bottom: 0.5rem;
 }
 
@@ -1841,11 +1860,14 @@ textarea:focus-visible,
 
 .copy-idea-btn:hover { background: var(--surface); }
 
-/* Same corner-icon treatment as .copy-idea-btn, one slot further out. */
+/* Same corner-icon treatment as .copy-idea-btn, one slot further out -
+   1.5rem clearance from copy-idea-btn's own left offset used to leave
+   almost no real gap between the two tap targets once each icon's own
+   padding is accounted for, an easy mis-tap on a real touchscreen. */
 .recheck-idea-btn {
   position: absolute;
   top: 0.7rem;
-  left: 2.1rem;
+  left: 2.6rem;
   background: none;
   border: none;
   cursor: pointer;
@@ -3386,6 +3408,13 @@ textarea:focus-visible,
 
 @media (max-width: 720px) {
   .home-view {
+    padding: 1.2rem 1rem calc(6rem + var(--bottom-nav-h, 70px));
+  }
+
+  /* Every other view got this same bottom-nav clearance on mobile -
+     progress-view was the one left without it, so its lowest content
+     sat right behind the fixed bottom nav. */
+  .progress-view {
     padding: 1.2rem 1rem calc(6rem + var(--bottom-nav-h, 70px));
   }
 
