@@ -135,7 +135,8 @@ async function runAiClassification() {
     });
   } catch (err) {
     console.error('classifyIdea failed:', err);
-    alert('משהו השתבש בהצעה האוטומטית, נסו שוב או בחרו ידנית.');
+    const hasHebrewText = /[֐-׿]/.test(err.message || '');
+    alert(hasHebrewText ? err.message : 'משהו השתבש בהצעה האוטומטית, נסו שוב או בחרו ידנית.');
   } finally {
     aiChip.textContent = originalChipText;
     aiChip.disabled = false;

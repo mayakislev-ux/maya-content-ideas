@@ -430,13 +430,6 @@ exports.checkIdea = onRequest(
       return;
     }
 
-    try {
-      await enforceRateLimit(uid, 'checkIdea');
-    } catch (err) {
-      res.status(429).json({ error: err.message || 'הגעת למכסת השימוש היומית ב-AI, נסו שוב מחר' });
-      return;
-    }
-
     const messages = req.body && req.body.messages;
     if (!Array.isArray(messages) || messages.length === 0) {
       res.status(400).json({ error: 'חסרות הודעות בשיחה' });
@@ -446,6 +439,13 @@ exports.checkIdea = onRequest(
       assertMessagesWithinLimit(messages, 60000);
     } catch (err) {
       res.status(400).json({ error: err.message });
+      return;
+    }
+
+    try {
+      await enforceRateLimit(uid, 'checkIdea');
+    } catch (err) {
+      res.status(429).json({ error: err.message || 'הגעת למכסת השימוש היומית ב-AI, נסו שוב מחר' });
       return;
     }
 
@@ -546,13 +546,14 @@ exports.writeScript = onCall({ secrets: [anthropicApiKey], region: 'us-central1'
   if (request.auth.token.email !== ADMIN_EMAIL) {
     throw new HttpsError('permission-denied', 'התכונה הזו זמינה כרגע רק למנהלת');
   }
-  await enforceRateLimit(request.auth.uid, 'writeScript');
 
   const messages = request.data && request.data.messages;
   if (!Array.isArray(messages) || messages.length === 0) {
     throw new HttpsError('invalid-argument', 'חסרות הודעות בשיחה');
   }
   assertMessagesWithinLimit(messages, 60000);
+
+  await enforceRateLimit(request.auth.uid, 'writeScript');
 
   const profile = (request.data && request.data.profile) || null;
   const ideaContext = (request.data && request.data.ideaContext) || null;
@@ -583,15 +584,16 @@ exports.classifyIdea = onCall({ secrets: [anthropicApiKey], region: 'us-central1
     throw new HttpsError('unauthenticated', 'יש להתחבר כדי להשתמש בתכונה הזו');
   }
   await enforceAllowlist(request.auth.token.email);
-  await enforceRateLimit(request.auth.uid, 'classifyIdea');
 
   const title = (request.data && request.data.title) || '';
   const hookText = (request.data && request.data.hookText) || '';
   if (!title.trim()) {
     throw new HttpsError('invalid-argument', 'צריך לפחות כותרת כדי לסווג את הרעיון');
   }
-  assertMaxLength(title, 500, 'כותרת');
+  assertMaxLength(title, 2000, 'כותרת');
   assertMaxLength(hookText, 5000, 'זווית/הוק');
+
+  await enforceRateLimit(request.auth.uid, 'classifyIdea');
 
   const prompt = `הרעיון לתוכן: "${title}"
 פירוט נוסף: "${hookText}"
@@ -635,7 +637,6 @@ exports.generateWarmingPlan = onCall({ secrets: [anthropicApiKey, sheetsServiceA
     throw new HttpsError('unauthenticated', 'יש להתחבר כדי להשתמש בתכונה הזו');
   }
   await enforceAllowlist(request.auth.token.email);
-  await enforceRateLimit(request.auth.uid, 'generateWarmingPlan');
 
   const product = ((request.data && request.data.product) || '').trim();
   const audience = ((request.data && request.data.audience) || '').trim();
@@ -648,6 +649,8 @@ exports.generateWarmingPlan = onCall({ secrets: [anthropicApiKey, sheetsServiceA
   assertMaxLength(product, 500, 'מוצר');
   assertMaxLength(audience, 500, 'קהל יעד');
   assertMaxLength(extraContext, 5000, 'הקשר נוסף');
+
+  await enforceRateLimit(request.auth.uid, 'generateWarmingPlan');
 
   const linkedContent = await fetchExtraContentLinks(extraContext);
   if (linkedContent && linkedContent.error) {
@@ -701,7 +704,6 @@ exports.generateContentPlan = onCall({ secrets: [anthropicApiKey], region: 'us-c
     throw new HttpsError('unauthenticated', 'יש להתחבר כדי להשתמש בתכונה הזו');
   }
   await enforceAllowlist(request.auth.token.email);
-  await enforceRateLimit(request.auth.uid, 'generateContentPlan');
 
   const ideas = (request.data && request.data.ideas) || [];
   const pieceCount = Number(request.data && request.data.pieceCount) || 16;
@@ -712,6 +714,11 @@ exports.generateContentPlan = onCall({ secrets: [anthropicApiKey], region: 'us-c
   if (pieceCount < 16 || pieceCount > 60) {
     throw new HttpsError('invalid-argument', 'מספר תכנים לא סביר');
   }
+  for (const idea of ideas.slice(0, 60)) {
+    assertMaxLength((idea && idea.title) || '', 2000, 'כותרת רעיון');
+  }
+
+  await enforceRateLimit(request.auth.uid, 'generateContentPlan');
 
   const prompt = buildContentPlanPrompt({ pieceCount, ideas: ideas.slice(0, 60) });
 
