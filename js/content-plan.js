@@ -549,6 +549,25 @@ function getPersuasionStageVolumeGaps(readyIdeas) {
   return gaps;
 }
 
+// הודעת השער עברה מפסקה ארוכה אחת (עמוסה, קשה לסרוק) למבנה עם כותרות
+// ורשימות - כל קבוצת חוסרים (קטגוריות / שלבי שכנוע / רעיונות לא מסווגים)
+// מקבלת כותרת קצרה משלה ורשימת שורות, במקום להיטמע כולה במשפט אחד.
+function renderGateSection(container, heading, items) {
+  if (!items.length) return;
+  const h = document.createElement('div');
+  h.className = 'content-plan-gate-heading';
+  h.textContent = heading;
+  container.appendChild(h);
+  const ul = document.createElement('ul');
+  ul.className = 'content-plan-gate-list';
+  for (const item of items) {
+    const li = document.createElement('li');
+    li.textContent = item;
+    ul.appendChild(li);
+  }
+  container.appendChild(ul);
+}
+
 export function refreshGate() {
   const readyIdeas = getReadyIdeas();
   const readyCount = readyIdeas.length;
@@ -560,30 +579,53 @@ export function refreshGate() {
   const enough = enoughVolume && categoryGaps.length === 0 && stageGaps.length === 0;
   gateMsg.hidden = enough;
   form.hidden = !enough;
+  if (enough) return;
+
+  gateMsg.innerHTML = '';
+
   if (!enoughVolume) {
+    const intro = document.createElement('p');
+    intro.className = 'content-plan-gate-intro';
+    intro.textContent = `כדי לבנות תכנית תוכן צריך קודם מספיק רעיונות מסווגים (עם קטגוריה) במאגר - יש לך כרגע ${readyCount} מתוך ${MIN_READY_IDEAS} הדרושים.`;
+    gateMsg.appendChild(intro);
+
     const unclassified = getCurrentIdeas().filter((idea) => !idea.category);
-    let hint = '';
     if (unclassified.length) {
-      const sample = unclassified
-        .slice(0, 3)
-        .map((idea) => {
-          const t = (idea.title || '').trim();
-          return `"${t.length > 40 ? `${t.slice(0, 40)}...` : t}"`;
-        })
-        .join(', ');
-      hint = ` יש לך ${unclassified.length} רעיונות שכבר כתובים במאגר אבל עדיין בלי קטגוריה, למשל: ${sample}${unclassified.length > 3 ? ' ועוד' : ''} - לכי אליהם קודם, זה הכי מהיר.`;
+      const examples = unclassified.slice(0, 3).map((idea) => {
+        const t = (idea.title || '').trim();
+        return t.length > 40 ? `${t.slice(0, 40)}...` : t;
+      });
+      if (unclassified.length > 3) examples.push(`ועוד ${unclassified.length - 3}`);
+      renderGateSection(gateMsg, `רעיונות שכבר כתובים אבל עדיין בלי קטגוריה (${unclassified.length}):`, examples);
     }
-    gateMsg.textContent = `כדי לבנות תכנית תוכן צריך קודם מספיק רעיונות מסווגים (עם קטגוריה) במאגר - יש לך כרגע ${readyCount} מתוך ${MIN_READY_IDEAS} הדרושים.${hint} לכי ל"הרעיונות שלי" והוסיפי/סווגי עוד רעיונות קודם.`;
-  } else if (categoryGaps.length || stageGaps.length) {
-    const parts = [];
-    if (categoryGaps.length) {
-      parts.push(`בקטגוריות: ${categoryGaps.map((g) => `'${g.category}' (יש לך ${g.actual}, צריך לפחות ${g.needed})`).join(', ')}`);
-    }
-    if (stageGaps.length) {
-      parts.push(`בשלבי שכנוע: ${stageGaps.map((g) => `${g.stage} (יש לך ${g.actual}, צריך לפחות ${g.needed})`).join(', ')}`);
-    }
-    gateMsg.textContent = `כדי לבנות תכנית תוכן מאוזנת (יחס קטגוריות 40/30/15/15 ואיזון בין שלבי שכנוע) חסר לך מספיק רעיונות מסווגים - ${parts.join(', וגם ')} (רעיונות שסומנו כ"בוצע" לא נספרים כאן). בלי זה כל תכנית שתיבנה תצא לא מאוזנת, כי אין ממה לשבץ. לכי ל"הרעיונות שלי" והוסיפי/סווגי עוד רעיונות, ואז אפשר לבנות תכנית מאוזנת באמת.`;
+
+    const cta = document.createElement('p');
+    cta.className = 'content-plan-gate-cta';
+    cta.textContent = 'לכי ל"הרעיונות שלי" והוסיפי/סווגי עוד רעיונות קודם.';
+    gateMsg.appendChild(cta);
+    return;
   }
+
+  const intro = document.createElement('p');
+  intro.className = 'content-plan-gate-intro';
+  intro.textContent = 'כדי לבנות תכנית תוכן מאוזנת (יחס קטגוריות 40/30/15/15 ואיזון בין שלבי שכנוע) חסר לך מספיק רעיונות מסווגים:';
+  gateMsg.appendChild(intro);
+
+  renderGateSection(
+    gateMsg,
+    'בקטגוריות:',
+    categoryGaps.map((g) => `${g.category} - יש לך ${g.actual}, צריך לפחות ${g.needed}`)
+  );
+  renderGateSection(
+    gateMsg,
+    'בשלבי שכנוע:',
+    stageGaps.map((g) => `${g.stage} - יש לך ${g.actual}, צריך לפחות ${g.needed}`)
+  );
+
+  const cta = document.createElement('p');
+  cta.className = 'content-plan-gate-cta';
+  cta.textContent = 'רעיונות שסומנו כ"בוצע" לא נספרים כאן. לכי ל"הרעיונות שלי" והוסיפי/סווגי עוד רעיונות, ואז אפשר לבנות תכנית מאוזנת באמת.';
+  gateMsg.appendChild(cta);
 }
 
 export function wireContentPlanView() {
