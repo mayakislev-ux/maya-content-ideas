@@ -179,6 +179,15 @@ function checkAngleCoverage(readyIdeas) {
   return { label: `כיסוי זווית הנגשה במאגר: ${Math.round(actual * 100)}%`, ok: actual >= 0.5 };
 }
 
+// checkMustIncludeCoverage למעלה בודק רק אחוז מצטבר - זה יכול לצאת "80%+"
+// גם אם זה תמיד אותם 2-3 סוגים חוזרים על עצמם. זה מפרט בדיוק אילו מתוך 8
+// הסוגים בכלל לא הופיעו בתכנית הזו, כדי לראות פער אמיתי, לא רק אחוז גולמי.
+function checkMissingMustIncludeTypes(appItems) {
+  if (!appItems.length) return [];
+  const used = new Set(appItems.map((i) => i.mustIncludeType).filter(Boolean));
+  return MUST_INCLUDE_TYPES.filter((type) => !used.has(type));
+}
+
 function renderScorecardRow(list, row) {
   if (!row || !row.label) return;
   const el = document.createElement('div');
@@ -209,6 +218,10 @@ function renderScorecard(plan, readyIdeas) {
   container.appendChild(list);
 
   const notes = checkBankGaps(readyIdeas).map((text) => ({ icon: '📦', text }));
+  const missingTypes = checkMissingMustIncludeTypes(appItems);
+  if (missingTypes.length) {
+    notes.push({ icon: '🎯', text: `סוגי תוכן חשובים שלא כוסו בתכנית הזו: ${missingTypes.join(', ')}` });
+  }
   if (plan.unmatchedCount) {
     const text =
       plan.unmatchedCount === 1
@@ -520,14 +533,31 @@ function getCategoryVolumeGaps(readyIdeas) {
   return gaps;
 }
 
+// אותו עיקרון בדיוק, לשלושת שלבי השכנוע - "יש לפחות רעיון אחד משלב 3"
+// לא מספיק כדי לבנות תכנית מאוזנת בין שלבי השכנוע, בדיוק כמו שקטגוריה
+// עם רעיון-שניים לא מספיקה לבניית יחס קטגוריות מאוזן.
+function getPersuasionStageVolumeGaps(readyIdeas) {
+  const counts = {};
+  for (const idea of readyIdeas) counts[idea.persuasionStage] = (counts[idea.persuasionStage] || 0) + 1;
+  const target = 1 / PERSUASION_STAGES.length;
+  const needed = Math.ceil((target * MIN_PIECE_COUNT) / 2);
+  const gaps = [];
+  PERSUASION_STAGES.forEach((stage, i) => {
+    const actual = counts[stage] || 0;
+    if (actual < needed) gaps.push({ stage: `שלב שכנוע ${i + 1}`, actual, needed });
+  });
+  return gaps;
+}
+
 export function refreshGate() {
   const readyIdeas = getReadyIdeas();
   const readyCount = readyIdeas.length;
   const gateMsg = document.getElementById('content-plan-gate-msg');
   const form = document.getElementById('content-plan-form');
   const enoughVolume = readyCount >= MIN_READY_IDEAS;
-  const volumeGaps = getCategoryVolumeGaps(readyIdeas);
-  const enough = enoughVolume && volumeGaps.length === 0;
+  const categoryGaps = getCategoryVolumeGaps(readyIdeas);
+  const stageGaps = getPersuasionStageVolumeGaps(readyIdeas);
+  const enough = enoughVolume && categoryGaps.length === 0 && stageGaps.length === 0;
   gateMsg.hidden = enough;
   form.hidden = !enough;
   if (!enoughVolume) {
@@ -544,9 +574,15 @@ export function refreshGate() {
       hint = ` יש לך ${unclassified.length} רעיונות שכבר כתובים במאגר אבל עדיין בלי קטגוריה, למשל: ${sample}${unclassified.length > 3 ? ' ועוד' : ''} - לכי אליהם קודם, זה הכי מהיר.`;
     }
     gateMsg.textContent = `כדי לבנות תכנית תוכן צריך קודם מספיק רעיונות מסווגים (עם קטגוריה) במאגר - יש לך כרגע ${readyCount} מתוך ${MIN_READY_IDEAS} הדרושים.${hint} לכי ל"הרעיונות שלי" והוסיפי/סווגי עוד רעיונות קודם.`;
-  } else if (volumeGaps.length) {
-    const gapText = volumeGaps.map((g) => `'${g.category}' (יש לך ${g.actual}, צריך לפחות ${g.needed})`).join(', ');
-    gateMsg.textContent = `כדי לבנות תכנית תוכן מאוזנת (ביחס 40/30/15/15) חסר לך מספיק רעיונות מסווגים בקטגוריות הבאות: ${gapText} (רעיונות שסומנו כ"בוצע" לא נספרים כאן). בלי זה כל תכנית שתיבנה תצא לא מאוזנת, כי אין ממה לשבץ. לכי ל"הרעיונות שלי" והוסיפי/סווגי עוד רעיונות בקטגוריות האלה, ואז אפשר לבנות תכנית מאוזנת באמת.`;
+  } else if (categoryGaps.length || stageGaps.length) {
+    const parts = [];
+    if (categoryGaps.length) {
+      parts.push(`בקטגוריות: ${categoryGaps.map((g) => `'${g.category}' (יש לך ${g.actual}, צריך לפחות ${g.needed})`).join(', ')}`);
+    }
+    if (stageGaps.length) {
+      parts.push(`בשלבי שכנוע: ${stageGaps.map((g) => `${g.stage} (יש לך ${g.actual}, צריך לפחות ${g.needed})`).join(', ')}`);
+    }
+    gateMsg.textContent = `כדי לבנות תכנית תוכן מאוזנת (יחס קטגוריות 40/30/15/15 ואיזון בין שלבי שכנוע) חסר לך מספיק רעיונות מסווגים - ${parts.join(', וגם ')} (רעיונות שסומנו כ"בוצע" לא נספרים כאן). בלי זה כל תכנית שתיבנה תצא לא מאוזנת, כי אין ממה לשבץ. לכי ל"הרעיונות שלי" והוסיפי/סווגי עוד רעיונות, ואז אפשר לבנות תכנית מאוזנת באמת.`;
   }
 }
 
