@@ -100,6 +100,7 @@
   --accent-2: #ff2ea8;
   --accent-strong: #0f1854;
   --accent-tint: #e8eafc;
+  --accent-100: #d7dcf5;
   --warm-tint: #ffe3f3;
 }
 
@@ -3631,6 +3632,11 @@ textarea:focus-visible,
   gap: 0.25rem;
 }
 
+.content-plan-live-wrap .content-plan-live-tag {
+  align-self: flex-start;
+  margin-bottom: 0;
+}
+
 .table-editable-cell {
   cursor: pointer;
   border-radius: 8px;
@@ -3684,7 +3690,7 @@ textarea:focus-visible,
   background: var(--accent-tint);
   color: var(--accent-strong, var(--accent));
   font-weight: 700;
-  border: 1px solid var(--accent-100, var(--border-color));
+  border: 1px solid var(--accent-300, var(--border-color));
 }
 
 .stage-tag {
