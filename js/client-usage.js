@@ -41,6 +41,12 @@ function renderClientsList() {
   list.innerHTML = '';
   const visible = getFilteredSortedClients();
 
+  const status = document.getElementById('client-usage-status');
+  const sortLabel = sortMode === 'recent' ? 'ממוינות מהכי-חדשה-בהתחברות' : 'ממוינות מהכי-ותיקה-בהתחברות, כדי לראות מהר מי דורשת מעקב';
+  status.textContent = searchQuery.trim()
+    ? `${visible.length} מתוך ${clients.length} לקוחות תואמות · ${sortLabel}`
+    : `${clients.length} לקוחות · ${sortLabel}`;
+
   if (!visible.length) {
     const empty = document.createElement('li');
     empty.className = 'client-usage-empty';
@@ -97,7 +103,6 @@ export async function loadClientUsage() {
     const { data } = await getClientUsageStats();
     clients = data.clients;
     renderClientsList();
-    status.textContent = `${clients.length} לקוחות · ממוינות מהכי-ותיקה-בהתחברות, כדי לראות מהר מי דורשת מעקב`;
   } catch (err) {
     console.error('getClientUsageStats failed:', err);
     status.textContent = 'משהו השתבש בטעינת הנתונים - נסי לרענן.';
