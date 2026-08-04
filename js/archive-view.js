@@ -562,6 +562,7 @@ function renderItem(idea, onItemClick, index = 0) {
     const thumb = document.createElement('img');
     thumb.className = 'archive-item-thumb';
     thumb.loading = 'lazy';
+    thumb.alt = '';
     thumb.hidden = true;
     const instant = getInstantThumbnail(idea.sourceLink);
     if (instant) {

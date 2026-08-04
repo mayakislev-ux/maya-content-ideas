@@ -2,7 +2,7 @@
 <html lang="he" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>המוח השיווקי</title>
 <link rel="icon" type="image/png" href="assets/favicon.png">
 <link rel="apple-touch-icon" href="assets/favicon.png">
@@ -124,7 +124,7 @@
     <section class="home-capture-card">
       <h2 class="home-capture-title">✨ מה הרעיון שקפץ לך עכשיו?</h2>
       <div class="quick-add-box home-quick-add-box">
-        <textarea id="quick-add-input" enterkeyhint="done" placeholder="התחילו לכתוב..." rows="3"></textarea>
+        <textarea id="quick-add-input" enterkeyhint="done" placeholder="התחילו לכתוב..." rows="3" aria-label="הוספה מהירה של רעיון"></textarea>
         <button type="button" id="quick-add-btn" class="btn-primary quick-add-btn-icon" aria-label="שמירת רעיון מהיר">
           <span class="quick-add-btn-plus" aria-hidden="true">+</span>
           <span class="quick-add-btn-label">שמירת רעיון</span>
@@ -153,7 +153,7 @@
   <main id="archive-view" class="view" hidden>
     <section class="archive-controls-section">
       <div class="section-row">
-        <span class="section-title"><span id="archive-title-label">הרעיונות שלי</span> · <span id="idea-count"></span></span>
+        <h2 class="section-title"><span id="archive-title-label">הרעיונות שלי</span> · <span id="idea-count"></span></h2>
         <div class="section-row-actions">
           <button type="button" id="add-idea-top-btn" class="btn-text add-idea-full-btn">+ רעיון מלא</button>
           <button type="button" id="completed-toggle-btn" class="btn-text">רעיונות שבוצעו</button>
@@ -161,7 +161,7 @@
       </div>
 
       <div class="archive-search-row">
-        <input id="search-input" type="text" enterkeyhint="search" placeholder="חיפוש לפי כותרת או טקסט...">
+        <input id="search-input" type="text" enterkeyhint="search" placeholder="חיפוש לפי כותרת או טקסט..." aria-label="חיפוש רעיונות">
       </div>
 
       <!-- One-tap category tabs (WhatsApp-style) - the always-visible way
@@ -188,25 +188,25 @@
           <option value="מכירתי">מכירתי</option>
           <option value="בידורי">בידורי</option>
         </select>
-        <select id="filter-audience-scope">
+        <select id="filter-audience-scope" aria-label="סינון לפי קהל יעד">
           <option value="">כל סוגי הקהל</option>
           <option value="עיקרי">קהל עיקרי</option>
           <option value="משני">קהל משני</option>
           <option value="רחב">קהל רחב (ויראלי)</option>
         </select>
-        <select id="filter-persuasion">
+        <select id="filter-persuasion" aria-label="סינון לפי שלב שכנוע">
           <option value="">כל שלבי השכנוע</option>
           <option value="שלב שכנוע 1 - מודעות לבעיה / חומרת הבעיה">שלב שכנוע 1</option>
           <option value="שלב שכנוע 2 - מודעות לפתרון">שלב שכנוע 2</option>
           <option value="שלב שכנוע 3 - למה דווקא אני">שלב שכנוע 3</option>
         </select>
-        <select id="filter-rating">
+        <select id="filter-rating" aria-label="סינון לפי דירוג">
           <option value="">כל הדירוגים</option>
           <option value="🔥 חייב לצלם">🔥 חייב לצלם</option>
           <option value="⭐ שווה לצלם">⭐ שווה לצלם</option>
           <option value="💭 רעיון לעתיד">💭 רעיון לעתיד</option>
         </select>
-        <select id="sort-order">
+        <select id="sort-order" aria-label="מיון הרשימה">
           <option value="newest">הכי חדש קודם</option>
           <option value="oldest">הכי ישן קודם</option>
           <option value="rating">🔥 הכי חזק קודם</option>
@@ -247,7 +247,7 @@
     </div>
     <p id="client-usage-status" class="client-usage-status"></p>
     <div class="client-usage-controls">
-      <input type="search" id="client-usage-search" class="client-usage-search" placeholder="חיפוש לפי אימייל...">
+      <input type="search" id="client-usage-search" class="client-usage-search" placeholder="חיפוש לפי אימייל..." aria-label="חיפוש לקוחות לפי אימייל">
       <div class="client-usage-sort-toggle">
         <button type="button" id="client-usage-sort-oldest" class="client-usage-sort-btn client-usage-sort-active">מי לא התחברה מזמן</button>
         <button type="button" id="client-usage-sort-recent" class="client-usage-sort-btn">התחברו לאחרונה</button>
@@ -258,14 +258,14 @@
 
   <main id="chat-view" class="view" hidden>
     <div class="chat-toolbar">
-      <span class="chat-view-title">🔍 בדיקת רעיון</span>
+      <h2 class="chat-view-title">🔍 בדיקת רעיון</h2>
       <button id="new-idea-btn" class="btn-text">🔄 רעיון חדש</button>
       <button id="edit-profile-btn" class="btn-text edit-profile-btn" hidden>✏️ ערכי פרטים (מנהלת)</button>
       <button id="replay-tour-btn" class="btn-text edit-profile-btn" hidden>🎓 הצגת הסיור (מנהלת)</button>
     </div>
     <div class="chat-messages" id="chat-messages" role="log" aria-live="polite"></div>
     <form id="chat-form" class="chat-input-row">
-      <textarea id="chat-input" enterkeyhint="send" placeholder="כתיבה כאן..." required></textarea>
+      <textarea id="chat-input" enterkeyhint="send" placeholder="כתיבה כאן..." required aria-label="הודעה לצ'אט בדיקת רעיון"></textarea>
       <button type="button" id="chat-mic-btn" class="mic-btn" aria-label="הקלטה קולית" hidden>🎤</button>
       <button type="submit" class="btn-primary">שליחה</button>
     </form>
@@ -273,13 +273,13 @@
 
   <main id="script-view" class="view" hidden>
     <div class="chat-toolbar">
-      <span class="chat-view-title">✍️ כתיבת תסריטים</span>
+      <h2 class="chat-view-title">✍️ כתיבת תסריטים</h2>
       <button id="new-script-btn" class="btn-text">🔄 תסריט חדש</button>
       <button type="button" id="focus-mode-btn" class="btn-text" aria-label="מצב מיקוד">🎯 מצב מיקוד</button>
     </div>
     <div class="chat-messages" id="script-messages" role="log" aria-live="polite"></div>
     <form id="script-form" class="chat-input-row">
-      <textarea id="script-input" enterkeyhint="send" placeholder="כתיבה כאן..." required></textarea>
+      <textarea id="script-input" enterkeyhint="send" placeholder="כתיבה כאן..." required aria-label="הודעה לצ'אט כתיבת תסריטים"></textarea>
       <button type="button" id="script-mic-btn" class="mic-btn" aria-label="הקלטה קולית" hidden>🎤</button>
       <button type="submit" class="btn-primary">שליחה</button>
     </form>
@@ -479,7 +479,7 @@
 
   <main id="inspiration-view" class="view inspiration-view" hidden>
     <div class="archive-controls">
-      <select id="inspiration-domain-filter">
+      <select id="inspiration-domain-filter" aria-label="סינון לפי תחום">
         <option value="">כל התחומים</option>
         <option value="כושר ותזונה">כושר ותזונה</option>
         <option value="יופי וקוסמטיקה">יופי וקוסמטיקה</option>
@@ -499,7 +499,7 @@
     <h2>חוות דעת</h2>
     <p>ההצלחה שלכם חשובה לי, ומהצד שלי אעזור לכם במקסימום שהיישום יהיה קל. אשמח שתעזרו לי לחשוב מה אפשר לשפר או להוסיף כאן, או מה לא היה מספיק טוב - הפידבק שלכם אנונימי לגמרי ונשלח ישירות אליי. 💜</p>
     <form id="feedback-form">
-      <textarea id="feedback-input" placeholder="כתבו כאן את חוות הדעת שלכם..." required></textarea>
+      <textarea id="feedback-input" placeholder="כתבו כאן את חוות הדעת שלכם..." required aria-label="תוכן חוות הדעת"></textarea>
       <button type="submit" class="btn-primary">שליחת פידבק</button>
       <p id="feedback-success" class="feedback-success" hidden>תודה! אני קוראת כל פידבק שמגיע לכאן בעצמי, וזה ממש משפיע על מה שנבנה בהמשך 💜</p>
     </form>

@@ -1328,6 +1328,7 @@ body.focus-mode .chat-input-row { bottom: 0; }
 }
 
 .chat-view-title {
+  margin: 0;
   font-family: 'Ploni Black', sans-serif;
   font-weight: 900;
   font-size: 1rem;
@@ -1761,6 +1762,7 @@ textarea:focus-visible,
 }
 
 .section-title {
+  margin: 0;
   font-family: 'Ploni Black', sans-serif;
   font-weight: 900;
   font-size: 1.05rem;
@@ -2295,7 +2297,11 @@ textarea:focus-visible,
   margin-bottom: 1.2rem;
 }
 
-.field-hero-textarea:focus { outline: none; }
+.field-hero-textarea:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-tint, rgba(38, 62, 168, 0.15));
+  border-radius: 6px;
+}
 
 .field-subhint {
   margin: -0.3rem 0 0.5rem;
