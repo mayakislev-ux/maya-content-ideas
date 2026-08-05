@@ -758,7 +758,7 @@ exports.generateContentPlan = onCall({ secrets: [anthropicApiKey], region: 'us-c
   // הצ'אט (primaryAudience/secondaryAudience) - שולפים אותו כאן ישירות
   // מהשרת (לא מהלקוח, כדי שלא יהיה תלוי בנתון מיושן/לא אמין שהגיע מהלקוח).
   const profileSnap = await db.collection('profiles').doc(request.auth.uid).get();
-  const profile = profileSnap.exists() ? profileSnap.data() : {};
+  const profile = profileSnap.exists ? profileSnap.data() : {};
   const primaryAudience = (profile.primaryAudience || '').trim();
   const secondaryAudience = (profile.secondaryAudience || '').trim();
 
