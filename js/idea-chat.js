@@ -341,11 +341,11 @@ function startOnboarding() {
 }
 
 export async function startIdeaChat() {
-  // עריכת פרטים (כולל קהל יעד עיקרי/משני - עכשיו בשימוש ישיר בבניית
-  // תכנית תוכן) חייבת להיות זמינה לכל משתמשת, לא רק למנהלת - מי שמוסיפה
-  // רעיונות ידנית בלבד ואף פעם לא עוברת את שיחת ההיכרות לא הייתה יכולה
-  // בכלל להגדיר קהל יעד. סיור-חוזר כן נשאר כלי בדיקה פנימי של מאיה בלבד.
-  document.getElementById('edit-profile-btn').hidden = false;
+  // "עריכת פרטים" כאן מריץ מחדש את כל שיחת ההיכרות כולל "תחום העיסוק" -
+  // זה נשאר כלי מנהלת בלבד בכוונה, כדי שמשתמשת רגילה לא תוכל לשנות את
+  // התחום שהחשבון שלה מוגבל אליו. עדכון קהל יעד לכולן נעשה דרך מודל
+  // ייעודי וממוקד יותר (audience-edit-modal ב-content-plan.js), לא כאן.
+  document.getElementById('edit-profile-btn').hidden = !isAdmin();
   document.getElementById('replay-tour-btn').hidden = !isAdmin();
   if (started) return;
   started = true;
@@ -372,7 +372,7 @@ export async function startIdeaChat() {
 // saveFinalIdea updates this exact idea instead of guessing by fuzzy title
 // matching or asking via a confirm() popup.
 export async function startIdeaChatWithExistingIdea(idea) {
-  document.getElementById('edit-profile-btn').hidden = false;
+  document.getElementById('edit-profile-btn').hidden = !isAdmin();
   document.getElementById('replay-tour-btn').hidden = !isAdmin();
 
   history = [];

@@ -16,7 +16,7 @@ import { saveContentPlan, updateContentPlan, listContentPlans, deleteContentPlan
 import { makeEditable, makeEditableSelect } from './editable.js';
 import { showToast } from './toast.js';
 import { confirmDialog } from './confirm-dialog.js';
-import { getProfile } from './user-profile.js';
+import { getProfile, saveProfile } from './user-profile.js';
 
 const generateContentPlan = httpsCallable(functions, 'generateContentPlan', { timeout: 290000 });
 
@@ -648,40 +648,93 @@ export function wireContentPlanView() {
   const modal = document.getElementById('content-plan-modal');
   const secondaryAudienceRow = document.getElementById('content-plan-secondary-audience-row');
   const includeSecondaryCheckbox = document.getElementById('content-plan-include-secondary');
-  document.getElementById('content-plan-open-builder-btn').addEventListener('click', async () => {
-    refreshGate();
-    modal.hidden = false;
+  const gateMsg = document.getElementById('content-plan-gate-msg');
+  const audienceModal = document.getElementById('audience-edit-modal');
 
-    const gateMsg = document.getElementById('content-plan-gate-msg');
+  // בלי קהל יעד עיקרי מוגדר בפרופיל, אין ל-AI שום דבר אמיתי להשוות אליו
+  // כשהוא בונה תכנית - התכנית הייתה נבנית "עיוורת לקהל" בשקט, בלי שום
+  // התראה. חוסמים באותה רוח כמו שערי הכמות/היחס למעלה, ומציעים לתקן ישר
+  // כאן (audience-edit-modal, שמוגבל בכוונה רק לקהל יעד - לא לתחום
+  // העיסוק, שנשאר ניתן לשינוי רק דרך "עריכת פרטים" המנהלתית).
+  async function checkAudienceAndUpdateUi() {
+    let profile;
     try {
-      const profile = await getProfile();
-      // בלי קהל יעד עיקרי מוגדר בפרופיל, אין ל-AI שום דבר אמיתי להשוות
-      // אליו כשהוא בונה תכנית - התכנית הייתה נבנית "עיוורת לקהל" בשקט,
-      // בלי שום התראה. חוסמים באותה רוח כמו שערי הכמות/היחס למעלה,
-      // במקום להניח שהמידע קיים.
-      if (!profile || !profile.primaryAudience) {
-        gateMsg.innerHTML = '';
-        const intro = document.createElement('p');
-        intro.className = 'content-plan-gate-intro';
-        intro.textContent = 'כדי לבנות תכנית תוכן שבאמת מותאמת לקהל שלך, צריך קודם להגדיר מי קהל היעד העיקרי שלך.';
-        gateMsg.appendChild(intro);
-        const cta = document.createElement('p');
-        cta.className = 'content-plan-gate-cta';
-        cta.textContent = 'לכי ל"בדיקת רעיון" ולחצי על "✏️ עריכת פרטים" כדי להגדיר קהל יעד עיקרי (ומשני, אם רלוונטי) - ואז אפשר לבנות תכנית מותאמת באמת.';
-        gateMsg.appendChild(cta);
-        gateMsg.hidden = false;
-        form.hidden = true;
-        secondaryAudienceRow.hidden = true;
-        return;
-      }
-      // השורה הזו רלוונטית רק אם באמת הוגדר קהל משני בפרופיל - בלי זה
-      // "לכלול קהל משני?" הוא צ'קבוקס שלא אומר כלום.
-      secondaryAudienceRow.hidden = !profile.secondaryAudience;
+      profile = await getProfile();
     } catch (err) {
       console.error('Failed to load profile for content-plan audience check:', err);
       secondaryAudienceRow.hidden = true;
+      return;
+    }
+    if (!profile || !profile.primaryAudience) {
+      gateMsg.innerHTML = '';
+      const intro = document.createElement('p');
+      intro.className = 'content-plan-gate-intro';
+      intro.textContent = 'כדי לבנות תכנית תוכן שבאמת מותאמת לקהל שלך, צריך קודם להגדיר מי קהל היעד העיקרי שלך.';
+      gateMsg.appendChild(intro);
+      const defineBtn = document.createElement('button');
+      defineBtn.type = 'button';
+      defineBtn.className = 'btn-primary';
+      defineBtn.textContent = 'הגדרת קהל יעד';
+      defineBtn.addEventListener('click', () => {
+        document.getElementById('audience-edit-error').hidden = true;
+        document.getElementById('audience-edit-primary').value = '';
+        document.getElementById('audience-edit-secondary').value = '';
+        audienceModal.hidden = false;
+      });
+      gateMsg.appendChild(defineBtn);
+      gateMsg.hidden = false;
+      form.hidden = true;
+      secondaryAudienceRow.hidden = true;
+      return;
+    }
+    // השורה הזו רלוונטית רק אם באמת הוגדר קהל משני בפרופיל - בלי זה
+    // "לכלול קהל משני?" הוא צ'קבוקס שלא אומר כלום.
+    secondaryAudienceRow.hidden = !profile.secondaryAudience;
+  }
+
+  document.getElementById('content-plan-open-builder-btn').addEventListener('click', async () => {
+    refreshGate();
+    modal.hidden = false;
+    await checkAudienceAndUpdateUi();
+  });
+
+  function closeAudienceModal() {
+    audienceModal.hidden = true;
+  }
+  document.getElementById('audience-edit-close-btn').addEventListener('click', closeAudienceModal);
+  document.getElementById('audience-edit-cancel-btn').addEventListener('click', closeAudienceModal);
+  audienceModal.addEventListener('click', (e) => {
+    if (e.target === audienceModal) closeAudienceModal();
+  });
+  document.getElementById('audience-edit-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const primaryAudience = document.getElementById('audience-edit-primary').value.trim();
+    const secondaryAudience = document.getElementById('audience-edit-secondary').value.trim();
+    const audienceErrorEl = document.getElementById('audience-edit-error');
+    if (!primaryAudience) {
+      audienceErrorEl.textContent = 'צריך למלא קהל יעד עיקרי';
+      audienceErrorEl.hidden = false;
+      return;
+    }
+    const saveAudienceBtn = document.getElementById('audience-edit-save-btn');
+    saveAudienceBtn.disabled = true;
+    try {
+      // merge בלבד (לא setDoc מלא) - נוגע רק בשני השדות האלה, לא מוחק
+      // או דורס name/pronoun/business שכבר נשמרו בשיחת ההיכרות.
+      await saveProfile({ primaryAudience, secondaryAudience });
+      closeAudienceModal();
+      showToast('✓ קהל היעד נשמר');
+      refreshGate();
+      await checkAudienceAndUpdateUi();
+    } catch (err) {
+      console.error('saveProfile (audience) failed:', err);
+      audienceErrorEl.textContent = 'משהו השתבש בשמירה, נסו שוב';
+      audienceErrorEl.hidden = false;
+    } finally {
+      saveAudienceBtn.disabled = false;
     }
   });
+
   document.getElementById('content-plan-modal-close-btn').addEventListener('click', () => {
     modal.hidden = true;
   });

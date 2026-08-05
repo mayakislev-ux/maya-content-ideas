@@ -260,7 +260,7 @@
     <div class="chat-toolbar">
       <h2 class="chat-view-title">🔍 בדיקת רעיון</h2>
       <button id="new-idea-btn" class="btn-text">🔄 רעיון חדש</button>
-      <button id="edit-profile-btn" class="btn-text edit-profile-btn" hidden>✏️ עריכת פרטים</button>
+      <button id="edit-profile-btn" class="btn-text edit-profile-btn" hidden>✏️ ערכי פרטים (מנהלת)</button>
       <button id="replay-tour-btn" class="btn-text edit-profile-btn" hidden>🎓 הצגת הסיור (מנהלת)</button>
     </div>
     <div class="chat-messages" id="chat-messages" role="log" aria-live="polite"></div>
@@ -620,6 +620,30 @@
     <div id="content-plan-scorecard" class="content-plan-scorecard" hidden></div>
     <div id="content-plan-result" class="warming-result"></div>
     <button type="button" id="content-plan-save-btn" class="btn-primary warming-save-btn" aria-label="שמירת התכנית (למטה)" hidden>💾 שמירת התכנית</button>
+  </div>
+</div>
+
+<!-- ממוקד רק בקהל יעד (עיקרי/משני) - לא שם ולא תחום עיסוק, שנשארים
+     ניתנים לעריכה רק דרך "עריכת פרטים" המנהלתית (מריצה מחדש את כל שיחת
+     ההיכרות). כל משתמשת יכולה לפתוח את זה כדי לתקן/להגדיר קהל יעד, בלי
+     יכולת לשנות איזה תחום עיסוק החשבון שלה מוגבל אליו. -->
+<div id="audience-edit-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="audience-edit-modal-title">
+  <div class="modal-content">
+    <button type="button" id="audience-edit-close-btn" class="modal-close-x" aria-label="סגירה">✕</button>
+    <h2 id="audience-edit-modal-title">מי קהל היעד שלך?</h2>
+    <form id="audience-edit-form">
+      <label>קהל יעד עיקרי *
+        <textarea id="audience-edit-primary" rows="2" required placeholder="לדוגמה: נשים שכירות שרוצות להסב מקצוע לתחום היופי"></textarea>
+      </label>
+      <label>קהל יעד משני (אופציונלי)
+        <textarea id="audience-edit-secondary" rows="2" placeholder="לדוגמה: בעלות עסקים קטנים בתחום היופי"></textarea>
+      </label>
+      <p id="audience-edit-error" class="error-text" role="alert" hidden></p>
+      <div class="modal-actions">
+        <button type="button" id="audience-edit-cancel-btn" class="btn-text">ביטול</button>
+        <button type="submit" class="btn-primary" id="audience-edit-save-btn">שמירה</button>
+      </div>
+    </form>
   </div>
 </div>
 
