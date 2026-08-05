@@ -386,13 +386,15 @@ export async function startIdeaChat() {
 // matching or asking via a confirm() popup.
 export async function startIdeaChatWithExistingIdea(idea) {
   // "זווית: ..." בכותרת מסמן שכבר נמצאה זווית חזקה לרעיון הזה בעבר (אותו
-  // סימון בדיוק ש-checkAngleCoverage בתכנית תוכן כבר סומך עליו) - בלי
-  // הבדיקה הזו, לחיצה בטעות הייתה מריצה שוב את כל השיחה ומסכנת לאבד/לדרוס
-  // זווית טובה שכבר קיימת, בלי שום התראה.
-  const hasStrongAngle = (idea.title || '').includes('זווית:');
-  if (hasStrongAngle) {
+  // סימון בדיוק ש-checkAngleCoverage בתכנית תוכן כבר סומך עליו). מציגים
+  // קודם עובדה (מה הזווית הקיימת, ושהיא כן נחשבת חזקה) ורק אז שואלים -
+  // לא קופצים ישר ל"בטוח/ה?" בלי הקשר, כי לחיצה על הכפתור לא הייתה בטעות
+  // אלא החלטה מודעת שצריך מידע כדי להעריך.
+  const angleMatch = (idea.title || '').match(/זווית:\s*([^|]+)/);
+  const angleText = angleMatch ? angleMatch[1].trim() : '';
+  if (angleText) {
     const proceed = await confirmDialog(
-      'לרעיון הזה כבר יש זווית הנגשה חזקה. בטוח/ה שרוצה למצוא זווית אחרת?',
+      `הזווית הנוכחית לרעיון הזה: "${angleText}" - זו נחשבת זווית הנגשה חזקה.\n\nלמצוא בכל זאת זווית אחרת?`,
       { okLabel: 'כן, למצוא זווית אחרת', cancelLabel: 'ביטול' }
     );
     if (!proceed) return;
