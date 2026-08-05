@@ -341,7 +341,11 @@ function startOnboarding() {
 }
 
 export async function startIdeaChat() {
-  document.getElementById('edit-profile-btn').hidden = !isAdmin();
+  // עריכת פרטים (כולל קהל יעד עיקרי/משני - עכשיו בשימוש ישיר בבניית
+  // תכנית תוכן) חייבת להיות זמינה לכל משתמשת, לא רק למנהלת - מי שמוסיפה
+  // רעיונות ידנית בלבד ואף פעם לא עוברת את שיחת ההיכרות לא הייתה יכולה
+  // בכלל להגדיר קהל יעד. סיור-חוזר כן נשאר כלי בדיקה פנימי של מאיה בלבד.
+  document.getElementById('edit-profile-btn').hidden = false;
   document.getElementById('replay-tour-btn').hidden = !isAdmin();
   if (started) return;
   started = true;
@@ -368,7 +372,7 @@ export async function startIdeaChat() {
 // saveFinalIdea updates this exact idea instead of guessing by fuzzy title
 // matching or asking via a confirm() popup.
 export async function startIdeaChatWithExistingIdea(idea) {
-  document.getElementById('edit-profile-btn').hidden = !isAdmin();
+  document.getElementById('edit-profile-btn').hidden = false;
   document.getElementById('replay-tour-btn').hidden = !isAdmin();
 
   history = [];

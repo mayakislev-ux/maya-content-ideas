@@ -651,13 +651,34 @@ export function wireContentPlanView() {
   document.getElementById('content-plan-open-builder-btn').addEventListener('click', async () => {
     refreshGate();
     modal.hidden = false;
-    // השורה הזו רלוונטית רק אם באמת הוגדר קהל משני בפרופיל - בלי זה
-    // "לכלול קהל משני?" הוא צ'קבוקס שלא אומר כלום.
+
+    const gateMsg = document.getElementById('content-plan-gate-msg');
     try {
       const profile = await getProfile();
-      secondaryAudienceRow.hidden = !(profile && profile.secondaryAudience);
+      // בלי קהל יעד עיקרי מוגדר בפרופיל, אין ל-AI שום דבר אמיתי להשוות
+      // אליו כשהוא בונה תכנית - התכנית הייתה נבנית "עיוורת לקהל" בשקט,
+      // בלי שום התראה. חוסמים באותה רוח כמו שערי הכמות/היחס למעלה,
+      // במקום להניח שהמידע קיים.
+      if (!profile || !profile.primaryAudience) {
+        gateMsg.innerHTML = '';
+        const intro = document.createElement('p');
+        intro.className = 'content-plan-gate-intro';
+        intro.textContent = 'כדי לבנות תכנית תוכן שבאמת מותאמת לקהל שלך, צריך קודם להגדיר מי קהל היעד העיקרי שלך.';
+        gateMsg.appendChild(intro);
+        const cta = document.createElement('p');
+        cta.className = 'content-plan-gate-cta';
+        cta.textContent = 'לכי ל"בדיקת רעיון" ולחצי על "✏️ עריכת פרטים" כדי להגדיר קהל יעד עיקרי (ומשני, אם רלוונטי) - ואז אפשר לבנות תכנית מותאמת באמת.';
+        gateMsg.appendChild(cta);
+        gateMsg.hidden = false;
+        form.hidden = true;
+        secondaryAudienceRow.hidden = true;
+        return;
+      }
+      // השורה הזו רלוונטית רק אם באמת הוגדר קהל משני בפרופיל - בלי זה
+      // "לכלול קהל משני?" הוא צ'קבוקס שלא אומר כלום.
+      secondaryAudienceRow.hidden = !profile.secondaryAudience;
     } catch (err) {
-      console.error('Failed to load profile for content-plan secondary-audience toggle:', err);
+      console.error('Failed to load profile for content-plan audience check:', err);
       secondaryAudienceRow.hidden = true;
     }
   });
