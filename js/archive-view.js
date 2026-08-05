@@ -452,26 +452,28 @@ function renderItem(idea, onItemClick, index = 0) {
   header.appendChild(title);
   inner.appendChild(header);
 
-  // Pinned to a corner instead of sitting inline in the flex-wrapping tag
-  // row - it's a utility action, not "another tag", and inline it forced
-  // the row to wrap in ways that stranded other tags.
+  // Used to float as icon-only pills pinned to the card corner, relying on
+  // :hover to even show a background and a title="" tooltip to explain what
+  // they do - neither exists on a touchscreen (no hover, no mouse to rest
+  // over a tooltip), so on her actual iPhone these read as unlabeled icons
+  // with zero indication of what they do. Moved into the footer with the
+  // complete/undo button (same place, same real-text-label pattern already
+  // proven there) so the label is always visible, no interaction required.
   const copyBtn = document.createElement('button');
   copyBtn.type = 'button';
   copyBtn.className = 'copy-idea-btn';
-  copyBtn.innerHTML = COPY_ICON_SVG;
+  copyBtn.innerHTML = `${COPY_ICON_SVG}<span>העתקה</span>`;
   copyBtn.setAttribute('aria-label', 'העתקת הרעיון');
-  copyBtn.title = 'העתקת הרעיון';
   copyBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     navigator.clipboard.writeText(idea.title).then(() => {
-      copyBtn.innerHTML = CHECK_ICON_SVG;
-      setTimeout(() => (copyBtn.innerHTML = COPY_ICON_SVG), 1500);
+      copyBtn.innerHTML = `${CHECK_ICON_SVG}<span>הועתק</span>`;
+      setTimeout(() => (copyBtn.innerHTML = `${COPY_ICON_SVG}<span>העתקה</span>`), 1500);
     }).catch((err) => {
       console.error('copy failed:', err);
       showToast('ההעתקה נכשלה');
     });
   });
-  inner.appendChild(copyBtn);
 
   // Sends this exact idea straight into the "בדיקת רעיון" chat instead of
   // needing to retype/copy-paste it there manually - and remembers which
@@ -480,15 +482,13 @@ function renderItem(idea, onItemClick, index = 0) {
   const recheckBtn = document.createElement('button');
   recheckBtn.type = 'button';
   recheckBtn.className = 'recheck-idea-btn';
-  recheckBtn.innerHTML = RECHECK_ICON_SVG;
+  recheckBtn.innerHTML = `${RECHECK_ICON_SVG}<span>בדיקה חוזרת</span>`;
   recheckBtn.setAttribute('aria-label', 'בדיקת הרעיון הזה מחדש בצ\'אט');
-  recheckBtn.title = 'בדיקת הרעיון הזה מחדש בצ\'אט';
   recheckBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     showView('chat');
     startIdeaChatWithExistingIdea(idea);
   });
-  inner.appendChild(recheckBtn);
 
   // Three genuinely different axes (what kind of idea / how strong / who
   // it's for) were all rendered as interchangeable pills - the rating had
@@ -529,10 +529,10 @@ function renderItem(idea, onItemClick, index = 0) {
 
   if (tagsRow.children.length) inner.appendChild(tagsRow);
 
-  // Date and the complete/undo action live together in one footer row,
-  // not mixed into the wrapping tag row above - that was leaving the
-  // done-button stranded on its own wrapped line with a large empty
-  // gap before the date, making it read as an unrelated leftover.
+  // Date and all action buttons (copy / recheck / complete-undo) live
+  // together in one footer row, not mixed into the wrapping tag row above -
+  // that was leaving buttons stranded on their own wrapped line with a
+  // large empty gap before the date, making them read as unrelated leftovers.
   const footer = document.createElement('div');
   footer.className = 'archive-item-footer';
 
@@ -541,6 +541,11 @@ function renderItem(idea, onItemClick, index = 0) {
   dateEl.className = 'archive-item-date';
   dateEl.textContent = dateText;
   footer.appendChild(dateEl);
+
+  const actionsGroup = document.createElement('div');
+  actionsGroup.className = 'archive-item-actions';
+  actionsGroup.appendChild(copyBtn);
+  actionsGroup.appendChild(recheckBtn);
 
   if (idea.completedAt) {
     const undoBtn = document.createElement('button');
@@ -551,7 +556,7 @@ function renderItem(idea, onItemClick, index = 0) {
       e.stopPropagation();
       await uncompleteIdea(idea.id);
     });
-    footer.appendChild(undoBtn);
+    actionsGroup.appendChild(undoBtn);
   } else {
     const doneBtn = document.createElement('button');
     doneBtn.type = 'button';
@@ -563,9 +568,10 @@ function renderItem(idea, onItemClick, index = 0) {
       if (navigator.vibrate) navigator.vibrate(15);
       await markIdeaCompleted(idea.id);
     });
-    footer.appendChild(doneBtn);
+    actionsGroup.appendChild(doneBtn);
   }
 
+  footer.appendChild(actionsGroup);
   inner.appendChild(footer);
 
   if (idea.sourceLink) {
