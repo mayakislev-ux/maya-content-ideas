@@ -2954,6 +2954,21 @@ textarea:focus-visible,
   font-weight: 400;
 }
 
+.content-plan-checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.content-plan-checkbox-row input[type="checkbox"] {
+  width: 1.1rem;
+  height: 1.1rem;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
 .content-plan-live-tag {
   display: inline-block;
   font-size: 0.7rem;

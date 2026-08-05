@@ -16,6 +16,7 @@ import { saveContentPlan, updateContentPlan, listContentPlans, deleteContentPlan
 import { makeEditable, makeEditableSelect } from './editable.js';
 import { showToast } from './toast.js';
 import { confirmDialog } from './confirm-dialog.js';
+import { getProfile } from './user-profile.js';
 
 const generateContentPlan = httpsCallable(functions, 'generateContentPlan', { timeout: 290000 });
 
@@ -645,9 +646,20 @@ export function wireContentPlanView() {
   const scorecardEl = document.getElementById('content-plan-scorecard');
 
   const modal = document.getElementById('content-plan-modal');
-  document.getElementById('content-plan-open-builder-btn').addEventListener('click', () => {
+  const secondaryAudienceRow = document.getElementById('content-plan-secondary-audience-row');
+  const includeSecondaryCheckbox = document.getElementById('content-plan-include-secondary');
+  document.getElementById('content-plan-open-builder-btn').addEventListener('click', async () => {
     refreshGate();
     modal.hidden = false;
+    // השורה הזו רלוונטית רק אם באמת הוגדר קהל משני בפרופיל - בלי זה
+    // "לכלול קהל משני?" הוא צ'קבוקס שלא אומר כלום.
+    try {
+      const profile = await getProfile();
+      secondaryAudienceRow.hidden = !(profile && profile.secondaryAudience);
+    } catch (err) {
+      console.error('Failed to load profile for content-plan secondary-audience toggle:', err);
+      secondaryAudienceRow.hidden = true;
+    }
   });
   document.getElementById('content-plan-modal-close-btn').addEventListener('click', () => {
     modal.hidden = true;
@@ -680,8 +692,10 @@ export function wireContentPlanView() {
     saveBtnTop.hidden = true;
     startCountdown();
 
+    const includeSecondaryAudience = secondaryAudienceRow.hidden ? true : includeSecondaryCheckbox.checked;
+
     try {
-      const result = await generateContentPlan({ pieceCount, ideas: ideasPayload });
+      const result = await generateContentPlan({ pieceCount, ideas: ideasPayload, includeSecondaryAudience });
       currentPlan = enrichPlanFromBank(result.data.plan, cappedIdeas);
       if (readyIdeas.length > cappedIdeas.length) currentPlan.truncatedFrom = readyIdeas.length;
       currentMeta = { pieceCount };

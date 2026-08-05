@@ -738,6 +738,7 @@ exports.generateContentPlan = onCall({ secrets: [anthropicApiKey], region: 'us-c
 
   const ideas = (request.data && request.data.ideas) || [];
   const pieceCount = Number(request.data && request.data.pieceCount) || 16;
+  const includeSecondaryAudience = !(request.data && request.data.includeSecondaryAudience === false);
 
   if (!Array.isArray(ideas) || ideas.length === 0) {
     throw new HttpsError('invalid-argument', 'צריך לפחות רעיון אחד עם קטגוריה כדי לבנות תכנית תוכן');
@@ -751,7 +752,23 @@ exports.generateContentPlan = onCall({ secrets: [anthropicApiKey], region: 'us-c
 
   await enforceRateLimit(request.auth.uid, 'generateContentPlan');
 
-  const prompt = buildContentPlanPrompt({ pieceCount, ideas: ideas.slice(0, 60) });
+  // הפרומפט עד עכשיו לא ידע בכלל מי קהל היעד האמיתי של בעלת העסק - רק
+  // ראה תגית מופשטת ("עיקרי"/"משני") על כל רעיון, בלי שום תיאור אמיתי
+  // להשוות אליו. פרופיל המשתמשת כבר נאסף פעם אחת בהיכרות הראשונית של
+  // הצ'אט (primaryAudience/secondaryAudience) - שולפים אותו כאן ישירות
+  // מהשרת (לא מהלקוח, כדי שלא יהיה תלוי בנתון מיושן/לא אמין שהגיע מהלקוח).
+  const profileSnap = await db.collection('profiles').doc(request.auth.uid).get();
+  const profile = profileSnap.exists() ? profileSnap.data() : {};
+  const primaryAudience = (profile.primaryAudience || '').trim();
+  const secondaryAudience = (profile.secondaryAudience || '').trim();
+
+  const prompt = buildContentPlanPrompt({
+    pieceCount,
+    ideas: ideas.slice(0, 60),
+    primaryAudience,
+    secondaryAudience,
+    includeSecondaryAudience,
+  });
 
   // The ratio/breadth constraints added to the prompt make claude-sonnet-5
   // reason a lot more before answering, and per getResponseText's own

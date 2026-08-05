@@ -604,6 +604,10 @@
       <label>כמה תכנים בתכנית? (מינימום 16 - ההמלצה לצמיחה מהירה, אפשר להזין יותר)
         <input id="content-plan-piece-count" type="number" min="16" max="60" value="16">
       </label>
+      <label id="content-plan-secondary-audience-row" class="content-plan-checkbox-row" hidden>
+        <input type="checkbox" id="content-plan-include-secondary" checked>
+        לכלול הפעם גם תוכן לקהל היעד המשני שלך?
+      </label>
       <p id="content-plan-error" class="error-text" role="alert" hidden></p>
       <button type="submit" class="btn-primary" id="content-plan-generate-btn">📅 בניית תכנית תוכן</button>
     </form>
