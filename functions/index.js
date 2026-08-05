@@ -770,17 +770,19 @@ exports.generateContentPlan = onCall({ secrets: [anthropicApiKey], region: 'us-c
     includeSecondaryAudience,
   });
 
-  // The ratio/breadth constraints added to the prompt make claude-sonnet-5
-  // reason a lot more before answering, and per getResponseText's own
-  // comment above, that reasoning can arrive as a separate "thinking"
-  // content block that counts against the same max_tokens budget as the
-  // actual text/JSON reply. Real Cloud Function logs showed exactly this:
-  // getResponseText returning '' (no text block at all) - the model was
-  // spending the whole 8192-token budget on thinking and never got to
-  // write the JSON. Raised the ceiling so there's real room for both.
+  // The added constraints make claude-sonnet-5 reason a lot more before
+  // answering, and per getResponseText's own comment above, that reasoning
+  // can arrive as a separate "thinking" content block that counts against
+  // the same max_tokens budget as the actual text/JSON reply. Real Cloud
+  // Function logs showed this happening repeatedly on 2026-08-05, even
+  // after raising the ceiling once already (8192 -> 16000) and trimming
+  // the prompt's wording - stop_reason kept coming back "max_tokens" with
+  // zero text ever written. Raised further as a safety margin on top of
+  // the trim; if this still isn't enough, the prompt needs to shrink
+  // further or the call needs to split into more than one step.
   const data = await callAnthropic(
     anthropicApiKey.value(),
-    { model: 'claude-sonnet-5', max_tokens: 16000, messages: [{ role: 'user', content: prompt }] },
+    { model: 'claude-sonnet-5', max_tokens: 24000, messages: [{ role: 'user', content: prompt }] },
     'generateContentPlan'
   );
 
