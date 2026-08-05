@@ -482,8 +482,8 @@ function renderItem(idea, onItemClick, index = 0) {
   const recheckBtn = document.createElement('button');
   recheckBtn.type = 'button';
   recheckBtn.className = 'recheck-idea-btn';
-  recheckBtn.innerHTML = `${RECHECK_ICON_SVG}<span>בדיקה חוזרת</span>`;
-  recheckBtn.setAttribute('aria-label', 'בדיקת הרעיון הזה מחדש בצ\'אט');
+  recheckBtn.innerHTML = `${RECHECK_ICON_SVG}<span>זווית הנגשה</span>`;
+  recheckBtn.setAttribute('aria-label', 'מציאת זווית הנגשה לרעיון הזה בצ\'אט');
   recheckBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     showView('chat');
