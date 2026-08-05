@@ -449,6 +449,7 @@ function renderItem(idea, onItemClick, index = 0) {
   copyBtn.className = 'copy-idea-btn';
   copyBtn.textContent = '📋';
   copyBtn.setAttribute('aria-label', 'העתקת הרעיון');
+  copyBtn.title = 'העתקת הרעיון';
   copyBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     navigator.clipboard.writeText(idea.title).then(() => {
@@ -470,6 +471,7 @@ function renderItem(idea, onItemClick, index = 0) {
   recheckBtn.className = 'recheck-idea-btn';
   recheckBtn.textContent = '🔍';
   recheckBtn.setAttribute('aria-label', 'בדיקת הרעיון הזה מחדש בצ\'אט');
+  recheckBtn.title = 'בדיקת הרעיון הזה מחדש בצ\'אט';
   recheckBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     showView('chat');

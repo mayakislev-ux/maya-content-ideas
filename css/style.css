@@ -1845,22 +1845,28 @@ textarea:focus-visible,
 }
 
 /* Pinned to a corner as a utility action, not inline with the tag row -
-   it was forcing that row to wrap in ways that stranded other tags. */
+   it was forcing that row to wrap in ways that stranded other tags.
+   Used to have no background/border at all except on :hover - on a real
+   touchscreen that hover state never shows before the tap itself already
+   fires, so it just looked like a floating decorative emoji, not a
+   button. A persistent pill background/border makes both icons read as
+   tappable at rest, on mobile too, not only once you've already found them. */
 .copy-idea-btn {
   position: absolute;
   top: 0.7rem;
   left: 0.6rem;
-  background: none;
-  border: none;
+  background: var(--surface);
+  border: 1px solid var(--border-color);
   cursor: pointer;
   font-size: 1rem;
   padding: 0.2rem 0.4rem;
-  border-radius: 6px;
+  border-radius: 999px;
   color: var(--muted);
   text-shadow: none;
+  box-shadow: 0 1px 3px rgba(38, 62, 168, 0.08);
 }
 
-.copy-idea-btn:hover { background: var(--surface); }
+.copy-idea-btn:hover { background: var(--accent-tint, var(--surface)); border-color: var(--accent); }
 
 /* Same corner-icon treatment as .copy-idea-btn, one slot further out -
    1.5rem clearance from copy-idea-btn's own left offset used to leave
@@ -1870,17 +1876,18 @@ textarea:focus-visible,
   position: absolute;
   top: 0.7rem;
   left: 2.6rem;
-  background: none;
-  border: none;
+  background: var(--surface);
+  border: 1px solid var(--border-color);
   cursor: pointer;
   font-size: 1rem;
   padding: 0.2rem 0.4rem;
-  border-radius: 6px;
+  border-radius: 999px;
   color: var(--muted);
   text-shadow: none;
+  box-shadow: 0 1px 3px rgba(38, 62, 168, 0.08);
 }
 
-.recheck-idea-btn:hover { background: var(--surface); }
+.recheck-idea-btn:hover { background: var(--accent-tint, var(--surface)); border-color: var(--accent); }
 
 .card-category-tag {
   display: inline-block;
