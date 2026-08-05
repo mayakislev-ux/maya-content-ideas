@@ -42,6 +42,27 @@ function ratingRank(rating) {
   return i === -1 ? RATINGS.length : i;
 }
 
+// היחס בין הקטגוריות (40/30/15/15) בעבר היה תלוי בהנחיה רכה בפרומפט
+// שה-AI "יבחר בעצמו" להשאיר חלק מרעיונות קטגוריה עשירה בחוץ - התבררה
+// כלא אמינה (בפועל השתמש כמעט בכל המאגר, ביחס של המאגר עצמו, לא ביחס
+// היעד), וגם תרמה לעומס חשיבה שגרם לתשובות ריקות. במקום זה, הבחירה איזה
+// רעיונות בכלל *נשלחים* ל-AI כבר מבטיחה את היחס מראש בקוד רגיל - ה-AI
+// רק משבץ בלוח זמנים את מה שכבר נבחר נכון, בלי צורך להחליט בעצמו מה
+// להשמיט.
+function selectIdeasForRatio(readyIdeasSortedByRating, pieceCount) {
+  const byCategory = {};
+  for (const idea of readyIdeasSortedByRating) {
+    (byCategory[idea.category] = byCategory[idea.category] || []).push(idea);
+  }
+  const selected = [];
+  for (const [cat, target] of Object.entries(CATEGORY_TARGETS)) {
+    const pool = byCategory[cat] || [];
+    const targetCount = Math.max(1, Math.round(pieceCount * target));
+    selected.push(...pool.slice(0, targetCount));
+  }
+  return selected.sort((a, b) => ratingRank(a.rating) - ratingRank(b.rating));
+}
+
 const CATEGORY_TARGETS = {
   'בעל ערך': 0.4,
   'אישי': 0.3,
@@ -238,7 +259,7 @@ function renderScorecard(plan, readyIdeas) {
   if (plan.truncatedFrom) {
     notes.push({
       icon: '✂️',
-      text: `התכנית נבנתה מתוך ${MAX_IDEAS_SENT} הרעיונות המדורגים הכי גבוה, מתוך ${plan.truncatedFrom} שיש לך במאגר`,
+      text: `התכנית נבנתה מתוך ${plan.selectedCount || plan.truncatedFrom} רעיונות שנבחרו לפי יחס הקטגוריות, מתוך ${plan.truncatedFrom} שיש לך במאגר - לא כל הרעיונות נכנסו כדי לשמור על האיזון`,
     });
   }
   if (notes.length) {
@@ -748,7 +769,7 @@ export function wireContentPlanView() {
 
     const pieceCount = Number(document.getElementById('content-plan-piece-count').value) || MIN_PIECE_COUNT;
     const readyIdeas = [...getReadyIdeas()].sort((a, b) => ratingRank(a.rating) - ratingRank(b.rating));
-    const cappedIdeas = readyIdeas.slice(0, MAX_IDEAS_SENT);
+    const cappedIdeas = selectIdeasForRatio(readyIdeas, pieceCount).slice(0, MAX_IDEAS_SENT);
 
     const ideasPayload = cappedIdeas.map((idea) => ({
       title: idea.title,
@@ -771,7 +792,10 @@ export function wireContentPlanView() {
     try {
       const result = await generateContentPlan({ pieceCount, ideas: ideasPayload, includeSecondaryAudience });
       currentPlan = enrichPlanFromBank(result.data.plan, cappedIdeas);
-      if (readyIdeas.length > cappedIdeas.length) currentPlan.truncatedFrom = readyIdeas.length;
+      if (readyIdeas.length > cappedIdeas.length) {
+        currentPlan.truncatedFrom = readyIdeas.length;
+        currentPlan.selectedCount = cappedIdeas.length;
+      }
       currentMeta = { pieceCount };
       currentPlanId = null;
       renderPlan(currentPlan);
