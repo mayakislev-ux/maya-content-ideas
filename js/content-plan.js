@@ -17,7 +17,7 @@ import { makeEditable, makeEditableSelect } from './editable.js';
 import { showToast } from './toast.js';
 import { confirmDialog } from './confirm-dialog.js';
 
-const generateContentPlan = httpsCallable(functions, 'generateContentPlan', { timeout: 170000 });
+const generateContentPlan = httpsCallable(functions, 'generateContentPlan', { timeout: 290000 });
 
 // "רעיון עם זווית" אין לו שדה נפרד באפליקציה - הפרוקסי הכי אמין שיש
 // למאמץ שכבר הושקע ברעיון הוא שהוא כבר סווג לקטגוריה (לא נשאר טיוטה
@@ -61,12 +61,17 @@ let countdownInterval = null;
 
 function startCountdown() {
   const el = document.getElementById('content-plan-countdown');
-  let secondsLeft = 40;
+  // ה-AI צריך עכשיו יותר "מקום לחשוב" בשביל תכניות מאוזנות (ראו התיקון
+  // ל-max_tokens) - זה יכול לקחת יותר מדקה, במיוחד לתכניות גדולות. הערכה
+  // ריאלית יותר במקום ספירה-לאחור שמבטיחה "כמעט מוכן" ואז נתקעת שם דקות.
+  let secondsLeft = 60;
   el.textContent = `בונה תכנית תוכן... בערך ${secondsLeft} שניות נותרו`;
   countdownInterval = setInterval(() => {
     secondsLeft -= 1;
     el.textContent =
-      secondsLeft > 0 ? `בונה תכנית תוכן... בערך ${secondsLeft} שניות נותרו` : 'כמעט מוכן, עוד רגע... 🔥';
+      secondsLeft > 0
+        ? `בונה תכנית תוכן... בערך ${secondsLeft} שניות נותרו`
+        : 'כמעט מוכן, לתכניות גדולות זה יכול לקחת עוד קצת... 🔥';
   }, 1000);
 }
 
