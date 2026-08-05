@@ -7,6 +7,7 @@ import { wireVoiceInput } from './voice-input.js';
 import { burstConfetti } from './confetti.js';
 import { showToast } from './toast.js';
 import { startIdeaChat } from './idea-chat.js';
+import { FORMAT_CHOICES } from './ideas-logic.js';
 
 const ADMIN_EMAIL = 'mayakislev@gmail.com';
 const writeScript = httpsCallable(functions, 'writeScript');
@@ -28,22 +29,6 @@ const ONBOARDING_QUESTIONS = {
   secondaryAudience: 'ומי קהל היעד המשני שלך (אם יש)?',
 };
 
-const FORMAT_CHOICES = [
-  'דיבור למצלמה',
-  'וויס אובר',
-  'ראיון/שיחה',
-  'תוכן ויזואלי יפה',
-  'טקסט דינמי',
-  'שאלות מהתיבה בסטורי',
-  'סדרת תוכן',
-  'משחק תפקידים',
-  'פוסט קרוסלה',
-  'לוח/טאבלט',
-  'סטיץ׳ (תגובה לסרטון ויראלי)',
-  'תגובה לתגובה',
-  'מסך ירוק',
-  'מסך חצוי',
-];
 
 const REDIRECT_MARKER = '[[REDIRECT_TO_IDEA_CHAT]]';
 const IDEA_READY_MARKER = '[[IDEA_READY]]';

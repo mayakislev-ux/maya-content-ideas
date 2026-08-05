@@ -9,6 +9,8 @@ import { addBubble, addThinkingBubble, addChoiceBubble, setBubbleText, playSucce
 import { wireVoiceInput } from './voice-input.js';
 import { burstConfetti } from './confetti.js';
 import { confirmDialog } from './confirm-dialog.js';
+import { updateIdea } from './ideas-store.js';
+import { showToast } from './toast.js';
 // Dynamically imported instead of a static top-level import - script-chat.js
 // (and the admin-only writeScript feature it drives) is otherwise dead
 // weight fetched by every single user of this file, even though the button
@@ -171,9 +173,20 @@ async function saveFinalIdea(finalizedText) {
 
   if (editingIdeaId) {
     const idea = getCurrentIdeas().find((i) => i.id === editingIdeaId);
+    const targetId = editingIdeaId;
     editingIdeaId = null;
     if (idea) {
-      openEditModal(idea, finalizedText);
+      // בדיקה חוזרת על רעיון קיים - הקטגוריה/דירוג/קהל וכו' כבר מוגדרים
+      // מהפעם הקודמת, רק הכותרת (עם הזווית החדשה) השתנתה. שומרים ישר
+      // במקום לפתוח שוב את המודל ולחכות ללחיצת "שמירה" נוספת - בקשה
+      // מפורשת של מאיה: "שיהיה נוח וקל לעבודה", לא עוד אישור כפול.
+      try {
+        await updateIdea(targetId, { title: finalizedText });
+        showToast('✓ הרעיון עודכן עם הזווית החדשה');
+      } catch (err) {
+        console.error('updateIdea (from chat) failed:', err);
+        showToast('משהו השתבש בעדכון, נסו שוב');
+      }
       return;
     }
   }

@@ -32,6 +32,7 @@ export async function addIdea({
   audienceScope = '',
   source = '',
   rating = '',
+  format = '',
 }) {
   return addDoc(ideasCollection(), {
     title,
@@ -42,6 +43,7 @@ export async function addIdea({
     audienceScope,
     source,
     rating,
+    format,
     ownerUid: auth.currentUser.uid,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),

@@ -72,6 +72,7 @@ export function openEditModal(idea, overrideTitle = '') {
   document.getElementById('field-link').value = idea.sourceLink || '';
   document.getElementById('field-persuasion').value = idea.persuasionStage || '';
   document.getElementById('field-audience-scope').value = idea.audienceScope || '';
+  document.getElementById('field-format').value = idea.format || '';
   document.getElementById('delete-idea-btn').hidden = false;
   document.getElementById('form-error').hidden = true;
   document.getElementById('idea-modal').hidden = false;
@@ -219,6 +220,7 @@ export function wireIdeaForm() {
       persuasionStage: document.getElementById('field-persuasion').value,
       rating: document.getElementById('field-rating').value,
       audienceScope: document.getElementById('field-audience-scope').value,
+      format: document.getElementById('field-format').value,
     };
     const errors = validateIdea(data);
     const errorEl = document.getElementById('form-error');
