@@ -7,6 +7,17 @@ import { burstConfetti } from './confetti.js';
 import { showView } from './view-router.js';
 import { startIdeaChatWithExistingIdea } from './idea-chat.js';
 
+// אימוג'י (📋/🔍) לא היו מובנים כאייקוני פעולה - במיוחד 🔍 (זכוכית
+// מגדלת), שנקרא באופן טבעי כ"חיפוש" ולא כ"בדיקה חוזרת בצ'אט". אייקוני
+// קו פשוטים (אותו סגנון בדיוק כמו ה-SVG-ים הקיימים ב-.tab-icon/bottom-nav)
+// חד-משמעיים יותר ועקביים ויזואלית עם שאר האפליקציה.
+const COPY_ICON_SVG =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+const CHECK_ICON_SVG =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><polyline points="20 6 9 17 4 12"/></svg>';
+const RECHECK_ICON_SVG =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>';
+
 const QUICK_ADD_TOASTS = [
   '📝 הרעיון נשמר כטיוטה - אפשר להשלים אותו בהמשך',
   '✨ נחמד! הרעיון חיכה במגירה, עכשיו הוא במאגר',
@@ -447,14 +458,14 @@ function renderItem(idea, onItemClick, index = 0) {
   const copyBtn = document.createElement('button');
   copyBtn.type = 'button';
   copyBtn.className = 'copy-idea-btn';
-  copyBtn.textContent = '📋';
+  copyBtn.innerHTML = COPY_ICON_SVG;
   copyBtn.setAttribute('aria-label', 'העתקת הרעיון');
   copyBtn.title = 'העתקת הרעיון';
   copyBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     navigator.clipboard.writeText(idea.title).then(() => {
-      copyBtn.textContent = '✓';
-      setTimeout(() => (copyBtn.textContent = '📋'), 1500);
+      copyBtn.innerHTML = CHECK_ICON_SVG;
+      setTimeout(() => (copyBtn.innerHTML = COPY_ICON_SVG), 1500);
     }).catch((err) => {
       console.error('copy failed:', err);
       showToast('ההעתקה נכשלה');
@@ -469,7 +480,7 @@ function renderItem(idea, onItemClick, index = 0) {
   const recheckBtn = document.createElement('button');
   recheckBtn.type = 'button';
   recheckBtn.className = 'recheck-idea-btn';
-  recheckBtn.textContent = '🔍';
+  recheckBtn.innerHTML = RECHECK_ICON_SVG;
   recheckBtn.setAttribute('aria-label', 'בדיקת הרעיון הזה מחדש בצ\'אט');
   recheckBtn.title = 'בדיקת הרעיון הזה מחדש בצ\'אט';
   recheckBtn.addEventListener('click', (e) => {
