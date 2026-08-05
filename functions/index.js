@@ -413,7 +413,12 @@ exports.getClientUsageStats = onCall({ region: 'us-central1', timeoutSeconds: 60
 // לכן האימות כאן ידני (verifyIdToken) במקום האימות האוטומטי של onCall, וה-
 // CORS מוגבל במפורש למקור האמיתי שהאפליקציה מוגשת ממנו.
 exports.checkIdea = onRequest(
-  { secrets: [anthropicApiKey], region: 'us-central1', cors: ALLOWED_STREAM_ORIGINS },
+  // ללא timeoutSeconds מפורש זה נופל לברירת המחדל (60 שניות) - אישור אמיתי
+  // מלוגים (2026-08-05): "Truncated response body... request timed out"
+  // בדיוק בזמן שהיא דיווחה שהצ'אט "בקושי זז". אותה סיבה בדיוק שכבר תוקנה
+  // ב-generateContentPlan היום - סטרימינג שמתחיל רק אחרי "חשיבה" פנימית
+  // ארוכה של Sonnet יכול לעבור בקלות את 60 השניות.
+  { secrets: [anthropicApiKey], region: 'us-central1', cors: ALLOWED_STREAM_ORIGINS, timeoutSeconds: 180 },
   async (req, res) => {
     if (req.method !== 'POST') {
       res.status(405).json({ error: 'Method not allowed' });

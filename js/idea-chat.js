@@ -379,12 +379,26 @@ export async function startIdeaChat() {
   }
 }
 
-// Opened directly from an existing idea's "בדיקה חוזרת" button in the
+// Opened directly from an existing idea's "זווית הנגשה" button in the
 // archive - starts a fresh chat, immediately sends that idea's own text as
 // the first message (no need to retype/copy-paste it), and marks it so
 // saveFinalIdea updates this exact idea instead of guessing by fuzzy title
 // matching or asking via a confirm() popup.
 export async function startIdeaChatWithExistingIdea(idea) {
+  // "זווית: ..." בכותרת מסמן שכבר נמצאה זווית חזקה לרעיון הזה בעבר (אותו
+  // סימון בדיוק ש-checkAngleCoverage בתכנית תוכן כבר סומך עליו) - בלי
+  // הבדיקה הזו, לחיצה בטעות הייתה מריצה שוב את כל השיחה ומסכנת לאבד/לדרוס
+  // זווית טובה שכבר קיימת, בלי שום התראה.
+  const hasStrongAngle = (idea.title || '').includes('זווית:');
+  if (hasStrongAngle) {
+    const proceed = await confirmDialog(
+      'לרעיון הזה כבר יש זווית הנגשה חזקה. בטוח/ה שרוצה למצוא זווית אחרת?',
+      { okLabel: 'כן, למצוא זווית אחרת', cancelLabel: 'ביטול' }
+    );
+    if (!proceed) return;
+  }
+  showView('chat');
+
   document.getElementById('edit-profile-btn').hidden = !isAdmin();
   document.getElementById('replay-tour-btn').hidden = !isAdmin();
 

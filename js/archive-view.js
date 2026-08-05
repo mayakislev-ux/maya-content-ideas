@@ -4,7 +4,6 @@ import { addQuickIdea, markIdeaCompleted, uncompleteIdea, deleteIdea, restoreIde
 import { showToast } from './toast.js';
 import { animateCountUp } from './count-up.js';
 import { burstConfetti } from './confetti.js';
-import { showView } from './view-router.js';
 import { startIdeaChatWithExistingIdea } from './idea-chat.js';
 
 // אימוג'י (📋/🔍) לא היו מובנים כאייקוני פעולה - במיוחד 🔍 (זכוכית
@@ -486,7 +485,9 @@ function renderItem(idea, onItemClick, index = 0) {
   recheckBtn.setAttribute('aria-label', 'מציאת זווית הנגשה לרעיון הזה בצ\'אט');
   recheckBtn.addEventListener('click', (e) => {
     e.stopPropagation();
-    showView('chat');
+    // showView('chat') moved inside startIdeaChatWithExistingIdea itself -
+    // it now confirms first when the idea already has a strong angle, and
+    // must NOT switch views if she cancels that confirmation.
     startIdeaChatWithExistingIdea(idea);
   });
 
