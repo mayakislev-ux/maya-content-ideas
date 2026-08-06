@@ -83,7 +83,10 @@ function renderDayRow(item) {
   law.className = 'warming-law-label';
   law.textContent = item.law || '-';
   law.title = 'לחיצה עורכת';
-  makeEditable(law, (val) => (item.law = val));
+  // makeEditable שומר בדיוק את הטקסט שמוצג ברגע ה-blur - אם השדה ריק
+  // ומוצג בו ה"-" הזמני, לחיצה ויציאה בלי הקלדה הייתה שומרת את המקף
+  // עצמו כערך אמיתי. "-" נחשב "בעצם ריק", לא ערך אמיתי שנכתב.
+  makeEditable(law, (val) => (item.law = val === '-' ? '' : val));
   textWrap.appendChild(law);
 
   const idea = document.createElement('div');
@@ -171,7 +174,14 @@ function renderBlock(block) {
     format.className = 'warming-story-format';
     format.textContent = story.format ? `(${story.format})` : '-';
     format.title = 'לחיצה עורכת';
-    makeEditable(format, (val) => (story.format = val));
+    // makeEditable שומר את הטקסט המוצג בדיוק כפי שהוא ב-blur - הטקסט
+    // המוצג כאן כולל את הסוגריים ("(ערך)") ואת ה"-" הזמני כשריק. בלי
+    // הניקוי הזה, כל לחיצה+יציאה בלי עריכה אמיתית הייתה מוסיפה עוד שכבת
+    // סוגריים ("((ערך))" ואז "(((ערך)))"...), ו"-" היה נשמר כערך אמיתי.
+    makeEditable(format, (val) => {
+      const cleaned = val.replace(/^\(|\)$/g, '').trim();
+      story.format = cleaned === '-' ? '' : cleaned;
+    });
     storyRow.appendChild(format);
 
     const idea = document.createElement('div');

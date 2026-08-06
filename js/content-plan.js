@@ -54,10 +54,30 @@ function selectIdeasForRatio(readyIdeasSortedByRating, pieceCount) {
   for (const idea of readyIdeasSortedByRating) {
     (byCategory[idea.category] = byCategory[idea.category] || []).push(idea);
   }
+  // שיטת "השארית הגדולה" - עיגול כל קטגוריה בנפרד (Math.round) לא בהכרח
+  // מסתכם בחזרה ל-pieceCount (נמצא באמת: 16 - ברירת המחדל עצמה! - יצא
+  // 15 בפועל). מחשבים קודם את המכסה המדויקת (לא מעוגלת) לכל קטגוריה,
+  // לוקחים את השלם התחתון של כולן, ואז מחלקים את מה שנשאר (עד להשלמת
+  // pieceCount) לפי מי שהכי קרוב לעיגול למעלה - כך שהסכום תמיד יוצא
+  // בדיוק pieceCount (כשיש מספיק היצע בכל קטגוריה).
+  const entries = Object.entries(CATEGORY_TARGETS).map(([cat, target]) => {
+    const exact = pieceCount * target;
+    return { cat, count: Math.floor(exact), remainder: exact - Math.floor(exact) };
+  });
+  let remaining = pieceCount - entries.reduce((sum, e) => sum + e.count, 0);
+  [...entries]
+    .sort((a, b) => b.remainder - a.remainder)
+    .forEach((e) => {
+      if (remaining > 0) {
+        e.count += 1;
+        remaining -= 1;
+      }
+    });
+
   const selected = [];
-  for (const [cat, target] of Object.entries(CATEGORY_TARGETS)) {
-    const pool = byCategory[cat] || [];
-    const targetCount = Math.max(1, Math.round(pieceCount * target));
+  for (const e of entries) {
+    const pool = byCategory[e.cat] || [];
+    const targetCount = Math.max(1, e.count);
     selected.push(...pool.slice(0, targetCount));
   }
   return selected.sort((a, b) => ratingRank(a.rating) - ratingRank(b.rating));
@@ -548,12 +568,16 @@ function renderSavedList(plans, onOpen, onDelete) {
 // מהיעד עבור תכנית בגודל המינימלי (16) - אותה נוסחה בדיוק שכבר משמשת את
 // checkBankGaps בסקורקארד אחרי הבנייה, רק שכאן זה חוסם *לפני* שמבזבזים
 // קריאת AI על תכנית שמראש לא יכלה לצאת מאוזנת.
-function getCategoryVolumeGaps(readyIdeas) {
+// pieceCount מגיע עכשיו מהשדה בפועל (לא קבוע MIN_PIECE_COUNT קשיח) - שער
+// שנבדק פעם אחת מול 16 ואז לא מתעדכן שוב, בזמן שהמשתמשת מעלה את הכמות
+// עד 60, יכול "לעבור" בקלות ואז לתת תכנית עם המון ימים ריקים כי בפועל
+// אין מספיק היצע לכמות שבאמת התבקשה.
+function getCategoryVolumeGaps(readyIdeas, pieceCount) {
   const counts = {};
   for (const idea of readyIdeas) counts[idea.category] = (counts[idea.category] || 0) + 1;
   const gaps = [];
   for (const [cat, target] of Object.entries(CATEGORY_TARGETS)) {
-    const needed = Math.ceil((target * MIN_PIECE_COUNT) / 2);
+    const needed = Math.ceil((target * pieceCount) / 2);
     const actual = counts[cat] || 0;
     if (actual < needed) gaps.push({ category: cat, actual, needed });
   }
@@ -563,11 +587,11 @@ function getCategoryVolumeGaps(readyIdeas) {
 // אותו עיקרון בדיוק, לשלושת שלבי השכנוע - "יש לפחות רעיון אחד משלב 3"
 // לא מספיק כדי לבנות תכנית מאוזנת בין שלבי השכנוע, בדיוק כמו שקטגוריה
 // עם רעיון-שניים לא מספיקה לבניית יחס קטגוריות מאוזן.
-function getPersuasionStageVolumeGaps(readyIdeas) {
+function getPersuasionStageVolumeGaps(readyIdeas, pieceCount) {
   const counts = {};
   for (const idea of readyIdeas) counts[idea.persuasionStage] = (counts[idea.persuasionStage] || 0) + 1;
   const target = 1 / PERSUASION_STAGES.length;
-  const needed = Math.ceil((target * MIN_PIECE_COUNT) / 2);
+  const needed = Math.ceil((target * pieceCount) / 2);
   const gaps = [];
   PERSUASION_STAGES.forEach((stage, i) => {
     const actual = counts[stage] || 0;
@@ -595,18 +619,87 @@ function renderGateSection(container, heading, items) {
   container.appendChild(ul);
 }
 
+// בלי קהל יעד עיקרי מוגדר בפרופיל, אין ל-AI שום דבר אמיתי להשוות אליו
+// כשהוא בונה תכנית - התכנית הייתה נבנית "עיוורת לקהל" בשקט, בלי שום
+// התראה. no-op אם החלון סגור (כדי לא לבזבז קריאת פרופיל בכל שינוי
+// רעיונות ברקע, גם כשאף אחת לא בכלל מסתכלת על בניית תכנית תוכן) - אבל
+// כן רץ מחדש בכל שינוי רעיונות *כשהחלון פתוח*, כדי שעדכון רעיונות ברקע
+// לא "יפתח" בטעות את הטופס בזמן שהודעת "הגדירי קהל יעד" עדיין אמורה
+// להיות מוצגת (refreshGate קורא לזה בסוף, ראו למטה).
+async function refreshAudienceGate() {
+  const modal = document.getElementById('content-plan-modal');
+  if (modal.hidden) return;
+
+  const gateMsg = document.getElementById('content-plan-gate-msg');
+  const form = document.getElementById('content-plan-form');
+  const secondaryAudienceRow = document.getElementById('content-plan-secondary-audience-row');
+  const audienceModal = document.getElementById('audience-edit-modal');
+
+  let profile;
+  try {
+    profile = await getProfile();
+  } catch (err) {
+    console.error('Failed to load profile for content-plan audience check:', err);
+    // כשל-סגור (fail closed): אם אי אפשר לוודא שיש קהל יעד, לא מניחים
+    // שהכל בסדר ומשאירים את המצב הקודם עומד - חוסמים בפירוש.
+    gateMsg.innerHTML = '';
+    const errIntro = document.createElement('p');
+    errIntro.className = 'content-plan-gate-intro';
+    errIntro.textContent = 'לא הצלחנו לבדוק את קהל היעד שלך (בעיית רשת) - רעננו את הדף ונסו שוב.';
+    gateMsg.appendChild(errIntro);
+    gateMsg.hidden = false;
+    form.hidden = true;
+    secondaryAudienceRow.hidden = true;
+    return;
+  }
+
+  if (!profile || !profile.primaryAudience) {
+    gateMsg.innerHTML = '';
+    const intro = document.createElement('p');
+    intro.className = 'content-plan-gate-intro';
+    intro.textContent = 'כדי לבנות תכנית תוכן שבאמת מותאמת לקהל שלך, צריך קודם להגדיר מי קהל היעד העיקרי שלך.';
+    gateMsg.appendChild(intro);
+    const defineBtn = document.createElement('button');
+    defineBtn.type = 'button';
+    defineBtn.className = 'btn-primary';
+    defineBtn.textContent = 'הגדרת קהל יעד';
+    defineBtn.addEventListener('click', () => {
+      document.getElementById('audience-edit-error').hidden = true;
+      document.getElementById('audience-edit-primary').value = '';
+      document.getElementById('audience-edit-secondary').value = '';
+      audienceModal.hidden = false;
+    });
+    gateMsg.appendChild(defineBtn);
+    gateMsg.hidden = false;
+    form.hidden = true;
+    secondaryAudienceRow.hidden = true;
+    return;
+  }
+  // השורה הזו רלוונטית רק אם באמת הוגדר קהל משני בפרופיל - בלי זה
+  // "לכלול קהל משני?" הוא צ'קבוקס שלא אומר כלום.
+  secondaryAudienceRow.hidden = !profile.secondaryAudience;
+}
+
 export function refreshGate() {
   const readyIdeas = getReadyIdeas();
   const readyCount = readyIdeas.length;
   const gateMsg = document.getElementById('content-plan-gate-msg');
   const form = document.getElementById('content-plan-form');
+  const pieceCountInput = document.getElementById('content-plan-piece-count');
+  const pieceCount = Number(pieceCountInput && pieceCountInput.value) || MIN_PIECE_COUNT;
   const enoughVolume = readyCount >= MIN_READY_IDEAS;
-  const categoryGaps = getCategoryVolumeGaps(readyIdeas);
-  const stageGaps = getPersuasionStageVolumeGaps(readyIdeas);
+  const categoryGaps = getCategoryVolumeGaps(readyIdeas, pieceCount);
+  const stageGaps = getPersuasionStageVolumeGaps(readyIdeas, pieceCount);
   const enough = enoughVolume && categoryGaps.length === 0 && stageGaps.length === 0;
   gateMsg.hidden = enough;
   form.hidden = !enough;
-  if (enough) return;
+  if (enough) {
+    // נפח/יחס מספיקים לכמות המבוקשת כרגע - נשאר רק לוודא שקהל היעד גם
+    // כן מוגדר (לא מחכים לתוצאה - זו רק עדכון UI, לא ולידציה חוסמת של
+    // הקריאה הזו עצמה).
+    refreshAudienceGate();
+    return;
+  }
 
   gateMsg.innerHTML = '';
 
@@ -667,57 +760,20 @@ export function wireContentPlanView() {
   const scorecardEl = document.getElementById('content-plan-scorecard');
 
   const modal = document.getElementById('content-plan-modal');
+  const audienceModal = document.getElementById('audience-edit-modal');
   const secondaryAudienceRow = document.getElementById('content-plan-secondary-audience-row');
   const includeSecondaryCheckbox = document.getElementById('content-plan-include-secondary');
-  const gateMsg = document.getElementById('content-plan-gate-msg');
-  const audienceModal = document.getElementById('audience-edit-modal');
-
-  // בלי קהל יעד עיקרי מוגדר בפרופיל, אין ל-AI שום דבר אמיתי להשוות אליו
-  // כשהוא בונה תכנית - התכנית הייתה נבנית "עיוורת לקהל" בשקט, בלי שום
-  // התראה. חוסמים באותה רוח כמו שערי הכמות/היחס למעלה, ומציעים לתקן ישר
-  // כאן (audience-edit-modal, שמוגבל בכוונה רק לקהל יעד - לא לתחום
-  // העיסוק, שנשאר ניתן לשינוי רק דרך "עריכת פרטים" המנהלתית).
-  async function checkAudienceAndUpdateUi() {
-    let profile;
-    try {
-      profile = await getProfile();
-    } catch (err) {
-      console.error('Failed to load profile for content-plan audience check:', err);
-      secondaryAudienceRow.hidden = true;
-      return;
-    }
-    if (!profile || !profile.primaryAudience) {
-      gateMsg.innerHTML = '';
-      const intro = document.createElement('p');
-      intro.className = 'content-plan-gate-intro';
-      intro.textContent = 'כדי לבנות תכנית תוכן שבאמת מותאמת לקהל שלך, צריך קודם להגדיר מי קהל היעד העיקרי שלך.';
-      gateMsg.appendChild(intro);
-      const defineBtn = document.createElement('button');
-      defineBtn.type = 'button';
-      defineBtn.className = 'btn-primary';
-      defineBtn.textContent = 'הגדרת קהל יעד';
-      defineBtn.addEventListener('click', () => {
-        document.getElementById('audience-edit-error').hidden = true;
-        document.getElementById('audience-edit-primary').value = '';
-        document.getElementById('audience-edit-secondary').value = '';
-        audienceModal.hidden = false;
-      });
-      gateMsg.appendChild(defineBtn);
-      gateMsg.hidden = false;
-      form.hidden = true;
-      secondaryAudienceRow.hidden = true;
-      return;
-    }
-    // השורה הזו רלוונטית רק אם באמת הוגדר קהל משני בפרופיל - בלי זה
-    // "לכלול קהל משני?" הוא צ'קבוקס שלא אומר כלום.
-    secondaryAudienceRow.hidden = !profile.secondaryAudience;
-  }
 
   document.getElementById('content-plan-open-builder-btn').addEventListener('click', async () => {
     refreshGate();
     modal.hidden = false;
-    await checkAudienceAndUpdateUi();
+    await refreshAudienceGate();
   });
+
+  // כמות התכנים המבוקשת יכולה להשתנות אחרי שהשער כבר עבר (למשל: עבר
+  // ל-16, ואז המשתמשת מעלה ל-60) - בלי לבדוק מחדש, השער נשאר "תקוע" על
+  // הכמות הישנה בזמן שהיצע הרעיונות בפועל כבר לא מספיק לכמות החדשה.
+  document.getElementById('content-plan-piece-count').addEventListener('input', refreshGate);
 
   function closeAudienceModal() {
     audienceModal.hidden = true;
@@ -746,7 +802,7 @@ export function wireContentPlanView() {
       closeAudienceModal();
       showToast('✓ קהל היעד נשמר');
       refreshGate();
-      await checkAudienceAndUpdateUi();
+      await refreshAudienceGate();
     } catch (err) {
       console.error('saveProfile (audience) failed:', err);
       audienceErrorEl.textContent = 'משהו השתבש בשמירה, נסו שוב';

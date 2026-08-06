@@ -2189,6 +2189,8 @@ textarea:focus-visible,
      this session), found while sweeping for this bug class. */
   .category-chip.category-chip { font-size: 1rem; padding: 0.6rem 1.1rem; }
   .category-chips.category-chips { gap: 0.8rem; }
+  .rating-chip { font-size: 1rem; padding: 0.6rem 1.1rem; }
+  .rating-chips { gap: 0.8rem; }
   .archive-item-header { gap: 0.7rem; }
   .copy-idea-btn,
   .recheck-idea-btn,
@@ -2655,6 +2657,7 @@ textarea:focus-visible,
   border-radius: 12px;
   border: 1px solid var(--border-color);
   font-family: inherit;
+  font-size: 1rem;
   resize: vertical;
   margin-bottom: 1rem;
 }
@@ -3059,7 +3062,7 @@ textarea:focus-visible,
   align-items: center;
   gap: 1rem;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
-  z-index: 40;
+  z-index: 60;
   max-width: calc(100vw - 2rem);
   font-size: 0.95rem;
 }
