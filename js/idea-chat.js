@@ -298,21 +298,46 @@ async function sendIdeaMessage(text) {
   const thinkingBubble = addThinkingBubble(messagesEl());
 
   try {
-    let liveText = '';
-    const finalReply = await streamCheckIdea(history, profile, (delta) => {
-      liveText += delta;
+    const onDelta = (liveTextRef) => (delta) => {
+      liveTextRef.value += delta;
       // Avoid flashing the raw "[[RECOGNIZED_EXCELLENT]]" marker text on
       // screen: while the buffered text is still short enough that it could
       // still turn out to BE (or not be) the marker, hold off rendering
       // until it's resolved either way - only a few chars' worth of delay.
-      const stillAmbiguous = liveText.length < RECOGNIZED_MARKER.length && RECOGNIZED_MARKER.startsWith(liveText);
+      const stillAmbiguous =
+        liveTextRef.value.length < RECOGNIZED_MARKER.length && RECOGNIZED_MARKER.startsWith(liveTextRef.value);
       if (stillAmbiguous) return;
-      const display = liveText.startsWith(RECOGNIZED_MARKER)
-        ? liveText.slice(RECOGNIZED_MARKER.length).trimStart()
-        : liveText;
+      const display = liveTextRef.value.startsWith(RECOGNIZED_MARKER)
+        ? liveTextRef.value.slice(RECOGNIZED_MARKER.length).trimStart()
+        : liveTextRef.value;
       setBubbleText(thinkingBubble, display);
       messagesEl().scrollTop = messagesEl().scrollHeight;
-    });
+    };
+
+    // "Load failed" (iOS Safari's raw fetch-stream error, seen for real in
+    // her clients' reports - not a message our own code ever produces) is a
+    // transient network drop mid-stream, most common on a shaky cellular
+    // connection, not a real server-side failure. A single retry catches
+    // most of these invisibly - but the half-streamed text from the failed
+    // attempt has to be wiped from the bubble first, or the retry's text
+    // would just get appended after the leftover garbage.
+    let finalReply;
+    for (let attempt = 1; ; attempt++) {
+      const liveTextRef = { value: '' };
+      try {
+        // Only wipe the bubble on a retry (attempt > 1) - on the first
+        // attempt it still shows addThinkingBubble's own dots animation,
+        // clearing it immediately would blank that out before anything
+        // has even started streaming.
+        if (attempt > 1) setBubbleText(thinkingBubble, '');
+        finalReply = await streamCheckIdea(history, profile, onDelta(liveTextRef));
+        break;
+      } catch (err) {
+        const hasHebrewText = /[֐-׿]/.test(err.message || '');
+        if (hasHebrewText || attempt >= 2) throw err;
+        console.error(`checkIdea stream failed, retrying (attempt ${attempt}):`, err);
+      }
+    }
 
     // From here on, use finalReply (the server-confirmed canonical text) -
     // not liveText - since a rare corrective Hebrew rewrite can change the
@@ -339,7 +364,11 @@ async function sendIdeaMessage(text) {
     history.push({ role: 'assistant', content: visibleReply });
   } catch (err) {
     console.error('checkIdea failed:', err);
-    setBubbleText(thinkingBubble, err.message || 'משהו השתבש, נסו שוב בבקשה.');
+    // אף פעם לא להציג טקסט אנגלי גולמי כמו "Load failed" (שגיאת דפדפן
+    // מובנית של iOS Safari על stream שנקטע - זו לא הודעה שהקוד שלנו כתב) -
+    // רק הודעות עברית שהשרת שלח בכוונה מוצגות כמו שהן.
+    const hasHebrewText = /[֐-׿]/.test(err.message || '');
+    setBubbleText(thinkingBubble, hasHebrewText ? err.message : 'החיבור נכשל, כנראה בגלל רשת לא יציבה. נסו שוב.');
   } finally {
     input.disabled = false;
     newIdeaBtn.disabled = false;
