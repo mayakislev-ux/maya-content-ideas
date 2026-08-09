@@ -378,18 +378,34 @@ exports.getClientUsageStats = onCall({ region: 'us-central1', timeoutSeconds: 60
     });
   });
 
-  const clients = allowlistSnap.docs.map((doc) => {
-    const email = doc.id;
+  function buildClient(email, allowed) {
     const authUser = authByEmail.get(email);
     const ideas = authUser ? ideasByUid.get(authUser.uid) || [] : [];
     ideas.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
     return {
       email,
+      allowed,
       lastSignInTime: (authUser && authUser.metadata.lastSignInTime) || null,
       ideaCount: ideas.length,
       lastIdeaAt: ideas.length ? ideas[0].createdAt : null,
       ideas,
     };
+  }
+
+  const allowlistEmails = new Set(allowlistSnap.docs.map((doc) => doc.id));
+  const clients = allowlistSnap.docs.map((doc) => buildClient(doc.id, true));
+
+  // "מעקב לקוחות" הראה עד עכשיו רק את מי שכבר ב-allowlist - מי שהתחברה
+  // אמיתית באפליקציה אבל טרם אושרה (למשל מייל שלא נוסף עדיין) לא הופיעה
+  // בכלל, גם לא כ"מעולם לא התחברה" - היא פשוט לא הייתה קיימת ברשימה,
+  // אין שום סימן שהיא בכלל ניסתה. זו בדיוק התלונה על אי-דיוק: לקוחה
+  // אמיתית (shiraz4170@rogozin.net, למשל) התחברה בפועל ונחסמה בשקט
+  // (firestore.rules חוסם כל כתיבה בלי allowlist) בלי שיהיה למאיה שום
+  // עקבות של זה. מוסיפים גם את מי שיש לה חשבון Auth אמיתי אבל אין לה
+  // רשומת allowlist, עם allowed:false, כדי שזה ייראה בבירור בממשק.
+  allUsers.forEach((u) => {
+    if (!u.email || u.email === ADMIN_EMAIL || allowlistEmails.has(u.email)) return;
+    clients.push(buildClient(u.email, false));
   });
 
   // הכי-ותיקה-קודם (מעולם לא התחברה, ואז מי שהתחברה הכי מזמן) - הכי

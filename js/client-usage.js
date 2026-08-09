@@ -43,9 +43,15 @@ function renderClientsList() {
 
   const status = document.getElementById('client-usage-status');
   const sortLabel = sortMode === 'recent' ? 'ממוינות מהכי-חדשה-בהתחברות' : 'ממוינות מהכי-ותיקה-בהתחברות, כדי לראות מהר מי דורשת מעקב';
+  const unapprovedCount = clients.filter((c) => c.allowed === false).length;
+  // לקוחה שהתחברה בפועל אבל לא ברשימת האישור נחסמת בשקט (firestore.rules)
+  // ולפני התיקון הזה לא הייתה מופיעה כאן בכלל - אין לה שום "לא התחברה
+  // מעולם", היא פשוט לא הייתה קיימת. עכשיו כן, אז חשוב שהמספר הזה יבלוט
+  // בשורת הסטטוס ולא רק בכל כרטיס בנפרד.
+  const unapprovedNote = unapprovedCount ? ` · ⛔ ${unapprovedCount} התחברו ולא אושרו` : '';
   status.textContent = searchQuery.trim()
-    ? `${visible.length} מתוך ${clients.length} לקוחות תואמות · ${sortLabel}`
-    : `${clients.length} לקוחות · ${sortLabel}`;
+    ? `${visible.length} מתוך ${clients.length} לקוחות תואמות · ${sortLabel}${unapprovedNote}`
+    : `${clients.length} לקוחות · ${sortLabel}${unapprovedNote}`;
 
   if (!visible.length) {
     const empty = document.createElement('li');
@@ -59,11 +65,19 @@ function renderClientsList() {
     const li = document.createElement('li');
     li.className = 'client-usage-item';
     if (client.ideaCount > 0) li.classList.add('client-usage-item-clickable');
+    if (client.allowed === false) li.classList.add('client-usage-item-unapproved');
 
     const email = document.createElement('div');
     email.className = 'client-usage-email';
     email.textContent = client.email;
     li.appendChild(email);
+
+    if (client.allowed === false) {
+      const badge = document.createElement('div');
+      badge.className = 'client-usage-unapproved-badge';
+      badge.textContent = '⛔ התחברה בפועל אך לא באישור - נחסמה בשקט, לא יכולה לשמור רעיונות';
+      li.appendChild(badge);
+    }
 
     const stats = document.createElement('div');
     stats.className = 'client-usage-stats';
