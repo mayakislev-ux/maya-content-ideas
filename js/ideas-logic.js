@@ -108,8 +108,13 @@ export function pickRandomIdea(ideas) {
 export function sortIdeas(ideas, order) {
   const time = (idea) => (idea.createdAt && typeof idea.createdAt.toMillis === 'function' ? idea.createdAt.toMillis() : 0);
   const sorted = [...ideas];
+  // טיוטה (בלי קטגוריה) חייבת לצוף למעלה קודם, בכל סדר מיון - אחרת היא
+  // "מתגלגלת" ונקברת מתחת לרעיונות חדשים/מדורגים יותר, וקשה למצוא אותה
+  // כדי להשלים. זה תמיד המפתח הראשי במיון; סדר המיון הנבחר עדיין קובע
+  // את הסדר בתוך כל אחת משתי הקבוצות (טיוטות מול השאר).
+  const draftRank = (idea) => (idea.category ? 1 : 0);
   if (order === 'oldest') {
-    sorted.sort((a, b) => time(a) - time(b));
+    sorted.sort((a, b) => draftRank(a) - draftRank(b) || time(a) - time(b));
   } else if (order === 'rating') {
     // רעיון בלי דירוג (RATINGS.indexOf מחזיר -1) חייב להיחשב הכי פחות
     // דחוף, לא הכי דחוף - אחרת "🔥 הכי חזק קודם" מציג טיוטות לא-מדורגות
@@ -118,9 +123,9 @@ export function sortIdeas(ideas, order) {
       const i = RATINGS.indexOf(idea.rating);
       return i === -1 ? RATINGS.length : i;
     };
-    sorted.sort((a, b) => rank(a) - rank(b));
+    sorted.sort((a, b) => draftRank(a) - draftRank(b) || rank(a) - rank(b));
   } else {
-    sorted.sort((a, b) => time(b) - time(a));
+    sorted.sort((a, b) => draftRank(a) - draftRank(b) || time(b) - time(a));
   }
   return sorted;
 }
