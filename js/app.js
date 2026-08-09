@@ -1,6 +1,7 @@
 import { onAuthChange, signInWithGoogle, signOutUser } from './auth.js';
 import { auth, db, functions } from './firebase-init.js';
-import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
+import { doc, getDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
+import { saveProfile } from './user-profile.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
 import { subscribeToIdeas } from './ideas-store.js';
 import { renderArchive, wireArchiveControls, getCurrentIdeas, wirePullToRefresh, wireGoalEditModal } from './archive-view.js';
@@ -493,6 +494,12 @@ onAuthChange(async (user) => {
 
   document.getElementById('login-screen').hidden = true;
   document.getElementById('app-screen').hidden = false;
+  // Firebase Auth's lastSignInTime לא מתעדכן בפתיחה חוזרת של ה-PWA (הסשן
+  // נטען מהאחסון המקומי בלי כניסה חדשה מול גוגל) - "מעקב לקוחות" של מאיה
+  // הראה לכן תאריך "התחברות אחרונה" ישן במשמעותית מהפעילות האמיתית (עד
+  // שבוע פער, אומת מול נתונים אמיתיים). כתיבה קלה ולא-חוסמת בכל פתיחה
+  // מוצלחת נותנת סיגנל "פעילות אמיתית" אמין, שהשרת מעדיף על lastSignInTime.
+  saveProfile({ lastActiveAt: serverTimestamp() }).catch((err) => console.error('lastActiveAt update failed:', err));
   setGreeting(user.displayName);
   if (user.photoURL) {
     const logo = document.querySelector('.app-logo');

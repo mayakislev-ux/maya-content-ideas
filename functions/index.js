@@ -355,9 +355,10 @@ exports.getClientUsageStats = onCall({ region: 'us-central1', timeoutSeconds: 60
     throw new HttpsError('permission-denied', 'התכונה הזו זמינה כרגע רק למנהלת');
   }
 
-  const [allowlistSnap, ideasSnap, allUsers] = await Promise.all([
+  const [allowlistSnap, ideasSnap, profilesSnap, allUsers] = await Promise.all([
     db.collection('allowlist').get(),
     db.collection('ideas').get(),
+    db.collection('profiles').get(),
     listAllAuthUsers(),
   ]);
 
@@ -378,14 +379,33 @@ exports.getClientUsageStats = onCall({ region: 'us-central1', timeoutSeconds: 60
     });
   });
 
+  // Firebase Auth's lastSignInTime רק מתעדכן בכניסה חדשה בפועל (התחברות
+  // מלאה מול גוגל) - לא בכל פתיחה חוזרת של ה-PWA, כי הסשן נשמר מקומית
+  // (browserLocalPersistence) ונטען מחדש בלי שום קריאה חדשה לגוגל. אומת
+  // מול נתונים אמיתיים: 13 לקוחות עם רעיון שנוצר עד שבוע שלם אחרי ה-
+  // lastSignInTime שלהן - כלומר "התחברו לאחרונה" הראה תאריך ישן משמעותית
+  // מהפעילות האמיתית שלהן. lastActiveAt (profiles/{uid}, נכתב מה-קליינט
+  // בכל פתיחה מוצלחת של האפליקציה - ראו app.js) הוא הסיגנל האמיתי; לוקחים
+  // את המאוחר מבין השניים כי משתמשות ותיקות מלפני התיקון הזה עדיין לא
+  // צברו lastActiveAt בכלל.
+  const lastActiveByUid = new Map();
+  profilesSnap.forEach((doc) => {
+    const d = doc.data();
+    if (d.lastActiveAt && d.lastActiveAt.toDate) lastActiveByUid.set(doc.id, d.lastActiveAt.toDate().toISOString());
+  });
+
   function buildClient(email, allowed) {
     const authUser = authByEmail.get(email);
     const ideas = authUser ? ideasByUid.get(authUser.uid) || [] : [];
     ideas.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+    const lastSignInTime = (authUser && authUser.metadata.lastSignInTime) || null;
+    const lastActiveAt = (authUser && lastActiveByUid.get(authUser.uid)) || null;
+    const lastSeenAt =
+      lastActiveAt && (!lastSignInTime || new Date(lastActiveAt) > new Date(lastSignInTime)) ? lastActiveAt : lastSignInTime;
     return {
       email,
       allowed,
-      lastSignInTime: (authUser && authUser.metadata.lastSignInTime) || null,
+      lastSignInTime: lastSeenAt,
       ideaCount: ideas.length,
       lastIdeaAt: ideas.length ? ideas[0].createdAt : null,
       ideas,
