@@ -76,6 +76,34 @@ function computeCategoryQuotas(pieceCount) {
   return quotas;
 }
 
+// מילוי אוטומטי "עיוור לשלב שכנוע" (top-N לפי דירוג בלבד) יכול להשמיט
+// שלב שלם מהתכנית - אם שני הרעיונות המדורגים הכי גבוה בקטגוריה נמצאים
+// שניהם בשלב 2/3, שלב 1 לא נכנס בכלל, גם שיש ממנו היצע אמיתי במאגר.
+// אותו עיקרון בדיוק כמו יחס הקטגוריות: לא סומכים על שיקול דעת AI
+// (הוכח לא אמין בעבר) - בוחרים דטרמיניסטית "סבב" (round-robin) בין
+// שלבי השכנוע הקיימים בפועל בקבוצה הזו, לפי דירוג בתוך כל שלב.
+function distributeByStage(ideas, count) {
+  if (count <= 0) return [];
+  const byStage = {};
+  for (const idea of ideas) {
+    const stage = idea.persuasionStage || '';
+    (byStage[stage] = byStage[stage] || []).push(idea);
+  }
+  const stageGroups = Object.values(byStage);
+  const picked = [];
+  let index = 0;
+  while (picked.length < count) {
+    const before = picked.length;
+    for (const group of stageGroups) {
+      if (picked.length >= count) break;
+      if (group[index]) picked.push(group[index]);
+    }
+    if (picked.length === before) break; // כל השלבים מוצו, אין עוד מה להוסיף
+    index++;
+  }
+  return picked;
+}
+
 function selectIdeasForRatio(readyIdeasSortedByRating, pieceCount, pinnedIds = new Set()) {
   const byCategory = {};
   for (const idea of readyIdeasSortedByRating) {
@@ -97,7 +125,7 @@ function selectIdeasForRatio(readyIdeasSortedByRating, pieceCount, pinnedIds = n
     const chosenPinned = pinnedInCategory.slice(0, targetCount);
     droppedPinned.push(...pinnedInCategory.slice(targetCount));
     const remainingSlots = targetCount - chosenPinned.length;
-    selected.push(...chosenPinned, ...unpinnedInCategory.slice(0, remainingSlots));
+    selected.push(...chosenPinned, ...distributeByStage(unpinnedInCategory, remainingSlots));
   }
   return {
     selected: selected.sort((a, b) => ratingRank(a.rating) - ratingRank(b.rating)),

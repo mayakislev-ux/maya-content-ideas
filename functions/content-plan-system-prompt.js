@@ -11,8 +11,14 @@ const MUST_INCLUDE_TYPES = [
   'תוכן על סלבס בהקשר לתחום',
 ];
 
+// מאיה ביקשה במפורש: תמיד תכנית לחודש (4 שבועות), לא משנה כמה תכנים.
+// לפני התיקון הזה weeksCount נגזר מ-pieceCount לפי הנחת-יסוד של 4 תכנים
+// לשבוע (Math.ceil(pieceCount/4)) - תקין רק ב-16 (ברירת המחדל), אבל
+// בפועל שבר את "לחודש" בכל כמות אחרת: 25 תכנים יצא 7 שבועות, לא חודש.
+const WEEKS_PER_PLAN = 4;
+
 function buildContentPlanPrompt({ pieceCount, ideas, primaryAudience, secondaryAudience, includeSecondaryAudience }) {
-  const weeksCount = Math.ceil(pieceCount / 4);
+  const weeksCount = WEEKS_PER_PLAN;
 
   const ideasBlock = ideas
     .map(
