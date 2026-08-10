@@ -49,7 +49,7 @@ function ratingRank(rating) {
 // רעיונות בכלל *נשלחים* ל-AI כבר מבטיחה את היחס מראש בקוד רגיל - ה-AI
 // רק משבץ בלוח זמנים את מה שכבר נבחר נכון, בלי צורך להחליט בעצמו מה
 // להשמיט.
-function selectIdeasForRatio(readyIdeasSortedByRating, pieceCount) {
+function selectIdeasForRatio(readyIdeasSortedByRating, pieceCount, pinnedIds = new Set()) {
   const byCategory = {};
   for (const idea of readyIdeasSortedByRating) {
     (byCategory[idea.category] = byCategory[idea.category] || []).push(idea);
@@ -75,12 +75,26 @@ function selectIdeasForRatio(readyIdeasSortedByRating, pieceCount) {
     });
 
   const selected = [];
+  const droppedPinned = [];
   for (const e of entries) {
     const pool = byCategory[e.cat] || [];
     const targetCount = Math.max(1, e.count);
-    selected.push(...pool.slice(0, targetCount));
+    // רעיונות מסומנים (pinnedIds) מקבלים עדיפות ראשונה למכסה של הקטגוריה
+    // שלהם, לפי דירוג ביניהם - ורק מה שנשאר מהמכסה מתמלא מהלא-מסומנים,
+    // בדיוק כמו הבחירה האוטומטית הרגילה. pool כבר ממוין לפי דירוג (מגיע
+    // מ-readyIdeasSortedByRating), אז filter שומר על סדר הדירוג בכל
+    // תת-קבוצה בלי צורך למיין שוב.
+    const pinnedInCategory = pool.filter((idea) => pinnedIds.has(idea.id));
+    const unpinnedInCategory = pool.filter((idea) => !pinnedIds.has(idea.id));
+    const chosenPinned = pinnedInCategory.slice(0, targetCount);
+    droppedPinned.push(...pinnedInCategory.slice(targetCount));
+    const remainingSlots = targetCount - chosenPinned.length;
+    selected.push(...chosenPinned, ...unpinnedInCategory.slice(0, remainingSlots));
   }
-  return selected.sort((a, b) => ratingRank(a.rating) - ratingRank(b.rating));
+  return {
+    selected: selected.sort((a, b) => ratingRank(a.rating) - ratingRank(b.rating)),
+    droppedPinned,
+  };
 }
 
 const CATEGORY_TARGETS = {
@@ -281,6 +295,14 @@ function renderScorecard(plan, readyIdeas) {
       icon: '✂️',
       text: `התכנית נבנתה מתוך ${plan.selectedCount || plan.truncatedFrom} רעיונות שנבחרו לפי יחס הקטגוריות, מתוך ${plan.truncatedFrom} שיש לך במאגר - לא כל הרעיונות נכנסו כדי לשמור על האיזון`,
     });
+  }
+  if (plan.droppedPinnedTitles && plan.droppedPinnedTitles.length) {
+    const titles = plan.droppedPinnedTitles.join(', ');
+    const text =
+      plan.droppedPinnedTitles.length === 1
+        ? `הרעיון שסימנת ידנית "${titles}" לא נכנס לתכנית כי חרג ממכסת הקטגוריה שלו`
+        : `${plan.droppedPinnedTitles.length} מהרעיונות שסימנת ידנית לא נכנסו לתכנית כי חרגו ממכסת הקטגוריה שלהם: ${titles}`;
+    notes.push({ icon: '📌', text });
   }
   if (notes.length) {
     const notesBox = document.createElement('div');
@@ -764,10 +786,67 @@ export function wireContentPlanView() {
   const secondaryAudienceRow = document.getElementById('content-plan-secondary-audience-row');
   const includeSecondaryCheckbox = document.getElementById('content-plan-include-secondary');
 
+  const pickIdeasModal = document.getElementById('content-plan-pick-ideas-modal');
+  const pickIdeasBtn = document.getElementById('content-plan-pick-ideas-btn');
+  const pickIdeasList = document.getElementById('content-plan-pick-ideas-list');
+  // נשמר רק בזיכרון, לא ב-Firestore - מתאפס בכל פתיחה מחדש של מודל
+  // "בניית תכנית תוכן" (ראו open-builder-btn למטה).
+  let pinnedIdeaIds = new Set();
+
+  function renderPickIdeasList() {
+    pickIdeasList.innerHTML = '';
+    const readyIdeas = [...getReadyIdeas()].sort((a, b) => ratingRank(a.rating) - ratingRank(b.rating));
+    const byCategory = {};
+    for (const idea of readyIdeas) {
+      (byCategory[idea.category] = byCategory[idea.category] || []).push(idea);
+    }
+    for (const category of CATEGORIES) {
+      const ideas = byCategory[category] || [];
+      if (!ideas.length) continue;
+      const heading = document.createElement('div');
+      heading.className = 'content-plan-pick-ideas-heading';
+      heading.style.setProperty('--card-color', categoryColorVar(category));
+      heading.textContent = `${categoryIcon(category)} ${category}`;
+      pickIdeasList.appendChild(heading);
+      for (const idea of ideas) {
+        const label = document.createElement('label');
+        label.className = 'content-plan-pick-idea-row';
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = pinnedIdeaIds.has(idea.id);
+        checkbox.addEventListener('change', () => {
+          if (checkbox.checked) pinnedIdeaIds.add(idea.id);
+          else pinnedIdeaIds.delete(idea.id);
+        });
+        label.appendChild(checkbox);
+        const title = document.createElement('span');
+        title.textContent = idea.title;
+        label.appendChild(title);
+        pickIdeasList.appendChild(label);
+      }
+    }
+  }
+
   document.getElementById('content-plan-open-builder-btn').addEventListener('click', async () => {
+    pinnedIdeaIds = new Set();
     refreshGate();
     modal.hidden = false;
     await refreshAudienceGate();
+  });
+
+  pickIdeasBtn.addEventListener('click', () => {
+    renderPickIdeasList();
+    pickIdeasModal.hidden = false;
+  });
+
+  function closePickIdeasModal() {
+    pickIdeasModal.hidden = true;
+  }
+  document.getElementById('content-plan-pick-ideas-close-btn').addEventListener('click', closePickIdeasModal);
+  document.getElementById('content-plan-pick-ideas-cancel-btn').addEventListener('click', closePickIdeasModal);
+  document.getElementById('content-plan-pick-ideas-save-btn').addEventListener('click', closePickIdeasModal);
+  pickIdeasModal.addEventListener('click', (e) => {
+    if (e.target === pickIdeasModal) closePickIdeasModal();
   });
 
   // כמות התכנים המבוקשת יכולה להשתנות אחרי שהשער כבר עבר (למשל: עבר
@@ -825,7 +904,8 @@ export function wireContentPlanView() {
 
     const pieceCount = Number(document.getElementById('content-plan-piece-count').value) || MIN_PIECE_COUNT;
     const readyIdeas = [...getReadyIdeas()].sort((a, b) => ratingRank(a.rating) - ratingRank(b.rating));
-    const cappedIdeas = selectIdeasForRatio(readyIdeas, pieceCount).slice(0, MAX_IDEAS_SENT);
+    const { selected, droppedPinned } = selectIdeasForRatio(readyIdeas, pieceCount, pinnedIdeaIds);
+    const cappedIdeas = selected.slice(0, MAX_IDEAS_SENT);
 
     const ideasPayload = cappedIdeas.map((idea) => ({
       title: idea.title,
@@ -851,6 +931,9 @@ export function wireContentPlanView() {
       if (readyIdeas.length > cappedIdeas.length) {
         currentPlan.truncatedFrom = readyIdeas.length;
         currentPlan.selectedCount = cappedIdeas.length;
+      }
+      if (droppedPinned.length) {
+        currentPlan.droppedPinnedTitles = droppedPinned.map((idea) => idea.title);
       }
       currentMeta = { pieceCount };
       currentPlanId = null;

@@ -608,6 +608,7 @@
         <input type="checkbox" id="content-plan-include-secondary">
         לכלול הפעם גם תוכן לקהל היעד המשני שלך?
       </label>
+      <button type="button" id="content-plan-pick-ideas-btn" class="btn-text">🎯 בחירת רעיונות ספציפיים (אופציונלי)</button>
       <p id="content-plan-error" class="error-text" role="alert" hidden></p>
       <button type="submit" class="btn-primary" id="content-plan-generate-btn">📅 בניית תכנית תוכן</button>
     </form>
@@ -644,6 +645,21 @@
         <button type="submit" class="btn-primary" id="audience-edit-save-btn">שמירה</button>
       </div>
     </form>
+  </div>
+</div>
+
+<!-- רשימת ה-checkbox נבנית דינמית ב-JS (content-plan.js, renderPickIdeasList) -
+     ה-div כאן הוא רק המיכל הריק. -->
+<div id="content-plan-pick-ideas-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="content-plan-pick-ideas-title">
+  <div class="modal-content modal-content-wide">
+    <button type="button" id="content-plan-pick-ideas-close-btn" class="modal-close-x" aria-label="סגירה">✕</button>
+    <h2 id="content-plan-pick-ideas-title">בחירת רעיונות ספציפיים</h2>
+    <p class="content-plan-pick-ideas-hint">רעיונות שתסמני יקבלו עדיפות ראשונה בתוך הקטגוריה שלהם - אבל אם תסמני יותר ממה שיש מקום, רק המדורגים הכי גבוה מהסימון ייכנסו בפועל.</p>
+    <div id="content-plan-pick-ideas-list" class="content-plan-pick-ideas-list"></div>
+    <div class="modal-actions">
+      <button type="button" id="content-plan-pick-ideas-cancel-btn" class="btn-text">ביטול</button>
+      <button type="button" id="content-plan-pick-ideas-save-btn" class="btn-primary">שמירת בחירה</button>
+    </div>
   </div>
 </div>
 

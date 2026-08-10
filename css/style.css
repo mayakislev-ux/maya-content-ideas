@@ -3999,3 +3999,37 @@ textarea:focus-visible,
 .tour-skip-btn:hover {
   color: var(--text);
 }
+
+.content-plan-pick-ideas-hint {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin-bottom: 0.8rem;
+}
+
+.content-plan-pick-ideas-list {
+  max-height: 50vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.content-plan-pick-ideas-heading {
+  font-weight: bold;
+  border-inline-start: 4px solid var(--card-color, var(--accent));
+  padding-inline-start: 0.6rem;
+  margin-top: 0.8rem;
+}
+
+.content-plan-pick-idea-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.content-plan-pick-idea-row:hover {
+  background: var(--surface);
+}
