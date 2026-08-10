@@ -803,13 +803,26 @@ export function wireContentPlanView() {
   const pickIdeasCountEl = document.getElementById('content-plan-pick-ideas-count');
   const pickIdeasClearBtn = document.getElementById('content-plan-pick-ideas-clear-btn');
 
-  // סינון רב-בחירה (לא select יחיד) - אפשר לסמן גם "🔥 חייב לצלם" וגם
-  // "⭐ שווה לצלם" יחד, או כמה סוגי תוכן יחד. קבוצה ריקה = בלי סינון בכלל.
-  // הצ'יפים עצמם נבנים פעם אחת (לא תלויים בבנק הרעיונות) - אותו סגנון
-  // .category-chip/.rating-chip שכבר קיים בטופס הוספת רעיון, כדי שזה
-  // ירגיש כמו חלק מהאפליקציה ולא כמו רכיב חדש.
-  const activeCategoryFilters = new Set();
-  const activeRatingFilters = new Set();
+  // סינון יחיד (לא רב-בחירה) - סימון מרובה יחד הרגיש לא ברור, אז כל
+  // לחיצה על צ'יפ מבטלת את מה שהיה מסומן לפניו באותה קבוצה (כמו כפתורי
+  // רדיו), ולחיצה חוזרת על אותו צ'יפ מבטלת את הסינון לגמרי - כך שתמיד
+  // ברור בדיוק מה מסומן: או כלום, או צ'יפ אחד יחיד. הצ'יפים עצמם נבנים
+  // פעם אחת (לא תלויים בבנק הרעיונות) - אותו סגנון .category-chip/
+  // .rating-chip שכבר קיים בטופס הוספת רעיון, כדי שזה ירגיש כמו חלק
+  // מהאפליקציה ולא כמו רכיב חדש.
+  let activeCategoryFilter = '';
+  let activeRatingFilter = '';
+
+  function selectSingleChip(container, chip, value, currentValue, setValue) {
+    const nextValue = currentValue === value ? '' : value;
+    setValue(nextValue);
+    container.querySelectorAll('button').forEach((btn) => {
+      const isActive = btn === chip && nextValue === value;
+      btn.classList.toggle('active', isActive);
+      btn.setAttribute('aria-pressed', String(isActive));
+    });
+    renderPickIdeasList();
+  }
 
   function buildCategoryFilterChips() {
     pickIdeasCategoryChipsEl.innerHTML = '';
@@ -821,11 +834,7 @@ export function wireContentPlanView() {
       chip.textContent = `${categoryIcon(category)} ${category}`;
       chip.setAttribute('aria-pressed', 'false');
       chip.addEventListener('click', () => {
-        if (activeCategoryFilters.has(category)) activeCategoryFilters.delete(category);
-        else activeCategoryFilters.add(category);
-        chip.classList.toggle('active', activeCategoryFilters.has(category));
-        chip.setAttribute('aria-pressed', String(activeCategoryFilters.has(category)));
-        renderPickIdeasList();
+        selectSingleChip(pickIdeasCategoryChipsEl, chip, category, activeCategoryFilter, (v) => (activeCategoryFilter = v));
       });
       pickIdeasCategoryChipsEl.appendChild(chip);
     });
@@ -840,11 +849,7 @@ export function wireContentPlanView() {
       chip.textContent = rating;
       chip.setAttribute('aria-pressed', 'false');
       chip.addEventListener('click', () => {
-        if (activeRatingFilters.has(rating)) activeRatingFilters.delete(rating);
-        else activeRatingFilters.add(rating);
-        chip.classList.toggle('active', activeRatingFilters.has(rating));
-        chip.setAttribute('aria-pressed', String(activeRatingFilters.has(rating)));
-        renderPickIdeasList();
+        selectSingleChip(pickIdeasRatingChipsEl, chip, rating, activeRatingFilter, (v) => (activeRatingFilter = v));
       });
       pickIdeasRatingChipsEl.appendChild(chip);
     });
@@ -855,8 +860,8 @@ export function wireContentPlanView() {
 
   function resetPickIdeasFilters() {
     pickIdeasSearchInput.value = '';
-    activeCategoryFilters.clear();
-    activeRatingFilters.clear();
+    activeCategoryFilter = '';
+    activeRatingFilter = '';
     pickIdeasCategoryChipsEl.querySelectorAll('.category-chip').forEach((chip) => {
       chip.classList.remove('active');
       chip.setAttribute('aria-pressed', 'false');
@@ -913,7 +918,7 @@ export function wireContentPlanView() {
       // סינון סוג-תוכן קובע אילו קטגוריות שלמות מוצגות בכלל - לא רק אילו
       // רעיונות בתוכן, אחרת "אני רוצה רק בעל ערך ומכירתי" עדיין היה מציג
       // את שאר הקטגוריות ריקות.
-      if (activeCategoryFilters.size && !activeCategoryFilters.has(category)) continue;
+      if (activeCategoryFilter && category !== activeCategoryFilter) continue;
       const allIdeasInCategory = byCategory[category] || [];
       if (!allIdeasInCategory.length) continue;
 
@@ -921,7 +926,7 @@ export function wireContentPlanView() {
       // התנהגות אינטואיטיבית של "בחר הכל שרואים", לא כל הקטגוריה בעיוור.
       const visibleIdeas = allIdeasInCategory.filter((idea) => {
         if (searchQuery && !idea.title.toLowerCase().includes(searchQuery)) return false;
-        if (activeRatingFilters.size && !activeRatingFilters.has(idea.rating)) return false;
+        if (activeRatingFilter && idea.rating !== activeRatingFilter) return false;
         return true;
       });
       if (!visibleIdeas.length) continue;
