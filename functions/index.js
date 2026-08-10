@@ -385,29 +385,35 @@ exports.getClientUsageStats = onCall({ region: 'us-central1', timeoutSeconds: 60
   // מול נתונים אמיתיים: 13 לקוחות עם רעיון שנוצר עד שבוע שלם אחרי ה-
   // lastSignInTime שלהן - כלומר "התחברו לאחרונה" הראה תאריך ישן משמעותית
   // מהפעילות האמיתית שלהן. lastActiveAt (profiles/{uid}, נכתב מה-קליינט
-  // בכל פתיחה מוצלחת של האפליקציה - ראו app.js) הוא הסיגנל האמיתי; לוקחים
-  // את המאוחר מבין השניים כי משתמשות ותיקות מלפני התיקון הזה עדיין לא
-  // צברו lastActiveAt בכלל.
+  // בכל פתיחה מוצלחת של האפליקציה - ראו app.js) הוא הסיגנל האמיתי קדימה,
+  // אבל הוא ריק לגמרי למי שעדיין לא פתחה שוב מאז שהתיקון הזה עלה - בשבילן
+  // לוקחים גם את תאריך הרעיון האחרון שלהן (lastIdeaAt, שכבר קיים בנתונים
+  // ההיסטוריים) כהוכחה אמיתית לפעילות, במקום לחכות לפתיחה הבאה. "שחזור"
+  // רטרואקטיבי מנתונים שכבר יש, לא רק תיקון קדימה.
   const lastActiveByUid = new Map();
   profilesSnap.forEach((doc) => {
     const d = doc.data();
     if (d.lastActiveAt && d.lastActiveAt.toDate) lastActiveByUid.set(doc.id, d.lastActiveAt.toDate().toISOString());
   });
 
+  function latestOf(...isoTimestamps) {
+    return isoTimestamps.filter(Boolean).sort().pop() || null;
+  }
+
   function buildClient(email, allowed) {
     const authUser = authByEmail.get(email);
     const ideas = authUser ? ideasByUid.get(authUser.uid) || [] : [];
     ideas.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
     const lastSignInTime = (authUser && authUser.metadata.lastSignInTime) || null;
+    const lastSignInIso = lastSignInTime ? new Date(lastSignInTime).toISOString() : null;
     const lastActiveAt = (authUser && lastActiveByUid.get(authUser.uid)) || null;
-    const lastSeenAt =
-      lastActiveAt && (!lastSignInTime || new Date(lastActiveAt) > new Date(lastSignInTime)) ? lastActiveAt : lastSignInTime;
+    const lastIdeaAt = ideas.length ? ideas[0].createdAt : null;
     return {
       email,
       allowed,
-      lastSignInTime: lastSeenAt,
+      lastSignInTime: latestOf(lastSignInIso, lastActiveAt, lastIdeaAt),
       ideaCount: ideas.length,
-      lastIdeaAt: ideas.length ? ideas[0].createdAt : null,
+      lastIdeaAt,
       ideas,
     };
   }
