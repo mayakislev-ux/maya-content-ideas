@@ -658,6 +658,18 @@ function getPersuasionStageVolumeGaps(readyIdeas, pieceCount) {
   return gaps;
 }
 
+// אותו עיקרון שוב, לוויראליות (VIRAL_SCOPE = "רחב"). אומת מול נתונים
+// אמיתיים: מתוך 59 רעיונות מוכנים היו רק 5 מתויגים "קהל רחב" (8%) - אין
+// שום דרך להגיע ל-30% מהתכנית בלי מספיק היצע כזה מלכתחילה, לא משנה כמה
+// טוב אלגוריתם הבחירה. בלי השער הזה זה נבנה בשקט עם ויראליות נמוכה,
+// בדיוק מה שקרה בפועל.
+function getViralityVolumeGap(readyIdeas, pieceCount) {
+  const target = 0.3;
+  const needed = Math.ceil((target * pieceCount) / 2);
+  const actual = readyIdeas.filter((idea) => idea.audienceScope === VIRAL_SCOPE).length;
+  return actual < needed ? { actual, needed } : null;
+}
+
 // הודעת השער עברה מפסקה ארוכה אחת (עמוסה, קשה לסרוק) למבנה עם כותרות
 // ורשימות - כל קבוצת חוסרים (קטגוריות / שלבי שכנוע / רעיונות לא מסווגים)
 // מקבלת כותרת קצרה משלה ורשימת שורות, במקום להיטמע כולה במשפט אחד.
@@ -748,7 +760,8 @@ export function refreshGate() {
   const enoughVolume = readyCount >= MIN_READY_IDEAS;
   const categoryGaps = getCategoryVolumeGaps(readyIdeas, pieceCount);
   const stageGaps = getPersuasionStageVolumeGaps(readyIdeas, pieceCount);
-  const enough = enoughVolume && categoryGaps.length === 0 && stageGaps.length === 0;
+  const viralityGap = getViralityVolumeGap(readyIdeas, pieceCount);
+  const enough = enoughVolume && categoryGaps.length === 0 && stageGaps.length === 0 && !viralityGap;
   gateMsg.hidden = enough;
   form.hidden = !enough;
   if (enough) {
@@ -786,7 +799,7 @@ export function refreshGate() {
 
   const intro = document.createElement('p');
   intro.className = 'content-plan-gate-intro';
-  intro.textContent = 'כדי לבנות תכנית תוכן מאוזנת (יחס קטגוריות 40/30/15/15 ואיזון בין שלבי שכנוע) חסר לך מספיק רעיונות מסווגים:';
+  intro.textContent = 'כדי לבנות תכנית תוכן מאוזנת (יחס קטגוריות 40/30/15/15, איזון בין שלבי שכנוע, וכ-30% ויראליות) חסר לך מספיק רעיונות מסווגים:';
   gateMsg.appendChild(intro);
 
   renderGateSection(
@@ -798,6 +811,11 @@ export function refreshGate() {
     gateMsg,
     'בשלבי שכנוע:',
     stageGaps.map((g) => `${g.stage} - יש לך ${g.actual}, צריך לפחות ${g.needed}`)
+  );
+  renderGateSection(
+    gateMsg,
+    'בוויראליות (קהל רחב):',
+    viralityGap ? [`יש לך ${viralityGap.actual}, צריך לפחות ${viralityGap.needed} רעיונות מתויגים "קהל רחב" - חשוב לצמיחה`] : []
   );
 
   const cta = document.createElement('p');
