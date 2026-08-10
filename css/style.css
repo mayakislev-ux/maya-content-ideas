@@ -4030,9 +4030,14 @@ textarea:focus-visible,
 /* דביקה בראש הרשימה (לא בתוך תיבה נפרדת שגוללת בפני עצמה - ראו את
    .content-plan-pick-ideas-list למטה) כדי שהחיפוש/הסינון/המונה יישארו
    נגישים תמיד, גם עמוק בתוך גלילה ארוכה. */
+/* top:4rem (לא -1px) - נמדד בפועל בדפדפן אמיתי (Chrome/390px): ה-✕
+   הקבוע לסגירת המודל (position:fixed, גובה 2.75rem מ-top:1rem) יושב
+   בערך בין 16-60px מראש המסך - עם top:-1px הכלי הדביק "נדבק" בדיוק
+   בתוך הטווח הזה ברגע שגוללים, וחופף ל-✕ הקבוע. 4rem מבטיח שהוא נדבק
+   מתחתיו, לא מעליו/תוכו. */
 .content-plan-pick-ideas-toolbar {
   position: sticky;
-  top: -1px;
+  top: 4rem;
   background: var(--card-bg);
   z-index: 2;
   display: flex;
@@ -4065,10 +4070,23 @@ textarea:focus-visible,
    .category-chip/.rating-chip שכבר קיימות בטופס הוספת רעיון - אותו
    מראה בדיוק, רק עם gap קטן יותר כדי שיתאימו לתוך הכלי הצר יותר של
    הפופאפ במקום התצוגה המרווחת של הטופס. */
+/* גלילה אופקית (לא flex-wrap) - נמדד בפועל: עם 4 צ'יפי קטגוריה + 3
+   צ'יפי דירוג, שני השורות ביחד גלשו לשלוש שורות ברוחב מסך נייד (390px)
+   ותפסו כ-45% מגובה המסך עוד לפני שרואים רעיון אחד. שורה אחת גוללת
+   לצדדים חוסכת את כל השטח הזה, בדיוק כמו תפריטי סינון-בגלילה נפוצים. */
 .content-plan-pick-ideas-toolbar .category-chips,
 .content-plan-pick-ideas-toolbar .rating-chips {
   margin: 0;
   gap: 0.4rem;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 0.2rem;
+}
+
+.content-plan-pick-ideas-toolbar .category-chip,
+.content-plan-pick-ideas-toolbar .rating-chip {
+  flex-shrink: 0;
 }
 
 .content-plan-pick-ideas-summary {
