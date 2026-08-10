@@ -4172,3 +4172,18 @@ textarea:focus-visible,
   color: var(--muted);
   white-space: nowrap;
 }
+
+/* דביקה בתחתית (בדיוק כמו ה-toolbar בראש) כדי ש"שמירת בחירה" תמיד
+   תהיה נגישה בלחיצה אחת, בלי לגלול כל הדרך למטה דרך רשימה ארוכה של
+   רעיונות בכל פעם. ממוקד רק למודל הזה (לא ל-.modal-actions הגלובלי,
+   שמשמש גם מודלים קצרים אחרים שלא צריכים את ההתנהגות הזו). */
+#content-plan-pick-ideas-modal .modal-actions {
+  position: sticky;
+  bottom: -1px;
+  background: var(--card-bg);
+  padding-top: 0.8rem;
+  padding-bottom: 0.4rem;
+  margin-top: 0.5rem;
+  border-top: 1px solid var(--border-color);
+  z-index: 2;
+}
