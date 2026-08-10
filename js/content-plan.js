@@ -1149,7 +1149,19 @@ export function wireContentPlanView() {
     const includeSecondaryAudience = secondaryAudienceRow.hidden ? true : includeSecondaryCheckbox.checked;
 
     try {
-      const result = await generateContentPlan({ pieceCount, ideas: ideasPayload, includeSecondaryAudience });
+      let result;
+      let attempt = 1;
+      while (true) {
+        try {
+          result = await generateContentPlan({ pieceCount, ideas: ideasPayload, includeSecondaryAudience });
+          break;
+        } catch (retryErr) {
+          const retryHasHebrewText = /[֐-׿]/.test(retryErr.message || '');
+          if (retryHasHebrewText || attempt >= 2) throw retryErr;
+          console.error(`generateContentPlan failed, retrying (attempt ${attempt}):`, retryErr);
+          attempt++;
+        }
+      }
       currentPlan = enrichPlanFromBank(result.data.plan, cappedIdeas);
       if (readyIdeas.length > cappedIdeas.length) {
         currentPlan.truncatedFrom = readyIdeas.length;
@@ -1166,7 +1178,7 @@ export function wireContentPlanView() {
       const hasHebrewText = /[\u0590-\u05FF]/.test(err.message || '');
       errorEl.textContent = hasHebrewText
         ? `משהו השתבש בבניית התכנית: ${err.message}. נסו שוב.`
-        : 'משהו השתבש בבניית התכנית, נסו שוב.';
+        : 'החיבור נכשל, כנראה בגלל רשת לא יציבה. נסו שוב.';
       errorEl.hidden = false;
     } finally {
       generateBtn.disabled = false;
