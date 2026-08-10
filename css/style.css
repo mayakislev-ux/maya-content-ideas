@@ -4036,16 +4036,22 @@ textarea:focus-visible,
   background: var(--card-bg);
   z-index: 2;
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
+  flex-direction: column;
   gap: 0.5rem;
   padding: 0.5rem 0 0.7rem;
   margin-bottom: 0.3rem;
   border-bottom: 1px solid var(--border-color);
 }
 
-.content-plan-pick-ideas-search,
-.content-plan-pick-ideas-rating-filter {
+.content-plan-pick-ideas-toolbar-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.content-plan-pick-ideas-search {
+  flex: 1 1 160px;
   padding: 0.5rem 0.7rem;
   border-radius: 10px;
   border: 1px solid var(--border-color);
@@ -4054,7 +4060,16 @@ textarea:focus-visible,
   font-family: inherit;
   font-size: 0.9rem;
 }
-.content-plan-pick-ideas-search { flex: 1 1 160px; }
+
+/* צ'יפי הסינון (סוג תוכן/דירוג) בתוך הפופאפ משתמשים באותם מחלקות
+   .category-chip/.rating-chip שכבר קיימות בטופס הוספת רעיון - אותו
+   מראה בדיוק, רק עם gap קטן יותר כדי שיתאימו לתוך הכלי הצר יותר של
+   הפופאפ במקום התצוגה המרווחת של הטופס. */
+.content-plan-pick-ideas-toolbar .category-chips,
+.content-plan-pick-ideas-toolbar .rating-chips {
+  margin: 0;
+  gap: 0.4rem;
+}
 
 .content-plan-pick-ideas-summary {
   display: flex;
@@ -4133,8 +4148,12 @@ textarea:focus-visible,
   background: var(--surface);
 }
 
+/* צבע סוג-התוכן של הרעיון עצמו (--card-color, נקבע ב-JS לכל שורה),
+   לא גוון אחיד גנרי - מאיה ציינה שזה החלק הכי חשוב בבקשה. גרסה מבוהקת
+   של אותו צבע במקום הצבע הרווי במלואו, כדי שהטקסט הכהה/בהיר עדיין
+   קריא מעליו בשני המצבים (בהיר/כהה). */
 .content-plan-pick-idea-row-checked {
-  background: var(--accent-tint);
+  background: color-mix(in srgb, var(--card-color, var(--accent)) 20%, var(--card-bg));
 }
 
 .content-plan-pick-idea-row input[type="checkbox"] {

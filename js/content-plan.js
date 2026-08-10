@@ -798,22 +798,74 @@ export function wireContentPlanView() {
   const pickIdeasBtn = document.getElementById('content-plan-pick-ideas-btn');
   const pickIdeasList = document.getElementById('content-plan-pick-ideas-list');
   const pickIdeasSearchInput = document.getElementById('content-plan-pick-ideas-search');
-  const pickIdeasRatingFilter = document.getElementById('content-plan-pick-ideas-rating-filter');
+  const pickIdeasCategoryChipsEl = document.getElementById('content-plan-pick-ideas-category-chips');
+  const pickIdeasRatingChipsEl = document.getElementById('content-plan-pick-ideas-rating-chips');
   const pickIdeasCountEl = document.getElementById('content-plan-pick-ideas-count');
   const pickIdeasClearBtn = document.getElementById('content-plan-pick-ideas-clear-btn');
 
-  // מוצא פעם אחת מ-RATINGS - זה select חיצוני לרשימת הרעיונות עצמה,
-  // לא צריך להיבנות מחדש בכל רינדור שלה.
-  const allRatingsOption = document.createElement('option');
-  allRatingsOption.value = '';
-  allRatingsOption.textContent = 'כל הדירוגים';
-  pickIdeasRatingFilter.appendChild(allRatingsOption);
-  RATINGS.forEach((rating) => {
-    const option = document.createElement('option');
-    option.value = rating;
-    option.textContent = rating;
-    pickIdeasRatingFilter.appendChild(option);
-  });
+  // סינון רב-בחירה (לא select יחיד) - אפשר לסמן גם "🔥 חייב לצלם" וגם
+  // "⭐ שווה לצלם" יחד, או כמה סוגי תוכן יחד. קבוצה ריקה = בלי סינון בכלל.
+  // הצ'יפים עצמם נבנים פעם אחת (לא תלויים בבנק הרעיונות) - אותו סגנון
+  // .category-chip/.rating-chip שכבר קיים בטופס הוספת רעיון, כדי שזה
+  // ירגיש כמו חלק מהאפליקציה ולא כמו רכיב חדש.
+  const activeCategoryFilters = new Set();
+  const activeRatingFilters = new Set();
+
+  function buildCategoryFilterChips() {
+    pickIdeasCategoryChipsEl.innerHTML = '';
+    CATEGORIES.forEach((category) => {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'category-chip';
+      chip.style.setProperty('--chip-color', categoryColorVar(category));
+      chip.textContent = `${categoryIcon(category)} ${category}`;
+      chip.setAttribute('aria-pressed', 'false');
+      chip.addEventListener('click', () => {
+        if (activeCategoryFilters.has(category)) activeCategoryFilters.delete(category);
+        else activeCategoryFilters.add(category);
+        chip.classList.toggle('active', activeCategoryFilters.has(category));
+        chip.setAttribute('aria-pressed', String(activeCategoryFilters.has(category)));
+        renderPickIdeasList();
+      });
+      pickIdeasCategoryChipsEl.appendChild(chip);
+    });
+  }
+
+  function buildRatingFilterChips() {
+    pickIdeasRatingChipsEl.innerHTML = '';
+    RATINGS.forEach((rating) => {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'rating-chip';
+      chip.textContent = rating;
+      chip.setAttribute('aria-pressed', 'false');
+      chip.addEventListener('click', () => {
+        if (activeRatingFilters.has(rating)) activeRatingFilters.delete(rating);
+        else activeRatingFilters.add(rating);
+        chip.classList.toggle('active', activeRatingFilters.has(rating));
+        chip.setAttribute('aria-pressed', String(activeRatingFilters.has(rating)));
+        renderPickIdeasList();
+      });
+      pickIdeasRatingChipsEl.appendChild(chip);
+    });
+  }
+
+  buildCategoryFilterChips();
+  buildRatingFilterChips();
+
+  function resetPickIdeasFilters() {
+    pickIdeasSearchInput.value = '';
+    activeCategoryFilters.clear();
+    activeRatingFilters.clear();
+    pickIdeasCategoryChipsEl.querySelectorAll('.category-chip').forEach((chip) => {
+      chip.classList.remove('active');
+      chip.setAttribute('aria-pressed', 'false');
+    });
+    pickIdeasRatingChipsEl.querySelectorAll('.rating-chip').forEach((chip) => {
+      chip.classList.remove('active');
+      chip.setAttribute('aria-pressed', 'false');
+    });
+  }
 
   // נשמר רק בזיכרון, לא ב-Firestore - מתאפס בכל פתיחה מחדש של מודל
   // "בניית תכנית תוכן" (ראו open-builder-btn למטה).
@@ -854,11 +906,14 @@ export function wireContentPlanView() {
     }
 
     const searchQuery = pickIdeasSearchInput.value.trim().toLowerCase();
-    const ratingFilterValue = pickIdeasRatingFilter.value;
 
     updatePickIdeasCount();
 
     for (const category of CATEGORIES) {
+      // סינון סוג-תוכן קובע אילו קטגוריות שלמות מוצגות בכלל - לא רק אילו
+      // רעיונות בתוכן, אחרת "אני רוצה רק בעל ערך ומכירתי" עדיין היה מציג
+      // את שאר הקטגוריות ריקות.
+      if (activeCategoryFilters.size && !activeCategoryFilters.has(category)) continue;
       const allIdeasInCategory = byCategory[category] || [];
       if (!allIdeasInCategory.length) continue;
 
@@ -866,7 +921,7 @@ export function wireContentPlanView() {
       // התנהגות אינטואיטיבית של "בחר הכל שרואים", לא כל הקטגוריה בעיוור.
       const visibleIdeas = allIdeasInCategory.filter((idea) => {
         if (searchQuery && !idea.title.toLowerCase().includes(searchQuery)) return false;
-        if (ratingFilterValue && idea.rating !== ratingFilterValue) return false;
+        if (activeRatingFilters.size && !activeRatingFilters.has(idea.rating)) return false;
         return true;
       });
       if (!visibleIdeas.length) continue;
@@ -904,6 +959,9 @@ export function wireContentPlanView() {
       for (const idea of visibleIdeas) {
         const label = document.createElement('label');
         label.className = 'content-plan-pick-idea-row';
+        // סימון = צובע בצבע סוג התוכן שלו, לא בצבע אחיד גנרי - זה מה
+        // שמאיה ציינה כהכי חשוב לה.
+        label.style.setProperty('--card-color', categoryColorVar(category));
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
         checkbox.checked = pinnedIdeaIds.has(idea.id);
@@ -941,14 +999,12 @@ export function wireContentPlanView() {
   });
 
   pickIdeasBtn.addEventListener('click', () => {
-    pickIdeasSearchInput.value = '';
-    pickIdeasRatingFilter.value = '';
+    resetPickIdeasFilters();
     renderPickIdeasList();
     pickIdeasModal.hidden = false;
   });
 
   pickIdeasSearchInput.addEventListener('input', renderPickIdeasList);
-  pickIdeasRatingFilter.addEventListener('change', renderPickIdeasList);
   pickIdeasClearBtn.addEventListener('click', () => {
     pinnedIdeaIds.clear();
     updatePickIdeasBtnLabel();
