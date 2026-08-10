@@ -608,7 +608,7 @@
         <input type="checkbox" id="content-plan-include-secondary">
         לכלול הפעם גם תוכן לקהל היעד המשני שלך?
       </label>
-      <button type="button" id="content-plan-pick-ideas-btn" class="btn-text">🎯 בחירת רעיונות ספציפיים (אופציונלי)</button>
+      <button type="button" id="content-plan-pick-ideas-btn" class="content-plan-pick-ideas-btn">🎯 בחירת רעיונות ספציפיים (אופציונלי)</button>
       <p id="content-plan-error" class="error-text" role="alert" hidden></p>
       <button type="submit" class="btn-primary" id="content-plan-generate-btn">📅 בניית תכנית תוכן</button>
     </form>
@@ -655,6 +655,14 @@
     <button type="button" id="content-plan-pick-ideas-close-btn" class="modal-close-x" aria-label="סגירה">✕</button>
     <h2 id="content-plan-pick-ideas-title">בחירת רעיונות ספציפיים</h2>
     <p class="content-plan-pick-ideas-hint">רעיונות שתסמני יקבלו עדיפות ראשונה בתוך הקטגוריה שלהם - אבל אם תסמני יותר ממה שיש מקום, רק המדורגים הכי גבוה מהסימון ייכנסו בפועל.</p>
+    <div class="content-plan-pick-ideas-toolbar">
+      <input type="search" id="content-plan-pick-ideas-search" class="content-plan-pick-ideas-search" placeholder="חיפוש רעיון...">
+      <select id="content-plan-pick-ideas-rating-filter" class="content-plan-pick-ideas-rating-filter" aria-label="סינון לפי דירוג"></select>
+      <div class="content-plan-pick-ideas-summary">
+        <span id="content-plan-pick-ideas-count">לא נבחר כלום</span>
+        <button type="button" id="content-plan-pick-ideas-clear-btn" class="content-plan-pick-ideas-clear-btn">נקה הכל</button>
+      </div>
+    </div>
     <div id="content-plan-pick-ideas-list" class="content-plan-pick-ideas-list"></div>
     <div class="modal-actions">
       <button type="button" id="content-plan-pick-ideas-cancel-btn" class="btn-text">ביטול</button>

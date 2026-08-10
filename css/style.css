@@ -4000,36 +4000,156 @@ textarea:focus-visible,
   color: var(--text);
 }
 
+/* כפתור אמיתי (מסגרת מקווקוות + רקע מגוון) במקום .btn-text - סגנון
+   הטקסט-עם-קו-תחתון הקיים באפליקציה הוא הכי חלש מכל כפתור, וזה בדיוק
+   גרם לתחושת "לא בולט מספיק". */
+.content-plan-pick-ideas-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  width: 100%;
+  background: var(--accent-tint);
+  color: var(--accent-strong);
+  border: 1.5px dashed var(--accent);
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: transform 150ms var(--ease-snap);
+}
+.content-plan-pick-ideas-btn:active { transform: scale(0.97); }
+
 .content-plan-pick-ideas-hint {
   color: var(--muted);
   font-size: 0.9rem;
   margin-bottom: 0.8rem;
 }
 
+/* דביקה בראש הרשימה (לא בתוך תיבה נפרדת שגוללת בפני עצמה - ראו את
+   .content-plan-pick-ideas-list למטה) כדי שהחיפוש/הסינון/המונה יישארו
+   נגישים תמיד, גם עמוק בתוך גלילה ארוכה. */
+.content-plan-pick-ideas-toolbar {
+  position: sticky;
+  top: -1px;
+  background: var(--card-bg);
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0 0.7rem;
+  margin-bottom: 0.3rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.content-plan-pick-ideas-search,
+.content-plan-pick-ideas-rating-filter {
+  padding: 0.5rem 0.7rem;
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+  background: var(--surface);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.9rem;
+}
+.content-plan-pick-ideas-search { flex: 1 1 160px; }
+
+.content-plan-pick-ideas-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-inline-start: auto;
+}
+
+.content-plan-pick-ideas-clear-btn {
+  background: none;
+  border: none;
+  color: var(--muted);
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 0.2rem;
+}
+
+/* בלי max-height/overflow-y משלה - הרשימה גוללת כחלק מגלילת המודל
+   הכללית (אותו מנגנון שכבר קיים לכל שאר האפליקציה), לא כ"גלילה בתוך
+   גלילה" נפרדת שגורמת לתחושת "קשה להתנייד" במגע. */
 .content-plan-pick-ideas-list {
-  max-height: 50vh;
-  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
 }
 
 .content-plan-pick-ideas-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
   font-weight: bold;
   border-inline-start: 4px solid var(--card-color, var(--accent));
   padding-inline-start: 0.6rem;
   margin-top: 0.8rem;
 }
 
+.content-plan-pick-ideas-heading-label { flex: 1 1 auto; }
+
+.content-plan-pick-ideas-quota {
+  font-size: 0.78rem;
+  font-weight: normal;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.content-plan-pick-ideas-quota-over {
+  color: var(--cat-mechirti);
+  font-weight: bold;
+}
+
+.content-plan-pick-ideas-select-all-btn {
+  background: none;
+  border: none;
+  color: var(--accent-strong);
+  font-size: 0.78rem;
+  text-decoration: underline;
+  cursor: pointer;
+  white-space: nowrap;
+  padding: 0.2rem;
+}
+
 .content-plan-pick-idea-row {
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  padding: 0.4rem 0.6rem;
+  min-height: 44px;
+  padding: 0.55rem 0.7rem;
   border-radius: 8px;
   cursor: pointer;
 }
 
 .content-plan-pick-idea-row:hover {
   background: var(--surface);
+}
+
+.content-plan-pick-idea-row-checked {
+  background: var(--accent-tint);
+}
+
+.content-plan-pick-idea-row input[type="checkbox"] {
+  width: 1.3rem;
+  height: 1.3rem;
+  flex-shrink: 0;
+}
+
+.content-plan-pick-idea-title {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.content-plan-pick-idea-rating {
+  font-size: 0.78rem;
+  color: var(--muted);
+  white-space: nowrap;
 }

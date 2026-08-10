@@ -49,17 +49,15 @@ function ratingRank(rating) {
 // רעיונות בכלל *נשלחים* ל-AI כבר מבטיחה את היחס מראש בקוד רגיל - ה-AI
 // רק משבץ בלוח זמנים את מה שכבר נבחר נכון, בלי צורך להחליט בעצמו מה
 // להשמיט.
-function selectIdeasForRatio(readyIdeasSortedByRating, pieceCount, pinnedIds = new Set()) {
-  const byCategory = {};
-  for (const idea of readyIdeasSortedByRating) {
-    (byCategory[idea.category] = byCategory[idea.category] || []).push(idea);
-  }
-  // שיטת "השארית הגדולה" - עיגול כל קטגוריה בנפרד (Math.round) לא בהכרח
-  // מסתכם בחזרה ל-pieceCount (נמצא באמת: 16 - ברירת המחדל עצמה! - יצא
-  // 15 בפועל). מחשבים קודם את המכסה המדויקת (לא מעוגלת) לכל קטגוריה,
-  // לוקחים את השלם התחתון של כולן, ואז מחלקים את מה שנשאר (עד להשלמת
-  // pieceCount) לפי מי שהכי קרוב לעיגול למעלה - כך שהסכום תמיד יוצא
-  // בדיוק pieceCount (כשיש מספיק היצע בכל קטגוריה).
+// שיטת "השארית הגדולה" - עיגול כל קטגוריה בנפרד (Math.round) לא בהכרח
+// מסתכם בחזרה ל-pieceCount (נמצא באמת: 16 - ברירת המחדל עצמה! - יצא
+// 15 בפועל). מחשבים קודם את המכסה המדויקת (לא מעוגלת) לכל קטגוריה,
+// לוקחים את השלם התחתון של כולן, ואז מחלקים את מה שנשאר (עד להשלמת
+// pieceCount) לפי מי שהכי קרוב לעיגול למעלה - כך שהסכום תמיד יוצא
+// בדיוק pieceCount (כשיש מספיק היצע בכל קטגוריה). מופרד לפונקציה
+// משלה כי גם הפופאפ של בחירת רעיונות ידנית צריך את אותו חישוב בדיוק,
+// כדי להראות בזמן אמת כמה מקום יש לכל קטגוריה.
+function computeCategoryQuotas(pieceCount) {
   const entries = Object.entries(CATEGORY_TARGETS).map(([cat, target]) => {
     const exact = pieceCount * target;
     return { cat, count: Math.floor(exact), remainder: exact - Math.floor(exact) };
@@ -73,12 +71,22 @@ function selectIdeasForRatio(readyIdeasSortedByRating, pieceCount, pinnedIds = n
         remaining -= 1;
       }
     });
+  const quotas = {};
+  for (const e of entries) quotas[e.cat] = Math.max(1, e.count);
+  return quotas;
+}
+
+function selectIdeasForRatio(readyIdeasSortedByRating, pieceCount, pinnedIds = new Set()) {
+  const byCategory = {};
+  for (const idea of readyIdeasSortedByRating) {
+    (byCategory[idea.category] = byCategory[idea.category] || []).push(idea);
+  }
+  const quotas = computeCategoryQuotas(pieceCount);
 
   const selected = [];
   const droppedPinned = [];
-  for (const e of entries) {
-    const pool = byCategory[e.cat] || [];
-    const targetCount = Math.max(1, e.count);
+  for (const [cat, targetCount] of Object.entries(quotas)) {
+    const pool = byCategory[cat] || [];
     // רעיונות מסומנים (pinnedIds) מקבלים עדיפות ראשונה למכסה של הקטגוריה
     // שלהם, לפי דירוג ביניהם - ורק מה שנשאר מהמכסה מתמלא מהלא-מסומנים,
     // בדיוק כמו הבחירה האוטומטית הרגילה. pool כבר ממוין לפי דירוג (מגיע
@@ -789,39 +797,136 @@ export function wireContentPlanView() {
   const pickIdeasModal = document.getElementById('content-plan-pick-ideas-modal');
   const pickIdeasBtn = document.getElementById('content-plan-pick-ideas-btn');
   const pickIdeasList = document.getElementById('content-plan-pick-ideas-list');
+  const pickIdeasSearchInput = document.getElementById('content-plan-pick-ideas-search');
+  const pickIdeasRatingFilter = document.getElementById('content-plan-pick-ideas-rating-filter');
+  const pickIdeasCountEl = document.getElementById('content-plan-pick-ideas-count');
+  const pickIdeasClearBtn = document.getElementById('content-plan-pick-ideas-clear-btn');
+
+  // מוצא פעם אחת מ-RATINGS - זה select חיצוני לרשימת הרעיונות עצמה,
+  // לא צריך להיבנות מחדש בכל רינדור שלה.
+  const allRatingsOption = document.createElement('option');
+  allRatingsOption.value = '';
+  allRatingsOption.textContent = 'כל הדירוגים';
+  pickIdeasRatingFilter.appendChild(allRatingsOption);
+  RATINGS.forEach((rating) => {
+    const option = document.createElement('option');
+    option.value = rating;
+    option.textContent = rating;
+    pickIdeasRatingFilter.appendChild(option);
+  });
+
   // נשמר רק בזיכרון, לא ב-Firestore - מתאפס בכל פתיחה מחדש של מודל
   // "בניית תכנית תוכן" (ראו open-builder-btn למטה).
   let pinnedIdeaIds = new Set();
+  // תגי ה"X/Y" לכל קטגוריה מתעדכנים ישירות (בלי לרנדר את כל הרשימה
+  // מחדש) בכל סימון checkbox בודד - כדי שגלילה לא תתאפס תוך כדי שמסמנים
+  // כמה רעיונות ברצף. נבנה מחדש בכל renderPickIdeasList.
+  const categoryQuotaBadges = new Map();
+
+  function updatePickIdeasBtnLabel() {
+    pickIdeasBtn.textContent = pinnedIdeaIds.size
+      ? `🎯 בחירת רעיונות ספציפיים (${pinnedIdeaIds.size} נבחרו)`
+      : '🎯 בחירת רעיונות ספציפיים (אופציונלי)';
+  }
+
+  function updatePickIdeasCount() {
+    pickIdeasCountEl.textContent = pinnedIdeaIds.size ? `${pinnedIdeaIds.size} נבחרו` : 'לא נבחר כלום';
+  }
+
+  function updateCategoryQuotaBadge(category, allIdeasInCategory, quota) {
+    const badge = categoryQuotaBadges.get(category);
+    if (!badge) return;
+    const pinnedInCategory = allIdeasInCategory.filter((idea) => pinnedIdeaIds.has(idea.id)).length;
+    badge.textContent = `${pinnedInCategory}/${quota} נבחרו`;
+    badge.classList.toggle('content-plan-pick-ideas-quota-over', pinnedInCategory > quota);
+  }
 
   function renderPickIdeasList() {
     pickIdeasList.innerHTML = '';
+    categoryQuotaBadges.clear();
+
+    const pieceCount = Number(document.getElementById('content-plan-piece-count').value) || MIN_PIECE_COUNT;
+    const quotas = computeCategoryQuotas(pieceCount);
     const readyIdeas = [...getReadyIdeas()].sort((a, b) => ratingRank(a.rating) - ratingRank(b.rating));
     const byCategory = {};
     for (const idea of readyIdeas) {
       (byCategory[idea.category] = byCategory[idea.category] || []).push(idea);
     }
+
+    const searchQuery = pickIdeasSearchInput.value.trim().toLowerCase();
+    const ratingFilterValue = pickIdeasRatingFilter.value;
+
+    updatePickIdeasCount();
+
     for (const category of CATEGORIES) {
-      const ideas = byCategory[category] || [];
-      if (!ideas.length) continue;
+      const allIdeasInCategory = byCategory[category] || [];
+      if (!allIdeasInCategory.length) continue;
+
+      // "בחר הכל" בוחר רק את מה שבפועל גלוי כרגע (אחרי חיפוש/סינון) -
+      // התנהגות אינטואיטיבית של "בחר הכל שרואים", לא כל הקטגוריה בעיוור.
+      const visibleIdeas = allIdeasInCategory.filter((idea) => {
+        if (searchQuery && !idea.title.toLowerCase().includes(searchQuery)) return false;
+        if (ratingFilterValue && idea.rating !== ratingFilterValue) return false;
+        return true;
+      });
+      if (!visibleIdeas.length) continue;
+
+      const quota = quotas[category] || 0;
+
       const heading = document.createElement('div');
       heading.className = 'content-plan-pick-ideas-heading';
       heading.style.setProperty('--card-color', categoryColorVar(category));
-      heading.textContent = `${categoryIcon(category)} ${category}`;
+
+      const headingLabel = document.createElement('span');
+      headingLabel.className = 'content-plan-pick-ideas-heading-label';
+      headingLabel.textContent = `${categoryIcon(category)} ${category}`;
+      heading.appendChild(headingLabel);
+
+      const quotaBadge = document.createElement('span');
+      quotaBadge.className = 'content-plan-pick-ideas-quota';
+      heading.appendChild(quotaBadge);
+      categoryQuotaBadges.set(category, quotaBadge);
+      updateCategoryQuotaBadge(category, allIdeasInCategory, quota);
+
+      const selectAllBtn = document.createElement('button');
+      selectAllBtn.type = 'button';
+      selectAllBtn.className = 'content-plan-pick-ideas-select-all-btn';
+      selectAllBtn.textContent = 'בחר הכל';
+      selectAllBtn.addEventListener('click', () => {
+        visibleIdeas.forEach((idea) => pinnedIdeaIds.add(idea.id));
+        updatePickIdeasBtnLabel();
+        renderPickIdeasList();
+      });
+      heading.appendChild(selectAllBtn);
+
       pickIdeasList.appendChild(heading);
-      for (const idea of ideas) {
+
+      for (const idea of visibleIdeas) {
         const label = document.createElement('label');
         label.className = 'content-plan-pick-idea-row';
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
         checkbox.checked = pinnedIdeaIds.has(idea.id);
+        label.classList.toggle('content-plan-pick-idea-row-checked', checkbox.checked);
         checkbox.addEventListener('change', () => {
           if (checkbox.checked) pinnedIdeaIds.add(idea.id);
           else pinnedIdeaIds.delete(idea.id);
+          label.classList.toggle('content-plan-pick-idea-row-checked', checkbox.checked);
+          updatePickIdeasCount();
+          updateCategoryQuotaBadge(category, allIdeasInCategory, quota);
+          updatePickIdeasBtnLabel();
         });
         label.appendChild(checkbox);
         const title = document.createElement('span');
+        title.className = 'content-plan-pick-idea-title';
         title.textContent = idea.title;
         label.appendChild(title);
+        if (idea.rating) {
+          const ratingEl = document.createElement('span');
+          ratingEl.className = 'content-plan-pick-idea-rating';
+          ratingEl.textContent = idea.rating;
+          label.appendChild(ratingEl);
+        }
         pickIdeasList.appendChild(label);
       }
     }
@@ -829,14 +934,25 @@ export function wireContentPlanView() {
 
   document.getElementById('content-plan-open-builder-btn').addEventListener('click', async () => {
     pinnedIdeaIds = new Set();
+    updatePickIdeasBtnLabel();
     refreshGate();
     modal.hidden = false;
     await refreshAudienceGate();
   });
 
   pickIdeasBtn.addEventListener('click', () => {
+    pickIdeasSearchInput.value = '';
+    pickIdeasRatingFilter.value = '';
     renderPickIdeasList();
     pickIdeasModal.hidden = false;
+  });
+
+  pickIdeasSearchInput.addEventListener('input', renderPickIdeasList);
+  pickIdeasRatingFilter.addEventListener('change', renderPickIdeasList);
+  pickIdeasClearBtn.addEventListener('click', () => {
+    pinnedIdeaIds.clear();
+    updatePickIdeasBtnLabel();
+    renderPickIdeasList();
   });
 
   function closePickIdeasModal() {
