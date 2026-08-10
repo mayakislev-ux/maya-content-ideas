@@ -7,10 +7,18 @@ let clients = [];
 let searchQuery = '';
 let sortMode = 'oldest';
 
+// חלון-24-שעות-מתגלגל (Date.now() פחות המילישניות) לא תואם למה שמאיה
+// באמת מתכוונת ב"היום" - פעילות מ-23:00 אתמול עדיין מציגה "היום" גם
+// בבוקר המחרת, שעות אחרי שזה כבר לא נכון. משווים תאריך לוח (יום/חודש/
+// שנה באזור הזמן המקומי של הדפדפן) במקום הפרש מילישניות גולמי.
+function startOfLocalDay(date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+}
+
 function formatRelative(isoString) {
   if (!isoString) return 'מעולם לא התחברה';
   const date = new Date(isoString);
-  const days = Math.floor((Date.now() - date.getTime()) / (1000 * 60 * 60 * 24));
+  const days = Math.round((startOfLocalDay(new Date()) - startOfLocalDay(date)) / (1000 * 60 * 60 * 24));
   if (days <= 0) return 'היום';
   if (days === 1) return 'אתמול';
   if (days < 30) return `לפני ${days} ימים`;
