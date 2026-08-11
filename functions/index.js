@@ -563,6 +563,16 @@ exports.checkIdea = onRequest(
     let fullText = '';
     let usage = null;
 
+    // Claude sometimes "thinks" for 15-20+ seconds before the first real
+    // text_delta arrives (real measurement, 2026-08-11) - that whole window
+    // was fully silent on the wire, exposed to the exact same connection-drop
+    // risk generateContentPlan had before its heartbeat fix. A ":"-prefixed
+    // SSE comment is spec-valid and already ignored by the client's own
+    // parser (only looks for "data:" lines) - no client change needed.
+    const heartbeat = setInterval(() => {
+      res.write(': heartbeat\n\n');
+    }, 15000);
+
     try {
       // eslint-disable-next-line no-constant-condition
       while (true) {
@@ -588,6 +598,8 @@ exports.checkIdea = onRequest(
       }
     } catch (err) {
       console.error('checkIdea: error reading Anthropic stream:', err);
+    } finally {
+      clearInterval(heartbeat);
     }
 
     if (usage) await recordTokenUsage('checkIdea', usage);
@@ -706,76 +718,149 @@ ${PERSUASION_STAGES.map((s, i) => `${i + 1}. ${s}: ${PERSUASION_STAGE_DEFINITION
   return { category, persuasionStage };
 });
 
-exports.generateWarmingPlan = onCall({ secrets: [anthropicApiKey, sheetsServiceAccountKey], region: 'us-central1', timeoutSeconds: 180 }, async (request) => {
-  if (!request.auth) {
-    throw new HttpsError('unauthenticated', 'יש להתחבר כדי להשתמש בתכונה הזו');
-  }
-  await enforceAllowlist(request.auth.token.email);
+// היה onCall - בקשה חוסמת יחידה. מדידה אמיתית (2026-08-11) הראתה 41 שניות
+// שקטות לגמרי (שתי קריאות AI במקביל + אולי שליפת Sheets/Docs) לפני שהלקוח
+// רואה משהו - בדיוק אותה בעיה שכבר תוקנה היום ב-generateContentPlan, ומה
+// שגרם לכמה תלמידות בסדנה חיה לדווח שזה "נתקע". אין כאן טקסט חלקי להציג
+// (שני הפרומפטים רצים במקביל, אין דלתא-אחר-דלתא הגיונית להראות) - ה-
+// heartbeat רק שומר את החיבור פעיל, התוכנית המלאה נשלחת בסוף בבת אחת.
+exports.generateWarmingPlan = onRequest(
+  { secrets: [anthropicApiKey, sheetsServiceAccountKey], region: 'us-central1', cors: ALLOWED_STREAM_ORIGINS, timeoutSeconds: 180 },
+  async (req, res) => {
+    if (req.method !== 'POST') {
+      res.status(405).json({ error: 'Method not allowed' });
+      return;
+    }
 
-  const product = ((request.data && request.data.product) || '').trim();
-  const audience = ((request.data && request.data.audience) || '').trim();
-  const existingIdeasTitles = (request.data && request.data.existingIdeasTitles) || [];
-  let extraContext = (request.data && request.data.extraContext) || '';
+    const authHeader = req.get('Authorization') || '';
+    const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    if (!idToken) {
+      res.status(401).json({ error: 'יש להתחבר כדי להשתמש בתכונה הזו' });
+      return;
+    }
 
-  if (!product || !audience) {
-    throw new HttpsError('invalid-argument', 'צריך לפחות מוצר וקהל יעד כדי לבנות תוכנית חימום');
-  }
-  assertMaxLength(product, 500, 'מוצר');
-  assertMaxLength(audience, 500, 'קהל יעד');
-  assertMaxLength(extraContext, 5000, 'הקשר נוסף');
-
-  await enforceRateLimit(request.auth.uid, 'generateWarmingPlan');
-
-  const linkedContent = await fetchExtraContentLinks(extraContext);
-  if (linkedContent && linkedContent.error) {
-    throw new HttpsError(
-      'failed-precondition',
-      'לא הצלחתי לקרוא את קובץ ה-Sheets/Docs שצוין - ודאו שההרשאות שלו מוגדרות ל"כל מי שיש לו את הקישור - צופה" (Anyone with the link - Viewer) ונסו שוב'
-    );
-  }
-  if (linkedContent && !linkedContent.error) {
-    extraContext = `${extraContext}\n\nתוכן שנשלף מתוך הקבצים המצורפים (Sheets/Docs):\n${linkedContent.content}`;
-  }
-
-  const promptArgs = { product, audience, extraContext, existingIdeasTitles: existingIdeasTitles.slice(0, 40) };
-
-  async function callAndParse(prompt, attempt = 1) {
-    const data = await callAnthropic(
-      anthropicApiKey.value(),
-      { model: 'claude-haiku-4-5-20251001', max_tokens: 4096, messages: [{ role: 'user', content: prompt }] },
-      'generateWarmingPlan'
-    );
-    const text = getResponseText(data) || '{}';
+    let uid, email;
     try {
-      const match = text.match(/\{[\s\S]*\}/);
-      return JSON.parse(match ? match[0] : text);
+      const decoded = await admin.auth().verifyIdToken(idToken);
+      uid = decoded.uid;
+      email = decoded.email;
     } catch (err) {
-      console.error(`Failed to parse generateWarmingPlan response (attempt ${attempt}):`, text);
-      // שתי הקריאות (ongoing+presale) רצות יחד ב-Promise.all - כישלון פירוק
-      // JSON חד-פעמי באחת מהן מפיל את כל הבקשה ומבזבז את הטוקנים ששתיהן
-      // כבר צרכו. ניסיון חוזר יחיד קולט את רוב המקרים החולפים בלי לשלש עלות.
-      if (attempt < 2) return callAndParse(prompt, attempt + 1);
-      throw new HttpsError('internal', 'לא הצלחתי לבנות את התוכנית, נסו שוב');
+      console.error('generateWarmingPlan: invalid ID token:', err.message);
+      res.status(401).json({ error: 'התחברות לא תקינה, נסו להתחבר מחדש' });
+      return;
+    }
+
+    try {
+      await enforceAllowlist(email);
+    } catch (err) {
+      res.status(403).json({ error: err.message || 'אין הרשאה להשתמש בתכונה הזו' });
+      return;
+    }
+
+    const product = ((req.body && req.body.product) || '').trim();
+    const audience = ((req.body && req.body.audience) || '').trim();
+    const existingIdeasTitles = (req.body && req.body.existingIdeasTitles) || [];
+    let extraContext = (req.body && req.body.extraContext) || '';
+
+    if (!product || !audience) {
+      res.status(400).json({ error: 'צריך לפחות מוצר וקהל יעד כדי לבנות תוכנית חימום' });
+      return;
+    }
+    try {
+      assertMaxLength(product, 500, 'מוצר');
+      assertMaxLength(audience, 500, 'קהל יעד');
+      assertMaxLength(extraContext, 5000, 'הקשר נוסף');
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+      return;
+    }
+
+    try {
+      await enforceRateLimit(uid, 'generateWarmingPlan');
+    } catch (err) {
+      res.status(429).json({ error: err.message || 'הגעת למכסת השימוש היומית ב-AI, נסו שוב מחר' });
+      return;
+    }
+
+    res.set('Content-Type', 'text/event-stream');
+    res.set('Cache-Control', 'no-cache');
+    res.set('Connection', 'keep-alive');
+    if (res.flushHeaders) res.flushHeaders();
+    const heartbeat = setInterval(() => res.write(': heartbeat\n\n'), 15000);
+
+    try {
+      const linkedContent = await fetchExtraContentLinks(extraContext);
+      if (linkedContent && linkedContent.error) {
+        res.write(
+          `data: ${JSON.stringify({
+            error:
+              'לא הצלחתי לקרוא את קובץ ה-Sheets/Docs שצוין - ודאו שההרשאות שלו מוגדרות ל"כל מי שיש לו את הקישור - צופה" (Anyone with the link - Viewer) ונסו שוב',
+          })}\n\n`
+        );
+        res.end();
+        return;
+      }
+      if (linkedContent && !linkedContent.error) {
+        extraContext = `${extraContext}\n\nתוכן שנשלף מתוך הקבצים המצורפים (Sheets/Docs):\n${linkedContent.content}`;
+      }
+
+      const promptArgs = { product, audience, extraContext, existingIdeasTitles: existingIdeasTitles.slice(0, 40) };
+
+      async function callAndParse(prompt, attempt = 1) {
+        const data = await callAnthropic(
+          anthropicApiKey.value(),
+          { model: 'claude-haiku-4-5-20251001', max_tokens: 4096, messages: [{ role: 'user', content: prompt }] },
+          'generateWarmingPlan'
+        );
+        const text = getResponseText(data) || '{}';
+        try {
+          const match = text.match(/\{[\s\S]*\}/);
+          return JSON.parse(match ? match[0] : text);
+        } catch (err) {
+          console.error(`Failed to parse generateWarmingPlan response (attempt ${attempt}):`, text);
+          // שתי הקריאות (ongoing+presale) רצות יחד ב-Promise.all - כישלון
+          // פירוק JSON חד-פעמי באחת מהן מפיל את כל הבקשה ומבזבז את הטוקנים
+          // ששתיהן כבר צרכו. ניסיון חוזר יחיד קולט את רוב המקרים החולפים
+          // בלי לשלש עלות.
+          if (attempt < 2) return callAndParse(prompt, attempt + 1);
+          throw new Error('לא הצלחתי לבנות את התוכנית, נסו שוב');
+        }
+      }
+
+      const [ongoing, presale] = await Promise.all([
+        callAndParse(buildOngoingWarmingPrompt(promptArgs)),
+        callAndParse(buildPresaleWarmingPrompt(promptArgs)),
+      ]);
+
+      if (!Array.isArray(ongoing.week1) || !Array.isArray(ongoing.week2) || !Array.isArray(presale.week3)) {
+        console.error('generateWarmingPlan response missing expected weeks:', JSON.stringify({ ongoing, presale }));
+        res.write(`data: ${JSON.stringify({ error: 'התקבלה תשובה לא תקינה, נסו שוב' })}\n\n`);
+        res.end();
+        return;
+      }
+
+      // Both prompts run independently and can each flag their own gaps -
+      // dedupe since the same missing piece of info (e.g. no real client
+      // story) is very likely to show up from both generations.
+      const missingInfo = [...new Set([...(ongoing.missingInfo || []), ...(presale.missingInfo || [])])];
+
+      res.write(
+        `data: ${JSON.stringify({
+          done: true,
+          plan: { week1: ongoing.week1, week2: ongoing.week2, week3: presale.week3 },
+          missingInfo,
+        })}\n\n`
+      );
+      res.end();
+    } catch (err) {
+      console.error('generateWarmingPlan: unexpected error:', err);
+      res.write(`data: ${JSON.stringify({ error: err.message || 'משהו השתבש, נסו שוב' })}\n\n`);
+      res.end();
+    } finally {
+      clearInterval(heartbeat);
     }
   }
-
-  const [ongoing, presale] = await Promise.all([
-    callAndParse(buildOngoingWarmingPrompt(promptArgs)),
-    callAndParse(buildPresaleWarmingPrompt(promptArgs)),
-  ]);
-
-  if (!Array.isArray(ongoing.week1) || !Array.isArray(ongoing.week2) || !Array.isArray(presale.week3)) {
-    console.error('generateWarmingPlan response missing expected weeks:', JSON.stringify({ ongoing, presale }));
-    throw new HttpsError('internal', 'התקבלה תשובה לא תקינה, נסו שוב');
-  }
-
-  // Both prompts run independently and can each flag their own gaps - dedupe
-  // since the same missing piece of info (e.g. no real client story) is
-  // very likely to show up from both the ongoing and presale generation.
-  const missingInfo = [...new Set([...(ongoing.missingInfo || []), ...(presale.missingInfo || [])])];
-
-  return { plan: { week1: ongoing.week1, week2: ongoing.week2, week3: presale.week3 }, missingInfo };
-});
+);
 
 // היה onCall עד עכשיו - בקשה חוסמת יחידה, בלי שום בייט זורם על הרשת מהרגע
 // שהבקשה נשלחת ועד שהתשובה השלמה חוזרת (יכול לקחת עד דקה-שתיים בפועל, כי

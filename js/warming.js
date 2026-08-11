@@ -1,12 +1,71 @@
-import { functions } from './firebase-init.js';
-import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
+import { auth } from './firebase-init.js';
 import { getCurrentIdeas } from './archive-view.js';
 import { saveWarmingPlan, updateWarmingPlan, listWarmingPlans, deleteWarmingPlan } from './warming-store.js';
 import { showToast } from './toast.js';
 import { makeEditable, makeEditableSelect } from './editable.js';
 import { confirmDialog } from './confirm-dialog.js';
 
-const generateWarmingPlan = httpsCallable(functions, 'generateWarmingPlan', { timeout: 170000 });
+// היה httpsCallable - בקשה חוסמת יחידה. מדידה אמיתית (2026-08-11) הראתה 41
+// שניות שקטות לגמרי לפני שהלקוח רואה משהו - תלמידות בסדנה חיה דיווחו שזה
+// "נתקע". הומר ל-onRequest זורם בשרת עם heartbeat כל 15 שניות, אותה תבנית
+// בדיוק כמו content-plan.js/generateContentPlan.
+const GENERATE_WARMING_PLAN_URL = 'https://us-central1-content-ideas-becd7.cloudfunctions.net/generateWarmingPlan';
+
+function parseSSEChunk(buffer, chunkText) {
+  const combined = buffer + chunkText;
+  const blocks = combined.split('\n\n');
+  const remainder = blocks.pop();
+  const events = [];
+  for (const block of blocks) {
+    const dataLine = block.split('\n').find((line) => line.startsWith('data:'));
+    if (!dataLine) continue;
+    try {
+      events.push(JSON.parse(dataLine.slice(5).trim()));
+    } catch (err) {
+      console.error('Failed to parse generateWarmingPlan SSE data line:', dataLine, err);
+    }
+  }
+  return { events, remainder };
+}
+
+async function streamGenerateWarmingPlan({ product, audience, extraContext, existingIdeasTitles }) {
+  const idToken = await auth.currentUser.getIdToken();
+  const response = await fetch(GENERATE_WARMING_PLAN_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${idToken}`,
+    },
+    body: JSON.stringify({ product, audience, extraContext, existingIdeasTitles }),
+  });
+
+  if (!response.ok) {
+    let message = 'משהו השתבש, נסו שוב בבקשה.';
+    try {
+      const errData = await response.json();
+      if (errData && errData.error) message = errData.error;
+    } catch (err) {
+      // גוף התשובה לא היה JSON - נשארת ההודעה הכללית שהוגדרה למעלה
+    }
+    throw new Error(message);
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    const parsed = parseSSEChunk(buffer, decoder.decode(value, { stream: true }));
+    buffer = parsed.remainder;
+    for (const event of parsed.events) {
+      if (event.error) throw new Error(event.error);
+      if (event.done) return { plan: event.plan, missingInfo: event.missingInfo };
+    }
+  }
+  throw new Error('משהו השתבש, נסו שוב בבקשה.');
+}
 
 const WEEK_LABELS = {
   week1: '🗓️ שבוע 1 - חימום שוטף',
@@ -28,13 +87,16 @@ let countdownInterval = null;
 
 function startCountdown() {
   const el = document.getElementById('warming-countdown');
-  let secondsLeft = 40;
-  el.textContent = `בונה תוכנית... בערך ${secondsLeft} שניות נותרו`;
-  countdownInterval = setInterval(() => {
-    secondsLeft -= 1;
-    el.textContent =
-      secondsLeft > 0 ? `בונה תוכנית... בערך ${secondsLeft} שניות נותרו` : 'כמעט מוכן, עוד רגע... 🔥';
-  }, 1000);
+  // היה ספירה-לאחור מ-40 שניות קבוע - מדידה אמיתית הראתה שזה יכול לקחת
+  // יותר (2 קריאות AI במקביל, לפעמים שליפת Sheets/Docs) ואז נתקע ב"עוד
+  // רגע" בלי קשר לזמן האמיתי. סופרת עכשיו כלפי מעלה את הזמן האמיתי שעובר.
+  const startTime = Date.now();
+  const tick = () => {
+    const elapsed = Math.round((Date.now() - startTime) / 1000);
+    el.textContent = `בונה תוכנית... ${elapsed} שניות`;
+  };
+  tick();
+  countdownInterval = setInterval(tick, 1000);
 }
 
 function stopCountdown() {
@@ -359,12 +421,24 @@ export function wireWarmingView() {
     startCountdown();
 
     try {
-      const result = await generateWarmingPlan({ product, audience, extraContext, existingIdeasTitles });
-      currentPlan = result.data.plan;
+      let result;
+      let attempt = 1;
+      while (true) {
+        try {
+          result = await streamGenerateWarmingPlan({ product, audience, extraContext, existingIdeasTitles });
+          break;
+        } catch (retryErr) {
+          const retryHasHebrewText = /[֐-׿]/.test(retryErr.message || '');
+          if (retryHasHebrewText || attempt >= 2) throw retryErr;
+          console.error(`generateWarmingPlan failed, retrying (attempt ${attempt}):`, retryErr);
+          attempt++;
+        }
+      }
+      currentPlan = result.plan;
       currentMeta = { product, audience, extraContext };
       currentPlanId = null;
       renderPlan(currentPlan);
-      renderMissingInfo(result.data.missingInfo);
+      renderMissingInfo(result.missingInfo);
       if (eligibleIdeas.length > 15) {
         truncationNoteEl.textContent = `✂️ התוכנית נבנתה מתוך 15 הרעיונות המדורגים הכי גבוה עם טקסט זווית, מתוך ${eligibleIdeas.length} שיש לך במאגר`;
         truncationNoteEl.hidden = false;
@@ -374,7 +448,7 @@ export function wireWarmingView() {
       const hasHebrewText = /[\u0590-\u05FF]/.test(err.message || '');
       errorEl.textContent = hasHebrewText
         ? `משהו השתבש בבניית התוכנית: ${err.message}. נסו שוב.`
-        : 'משהו השתבש בבניית התוכנית, נסו שוב.';
+        : 'החיבור נכשל, כנראה בגלל רשת לא יציבה. נסו שוב.';
       errorEl.hidden = false;
     } finally {
       generateBtn.disabled = false;
