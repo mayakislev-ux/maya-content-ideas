@@ -2270,6 +2270,28 @@ textarea:focus-visible,
   align-items: center;
 }
 
+.field-checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.field-checkbox-row input[type='checkbox'] {
+  width: 1.1rem;
+  height: 1.1rem;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+#field-series-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-top: 0.6rem;
+}
+
 /* The idea itself is the one thing on this screen that should dominate -
    no frame, no background box, just large text directly on the card,
    like a document rather than a form field. */

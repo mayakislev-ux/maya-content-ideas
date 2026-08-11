@@ -23,7 +23,7 @@ function buildContentPlanPrompt({ pieceCount, ideas, primaryAudience, secondaryA
   const ideasBlock = ideas
     .map(
       (idea, i) =>
-        `${i + 1}. "${idea.title}" | קטגוריה: ${idea.category || 'לא מסווג'}${idea.persuasionStage ? ` | שלב שכנוע: ${idea.persuasionStage}` : ''}${idea.audienceScope ? ` | קהל: ${idea.audienceScope}` : ''}${idea.rating ? ` | דירוג: ${idea.rating}` : ''}`
+        `${i + 1}. "${idea.title}" | קטגוריה: ${idea.category || 'לא מסווג'}${idea.persuasionStage ? ` | שלב שכנוע: ${idea.persuasionStage}` : ''}${idea.audienceScope ? ` | קהל: ${idea.audienceScope}` : ''}${idea.rating ? ` | דירוג: ${idea.rating}` : ''}${idea.series ? ` | סדרה: "${idea.series}" פרק ${idea.seriesOrder || '?'}` : ''}`
     )
     .join('\n');
 
@@ -50,6 +50,7 @@ ${audienceBlock}
 - כל רעיון פעם אחת בלבד. כותרת מדויקת אות-באות מהרשימה. בעדיפות בתוך קטגוריה - דירוג "חייב לצלם" 🔥 קודם.
 - לכל פריט, שדה "mustIncludeType" - סוג אחד מתוך 8 (בלי מספור), לפי מה שהרעיון עושה בפועל, עם שאיפה לגיוון בין הסוגים לאורך התכנית:
 ${typesBlock}
+- רעיונות עם אותו "סדרה" ברשימה הם פרקים של אותה סדרה - שבצי אותם לפי סדר מספר הפרק שלהם (מהנמוך לגבוה), לא בסדר אקראי.
 - זיהית סדרה/פורמט חוזר? "seriesNote" קצר, אחרת ריק.
 - לא מספיק רעיונות למלא שבוע - השאירי ימים בלי item, ו-"note" קצר שמסביר שחסרים רעיונות.
 

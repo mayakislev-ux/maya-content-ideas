@@ -56,6 +56,10 @@ export function openAddModal(prefillTitle = '') {
   setCategoryChip('');
   setRatingChip('');
   if (prefillTitle) document.getElementById('field-title').value = prefillTitle;
+  // form.reset() לא נוגע ב-hidden שנקבע ידנית ב-JS (רק בערכי input) - צריך
+  // להסתיר את שדות הסדרה במפורש, אחרת רעיון חדש "יורש" מצב פתוח משאיר
+  // הקודם שנערך.
+  document.getElementById('field-series-fields').hidden = true;
   document.getElementById('delete-idea-btn').hidden = true;
   document.getElementById('form-error').hidden = true;
   document.getElementById('idea-modal').hidden = false;
@@ -73,6 +77,11 @@ export function openEditModal(idea, overrideTitle = '') {
   document.getElementById('field-persuasion').value = idea.persuasionStage || '';
   document.getElementById('field-audience-scope').value = idea.audienceScope || '';
   document.getElementById('field-format').value = idea.format || '';
+  const isSeries = Boolean(idea.series);
+  document.getElementById('field-is-series').checked = isSeries;
+  document.getElementById('field-series-fields').hidden = !isSeries;
+  document.getElementById('field-series-name').value = idea.series || '';
+  document.getElementById('field-series-order').value = idea.seriesOrder || '';
   document.getElementById('delete-idea-btn').hidden = false;
   document.getElementById('form-error').hidden = true;
   document.getElementById('idea-modal').hidden = false;
@@ -200,6 +209,10 @@ export function wireIdeaForm() {
     });
   });
 
+  document.getElementById('field-is-series').addEventListener('change', (e) => {
+    document.getElementById('field-series-fields').hidden = !e.target.checked;
+  });
+
   document.getElementById('field-persuasion').addEventListener('change', (e) => {
     const stage = e.target.value;
     if (stage === AI_OPTION) {
@@ -213,6 +226,9 @@ export function wireIdeaForm() {
 
   document.getElementById('idea-form').addEventListener('submit', async (e) => {
     e.preventDefault();
+    const isSeries = document.getElementById('field-is-series').checked;
+    const seriesName = document.getElementById('field-series-name').value.trim();
+    const seriesOrderRaw = document.getElementById('field-series-order').value;
     const data = {
       title: document.getElementById('field-title').value,
       category: document.getElementById('field-category').value,
@@ -221,6 +237,10 @@ export function wireIdeaForm() {
       rating: document.getElementById('field-rating').value,
       audienceScope: document.getElementById('field-audience-scope').value,
       format: document.getElementById('field-format').value,
+      // מסומן אבל בלי שם סדרה - מתייחסים כאילו לא סדרה בכלל, בלי להכשיל
+      // את השמירה על שדה חובה חדש.
+      series: isSeries && seriesName ? seriesName : '',
+      seriesOrder: isSeries && seriesName && seriesOrderRaw ? Number(seriesOrderRaw) : null,
     };
     const errors = validateIdea(data);
     const errorEl = document.getElementById('form-error');

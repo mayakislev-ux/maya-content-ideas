@@ -33,6 +33,8 @@ export async function addIdea({
   source = '',
   rating = '',
   format = '',
+  series = '',
+  seriesOrder = null,
 }) {
   return addDoc(ideasCollection(), {
     title,
@@ -44,6 +46,8 @@ export async function addIdea({
     source,
     rating,
     format,
+    series,
+    seriesOrder,
     ownerUid: auth.currentUser.uid,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),

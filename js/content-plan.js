@@ -110,6 +110,20 @@ function ratingRank(rating) {
   return i === -1 ? RATINGS.length : i;
 }
 
+// רעיונות מאותה סדרה (idea.series זהה) לרוב מדורגים זהה (למשל כל הפרקים
+// 🔥) - במיון-לפי-דירוג רגיל, שוויון כזה משאיר אותם בסדר שרירותי (מה
+// שפיירסטור מחזיר), לא בסדר הפרקים. פונקציית מיון משותפת: קודם דירוג,
+// ואז בתוך אותה סדרה בלבד - מספר הפרק. לא נוגע בסדר בין רעיונות שאינם
+// מאותה סדרה (0 = משאיר את הסדר המקורי).
+function sortByRatingThenSeries(a, b) {
+  const byRating = ratingRank(a.rating) - ratingRank(b.rating);
+  if (byRating !== 0) return byRating;
+  if (a.series && a.series === b.series) {
+    return (a.seriesOrder || Number.MAX_SAFE_INTEGER) - (b.seriesOrder || Number.MAX_SAFE_INTEGER);
+  }
+  return 0;
+}
+
 // היחס בין הקטגוריות (40/30/15/15) בעבר היה תלוי בהנחיה רכה בפרומפט
 // שה-AI "יבחר בעצמו" להשאיר חלק מרעיונות קטגוריה עשירה בחוץ - התבררה
 // כלא אמינה (בפועל השתמש כמעט בכל המאגר, ביחס של המאגר עצמו, לא ביחס
@@ -196,7 +210,7 @@ function selectIdeasForRatio(readyIdeasSortedByRating, pieceCount, pinnedIds = n
     selected.push(...chosenPinned, ...distributeByStage(unpinnedInCategory, remainingSlots));
   }
   return {
-    selected: selected.sort((a, b) => ratingRank(a.rating) - ratingRank(b.rating)),
+    selected: selected.sort(sortByRatingThenSeries),
     droppedPinned,
   };
 }
@@ -1020,7 +1034,7 @@ export function wireContentPlanView() {
 
     const pieceCount = Number(document.getElementById('content-plan-piece-count').value) || MIN_PIECE_COUNT;
     const quotas = computeCategoryQuotas(pieceCount);
-    const readyIdeas = [...getReadyIdeas()].sort((a, b) => ratingRank(a.rating) - ratingRank(b.rating));
+    const readyIdeas = [...getReadyIdeas()].sort(sortByRatingThenSeries);
     const byCategory = {};
     for (const idea of readyIdeas) {
       (byCategory[idea.category] = byCategory[idea.category] || []).push(idea);
@@ -1196,7 +1210,7 @@ export function wireContentPlanView() {
     errorEl.hidden = true;
 
     const pieceCount = Number(document.getElementById('content-plan-piece-count').value) || MIN_PIECE_COUNT;
-    const readyIdeas = [...getReadyIdeas()].sort((a, b) => ratingRank(a.rating) - ratingRank(b.rating));
+    const readyIdeas = [...getReadyIdeas()].sort(sortByRatingThenSeries);
     const { selected, droppedPinned } = selectIdeasForRatio(readyIdeas, pieceCount, pinnedIdeaIds);
     const cappedIdeas = selected.slice(0, MAX_IDEAS_SENT);
 
@@ -1231,6 +1245,8 @@ export function wireContentPlanView() {
       persuasionStage: idea.persuasionStage || '',
       audienceScope: idea.audienceScope || '',
       rating: idea.rating || '',
+      series: idea.series || '',
+      seriesOrder: idea.seriesOrder || null,
     }));
 
     generateBtn.disabled = true;
