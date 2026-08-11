@@ -1200,6 +1200,31 @@ export function wireContentPlanView() {
     const { selected, droppedPinned } = selectIdeasForRatio(readyIdeas, pieceCount, pinnedIdeaIds);
     const cappedIdeas = selected.slice(0, MAX_IDEAS_SENT);
 
+    // השער בפתיחת המודל בודק רק את המאגר הכללי - לא יכול לדעת עדיין מה
+    // ייבחר בסוף, כי הבחירה הידנית (pinnedIdeaIds) קורית רק אחר כך בתוך
+    // אותו מודל. סימון ידני "זוכה" תמיד על פני איזון (ככה היא ביקשה - עדיפות
+    // לרעיונות שסומנו) - אבל אם היא מסמנת חבורה גדולה שלא מגוונת בשלבי
+    // שכנוע/ויראליות, לא נשאר מקום למילוי האוטומטי לתקן את זה, והתכנית
+    // בפועל יוצאת לא מאוזנת בלי שום התראה. בודקים את הבחירה הסופית עצמה
+    // (לא את המאגר) ממש לפני השליחה ל-AI, ונותנים לה הזדמנות אמיתית
+    // לחזור ולתקן את הסימון במקום לגלות רק אחרי כמה דקות של בנייה.
+    const finalStageGaps = getPersuasionStageVolumeGaps(cappedIdeas, pieceCount);
+    const finalViralityGap = getViralityVolumeGap(cappedIdeas, pieceCount);
+    if (finalStageGaps.length || finalViralityGap) {
+      const lines = finalStageGaps.map((g) => `⚠️ ${g.stage}: ${g.actual} מתוך ${cappedIdeas.length} תכנים בלבד`);
+      if (finalViralityGap) {
+        lines.push(`⚠️ ויראליות (קהל רחב): ${finalViralityGap.actual} מתוך ${cappedIdeas.length} תכנים בלבד`);
+      }
+      const reason = pinnedIdeaIds.size
+        ? 'כנראה בגלל הבחירה הידנית של רעיונות ספציפיים.'
+        : 'המאגר לא מספיק מגוון כרגע בשביל הכמות הזו.';
+      const proceed = await confirmDialog(
+        `לפני שבונים - התכנית הזו לא תצא מאוזנת:\n\n${lines.join('\n')}\n\n${reason}\nלבנות בכל זאת?`,
+        { okLabel: 'לבנות בכל זאת', cancelLabel: 'ביטול, אני אתקן' }
+      );
+      if (!proceed) return;
+    }
+
     const ideasPayload = cappedIdeas.map((idea) => ({
       title: idea.title,
       category: idea.category,
