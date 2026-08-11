@@ -1,5 +1,4 @@
-import { functions } from './firebase-init.js';
-import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
+import { auth } from './firebase-init.js';
 import { getCurrentIdeas } from './archive-view.js';
 import {
   categoryColorVar,
@@ -18,7 +17,76 @@ import { showToast } from './toast.js';
 import { confirmDialog } from './confirm-dialog.js';
 import { getProfile, saveProfile } from './user-profile.js';
 
-const generateContentPlan = httpsCallable(functions, 'generateContentPlan', { timeout: 290000 });
+// היה httpsCallable עם timeout ידני - בקשה חוסמת יחידה, בלי שום בייט זורם
+// על הרשת מהרגע שהיא נשלחת ועד שהתשובה השלמה חוזרת (יכול לקחת עד דקה-שתיים
+// בפועל). לוגים אמיתיים (2026-08-11) הראו שזה בדיוק מה שגרם ל"משהו השתבש"
+// בנייד - השרת קיבל את הבקשה ואז שקט מוחלט, גם בניסיון חוזר. הומר ל-onRequest
+// זורם בשרת (functions/index.js) עם "heartbeat" כל 15 שניות, אותה תבנית
+// בדיוק כמו checkIdea (js/idea-chat.js) - שומר את החיבור פעיל לאורך כל
+// ההמתנה במקום שקט שקל לחיבור נייד להיחתך בו.
+const GENERATE_CONTENT_PLAN_URL = 'https://us-central1-content-ideas-becd7.cloudfunctions.net/generateContentPlan';
+
+// מפענח נתח SSE גולמי מול מאגר שנשאר מהקריאה הקודמת (נתח יכול לחתוך
+// "data: {...}\n\n" באמצע) - אותה לוגיקה בדיוק כמו parseSSEChunk הפרטית של
+// js/idea-chat.js, רק מול הפרוטוקול הפנימי של generateContentPlan עצמו.
+function parseSSEChunk(buffer, chunkText) {
+  const combined = buffer + chunkText;
+  const blocks = combined.split('\n\n');
+  const remainder = blocks.pop();
+  const events = [];
+  for (const block of blocks) {
+    const dataLine = block.split('\n').find((line) => line.startsWith('data:'));
+    if (!dataLine) continue;
+    try {
+      events.push(JSON.parse(dataLine.slice(5).trim()));
+    } catch (err) {
+      console.error('Failed to parse generateContentPlan SSE data line:', dataLine, err);
+    }
+  }
+  return { events, remainder };
+}
+
+// שולחת בקשה זורמת ל-generateContentPlan ופותרת עם ה-plan הסופי ברגע
+// שהשרת מסמן done - אין כאן טקסט חלקי להציג (בניגוד לצ'אט הרעיונות),
+// הזרימה כאן רק כדי לשמור את החיבור פעיל, לא בשביל תצוגה חיה.
+async function streamGenerateContentPlan({ pieceCount, ideas, includeSecondaryAudience }) {
+  const idToken = await auth.currentUser.getIdToken();
+  const response = await fetch(GENERATE_CONTENT_PLAN_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${idToken}`,
+    },
+    body: JSON.stringify({ pieceCount, ideas, includeSecondaryAudience }),
+  });
+
+  if (!response.ok) {
+    let message = 'משהו השתבש, נסו שוב בבקשה.';
+    try {
+      const errData = await response.json();
+      if (errData && errData.error) message = errData.error;
+    } catch (err) {
+      // גוף התשובה לא היה JSON - נשארת ההודעה הכללית שהוגדרה למעלה
+    }
+    throw new Error(message);
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    const parsed = parseSSEChunk(buffer, decoder.decode(value, { stream: true }));
+    buffer = parsed.remainder;
+    for (const event of parsed.events) {
+      if (event.error) throw new Error(event.error);
+      if (event.done) return event.plan;
+    }
+  }
+  throw new Error('משהו השתבש, נסו שוב בבקשה.');
+}
 
 // "רעיון עם זווית" אין לו שדה נפרד באפליקציה - הפרוקסי הכי אמין שיש
 // למאמץ שכבר הושקע ברעיון הוא שהוא כבר סווג לקטגוריה (לא נשאר טיוטה
@@ -1149,11 +1217,11 @@ export function wireContentPlanView() {
     const includeSecondaryAudience = secondaryAudienceRow.hidden ? true : includeSecondaryCheckbox.checked;
 
     try {
-      let result;
+      let plan;
       let attempt = 1;
       while (true) {
         try {
-          result = await generateContentPlan({ pieceCount, ideas: ideasPayload, includeSecondaryAudience });
+          plan = await streamGenerateContentPlan({ pieceCount, ideas: ideasPayload, includeSecondaryAudience });
           break;
         } catch (retryErr) {
           const retryHasHebrewText = /[֐-׿]/.test(retryErr.message || '');
@@ -1162,7 +1230,7 @@ export function wireContentPlanView() {
           attempt++;
         }
       }
-      currentPlan = enrichPlanFromBank(result.data.plan, cappedIdeas);
+      currentPlan = enrichPlanFromBank(plan, cappedIdeas);
       if (readyIdeas.length > cappedIdeas.length) {
         currentPlan.truncatedFrom = readyIdeas.length;
         currentPlan.selectedCount = cappedIdeas.length;

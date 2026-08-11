@@ -777,85 +777,219 @@ exports.generateWarmingPlan = onCall({ secrets: [anthropicApiKey, sheetsServiceA
   return { plan: { week1: ongoing.week1, week2: ongoing.week2, week3: presale.week3 }, missingInfo };
 });
 
-exports.generateContentPlan = onCall({ secrets: [anthropicApiKey], region: 'us-central1', timeoutSeconds: 300 }, async (request) => {
-  if (!request.auth) {
-    throw new HttpsError('unauthenticated', 'יש להתחבר כדי להשתמש בתכונה הזו');
+// היה onCall עד עכשיו - בקשה חוסמת יחידה, בלי שום בייט זורם על הרשת מהרגע
+// שהבקשה נשלחת ועד שהתשובה השלמה חוזרת (יכול לקחת עד דקה-שתיים בפועל, כי
+// claude-sonnet-5 חייב לסיים לגמרי לפני שהשרת יכול להחזיר משהו). לוגים
+// אמיתיים (2026-08-11) הראו בדיוק את אותה תבנית שכבר תוקנה ב-checkIdea:
+// "Callable request verification passed" ואז כלום - לא הצלחה ולא שגיאה,
+// גם אחרי ניסיון חוזר. המרה ל-onRequest+סטרימינג (אותה תבנית בדיוק כמו
+// checkIdea) עם "heartbeat" כל 15 שניות - זה מה שבאמת פותר את זה, כי עכשיו
+// יש זרימת בייטים רציפה על החיבור לאורך כל ההמתנה, במקום שקט מוחלט שקל
+// לחיבור נייד/וויפי להיחתך בו בלי שום סימן. אין צורך להציג טקסט חלקי
+// למשתמשת (בניגוד ל-checkIdea) - ה-heartbeat רק שומר את החיבור פתוח,
+// הטקסט המלא נצבר בשרת ונשלח פעם אחת בסוף.
+exports.generateContentPlan = onRequest(
+  { secrets: [anthropicApiKey], region: 'us-central1', cors: ALLOWED_STREAM_ORIGINS, timeoutSeconds: 300 },
+  async (req, res) => {
+    if (req.method !== 'POST') {
+      res.status(405).json({ error: 'Method not allowed' });
+      return;
+    }
+
+    const authHeader = req.get('Authorization') || '';
+    const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    if (!idToken) {
+      res.status(401).json({ error: 'יש להתחבר כדי להשתמש בתכונה הזו' });
+      return;
+    }
+
+    let uid, email;
+    try {
+      const decoded = await admin.auth().verifyIdToken(idToken);
+      uid = decoded.uid;
+      email = decoded.email;
+    } catch (err) {
+      console.error('generateContentPlan: invalid ID token:', err.message);
+      res.status(401).json({ error: 'התחברות לא תקינה, נסו להתחבר מחדש' });
+      return;
+    }
+
+    try {
+      await enforceAllowlist(email);
+    } catch (err) {
+      res.status(403).json({ error: err.message || 'אין הרשאה להשתמש בתכונה הזו' });
+      return;
+    }
+
+    const ideas = (req.body && req.body.ideas) || [];
+    const pieceCount = Number(req.body && req.body.pieceCount) || 16;
+    const includeSecondaryAudience = !(req.body && req.body.includeSecondaryAudience === false);
+
+    if (!Array.isArray(ideas) || ideas.length === 0) {
+      res.status(400).json({ error: 'צריך לפחות רעיון אחד עם קטגוריה כדי לבנות תכנית תוכן' });
+      return;
+    }
+    if (pieceCount < 16 || pieceCount > 60) {
+      res.status(400).json({ error: 'מספר תכנים לא סביר' });
+      return;
+    }
+    try {
+      for (const idea of ideas.slice(0, 60)) {
+        assertMaxLength((idea && idea.title) || '', 2000, 'כותרת רעיון');
+      }
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+      return;
+    }
+
+    try {
+      await enforceRateLimit(uid, 'generateContentPlan');
+    } catch (err) {
+      res.status(429).json({ error: err.message || 'הגעת למכסת השימוש היומית ב-AI, נסו שוב מחר' });
+      return;
+    }
+
+    // הפרומפט עד עכשיו לא ידע בכלל מי קהל היעד האמיתי של בעלת העסק - רק
+    // ראה תגית מופשטת ("עיקרי"/"משני") על כל רעיון, בלי שום תיאור אמיתי
+    // להשוות אליו. פרופיל המשתמשת כבר נאסף פעם אחת בהיכרות הראשונית של
+    // הצ'אט (primaryAudience/secondaryAudience) - שולפים אותו כאן ישירות
+    // מהשרת (לא מהלקוח, כדי שלא יהיה תלוי בנתון מיושן/לא אמין שהגיע מהלקוח).
+    const profileSnap = await db.collection('profiles').doc(uid).get();
+    const profile = profileSnap.exists ? profileSnap.data() : {};
+    const primaryAudience = (profile.primaryAudience || '').trim();
+    const secondaryAudience = (profile.secondaryAudience || '').trim();
+
+    const prompt = buildContentPlanPrompt({
+      pieceCount,
+      ideas: ideas.slice(0, 60),
+      primaryAudience,
+      secondaryAudience,
+      includeSecondaryAudience,
+    });
+
+    let anthropicResponse;
+    try {
+      anthropicResponse = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'x-api-key': anthropicApiKey.value(),
+          'anthropic-version': '2023-06-01',
+          'content-type': 'application/json',
+        },
+        // The added constraints make claude-sonnet-5 reason a lot more before
+        // answering, and per getResponseText's own comment above, that
+        // reasoning can arrive as a separate "thinking" content block that
+        // counts against the same max_tokens budget as the actual text/JSON
+        // reply. Real Cloud Function logs showed this happening repeatedly on
+        // 2026-08-05, even after raising the ceiling once already (8192 ->
+        // 16000) and trimming the prompt's wording - stop_reason kept coming
+        // back "max_tokens" with zero text ever written. Raised further as a
+        // safety margin on top of the trim.
+        body: JSON.stringify({
+          model: 'claude-sonnet-5',
+          max_tokens: 24000,
+          messages: [{ role: 'user', content: prompt }],
+          stream: true,
+        }),
+      });
+    } catch (err) {
+      console.error('generateContentPlan: network error calling Anthropic API:', err);
+      res.set('Content-Type', 'text/event-stream');
+      res.write(`data: ${JSON.stringify({ error: 'לא ניתן להתחבר כרגע לשירות ה-AI, נסו שוב בעוד רגע' })}\n\n`);
+      res.end();
+      return;
+    }
+
+    if (!anthropicResponse.ok || !anthropicResponse.body) {
+      const errText = await anthropicResponse.text().catch(() => '');
+      console.error('generateContentPlan: Anthropic API error:', anthropicResponse.status, errText);
+      res.set('Content-Type', 'text/event-stream');
+      res.write(`data: ${JSON.stringify({ error: 'שגיאה בפנייה ל-AI, נסו שוב' })}\n\n`);
+      res.end();
+      return;
+    }
+
+    res.set('Content-Type', 'text/event-stream');
+    res.set('Cache-Control', 'no-cache');
+    res.set('Connection', 'keep-alive');
+    if (res.flushHeaders) res.flushHeaders();
+
+    const reader = anthropicResponse.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let fullText = '';
+    let usage = null;
+    let stopReason = null;
+
+    // SSE comment lines (":...") are valid per spec and ignored by any real
+    // event parser (parseSSEChunk below only looks for "data:" lines) - this
+    // is the actual fix for the silent-connection-drop bug: keeps real bytes
+    // flowing on the wire throughout Claude's response time, instead of a
+    // fully silent multi-second/minute wait that a flaky mobile connection
+    // can drop with zero recovery.
+    const heartbeat = setInterval(() => {
+      res.write(': heartbeat\n\n');
+    }, 15000);
+
+    try {
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const parsed = parseSSEChunk(buffer, decoder.decode(value, { stream: true }));
+        buffer = parsed.remainder;
+        for (const event of parsed.events) {
+          if (event.type === 'message_start' && event.message && event.message.usage) {
+            usage = { ...event.message.usage };
+          } else if (event.type === 'content_block_delta' && event.delta && event.delta.type === 'text_delta') {
+            fullText += event.delta.text;
+          } else if (event.type === 'message_delta' && event.usage) {
+            usage = { ...usage, ...event.usage };
+            if (event.delta && event.delta.stop_reason) stopReason = event.delta.stop_reason;
+          } else if (event.type === 'error') {
+            console.error('generateContentPlan: Anthropic stream error event:', event.error);
+          }
+        }
+      }
+    } catch (err) {
+      console.error('generateContentPlan: error reading Anthropic stream:', err);
+    } finally {
+      clearInterval(heartbeat);
+    }
+
+    if (usage) await recordTokenUsage('generateContentPlan', usage);
+
+    const text = fullText || '{}';
+    let parsed;
+    try {
+      const match = text.match(/\{[\s\S]*\}/);
+      parsed = JSON.parse(match ? match[0] : text);
+    } catch (err) {
+      console.error(`Failed to parse generateContentPlan response (stop_reason: ${stopReason}):`, text);
+      res.write(`data: ${JSON.stringify({ error: 'לא הצלחתי לבנות את התכנית, נסו שוב' })}\n\n`);
+      res.end();
+      return;
+    }
+
+    if (!Array.isArray(parsed.weeks)) {
+      console.error(`generateContentPlan response missing weeks (stop_reason: ${stopReason}):`, JSON.stringify(parsed));
+      // stop_reason "max_tokens" here means the model ran out of budget before
+      // writing any actual JSON (likely spent it on reasoning) - a smaller
+      // piece count needs less of that budget for idea-title reproduction and
+      // week/day structure, so it's a real, actionable suggestion, not a
+      // generic "try again" that's likely to fail the exact same way.
+      const hint = stopReason === 'max_tokens' ? ' נסו עם מספר תכנים קטן יותר.' : '';
+      res.write(`data: ${JSON.stringify({ error: `התקבלה תשובה לא תקינה, נסו שוב.${hint}` })}\n\n`);
+      res.end();
+      return;
+    }
+
+    res.write(
+      `data: ${JSON.stringify({ done: true, plan: { weeks: parsed.weeks, seriesNote: parsed.seriesNote || '' } })}\n\n`
+    );
+    res.end();
   }
-  await enforceAllowlist(request.auth.token.email);
-
-  const ideas = (request.data && request.data.ideas) || [];
-  const pieceCount = Number(request.data && request.data.pieceCount) || 16;
-  const includeSecondaryAudience = !(request.data && request.data.includeSecondaryAudience === false);
-
-  if (!Array.isArray(ideas) || ideas.length === 0) {
-    throw new HttpsError('invalid-argument', 'צריך לפחות רעיון אחד עם קטגוריה כדי לבנות תכנית תוכן');
-  }
-  if (pieceCount < 16 || pieceCount > 60) {
-    throw new HttpsError('invalid-argument', 'מספר תכנים לא סביר');
-  }
-  for (const idea of ideas.slice(0, 60)) {
-    assertMaxLength((idea && idea.title) || '', 2000, 'כותרת רעיון');
-  }
-
-  await enforceRateLimit(request.auth.uid, 'generateContentPlan');
-
-  // הפרומפט עד עכשיו לא ידע בכלל מי קהל היעד האמיתי של בעלת העסק - רק
-  // ראה תגית מופשטת ("עיקרי"/"משני") על כל רעיון, בלי שום תיאור אמיתי
-  // להשוות אליו. פרופיל המשתמשת כבר נאסף פעם אחת בהיכרות הראשונית של
-  // הצ'אט (primaryAudience/secondaryAudience) - שולפים אותו כאן ישירות
-  // מהשרת (לא מהלקוח, כדי שלא יהיה תלוי בנתון מיושן/לא אמין שהגיע מהלקוח).
-  const profileSnap = await db.collection('profiles').doc(request.auth.uid).get();
-  const profile = profileSnap.exists ? profileSnap.data() : {};
-  const primaryAudience = (profile.primaryAudience || '').trim();
-  const secondaryAudience = (profile.secondaryAudience || '').trim();
-
-  const prompt = buildContentPlanPrompt({
-    pieceCount,
-    ideas: ideas.slice(0, 60),
-    primaryAudience,
-    secondaryAudience,
-    includeSecondaryAudience,
-  });
-
-  // The added constraints make claude-sonnet-5 reason a lot more before
-  // answering, and per getResponseText's own comment above, that reasoning
-  // can arrive as a separate "thinking" content block that counts against
-  // the same max_tokens budget as the actual text/JSON reply. Real Cloud
-  // Function logs showed this happening repeatedly on 2026-08-05, even
-  // after raising the ceiling once already (8192 -> 16000) and trimming
-  // the prompt's wording - stop_reason kept coming back "max_tokens" with
-  // zero text ever written. Raised further as a safety margin on top of
-  // the trim; if this still isn't enough, the prompt needs to shrink
-  // further or the call needs to split into more than one step.
-  const data = await callAnthropic(
-    anthropicApiKey.value(),
-    { model: 'claude-sonnet-5', max_tokens: 24000, messages: [{ role: 'user', content: prompt }] },
-    'generateContentPlan'
-  );
-
-  const text = getResponseText(data) || '{}';
-  let parsed;
-  try {
-    const match = text.match(/\{[\s\S]*\}/);
-    parsed = JSON.parse(match ? match[0] : text);
-  } catch (err) {
-    console.error(`Failed to parse generateContentPlan response (stop_reason: ${data.stop_reason}):`, text);
-    throw new HttpsError('internal', 'לא הצלחתי לבנות את התכנית, נסו שוב');
-  }
-
-  if (!Array.isArray(parsed.weeks)) {
-    console.error(`generateContentPlan response missing weeks (stop_reason: ${data.stop_reason}):`, JSON.stringify(parsed));
-    // stop_reason "max_tokens" here means the model ran out of budget before
-    // writing any actual JSON (likely spent it on reasoning) - a smaller
-    // piece count needs less of that budget for idea-title reproduction and
-    // week/day structure, so it's a real, actionable suggestion, not a
-    // generic "try again" that's likely to fail the exact same way.
-    const hint = data.stop_reason === 'max_tokens' ? ' נסו עם מספר תכנים קטן יותר.' : '';
-    throw new HttpsError('internal', `התקבלה תשובה לא תקינה, נסו שוב.${hint}`);
-  }
-
-  return { plan: { weeks: parsed.weeks, seriesNote: parsed.seriesNote || '' } };
-});
+);
 
 exports.sendNotification = onCall({ secrets: [vapidPrivateKey], region: 'us-central1' }, async (request) => {
   if (!request.auth) {
