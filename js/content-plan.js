@@ -221,18 +221,20 @@ let countdownInterval = null;
 
 function startCountdown() {
   const el = document.getElementById('content-plan-countdown');
-  // ה-AI צריך עכשיו יותר "מקום לחשוב" בשביל תכניות מאוזנות (ראו התיקון
-  // ל-max_tokens) - זה יכול לקחת יותר מדקה, במיוחד לתכניות גדולות. הערכה
-  // ריאלית יותר במקום ספירה-לאחור שמבטיחה "כמעט מוכן" ואז נתקעת שם דקות.
-  let secondsLeft = 60;
-  el.textContent = `בונה תכנית תוכן... בערך ${secondsLeft} שניות נותרו`;
-  countdownInterval = setInterval(() => {
-    secondsLeft -= 1;
+  // היה ספירה-לאחור מ-60 שניות קבוע, גם כשהיצירה בפועל לוקחת יותר (במיוחד
+  // לתכניות גדולות, עם כל אילוצי האיזון) - מגיעה ל-0 ואז נתקעת ב"כמעט מוכן"
+  // בלי שום קשר לזמן האמיתי שעובר, מה שנראה תקוע גם כשהיא עובדת כרגיל.
+  // סופרת עכשיו למעלה מהזמן האמיתי שעבר, לא מנחשת זמן שנותר.
+  const startTime = Date.now();
+  const tick = () => {
+    const elapsed = Math.round((Date.now() - startTime) / 1000);
     el.textContent =
-      secondsLeft > 0
-        ? `בונה תכנית תוכן... בערך ${secondsLeft} שניות נותרו`
-        : 'כמעט מוכן, לתכניות גדולות זה יכול לקחת עוד קצת... 🔥';
-  }, 1000);
+      elapsed < 90
+        ? `בונה תכנית תוכן... ${elapsed} שניות`
+        : `בונה תכנית תוכן... ${elapsed} שניות (לתכניות גדולות זה יכול לקחת כמה דקות) 🔥`;
+  };
+  tick();
+  countdownInterval = setInterval(tick, 1000);
 }
 
 function stopCountdown() {
