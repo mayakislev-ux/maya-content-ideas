@@ -873,8 +873,14 @@ exports.generateWarmingPlan = onRequest(
 // לחיבור נייד/וויפי להיחתך בו בלי שום סימן. אין צורך להציג טקסט חלקי
 // למשתמשת (בניגוד ל-checkIdea) - ה-heartbeat רק שומר את החיבור פתוח,
 // הטקסט המלא נצבר בשרת ונשלח פעם אחת בסוף.
+// timeoutSeconds הועלה מ-300 ל-540 (2026-08-11) - לוג אמיתי הראה קריאה
+// אמיתית שנהרגה בדיוק בסימן 5 הדקות ("Truncated response body... request
+// timed out") בזמן עומס גבוה על Anthropic במהלך סדנה חיה - ה-heartbeat כבר
+// פותר את בעיית החיבור השקט, אבל אם היצירה עצמה איטית יותר מ-5 דקות
+// (עומס אמיתי בצד ה-AI), הפונקציה נהרגת גם עם חיבור פעיל. 540 שניות (9
+// דקות) נותן שוליים אמיתיים בלי להתקרב לתקרה של 3600 שניות שהפלטפורמה מרשה.
 exports.generateContentPlan = onRequest(
-  { secrets: [anthropicApiKey], region: 'us-central1', cors: ALLOWED_STREAM_ORIGINS, timeoutSeconds: 300 },
+  { secrets: [anthropicApiKey], region: 'us-central1', cors: ALLOWED_STREAM_ORIGINS, timeoutSeconds: 540 },
   async (req, res) => {
     if (req.method !== 'POST') {
       res.status(405).json({ error: 'Method not allowed' });
