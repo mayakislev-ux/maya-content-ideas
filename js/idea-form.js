@@ -4,6 +4,7 @@ import { functions } from './firebase-init.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
 import { showToast } from './toast.js';
 import { alertDialog } from './confirm-dialog.js';
+import { getCurrentIdeas } from './archive-view.js';
 
 const classifyIdea = httpsCallable(functions, 'classifyIdea');
 const AI_OPTION = '__ai__';
@@ -28,6 +29,22 @@ function setRatingChip(value) {
     chip.setAttribute('aria-pressed', isActive ? 'true' : 'false');
   });
   updateIdeaPreview();
+}
+
+// הקלדת שם הסדרה בחופשיות בכל פרק חדש היא ידית לטעויות שקטות - שגיאת
+// כתיב אחת ("הדרך ל100K" במקום "הדרך ל-100K") יוצרת בפועל שתי סדרות
+// שונות שלא מתחברות זו לזו, בלי שום שגיאה שמתריעה על זה. datalist טבעי
+// של הדפדפן מציע את שמות הסדרות הקיימות תוך כדי הקלדה (עדיין מאפשר
+// להקליד שם חדש) - בלי לבנות רכיב UI מותאם אישית.
+function populateSeriesDatalist() {
+  const names = new Set(getCurrentIdeas().map((idea) => idea.series).filter(Boolean));
+  const datalist = document.getElementById('field-series-datalist');
+  datalist.innerHTML = '';
+  [...names].sort().forEach((name) => {
+    const option = document.createElement('option');
+    option.value = name;
+    datalist.appendChild(option);
+  });
 }
 
 // Live "how this will look in the list" preview - a quick confidence check
@@ -60,6 +77,7 @@ export function openAddModal(prefillTitle = '') {
   // להסתיר את שדות הסדרה במפורש, אחרת רעיון חדש "יורש" מצב פתוח משאיר
   // הקודם שנערך.
   document.getElementById('field-series-fields').hidden = true;
+  populateSeriesDatalist();
   document.getElementById('delete-idea-btn').hidden = true;
   document.getElementById('form-error').hidden = true;
   document.getElementById('idea-modal').hidden = false;
@@ -80,6 +98,7 @@ export function openEditModal(idea, overrideTitle = '') {
   const isSeries = Boolean(idea.series);
   document.getElementById('field-is-series').checked = isSeries;
   document.getElementById('field-series-fields').hidden = !isSeries;
+  populateSeriesDatalist();
   document.getElementById('field-series-name').value = idea.series || '';
   document.getElementById('field-series-order').value = idea.seriesOrder || '';
   document.getElementById('delete-idea-btn').hidden = false;
