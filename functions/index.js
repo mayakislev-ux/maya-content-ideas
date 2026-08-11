@@ -653,7 +653,12 @@ exports.writeScript = onCall({ secrets: [anthropicApiKey], region: 'us-central1'
   return { reply };
 });
 
-exports.classifyIdea = onCall({ secrets: [anthropicApiKey], region: 'us-central1' }, async (request) => {
+// היחיד מבין 5 הפונקציות שמשתמשות ב-AI שלא קיבל timeoutSeconds מפורש - נופל
+// אל ברירת המחדל (60 שניות). הפלט קטן (max_tokens 200) כך שלא נצפתה תקלה
+// בפועל, אבל זו בדיוק אותה מחלקת באג שכבר קרתה פעם ל-checkIdea ("Truncated
+// response body... request timed out"). בזמן עומס אמיתי (2026-08-11, סדנה
+// חיה, שימוש כבד בו-זמנית) עדיף שוליים בטוחים - בלי לגעת בשום דבר אחר.
+exports.classifyIdea = onCall({ secrets: [anthropicApiKey], region: 'us-central1', timeoutSeconds: 120 }, async (request) => {
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'יש להתחבר כדי להשתמש בתכונה הזו');
   }
