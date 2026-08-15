@@ -138,28 +138,41 @@ function parsePollTemplate(template) {
   return { question, options };
 }
 
+// new Date(`${dateStr}T00:00:00`) parses as LOCAL time, but .toISOString()
+// always serializes back in UTC - on a server whose local time isn't UTC+0
+// (Cloud Functions containers, or Israel's own UTC+2/+3), that round-trip
+// silently shifts the extracted date backward by a day. Constructing via
+// Date.UTC() from the start (and reading back with the UTC getters) keeps
+// the calendar date stable no matter what timezone the process runs in -
+// israelToday() itself is unaffected (it derives the day from a real
+// Asia/Jerusalem clock read, not from this construct-then-serialize dance).
+function parseDateUTC(dateStr) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d));
+}
+
 /** Reminder date: 1 day before the session, except Saturday (no sends that day) ->
  * 3 days before (so a Sunday session reminds on Thursday, not the skipped Saturday). */
 function reminderDateFor(sessionDateStr) {
-  const d = new Date(`${sessionDateStr}T00:00:00`);
+  const d = parseDateUTC(sessionDateStr);
   const candidate = new Date(d);
-  candidate.setDate(candidate.getDate() - 1);
-  if (candidate.getDay() === 6) { // Saturday
-    candidate.setDate(d.getDate() - 3);
+  candidate.setUTCDate(candidate.getUTCDate() - 1);
+  if (candidate.getUTCDay() === 6) { // Saturday
+    candidate.setUTCDate(d.getUTCDate() - 3);
   }
   return candidate.toISOString().slice(0, 10);
 }
 
 function addDays(dateStr, days) {
-  const d = new Date(`${dateStr}T00:00:00`);
-  d.setDate(d.getDate() + days);
+  const d = parseDateUTC(dateStr);
+  d.setUTCDate(d.getUTCDate() + days);
   return d.toISOString().slice(0, 10);
 }
 
 function renderReminder(template, row, sessionDateStr, sendDateStr) {
-  const sessionDate = new Date(`${sessionDateStr}T00:00:00`);
-  const weekday = HEBREW_WEEKDAYS[sessionDate.getDay()];
-  const gapDays = Math.round((sessionDate - new Date(`${sendDateStr}T00:00:00`)) / 86400000);
+  const sessionDate = parseDateUTC(sessionDateStr);
+  const weekday = HEBREW_WEEKDAYS[sessionDate.getUTCDay()];
+  const gapDays = Math.round((sessionDate - parseDateUTC(sendDateStr)) / 86400000);
   const timeRef = gapDays === 1 ? 'מחר' : `ביום ${weekday}`;
   const [, mm, dd] = sessionDateStr.split('-');
   return template
