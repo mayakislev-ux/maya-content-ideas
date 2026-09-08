@@ -12,7 +12,7 @@ import { wireFeedbackForm } from './feedback.js';
 import { wireContentPlanView, refreshGate as refreshContentPlanGate } from './content-plan.js';
 import { wireConfirmDialog } from './confirm-dialog.js';
 import { wireWarmingView } from './warming.js';
-import { wireInspirationView } from './inspiration-view.js';
+import { wireInspirationView, openInspirationView } from './inspiration-view.js';
 import { showView, getLastView } from './view-router.js';
 import { showToast } from './toast.js';
 import { hasCompletedTour, showWelcomeTour } from './welcome-tour.js';
@@ -318,7 +318,10 @@ document.getElementById('tab-chat').addEventListener('click', () => {
   startIdeaChat();
 });
 document.getElementById('tab-guide').addEventListener('click', () => showView('guide'));
-document.getElementById('tab-inspiration').addEventListener('click', () => showView('inspiration'));
+document.getElementById('tab-inspiration').addEventListener('click', () => {
+  showView('inspiration');
+  openInspirationView();
+});
 document.getElementById('home-see-all-btn').addEventListener('click', () => showView('archive'));
 // Reference-only guides and secondary tools, reached from inside "מרכז
 // למידה" instead of being top-level nav tabs - they were competing for
@@ -568,7 +571,9 @@ onAuthChange(async (user) => {
   } else {
     const restorableViews = ['guide', 'inspiration', 'feedback', 'roadmap', 'content-plan', 'archive'];
     const lastView = getLastView();
-    showView(restorableViews.includes(lastView) ? lastView : 'home');
+    const viewToShow = restorableViews.includes(lastView) ? lastView : 'home';
+    showView(viewToShow);
+    if (viewToShow === 'inspiration') openInspirationView();
   }
   if (params.has('action') || params.has('view')) {
     window.history.replaceState({}, '', window.location.pathname);

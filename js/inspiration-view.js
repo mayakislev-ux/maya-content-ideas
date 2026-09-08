@@ -1,5 +1,5 @@
 import { db } from './firebase-init.js';
-import { collection, getDocs, orderBy, query } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
+import { collection, getDocs } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 
 const PLATFORM_LABEL = { instagram: 'Instagram', tiktok: 'TikTok' };
 const PLATFORM_ICON = {
@@ -9,14 +9,22 @@ const PLATFORM_ICON = {
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v11.5a3.5 3.5 0 1 1-3-3.46"/><path d="M14 3a5 5 0 0 0 5 5"/></svg>',
 };
 
-let cachedVideos = null;
+let cachedVideosPromise = null;
 
+// No server-side orderBy on purpose: sorting by two fields (domain, order)
+// needs a Firestore composite index, which either fails the query outright
+// until one is created, or adds real latency - the collection is small
+// (~150 docs today), so a plain fetch + client-side sort is both simpler
+// and faster than depending on an index.
 async function loadVideos() {
-  if (cachedVideos) return cachedVideos;
-  const q = query(collection(db, 'inspirationBank'), orderBy('domain'), orderBy('order'));
-  const snapshot = await getDocs(q);
-  cachedVideos = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
-  return cachedVideos;
+  if (!cachedVideosPromise) {
+    cachedVideosPromise = getDocs(collection(db, 'inspirationBank')).then((snapshot) =>
+      snapshot.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => a.domain.localeCompare(b.domain) || a.order - b.order)
+    );
+  }
+  return cachedVideosPromise;
 }
 
 function renderCards(videos) {
@@ -60,8 +68,16 @@ async function renderForDomain(domain) {
   renderCards(filtered);
 }
 
+// Wiring just attaches the filter listener - it does NOT fetch anything yet.
+// The actual fetch only happens once the tab is opened (openInspirationView,
+// called from app.js's tab-inspiration click), so every other user who never
+// visits this tab pays zero network/render cost for it on app load.
 export function wireInspirationView() {
   const select = document.getElementById('inspiration-domain-filter');
   select.addEventListener('change', () => renderForDomain(select.value));
+}
+
+export function openInspirationView() {
+  const select = document.getElementById('inspiration-domain-filter');
   renderForDomain(select.value);
 }
