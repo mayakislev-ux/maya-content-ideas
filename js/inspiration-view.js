@@ -1,5 +1,8 @@
-import { db } from './firebase-init.js';
+import { db, functions } from './firebase-init.js';
 import { collection, getDocs } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
+import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
+
+const matchInspirationQuery = httpsCallable(functions, 'matchInspirationQuery');
 
 const PLATFORM_LABEL = { instagram: 'Instagram', tiktok: 'TikTok' };
 const PLATFORM_ICON = {
@@ -108,19 +111,75 @@ function renderCards(videos) {
 
 async function renderForDomain(domain) {
   const grid = document.getElementById('inspiration-grid');
+  const status = document.getElementById('inspiration-search-status');
+  status.hidden = true;
   grid.innerHTML = '<p class="inspiration-loading">טוען השראה…</p>';
   const videos = await loadVideos();
   const filtered = domain ? videos.filter((v) => v.domain === domain) : interleaveByDomain(videos);
   renderCards(filtered);
 }
 
-// Wiring just attaches the filter listener - it does NOT fetch anything yet.
-// The actual fetch only happens once the tab is opened (openInspirationView,
-// called from app.js's tab-inspiration click), so every other user who never
-// visits this tab pays zero network/render cost for it on app load.
+// "שכפול הפוך" - a client already has her own idea ("אני רוצה לשתף את סיפור
+// פתיחת העסק שלי") and wants matching-FORMAT reference videos from ANY
+// domain, not just her own. matchInspirationQuery converts her free text
+// into 1-2 tags from the same taxonomy classifyInspirationFormats tagged
+// every video with server-side; this just filters the already-loaded list
+// by tag overlap, ranking a 2-tag match above a 1-tag match.
+async function runSearch(query) {
+  const grid = document.getElementById('inspiration-grid');
+  const status = document.getElementById('inspiration-search-status');
+  const select = document.getElementById('inspiration-domain-filter');
+
+  grid.innerHTML = '<p class="inspiration-loading">מחפשת רפרנסים מתאימים…</p>';
+  status.hidden = true;
+
+  let tags;
+  try {
+    const result = await matchInspirationQuery({ query });
+    tags = result.data.tags;
+  } catch (err) {
+    console.error('matchInspirationQuery failed:', err);
+    grid.innerHTML = '';
+    status.hidden = false;
+    status.textContent = 'לא הצלחנו להבין את החיפוש - נסו לנסח אחרת.';
+    return;
+  }
+
+  const videos = await loadVideos();
+  const scored = videos
+    .map((v) => ({ video: v, score: (v.formatTags || []).filter((t) => tags.includes(t)).length }))
+    .filter((s) => s.score > 0)
+    .sort((a, b) => b.score - a.score);
+
+  select.value = '';
+  status.hidden = false;
+  status.textContent = scored.length
+    ? `נמצאו ${scored.length} סרטונים בסגנון "${tags.join(' / ')}" - מכל התחומים`
+    : 'לא נמצאו סרטונים דומים - נסו לנסח אחרת או דפדפו לפי תחום.';
+  renderCards(scored.map((s) => s.video));
+}
+
+// Wiring just attaches the filter/search listeners - it does NOT fetch
+// anything yet. The actual fetch only happens once the tab is opened
+// (openInspirationView, called from app.js's tab-inspiration click), so
+// every other user who never visits this tab pays zero network/render cost
+// for it on app load.
 export function wireInspirationView() {
   const select = document.getElementById('inspiration-domain-filter');
   select.addEventListener('change', () => renderForDomain(select.value));
+
+  const form = document.getElementById('inspiration-search-form');
+  const input = document.getElementById('inspiration-search-input');
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const query = input.value.trim();
+    if (query) runSearch(query);
+  });
+
+  document.getElementById('inspiration-search-clear-btn').addEventListener('click', () => {
+    input.value = '';
+    renderForDomain(select.value);
+  });
 }
 
 export function openInspirationView() {

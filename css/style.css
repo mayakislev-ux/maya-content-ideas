@@ -3599,6 +3599,37 @@ textarea:focus-visible,
   padding: 2rem 0;
 }
 
+/* "שכפול הפוך" - חיפוש רפרנס לפי מה שהלקוחה כבר מתכננת ליצור */
+.inspiration-search-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+  margin-bottom: 0.8rem;
+}
+
+.inspiration-search-form input {
+  flex: 1;
+  min-width: 220px;
+  padding: 0.7rem 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: var(--card-bg);
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+.inspiration-search-status {
+  font-size: 0.9rem;
+  color: var(--muted);
+  margin: 0 0 0.8rem;
+}
+
+@media (max-width: 640px) {
+  .inspiration-search-form { flex-direction: column; align-items: stretch; }
+  .inspiration-search-form input { min-width: 0; }
+}
+
 @media (max-width: 720px) {
   .home-view {
     padding: 1.2rem 1rem calc(6rem + var(--bottom-nav-h, 70px));

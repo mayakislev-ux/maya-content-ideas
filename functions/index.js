@@ -8,6 +8,7 @@ const { buildOngoingWarmingPrompt, buildPresaleWarmingPrompt } = require('./warm
 const { buildContentPlanPrompt } = require('./content-plan-system-prompt');
 const { fetchExtraContentLinks, sheetsServiceAccountKey } = require('./sheets-content');
 const { CATEGORIES, PERSUASION_STAGES, CATEGORY_DEFINITIONS, PERSUASION_STAGE_DEFINITIONS } = require('./ideas-constants');
+const { FORMAT_TAGS, FORMAT_TAG_DEFINITIONS } = require('./inspiration-constants');
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -33,6 +34,7 @@ const DAILY_LIMITS = {
   generateWarmingPlan: 20,
   generateContentPlan: 20,
   writeScript: 60,
+  matchInspirationQuery: 40,
 };
 
 // checkIdea/classifyIdea/generateWarmingPlan/generateContentPlan עד עכשיו רק
@@ -721,6 +723,149 @@ ${PERSUASION_STAGES.map((s, i) => `${i + 1}. ${s}: ${PERSUASION_STAGE_DEFINITION
     throw new HttpsError('internal', 'לא הצלחתי לסווג את הרעיון, נסו שוב');
   }
   return { category, persuasionStage };
+});
+
+// "מאגר להשראה" - tags a batch of not-yet-tagged videos with a FORMAT tag
+// (independent of their domain) so the reverse-duplication search below can
+// find matching-structure references across domains. Admin-only, invoked
+// manually (or re-invoked with a higher `limit`) rather than a live user
+// action - not in DAILY_LIMITS on purpose, gated by ADMIN_EMAIL instead of
+// enforceRateLimit like the client-facing functions above.
+// Vision-based: fetches each video's already-mirrored thumbnail (hosted in
+// this same repo, not the original expiring TikTok/Instagram CDN link) and
+// sends it as an image content block - works uniformly for both platforms.
+// For TikTok specifically, also passes the real caption (fetched fresh via
+// TikTok's public oEmbed, which was never persisted to Firestore) since real
+// text is a stronger signal than the image alone when it's available.
+exports.classifyInspirationFormats = onCall(
+  { secrets: [anthropicApiKey], region: 'us-central1', timeoutSeconds: 540 },
+  async (request) => {
+    if (!request.auth || request.auth.token.email !== ADMIN_EMAIL) {
+      throw new HttpsError('permission-denied', 'רק מאיה יכולה להריץ את זה');
+    }
+    const limit = Math.min(Number((request.data && request.data.limit) || 30), 60);
+
+    // Firestore can't query "field is absent" directly, and the collection
+    // is small (~180 docs today) - a full scan + in-memory filter is simpler
+    // and plenty fast for an admin batch job like this one.
+    const snap = await db.collection('inspirationBank').get();
+    const targets = snap.docs.filter((d) => !d.data().formatTags).slice(0, limit);
+
+    let tagged = 0;
+    const failed = [];
+
+    for (const doc of targets) {
+      const video = doc.data();
+      try {
+        if (!video.thumbnailUrl) throw new Error('no mirrored thumbnail to classify from');
+        const imgRes = await fetch(video.thumbnailUrl);
+        if (!imgRes.ok) throw new Error(`thumbnail fetch HTTP ${imgRes.status}`);
+        const imageBase64 = Buffer.from(await imgRes.arrayBuffer()).toString('base64');
+
+        let caption = '';
+        if (video.platform === 'tiktok') {
+          try {
+            const oembedRes = await fetch(`https://www.tiktok.com/oembed?url=${encodeURIComponent(video.url)}`);
+            if (oembedRes.ok) caption = ((await oembedRes.json()).title || '').slice(0, 500);
+          } catch {
+            // caption is a bonus signal, not required - proceed on the image alone
+          }
+        }
+
+        const prompt = `זו תמונת תצוגה מקדימה מסרטון Reels/TikTok בתחום "${video.domain}".${caption ? `\nהכיתוב האמיתי של הסרטון: "${caption}"` : ''}
+
+סווג/י את המבנה/הפורמט של הסרטון הזה - בחר/י 1 או 2 (לא יותר) מהרשימה הבאה, לפי המספר שלהם:
+${FORMAT_TAGS.map((t, i) => `${i + 1}. ${t}: ${FORMAT_TAG_DEFINITIONS[t]}`).join('\n')}
+
+השב/י אך ורק ב-JSON תקין, בלי שום טקסט נוסף: {"tagIndices": [<מספר אחד או שני מספרים בין 1 ל-${FORMAT_TAGS.length}>]}`;
+
+        const data = await callAnthropic(
+          anthropicApiKey.value(),
+          {
+            model: 'claude-haiku-4-5-20251001',
+            max_tokens: 200,
+            messages: [
+              {
+                role: 'user',
+                content: [
+                  { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: imageBase64 } },
+                  { type: 'text', text: prompt },
+                ],
+              },
+            ],
+          },
+          'classifyInspirationFormats'
+        );
+
+        const text = getResponseText(data) || '{}';
+        const match = text.match(/\{[\s\S]*\}/);
+        const parsed = JSON.parse(match ? match[0] : text);
+        const tags = (parsed.tagIndices || [])
+          .map((i) => FORMAT_TAGS[Number(i) - 1])
+          .filter(Boolean);
+        if (!tags.length) throw new Error(`no valid tags parsed from: ${text}`);
+
+        await doc.ref.update({ formatTags: tags });
+        tagged++;
+      } catch (err) {
+        failed.push({ id: doc.id, url: video.url, error: err.message });
+      }
+    }
+
+    return { tagged, hasMore: targets.length === limit, failed };
+  }
+);
+
+// "מאגר להשראה" - "שכפול הפוך" search: a client already has her own content
+// idea and wants matching-FORMAT reference videos (from any domain, not
+// just her own) to see how others structured something similar. Converts
+// her free-text description into 1-2 tags from the same FORMAT_TAGS
+// taxonomy classifyInspirationFormats tags videos with - the client then
+// filters its already-loaded video list by tag overlap, so this function
+// only ever returns tags, never video data (keeps it fast and small).
+exports.matchInspirationQuery = onCall({ secrets: [anthropicApiKey], region: 'us-central1', timeoutSeconds: 60 }, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'יש להתחבר כדי להשתמש בתכונה הזו');
+  }
+  await enforceAllowlist(request.auth.token.email);
+
+  const query = ((request.data && request.data.query) || '').trim();
+  if (!query) {
+    throw new HttpsError('invalid-argument', 'צריך לכתוב על מה הסרטון שלכם');
+  }
+  assertMaxLength(query, 500, 'תיאור הסרטון');
+
+  await enforceRateLimit(request.auth.uid, 'matchInspirationQuery');
+
+  const prompt = `לקוחה מתארת סרטון שהיא רוצה ליצור: "${query}"
+
+איזה מבנה/פורמט הכי מתאים לתאר את הסרטון הזה? בחר/י 1 או 2 (לא יותר) מהרשימה הבאה, לפי המספר שלהם:
+${FORMAT_TAGS.map((t, i) => `${i + 1}. ${t}: ${FORMAT_TAG_DEFINITIONS[t]}`).join('\n')}
+
+השב/י אך ורק ב-JSON תקין, בלי שום טקסט נוסף: {"tagIndices": [<מספר אחד או שני מספרים בין 1 ל-${FORMAT_TAGS.length}>]}`;
+
+  const data = await callAnthropic(
+    anthropicApiKey.value(),
+    { model: 'claude-haiku-4-5-20251001', max_tokens: 150, messages: [{ role: 'user', content: prompt }] },
+    'matchInspirationQuery'
+  );
+
+  const text = getResponseText(data) || '{}';
+  let parsed;
+  try {
+    const match = text.match(/\{[\s\S]*\}/);
+    parsed = JSON.parse(match ? match[0] : text);
+  } catch (err) {
+    console.error('Failed to parse matchInspirationQuery response:', text);
+    throw new HttpsError('internal', 'לא הצלחתי להבין את הסרטון, נסו לנסח אחרת');
+  }
+
+  const tags = (parsed.tagIndices || []).map((i) => FORMAT_TAGS[Number(i) - 1]).filter(Boolean);
+  if (!tags.length) {
+    console.error('matchInspirationQuery returned invalid indices:', text);
+    throw new HttpsError('internal', 'לא הצלחתי להבין את הסרטון, נסו לנסח אחרת');
+  }
+  return { tags };
 });
 
 // היה onCall - בקשה חוסמת יחידה. מדידה אמיתית (2026-08-11) הראתה 41 שניות

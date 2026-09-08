@@ -490,6 +490,17 @@
   </main>
 
   <main id="inspiration-view" class="view inspiration-view" hidden>
+    <form id="inspiration-search-form" class="inspiration-search-form">
+      <input
+        id="inspiration-search-input"
+        type="text"
+        aria-label="יש לי כבר רעיון - חפשו לי רפרנס דומה"
+        placeholder="יש לי כבר רעיון - על מה הסרטון שלכם? (למשל: סיפור פתיחת העסק שלי)"
+      >
+      <button type="submit" class="btn-primary">חיפוש רפרנסים</button>
+      <button type="button" id="inspiration-search-clear-btn" class="btn-text">נקו חיפוש</button>
+    </form>
+    <p id="inspiration-search-status" class="inspiration-search-status" hidden></p>
     <div class="archive-controls">
       <select id="inspiration-domain-filter" aria-label="סינון לפי תחום">
         <option value="">כל התחומים</option>
