@@ -27,6 +27,32 @@ async function loadVideos() {
   return cachedVideosPromise;
 }
 
+// The "כל התחומים" (all domains) view needs videos genuinely mixed across
+// domains, not grouped in domain-sized blocks the way `loadVideos`'s
+// (domain, order) sort naturally produces - round-robins one video at a
+// time from each domain (each domain's own internal order is already
+// shuffled, so this reuses that instead of re-randomizing).
+function interleaveByDomain(videos) {
+  const byDomain = new Map();
+  for (const v of videos) {
+    if (!byDomain.has(v.domain)) byDomain.set(v.domain, []);
+    byDomain.get(v.domain).push(v);
+  }
+  const queues = [...byDomain.values()];
+  const result = [];
+  let remaining = true;
+  while (remaining) {
+    remaining = false;
+    for (const queue of queues) {
+      if (queue.length) {
+        result.push(queue.shift());
+        remaining = true;
+      }
+    }
+  }
+  return result;
+}
+
 function renderCards(videos) {
   const grid = document.getElementById('inspiration-grid');
   const empty = document.getElementById('inspiration-empty');
@@ -84,7 +110,7 @@ async function renderForDomain(domain) {
   const grid = document.getElementById('inspiration-grid');
   grid.innerHTML = '<p class="inspiration-loading">טוען השראה…</p>';
   const videos = await loadVideos();
-  const filtered = domain ? videos.filter((v) => v.domain === domain) : videos;
+  const filtered = domain ? videos.filter((v) => v.domain === domain) : interleaveByDomain(videos);
   renderCards(filtered);
 }
 
