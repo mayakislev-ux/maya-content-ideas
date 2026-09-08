@@ -43,6 +43,25 @@ function renderCards(videos) {
     card.target = '_blank';
     card.rel = 'noopener noreferrer';
 
+    const thumbWrap = document.createElement('div');
+    thumbWrap.className = 'inspiration-card-thumb';
+    if (video.thumbnailUrl) {
+      const img = document.createElement('img');
+      img.src = video.thumbnailUrl;
+      img.loading = 'lazy';
+      img.alt = '';
+      thumbWrap.appendChild(img);
+    } else {
+      // No real thumbnail available (mainly Instagram - no public API for
+      // it without a Meta app token) - a branded placeholder instead of a
+      // blank box.
+      thumbWrap.innerHTML = PLATFORM_ICON[video.platform] || '';
+      thumbWrap.classList.add('inspiration-card-thumb--placeholder');
+    }
+
+    const info = document.createElement('div');
+    info.className = 'inspiration-card-info';
+
     const badge = document.createElement('span');
     badge.className = 'inspiration-card-badge';
     badge.innerHTML = `${PLATFORM_ICON[video.platform] || ''}<span>${PLATFORM_LABEL[video.platform] || video.platform}</span>`;
@@ -55,7 +74,8 @@ function renderCards(videos) {
     cta.className = 'inspiration-card-cta';
     cta.textContent = 'פתחו לצפייה ←';
 
-    card.append(badge, domainTag, cta);
+    info.append(badge, domainTag, cta);
+    card.append(thumbWrap, info);
     grid.appendChild(card);
   }
 }

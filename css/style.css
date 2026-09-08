@@ -3482,7 +3482,7 @@ textarea:focus-visible,
    opens in a new tab) rather than a click-handler-only div. */
 .inspiration-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(4, 1fr);
   gap: 0.8rem;
   margin-top: 1rem;
 }
@@ -3490,11 +3490,10 @@ textarea:focus-visible,
 .inspiration-card {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
-  padding: 1.1rem;
   background: var(--card-bg);
   border: 1px solid var(--border-color);
   border-radius: var(--card-radius-sm);
+  overflow: hidden;
   text-decoration: none;
   color: var(--text);
   transition: transform 0.15s var(--ease-snap), box-shadow 0.15s var(--ease-snap), border-color 0.15s;
@@ -3507,6 +3506,48 @@ textarea:focus-visible,
   border-color: var(--accent-300);
 }
 
+.inspiration-card-thumb {
+  aspect-ratio: 9 / 16;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.inspiration-card-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.inspiration-card-thumb--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.inspiration-card-thumb--placeholder svg {
+  width: 30%;
+  height: 30%;
+  color: var(--muted);
+  opacity: 0.5;
+}
+
+.inspiration-card--instagram .inspiration-card-thumb--placeholder {
+  background: linear-gradient(135deg, #fdf497, #fd5949, #d6249f, #285AEB);
+}
+
+.inspiration-card--instagram .inspiration-card-thumb--placeholder svg {
+  color: #fff;
+  opacity: 0.85;
+}
+
+.inspiration-card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.8rem;
+}
+
 .inspiration-card-badge {
   display: inline-flex;
   align-items: center;
@@ -3514,11 +3555,11 @@ textarea:focus-visible,
   width: fit-content;
   padding: 0.3rem 0.6rem;
   border-radius: 999px;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 700;
 }
 
-.inspiration-card-badge svg { width: 16px; height: 16px; }
+.inspiration-card-badge svg { width: 14px; height: 14px; }
 
 .inspiration-card--instagram .inspiration-card-badge {
   color: #c1236b;
@@ -3531,15 +3572,24 @@ textarea:focus-visible,
 }
 
 .inspiration-card-domain {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   color: var(--muted);
 }
 
 .inspiration-card-cta {
   margin-top: auto;
-  font-size: 0.85rem;
+  padding-top: 0.3rem;
+  font-size: 0.8rem;
   font-weight: 700;
   color: var(--accent);
+}
+
+@media (max-width: 900px) {
+  .inspiration-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (max-width: 640px) {
+  .inspiration-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
 .inspiration-loading,
