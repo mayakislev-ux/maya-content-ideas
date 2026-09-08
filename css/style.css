@@ -3477,6 +3477,78 @@ textarea:focus-visible,
 
 .guide-item-grid .guide-item { margin-bottom: 0; }
 
+/* מאגר להשראה - card grid of outbound Instagram/TikTok links, grouped by
+   domain. Each card is a plain <a> so it's a real link (works without JS,
+   opens in a new tab) rather than a click-handler-only div. */
+.inspiration-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.8rem;
+  margin-top: 1rem;
+}
+
+.inspiration-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 1.1rem;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--card-radius-sm);
+  text-decoration: none;
+  color: var(--text);
+  transition: transform 0.15s var(--ease-snap), box-shadow 0.15s var(--ease-snap), border-color 0.15s;
+}
+
+.inspiration-card:hover,
+.inspiration-card:focus-visible {
+  transform: translateY(-2px);
+  box-shadow: var(--card-shadow);
+  border-color: var(--accent-300);
+}
+
+.inspiration-card-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: fit-content;
+  padding: 0.3rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.inspiration-card-badge svg { width: 16px; height: 16px; }
+
+.inspiration-card--instagram .inspiration-card-badge {
+  color: #c1236b;
+  background: #ffe3f1;
+}
+
+.inspiration-card--tiktok .inspiration-card-badge {
+  color: #111;
+  background: #e7f9fb;
+}
+
+.inspiration-card-domain {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.inspiration-card-cta {
+  margin-top: auto;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.inspiration-loading,
+.inspiration-empty {
+  color: var(--muted);
+  text-align: center;
+  padding: 2rem 0;
+}
+
 @media (max-width: 720px) {
   .home-view {
     padding: 1.2rem 1rem calc(6rem + var(--bottom-nav-h, 70px));

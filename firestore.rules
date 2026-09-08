@@ -34,5 +34,9 @@ service cloud.firestore {
     match /pushSubscriptions/{uid} {
       allow read, write: if isAllowed() && request.auth.uid == uid;
     }
+    match /inspirationBank/{videoId} {
+      allow read: if isAllowed();
+      allow write: if isAdmin();
+    }
   }
 }

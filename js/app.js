@@ -12,6 +12,7 @@ import { wireFeedbackForm } from './feedback.js';
 import { wireContentPlanView, refreshGate as refreshContentPlanGate } from './content-plan.js';
 import { wireConfirmDialog } from './confirm-dialog.js';
 import { wireWarmingView } from './warming.js';
+import { wireInspirationView } from './inspiration-view.js';
 import { showView, getLastView } from './view-router.js';
 import { showToast } from './toast.js';
 import { hasCompletedTour, showWelcomeTour } from './welcome-tour.js';
@@ -449,6 +450,7 @@ wireIdeaChat();
 wireFeedbackForm();
 wireContentPlanView();
 wireWarmingView();
+wireInspirationView();
 wireConfirmDialog();
 document.getElementById('hub-link-warming').addEventListener('click', () => showView('warming'));
 

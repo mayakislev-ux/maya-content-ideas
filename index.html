@@ -88,7 +88,10 @@
             <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-8.4 8.4 8.3 8.3 0 0 1-3.8-.9L3 21l1.9-5.8a8.3 8.3 0 0 1-.9-3.8A8.4 8.4 0 0 1 12.5 3h.1a8.4 8.4 0 0 1 8.4 8.4z"/></svg>
             <span>חוות דעת</span>
           </button>
-          <button id="tab-inspiration" class="tab-btn" hidden>מאגר להשראה</button>
+          <button id="tab-inspiration" class="tab-btn">
+            <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v18l7-5 7 5V3z"/></svg>
+            <span>מאגר להשראה</span>
+          </button>
 
           <button type="button" id="drawer-signout-btn" class="drawer-signout-btn">
             <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
@@ -497,11 +500,8 @@
         <option value="אחר">אחר</option>
       </select>
     </div>
-    <div class="construction-box">
-      <div class="construction-sticker">🚧👷‍♀️🚧</div>
-      <h2>בבנייה...</h2>
-      <p>מאגר ההשראה בדרך אלייך - בקרוב!</p>
-    </div>
+    <div id="inspiration-grid" class="inspiration-grid"></div>
+    <p id="inspiration-empty" class="inspiration-empty" hidden>אין עדיין סרטונים בתחום הזה - נסו תחום אחר.</p>
   </main>
 
   <main id="feedback-view" class="view feedback-view" hidden>
