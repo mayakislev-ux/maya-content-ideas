@@ -104,6 +104,32 @@ function renderCards(videos) {
     cta.textContent = 'פתחו לצפייה ←';
 
     info.append(badge, domainTag, cta);
+
+    // Only for videos NOT in Hebrew that already have a ready translation -
+    // pre-computed in advance (never live/on-demand), so this is always
+    // instant and never fails in front of a client. See translateAll.js /
+    // the inspiration-bank skill for how translationHe gets filled in.
+    if (video.sourceLanguage && video.sourceLanguage !== 'he' && video.translationHe) {
+      const translateBtn = document.createElement('button');
+      translateBtn.type = 'button';
+      translateBtn.className = 'inspiration-card-translate-btn';
+      translateBtn.textContent = 'תרגום מדויק לעברית 🇮🇱';
+
+      const translationBox = document.createElement('p');
+      translationBox.className = 'inspiration-card-translation';
+      translationBox.textContent = video.translationHe;
+      translationBox.hidden = true;
+
+      translateBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        translationBox.hidden = !translationBox.hidden;
+        translateBtn.textContent = translationBox.hidden ? 'תרגום מדויק לעברית 🇮🇱' : 'הסתרת התרגום';
+      });
+
+      info.append(translateBtn, translationBox);
+    }
+
     card.append(thumbWrap, info);
     grid.appendChild(card);
   }

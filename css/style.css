@@ -3584,6 +3584,30 @@ textarea:focus-visible,
   color: var(--accent);
 }
 
+.inspiration-card-translate-btn {
+  margin-top: 0.4rem;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.inspiration-card-translate-btn:hover { background: var(--accent-100); }
+
+.inspiration-card-translation {
+  margin: 0.4rem 0 0;
+  padding: 0.6rem;
+  background: var(--surface);
+  border-radius: var(--card-radius-sm);
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--text);
+}
+
 @media (max-width: 900px) {
   .inspiration-grid { grid-template-columns: repeat(3, 1fr); }
 }
