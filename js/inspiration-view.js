@@ -105,29 +105,37 @@ function renderCards(videos) {
 
     info.append(badge, domainTag, cta);
 
-    // Only for videos NOT in Hebrew that already have a ready translation -
-    // pre-computed in advance (never live/on-demand), so this is always
-    // instant and never fails in front of a client. See translateAll.js /
-    // the inspiration-bank skill for how translationHe gets filled in.
-    if (video.sourceLanguage && video.sourceLanguage !== 'he' && video.translationHe) {
-      const translateBtn = document.createElement('button');
-      translateBtn.type = 'button';
-      translateBtn.className = 'inspiration-card-translate-btn';
-      translateBtn.textContent = 'תרגום מדויק לעברית 🇮🇱';
+    // Readable text for the "שכפול" workflow - clients read the exact wording
+    // instead of watching. Two sources, both pre-computed in advance (never
+    // live/on-demand, so this is always instant and never fails in front of
+    // a client): foreign-language videos get translationHe (an accurate
+    // Hebrew translation); Hebrew-source videos get transcriptHe (the exact
+    // spoken text, cleaned up from the raw speech-to-text pass). See the
+    // inspiration-bank-system skill for how each field gets filled in.
+    const isForeign = video.sourceLanguage && video.sourceLanguage !== 'he';
+    const readableText = isForeign ? video.translationHe : video.transcriptHe;
+    if (readableText) {
+      const label = isForeign ? 'תרגום מדויק לעברית 🇮🇱' : 'התמלול המדויק 📝';
+      const hideLabel = isForeign ? 'הסתרת התרגום' : 'הסתרת התמלול';
 
-      const translationBox = document.createElement('p');
-      translationBox.className = 'inspiration-card-translation';
-      translationBox.textContent = video.translationHe;
-      translationBox.hidden = true;
+      const readBtn = document.createElement('button');
+      readBtn.type = 'button';
+      readBtn.className = 'inspiration-card-translate-btn';
+      readBtn.textContent = label;
 
-      translateBtn.addEventListener('click', (e) => {
+      const textBox = document.createElement('p');
+      textBox.className = 'inspiration-card-translation';
+      textBox.textContent = readableText;
+      textBox.hidden = true;
+
+      readBtn.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        translationBox.hidden = !translationBox.hidden;
-        translateBtn.textContent = translationBox.hidden ? 'תרגום מדויק לעברית 🇮🇱' : 'הסתרת התרגום';
+        textBox.hidden = !textBox.hidden;
+        readBtn.textContent = textBox.hidden ? label : hideLabel;
       });
 
-      info.append(translateBtn, translationBox);
+      info.append(readBtn, textBox);
     }
 
     card.append(thumbWrap, info);
