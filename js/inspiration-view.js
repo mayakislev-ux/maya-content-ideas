@@ -128,14 +128,37 @@ function renderCards(videos) {
       textBox.textContent = readableText;
       textBox.hidden = true;
 
+      // Clients copy the exact wording straight into their own script/notes
+      // instead of retyping it by hand - only shown once the text itself is
+      // visible, and only makes sense alongside real text (never on its own).
+      const copyBtn = document.createElement('button');
+      copyBtn.type = 'button';
+      copyBtn.className = 'inspiration-card-copy-btn';
+      copyBtn.textContent = 'העתקת הטקסט 📋';
+      copyBtn.hidden = true;
+
       readBtn.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
         textBox.hidden = !textBox.hidden;
+        copyBtn.hidden = textBox.hidden;
         readBtn.textContent = textBox.hidden ? label : hideLabel;
       });
 
-      info.append(readBtn, textBox);
+      copyBtn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        try {
+          await navigator.clipboard.writeText(readableText);
+          copyBtn.textContent = 'הועתק ✓';
+        } catch (err) {
+          console.error('Copy failed:', err);
+          copyBtn.textContent = 'ההעתקה נכשלה, נסו שוב';
+        }
+        setTimeout(() => { copyBtn.textContent = 'העתקת הטקסט 📋'; }, 1800);
+      });
+
+      info.append(readBtn, textBox, copyBtn);
     }
 
     card.append(thumbWrap, info);

@@ -3598,6 +3598,20 @@ textarea:focus-visible,
 
 .inspiration-card-translate-btn:hover { background: var(--accent-100); }
 
+.inspiration-card-copy-btn {
+  margin-top: 0.35rem;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: var(--accent-100);
+  color: var(--accent-700, var(--accent));
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.inspiration-card-copy-btn:hover { opacity: 0.85; }
+
 .inspiration-card-translation {
   margin: 0.4rem 0 0;
   padding: 0.6rem;
