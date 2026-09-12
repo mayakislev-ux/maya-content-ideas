@@ -177,11 +177,14 @@ async function renderForDomain(domain) {
 }
 
 // "שכפול הפוך" - a client already has her own idea ("אני רוצה לשתף את סיפור
-// פתיחת העסק שלי") and wants matching-FORMAT reference videos from ANY
-// domain, not just her own. matchInspirationQuery converts her free text
-// into 1-2 tags from the same taxonomy classifyInspirationFormats tagged
-// every video with server-side; this just filters the already-loaded list
-// by tag overlap, ranking a 2-tag match above a 1-tag match.
+// פתיחת העסק שלי") and wants matching reference videos from ANY domain, not
+// just her own - matched by both format AND actual topic/content.
+// matchInspirationQuery does the real matching server-side (against every
+// video's contentSummary + formatTags) and returns an already-ranked list
+// of video IDs; this just looks those IDs up in the already-loaded video
+// list and renders them in the order the server ranked them. Real
+// tag-overlap-only matching was tried first and was too coarse - a query
+// like "אמונה מגבילה" mapped to tags shared by ~30% of the whole bank.
 async function runSearch(query) {
   const grid = document.getElementById('inspiration-grid');
   const status = document.getElementById('inspiration-search-status');
@@ -190,10 +193,10 @@ async function runSearch(query) {
   grid.innerHTML = '<p class="inspiration-loading">מחפשת רפרנסים מתאימים…</p>';
   status.hidden = true;
 
-  let tags;
+  let ids;
   try {
     const result = await matchInspirationQuery({ query });
-    tags = result.data.tags;
+    ids = result.data.ids;
   } catch (err) {
     console.error('matchInspirationQuery failed:', err);
     grid.innerHTML = '';
@@ -203,17 +206,15 @@ async function runSearch(query) {
   }
 
   const videos = await loadVideos();
-  const scored = videos
-    .map((v) => ({ video: v, score: (v.formatTags || []).filter((t) => tags.includes(t)).length }))
-    .filter((s) => s.score > 0)
-    .sort((a, b) => b.score - a.score);
+  const byId = new Map(videos.map((v) => [v.id, v]));
+  const ranked = ids.map((id) => byId.get(id)).filter(Boolean);
 
   select.value = '';
   status.hidden = false;
-  status.textContent = scored.length
-    ? `נמצאו ${scored.length} סרטונים בסגנון "${tags.join(' / ')}" - מכל התחומים`
+  status.textContent = ranked.length
+    ? `נמצאו ${ranked.length} סרטונים מתאימים לרעיון שלכם - מכל התחומים`
     : 'לא נמצאו סרטונים דומים - נסו לנסח אחרת או דפדפו לפי תחום.';
-  renderCards(scored.map((s) => s.video));
+  renderCards(ranked);
 }
 
 // Wiring just attaches the filter/search listeners - it does NOT fetch

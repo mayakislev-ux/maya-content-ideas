@@ -816,13 +816,80 @@ ${FORMAT_TAGS.map((t, i) => `${i + 1}. ${t}: ${FORMAT_TAG_DEFINITIONS[t]}`).join
   }
 );
 
+// Backfills `contentSummary` - a one-line Hebrew gist of what a video is
+// actually ABOUT (topic/angle/message), generated from its already-stored
+// text (translationHe for foreign videos, transcriptHe for Hebrew ones,
+// falling back to the raw transcript). This is the missing ingredient for
+// real "שכפול הפוך" search: FORMAT_TAGS alone group videos by structure
+// (~10 broad buckets, up to 96 videos in one bucket) with no way to tell
+// which of those actually match a client's TOPIC (e.g. "אמונה מגבילה") -
+// confirmed by direct testing, literal keyword search over real video text
+// only caught 1 of many genuinely relevant videos for that exact query.
+// matchInspirationQuery below reads this field to do real content-matching
+// instead of coarse tag-bucket matching.
+exports.generateContentSummaries = onCall(
+  { secrets: [anthropicApiKey], region: 'us-central1', timeoutSeconds: 540 },
+  async (request) => {
+    if (!request.auth || request.auth.token.email !== ADMIN_EMAIL) {
+      throw new HttpsError('permission-denied', 'רק מאיה יכולה להריץ את זה');
+    }
+    const limit = Math.min(Number((request.data && request.data.limit) || 40), 80);
+
+    const snap = await db.collection('inspirationBank').get();
+    const targets = snap.docs
+      .filter((d) => !d.data().contentSummary && !d.data().contentSummarySkipped)
+      .slice(0, limit);
+
+    let done = 0;
+    const failed = [];
+
+    for (const doc of targets) {
+      const video = doc.data();
+      try {
+        const text = video.translationHe || video.transcriptHe || video.transcript || '';
+        if (!text || text.trim().length < 10) {
+          await doc.ref.update({ contentSummarySkipped: true });
+          continue;
+        }
+
+        const prompt = `הטקסט הבא הוא התמלול/תרגום המדויק של סרטון רפרנס בתחום "${video.domain}":
+
+"""${text.slice(0, 3000)}"""
+
+כתוב/כתבי משפט אחד קצר וממוקד (עד 15 מילים) בעברית שמתאר בדיוק על מה הסרטון - הנושא, הזווית או המסר המרכזי שלו. אל תתאר/י את הפורמט (כמו "טיפים" או "סיפור") - רק את התוכן עצמו. השב/י אך ורק במשפט עצמו, בלי מרכאות ובלי הקדמה.`;
+
+        const data = await callAnthropic(
+          anthropicApiKey.value(),
+          { model: 'claude-haiku-4-5-20251001', max_tokens: 100, messages: [{ role: 'user', content: prompt }] },
+          'generateContentSummaries'
+        );
+
+        const summary = (getResponseText(data) || '').trim().replace(/^["']|["']$/g, '');
+        if (!summary) throw new Error('empty summary returned');
+
+        await doc.ref.update({ contentSummary: summary });
+        done++;
+      } catch (err) {
+        failed.push({ id: doc.id, url: video.url, error: err.message });
+      }
+    }
+
+    return { done, hasMore: targets.length === limit, failed };
+  }
+);
+
 // "מאגר להשראה" - "שכפול הפוך" search: a client already has her own content
-// idea and wants matching-FORMAT reference videos (from any domain, not
-// just her own) to see how others structured something similar. Converts
-// her free-text description into 1-2 tags from the same FORMAT_TAGS
-// taxonomy classifyInspirationFormats tags videos with - the client then
-// filters its already-loaded video list by tag overlap, so this function
-// only ever returns tags, never video data (keeps it fast and small).
+// idea and wants matching reference videos (from any domain, not just her
+// own) to see how others structured something similar - by FORMAT and by
+// TOPIC. Sends the query plus a compact catalog (id|domain|formatTags|
+// contentSummary) of every summarized video and asks Claude to pick and
+// rank the most relevant ones directly against real content, instead of
+// bucketing both the query and every video into 1-2 coarse FORMAT_TAGS and
+// OR-matching (the original approach - confirmed too coarse: a query like
+// "אמונה מגבילה" mapped to tags shared by 93 of 316 videos, most of them
+// unrelated - real per-video content is what actually disambiguates this).
+// Returns only video IDs, never video data - the client already has the
+// full list cached and just re-orders/filters it by the returned IDs.
 exports.matchInspirationQuery = onCall({ secrets: [anthropicApiKey], region: 'us-central1', timeoutSeconds: 60 }, async (request) => {
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'יש להתחבר כדי להשתמש בתכונה הזו');
@@ -837,16 +904,23 @@ exports.matchInspirationQuery = onCall({ secrets: [anthropicApiKey], region: 'us
 
   await enforceRateLimit(request.auth.uid, 'matchInspirationQuery');
 
+  const snap = await db.collection('inspirationBank').get();
+  const allDocs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  const summarized = allDocs.filter((v) => v.contentSummary);
+  const catalog = summarized
+    .map((v) => `${v.id}|${v.domain}|${(v.formatTags || []).join('/')}|${v.contentSummary}`)
+    .join('\n');
+
   const prompt = `לקוחה מתארת סרטון שהיא רוצה ליצור: "${query}"
 
-איזה מבנה/פורמט הכי מתאים לתאר את הסרטון הזה? בחר/י 1 או 2 (לא יותר) מהרשימה הבאה, לפי המספר שלהם:
-${FORMAT_TAGS.map((t, i) => `${i + 1}. ${t}: ${FORMAT_TAG_DEFINITIONS[t]}`).join('\n')}
+הנה קטלוג סרטוני רפרנס (מזהה|תחום|פורמט|תוכן):
+${catalog}
 
-השב/י אך ורק ב-JSON תקין, בלי שום טקסט נוסף: {"tagIndices": [<מספר אחד או שני מספרים בין 1 ל-${FORMAT_TAGS.length}>]}`;
+בחר/י עד 15 סרטונים מהקטלוג שהכי מתאימים כרפרנס לסרטון שהלקוחה רוצה ליצור - גם לפי דמיון בפורמט וגם לפי דמיון בנושא/זווית/מסר, מדורגים מהכי מתאים להכי פחות מתאים. אפשר לכלול סרטונים מכל תחום, לא רק מתחום דומה לשאלה. השב/י אך ורק ב-JSON תקין, בלי שום טקסט נוסף: {"ids": ["<מזהה1>", "<מזהה2>", ...]}`;
 
   const data = await callAnthropic(
     anthropicApiKey.value(),
-    { model: 'claude-haiku-4-5-20251001', max_tokens: 150, messages: [{ role: 'user', content: prompt }] },
+    { model: 'claude-haiku-4-5-20251001', max_tokens: 600, messages: [{ role: 'user', content: prompt }] },
     'matchInspirationQuery'
   );
 
@@ -860,12 +934,13 @@ ${FORMAT_TAGS.map((t, i) => `${i + 1}. ${t}: ${FORMAT_TAG_DEFINITIONS[t]}`).join
     throw new HttpsError('internal', 'לא הצלחתי להבין את הסרטון, נסו לנסח אחרת');
   }
 
-  const tags = (parsed.tagIndices || []).map((i) => FORMAT_TAGS[Number(i) - 1]).filter(Boolean);
-  if (!tags.length) {
-    console.error('matchInspirationQuery returned invalid indices:', text);
-    throw new HttpsError('internal', 'לא הצלחתי להבין את הסרטון, נסו לנסח אחרת');
+  const validIds = new Set(allDocs.map((v) => v.id));
+  const ids = (parsed.ids || []).filter((id) => validIds.has(id));
+  if (!ids.length) {
+    console.error('matchInspirationQuery returned no valid ids:', text);
+    throw new HttpsError('internal', 'לא נמצאו סרטונים מתאימים, נסו לנסח אחרת');
   }
-  return { tags };
+  return { ids };
 });
 
 // היה onCall - בקשה חוסמת יחידה. מדידה אמיתית (2026-08-11) הראתה 41 שניות
