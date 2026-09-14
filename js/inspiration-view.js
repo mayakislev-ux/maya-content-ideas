@@ -171,8 +171,17 @@ function renderCards(videos) {
     const isForeign = video.sourceLanguage && video.sourceLanguage !== 'he';
     const readableText = isForeign ? video.translationHe : video.transcriptHe;
     if (readableText) {
-      const label = isForeign ? 'תרגום מדויק לעברית 🇮🇱' : 'התמלול המדויק 📝';
+      // "המדויק" הוסר מהתוויות - חלק מהתמלולים הישנים (Whisper, אודיו בלבד)
+      // מפספסים תוכן שמופיע רק ככיתוב על המסך, אז זה לא תמיד מדויק באמת.
+      // אזהרה קבועה מעל הכפתור, לא רק בתוך הטקסט שנפתח - מאיה ביקשה שזה
+      // ייראה גם למי שלא בכלל לוחצת, לפני שהיא מסתמכת על זה.
+      const label = isForeign ? 'תרגום לעברית 🇮🇱' : 'התמלול 📝';
       const hideLabel = isForeign ? 'הסתרת התרגום' : 'הסתרת התמלול';
+
+      const accuracyWarning = document.createElement('p');
+      accuracyWarning.className = 'inspiration-card-accuracy-warning';
+      accuracyWarning.textContent = '⚠️ לא תמיד מדויק - לדיוק מלא מומלץ להוריד את הסרטון ולתמלל בעצמכם ב-Gemini';
+      info.appendChild(accuracyWarning);
 
       const readBtn = document.createElement('button');
       readBtn.type = 'button';

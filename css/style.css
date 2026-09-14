@@ -3605,6 +3605,15 @@ textarea:focus-visible,
   color: var(--accent);
 }
 
+.inspiration-card-accuracy-warning {
+  /* --cat-mechirti הוא כבר הצבע ל"אדום" בעקביות עם .error-text בשאר
+     האפליקציה - כולל ערך נכון לדארק-מוד, לא רק אדום קבוע. */
+  margin: 0.5rem 0 0;
+  font-size: 0.68rem;
+  line-height: 1.4;
+  color: var(--cat-mechirti);
+}
+
 .inspiration-card-translate-btn,
 .inspiration-card-copy-btn {
   /* min-height בפיקסלים (לא rem) כדי שיהיה מובטח 44px אמיתיים למגע גם
