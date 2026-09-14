@@ -1047,9 +1047,15 @@ exports.generateContentSummaries = onCall(
 // FORMAT_TAGS (מבנה, זהה לכל התחום) ול-contentSummary (משפט חופשי), זה
 // שיוך לרשימה סגורה ומוגדרת-מראש שתלויה בתחום (SUBCATEGORIES_BY_DOMAIN),
 // כדי לאפשר סינון אמיתי בתוך תחום גדול. תחום "תוכן אישי וחיבור" בכוונה בלי
-// תת-קטגוריות (מאיה: 29 סרטונים, הומוגני מדי) - מדלגים עליו לגמרי. משתמש
-// באותו טקסט שכבר קיים (contentSummary/transcript) ולא בתמונה, כי השיוך
-// תלוי בנושא לא במראה החזותי - הרבה יותר זול/מהיר מ-classifyInspirationFormats.
+// תת-קטגוריות (מאיה: 29 סרטונים, הומוגני מדי) - מדלגים עליו לגמרי.
+//
+// שולח גם תמונה (כמו classifyInspirationFormats) וגם טקסט - לא רק טקסט
+// כמו בגרסה הראשונה. תיקון אמיתי אחרי שמאיה תפסה טעויות בפועל (2026-09-14
+// #2): בתחום "יופי וקוסמטיקה" בפרט, הרבה סרטונים הם קליפ ויזואלי קצר עם
+// דיבור כללי/שיווקי (למשל תלונה על "לגבות יותר מכלות") שלא אומר כלום על
+// איזה שירות ספציפי מוצג בפועל - אבל התמונה עצמה מראה בבירור מסכת פנים
+// זהב (טיפולי פנים) או כיסא מספרה (שיער), ולא איפור. טקסט בלבד ניחש "איפור"
+// כי זה נשמע הכי "קרוב" לתוכן העסקי-כללי; עם התמונה, אין ניחוש.
 exports.classifyInspirationSubcategories = onCall(
   { secrets: [anthropicApiKey], region: 'us-central1', timeoutSeconds: 540 },
   async (request) => {
@@ -1087,6 +1093,10 @@ exports.classifyInspirationSubcategories = onCall(
           await doc.ref.update({ subCategorySkipped: true });
           continue;
         }
+        if (!video.thumbnailUrl) throw new Error('no mirrored thumbnail to classify from');
+        const imgRes = await fetch(video.thumbnailUrl);
+        if (!imgRes.ok) throw new Error(`thumbnail fetch HTTP ${imgRes.status}`);
+        const imageBase64 = Buffer.from(await imgRes.arrayBuffer()).toString('base64');
 
         const optionsBlock = Object.entries(options)
           .map(([name, examples]) => `- "${name}"${examples ? ` (${examples})` : ''}`)
@@ -1098,16 +1108,30 @@ exports.classifyInspirationSubcategories = onCall(
         // הוא פתח יציאה אמיתי, לא רק ניסוח - נותן למודל דרך כנה להגיד "אין
         // התאמה" במקום לנחש, בלי לחזור ללולאת-retry-אינסופית (עדיין כשל אחד
         // = subCategorySkipped, לא ניסיון חוזר).
-        const prompt = `סרטון רפרנס בתחום "${video.domain}". תיאור התוכן שלו: "${text.slice(0, 500)}"
+        const prompt = `זו תמונת תצוגה מקדימה מסרטון רפרנס בתחום "${video.domain}". תיאור/תמלול טקסטואלי של התוכן: "${text.slice(0, 500)}"
+
+הסתכל/י גם על התמונה וגם על הטקסט יחד - לפעמים הטקסט כללי/שיווקי ולא אומר איזה שירות ספציפי מוצג, אבל התמונה מראה את זה בבירור (למשל טיפול פנים, כיסא מספרה, עיצוב ציפורניים).
 
 רשימת תת-הקטגוריות האפשריות בתחום הזה - השם עצמו לפני הסוגריים, והדוגמאות בסוגריים הן רק הסבר-עזר, לא חלק מהתשובה:
 ${optionsBlock}
 
-אם התוכן באמת ובבירור שייך לאחת מהן - בחר/י אותה. אם אין שום התאמה סבירה (למשל תוכן לא קשור בכלל לתחום, או שיר/מוזיקה בלי תוכן אמיתי) - השב/י בדיוק במילה "לא_רלוונטי", אל תנחש/י ואל תכפה/י התאמה גרועה. השב/י אך ורק בשם תת-הקטגוריה עצמו (בלי הסוגריים והדוגמאות) או במילה "לא_רלוונטי", בדיוק כפי שכתוב למעלה, בלי מרכאות ובלי שום טקסט נוסף.`;
+אם התוכן (תמונה+טקסט יחד) באמת ובבירור שייך לאחת מהן - בחר/י אותה. אם אין שום התאמה סבירה (למשל תוכן לא קשור בכלל לתחום, או שיר/מוזיקה בלי תוכן אמיתי) - השב/י בדיוק במילה "לא_רלוונטי", אל תנחש/י ואל תכפה/י התאמה גרועה. השב/י אך ורק בשם תת-הקטגוריה עצמו (בלי הסוגריים והדוגמאות) או במילה "לא_רלוונטי", בדיוק כפי שכתוב למעלה, בלי מרכאות ובלי שום טקסט נוסף.`;
 
         const data = await callAnthropic(
           anthropicApiKey.value(),
-          { model: 'claude-haiku-4-5-20251001', max_tokens: 60, messages: [{ role: 'user', content: prompt }] },
+          {
+            model: 'claude-haiku-4-5-20251001',
+            max_tokens: 60,
+            messages: [
+              {
+                role: 'user',
+                content: [
+                  { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: imageBase64 } },
+                  { type: 'text', text: prompt },
+                ],
+              },
+            ],
+          },
           'classifyInspirationSubcategories'
         );
 
