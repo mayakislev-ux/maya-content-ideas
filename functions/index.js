@@ -8,7 +8,7 @@ const { buildOngoingWarmingPrompt, buildPresaleWarmingPrompt } = require('./warm
 const { buildContentPlanPrompt } = require('./content-plan-system-prompt');
 const { fetchExtraContentLinks, sheetsServiceAccountKey } = require('./sheets-content');
 const { CATEGORIES, PERSUASION_STAGES, CATEGORY_DEFINITIONS, PERSUASION_STAGE_DEFINITIONS } = require('./ideas-constants');
-const { FORMAT_TAGS, FORMAT_TAG_DEFINITIONS } = require('./inspiration-constants');
+const { FORMAT_TAGS, FORMAT_TAG_DEFINITIONS, SUBCATEGORIES_BY_DOMAIN } = require('./inspiration-constants');
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -1033,6 +1033,75 @@ exports.generateContentSummaries = onCall(
         if (!summary) throw new Error('empty summary returned');
 
         await doc.ref.update({ contentSummary: summary });
+        done++;
+      } catch (err) {
+        failed.push({ id: doc.id, url: video.url, error: err.message });
+      }
+    }
+
+    return { done, hasMore: targets.length === limit, failed };
+  }
+);
+
+// תת-קטגוריה לפי תחום (יופי/עסקים/בריאות נפשית/כושר/עיצוב) - בניגוד ל-
+// FORMAT_TAGS (מבנה, זהה לכל התחום) ול-contentSummary (משפט חופשי), זה
+// שיוך לרשימה סגורה ומוגדרת-מראש שתלויה בתחום (SUBCATEGORIES_BY_DOMAIN),
+// כדי לאפשר סינון אמיתי בתוך תחום גדול. תחום "תוכן אישי וחיבור" בכוונה בלי
+// תת-קטגוריות (מאיה: 29 סרטונים, הומוגני מדי) - מדלגים עליו לגמרי. משתמש
+// באותו טקסט שכבר קיים (contentSummary/transcript) ולא בתמונה, כי השיוך
+// תלוי בנושא לא במראה החזותי - הרבה יותר זול/מהיר מ-classifyInspirationFormats.
+exports.classifyInspirationSubcategories = onCall(
+  { secrets: [anthropicApiKey], region: 'us-central1', timeoutSeconds: 540 },
+  async (request) => {
+    if (!request.auth || request.auth.token.email !== ADMIN_EMAIL) {
+      throw new HttpsError('permission-denied', 'רק מאיה יכולה להריץ את זה');
+    }
+    const limit = Math.min(Number((request.data && request.data.limit) || 40), 80);
+
+    const snap = await db.collection('inspirationBank').get();
+    const targets = snap.docs
+      .filter((d) => {
+        const v = d.data();
+        return SUBCATEGORIES_BY_DOMAIN[v.domain] && !v.subCategory && !v.subCategorySkipped;
+      })
+      .slice(0, limit);
+
+    let done = 0;
+    const failed = [];
+
+    for (const doc of targets) {
+      const video = doc.data();
+      try {
+        const options = SUBCATEGORIES_BY_DOMAIN[video.domain];
+        const text = video.contentSummary || video.translationHe || video.transcriptHe || video.transcript || '';
+        if (!text || text.trim().length < 10) {
+          await doc.ref.update({ subCategorySkipped: true });
+          continue;
+        }
+
+        const optionsBlock = Object.entries(options)
+          .map(([name, examples]) => `- "${name}"${examples ? ` (${examples})` : ''}`)
+          .join('\n');
+
+        const prompt = `סרטון רפרנס בתחום "${video.domain}". תיאור התוכן שלו: "${text.slice(0, 500)}"
+
+רשימת תת-הקטגוריות האפשריות בתחום הזה (חייב/ת לבחור אחת בדיוק, מילה-במילה כמו שכתובה):
+${optionsBlock}
+
+השב/י אך ורק בשם תת-הקטגוריה שנבחרה, בדיוק כפי שהיא כתובה למעלה, בלי מרכאות ובלי שום טקסט נוסף.`;
+
+        const data = await callAnthropic(
+          anthropicApiKey.value(),
+          { model: 'claude-haiku-4-5-20251001', max_tokens: 60, messages: [{ role: 'user', content: prompt }] },
+          'classifyInspirationSubcategories'
+        );
+
+        const picked = (getResponseText(data) || '').trim().replace(/^["']|["']$/g, '');
+        if (!Object.prototype.hasOwnProperty.call(options, picked)) {
+          throw new Error(`model picked an unrecognized subcategory: "${picked}"`);
+        }
+
+        await doc.ref.update({ subCategory: picked });
         done++;
       } catch (err) {
         failed.push({ id: doc.id, url: video.url, error: err.message });

@@ -52,6 +52,40 @@ function rebuildDomainFilterOptions(videos) {
   if (uniqueDomains.includes(currentValue)) select.value = currentValue;
 }
 
+// תת-קטגוריה תלוית-תחום (SUBCATEGORIES_BY_DOMAIN בצד השרת) - הרשימה כאן
+// לא מקודדת שוב בצד הלקוח, נגזרת מהערכים האמיתיים שכבר קיימים על הסרטונים
+// שנטענו, כדי שלא תהיה שתי רשימות שיכולות להתפצל. תחום בלי תת-קטגוריות
+// בכלל (כרגע: תוכן אישי וחיבור) או תחום שעדיין אין לו אף סרטון מסווג -
+// מסתיר את הבורר לגמרי במקום להציג אותו ריק.
+function rebuildSubcategoryFilterOptions(videos, domain) {
+  const select = document.getElementById('inspiration-subcategory-filter');
+  if (!domain) {
+    select.hidden = true;
+    select.value = '';
+    return;
+  }
+  const currentValue = select.value;
+  const uniqueSubcategories = [...new Set(
+    videos.filter((v) => v.domain === domain && v.subCategory).map((v) => v.subCategory)
+  )].sort((a, b) => a.localeCompare(b, 'he'));
+
+  if (!uniqueSubcategories.length) {
+    select.hidden = true;
+    select.value = '';
+    return;
+  }
+
+  select.innerHTML = '<option value="">כל תת-הקטגוריות</option>';
+  for (const subCategory of uniqueSubcategories) {
+    const option = document.createElement('option');
+    option.value = subCategory;
+    option.textContent = subCategory;
+    select.appendChild(option);
+  }
+  select.hidden = false;
+  if (uniqueSubcategories.includes(currentValue)) select.value = currentValue;
+}
+
 // The "כל התחומים" (all domains) view needs videos genuinely mixed across
 // domains, not grouped in domain-sized blocks the way `loadVideos`'s
 // (domain, order) sort naturally produces - round-robins one video at a
@@ -188,14 +222,16 @@ function renderCards(videos) {
   }
 }
 
-async function renderForDomain(domain) {
+async function renderForDomain(domain, subCategory) {
   const grid = document.getElementById('inspiration-grid');
   const status = document.getElementById('inspiration-search-status');
   status.hidden = true;
   grid.innerHTML = '<p class="inspiration-loading">טוען השראה…</p>';
   const videos = await loadVideos();
   rebuildDomainFilterOptions(videos);
-  const filtered = domain ? videos.filter((v) => v.domain === domain) : interleaveByDomain(videos);
+  rebuildSubcategoryFilterOptions(videos, domain);
+  let filtered = domain ? videos.filter((v) => v.domain === domain) : interleaveByDomain(videos);
+  if (domain && subCategory) filtered = filtered.filter((v) => v.subCategory === subCategory);
   renderCards(filtered);
 }
 
@@ -233,6 +269,7 @@ async function runSearch(query) {
   const ranked = ids.map((id) => byId.get(id)).filter(Boolean);
 
   select.value = '';
+  rebuildSubcategoryFilterOptions(videos, '');
   status.hidden = false;
   status.textContent = ranked.length
     ? `נמצאו ${ranked.length} סרטונים מתאימים לרעיון שלכם - מכל התחומים`
@@ -247,7 +284,10 @@ async function runSearch(query) {
 // for it on app load.
 export function wireInspirationView() {
   const select = document.getElementById('inspiration-domain-filter');
-  select.addEventListener('change', () => renderForDomain(select.value));
+  const subSelect = document.getElementById('inspiration-subcategory-filter');
+  // תחום חדש נבחר - תת-הקטגוריה של התחום הקודם לא רלוונטית יותר, מתאפסת.
+  select.addEventListener('change', () => renderForDomain(select.value, ''));
+  subSelect.addEventListener('change', () => renderForDomain(select.value, subSelect.value));
 
   const form = document.getElementById('inspiration-search-form');
   const input = document.getElementById('inspiration-search-input');
@@ -259,11 +299,12 @@ export function wireInspirationView() {
 
   document.getElementById('inspiration-search-clear-btn').addEventListener('click', () => {
     input.value = '';
-    renderForDomain(select.value);
+    renderForDomain(select.value, subSelect.value);
   });
 }
 
 export function openInspirationView() {
   const select = document.getElementById('inspiration-domain-filter');
-  renderForDomain(select.value);
+  const subSelect = document.getElementById('inspiration-subcategory-filter');
+  renderForDomain(select.value, subSelect.value);
 }
