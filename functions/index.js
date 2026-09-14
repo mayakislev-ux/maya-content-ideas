@@ -1083,12 +1083,20 @@ exports.classifyInspirationSubcategories = onCall(
           .map(([name, examples]) => `- "${name}"${examples ? ` (${examples})` : ''}`)
           .join('\n');
 
+        // שני תיקונים אמיתיים אחרי הרצה ראשונה (2026-09-14): (1) המודל חזר
+        // לא פעם על השם + הדוגמאות בסוגריים יחד ("פיננסים (תמחור, רווחיות,
+        // התנהלות כספית)") כי זה בדיוק איך שהאופציה מוצגת לו כאן - עכשיו
+        // ההוראה מפורשת שהדוגמאות הן רק הסבר, לא חלק מהתשובה. (2) חלק
+        // מהסרטונים כבר לא ניתנים לשיוך (contentSummary עצמו הוא טקסט סירוב
+        // כמו "אני לא יכול לתאר..." מבאג ישן ב-generateContentSummaries) -
+        // המודל מסרב לבחור בכלל, ובלי הוראה מפורשת ל"בחר/י הכי קרוב" זה
+        // ימשיך להיכשל בכל הרצה מחדש לנצח.
         const prompt = `סרטון רפרנס בתחום "${video.domain}". תיאור התוכן שלו: "${text.slice(0, 500)}"
 
-רשימת תת-הקטגוריות האפשריות בתחום הזה (חייב/ת לבחור אחת בדיוק, מילה-במילה כמו שכתובה):
+רשימת תת-הקטגוריות האפשריות בתחום הזה - השם עצמו לפני הסוגריים, והדוגמאות בסוגריים הן רק הסבר-עזר, לא חלק מהתשובה:
 ${optionsBlock}
 
-השב/י אך ורק בשם תת-הקטגוריה שנבחרה, בדיוק כפי שהיא כתובה למעלה, בלי מרכאות ובלי שום טקסט נוסף.`;
+חייב/ת לבחור תת-קטגוריה אחת, גם אם ההתאמה לא מושלמת - בחר/י את הכי קרובה מבין הרשימה, אל תסרב/י ואל תסביר/י. השב/י אך ורק בשם תת-הקטגוריה עצמו (בלי הסוגריים והדוגמאות), בדיוק כפי שהוא כתוב למעלה, בלי מרכאות ובלי שום טקסט נוסף.`;
 
         const data = await callAnthropic(
           anthropicApiKey.value(),
@@ -1096,9 +1104,21 @@ ${optionsBlock}
           'classifyInspirationSubcategories'
         );
 
-        const picked = (getResponseText(data) || '').trim().replace(/^["']|["']$/g, '');
+        let picked = (getResponseText(data) || '').trim().replace(/^["']|["']$/g, '');
+        // מקרה נפוץ: המודל עדיין מחזיר "שם (דוגמאות)" - חותכים מ" (" הראשון
+        // ומנסים שוב לפני שמוותרים.
         if (!Object.prototype.hasOwnProperty.call(options, picked)) {
-          throw new Error(`model picked an unrecognized subcategory: "${picked}"`);
+          const stripped = picked.split(' (')[0].trim();
+          if (Object.prototype.hasOwnProperty.call(options, stripped)) picked = stripped;
+        }
+        if (!Object.prototype.hasOwnProperty.call(options, picked)) {
+          // לא retry אינסופי - כשל אחד מספיק כדי לוותר, אותו מדיניות בדיוק
+          // כמו translationSkipped/contentSummarySkipped במקומות אחרים.
+          // בלי זה, אותם ~20 סרטונים בלתי-ניתנים-לשיוך (transcript סירוב/
+          // גיבריש) היו נכנסים כל הרצה מחדש בלי להתקדם אף פעם.
+          await doc.ref.update({ subCategorySkipped: true });
+          failed.push({ id: doc.id, url: video.url, error: `model picked an unrecognized subcategory (giving up): "${picked}"` });
+          continue;
         }
 
         await doc.ref.update({ subCategory: picked });
