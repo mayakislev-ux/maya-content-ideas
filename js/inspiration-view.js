@@ -178,9 +178,15 @@ function renderCards(videos) {
       const label = isForeign ? 'תרגום לעברית 🇮🇱' : 'התמלול 📝';
       const hideLabel = isForeign ? 'הסתרת התרגום' : 'הסתרת התמלול';
 
+      // מאיה: הנוסח הקודם ("לא תמיד מדויק") לא היה ברור מספיק - לא אמר
+      // *מה* לא מדויק, ולא הסביר *איך בדיוק* לתמלל ב-Gemini. עכשיו מפורש:
+      // שם את התרגום/התמלול הספציפי (תואם ל-label למעלה), ומסביר את הפעולה
+      // צעד-אחר-צעד (להוריד את הסרטון, ואז להעלות אותו ל-Gemini).
       const accuracyWarning = document.createElement('p');
       accuracyWarning.className = 'inspiration-card-accuracy-warning';
-      accuracyWarning.textContent = '⚠️ לא תמיד מדויק - לדיוק מלא מומלץ להוריד את הסרטון ולתמלל בעצמכם ב-Gemini';
+      accuracyWarning.textContent = isForeign
+        ? '⚠️ התרגום כאן לא תמיד מדויק במאה אחוז. לדיוק מלא: הורידו את הסרטון והעלו אותו ל-Gemini לתרגום מדויק יותר.'
+        : '⚠️ התמלול כאן לא תמיד מדויק במאה אחוז. לדיוק מלא: הורידו את הסרטון והעלו אותו ל-Gemini לתמלול מדויק יותר.';
       info.appendChild(accuracyWarning);
 
       const readBtn = document.createElement('button');
