@@ -780,6 +780,14 @@ function renderGateSection(container, heading, items) {
 // כן רץ מחדש בכל שינוי רעיונות *כשהחלון פתוח*, כדי שעדכון רעיונות ברקע
 // לא "יפתח" בטעות את הטופס בזמן שהודעת "הגדירי קהל יעד" עדיין אמורה
 // להיות מוצגת (refreshGate קורא לזה בסוף, ראו למטה).
+// refreshGate (למטה) היא סינכרונית ונקראת ממקומות רבים בלי await
+// (event handlers, שינוי בשדה קלט) - הפיכתה ל-async כדי לקרוא לפרופיל בכל
+// קריאה הייתה משנה את כל הקריאות לה. במקום זה, מטמון מודול קטן: מתעדכן
+// בכל פעם ש-refreshAudienceGate כבר טוענת את הפרופיל בכל מקרה, ו-refreshGate
+// קוראת ממנו בלי לחכות - נכון החל מהפעם השנייה שהחלון נפתח (בפעם הראשונה
+// נופל לנקבה כברירת מחדל, בדיוק כמו ההתנהגות הקודמת).
+let cachedPronoun = null;
+
 async function refreshAudienceGate() {
   const modal = document.getElementById('content-plan-modal');
   if (modal.hidden) return;
@@ -792,6 +800,7 @@ async function refreshAudienceGate() {
   let profile;
   try {
     profile = await getProfile();
+    cachedPronoun = profile && profile.pronoun;
   } catch (err) {
     console.error('Failed to load profile for content-plan audience check:', err);
     // כשל-סגור (fail closed): אם אי אפשר לוודא שיש קהל יעד, לא מניחים
@@ -876,7 +885,10 @@ export function refreshGate() {
 
     const cta = document.createElement('p');
     cta.className = 'content-plan-gate-cta';
-    cta.textContent = 'לכי ל"הרעיונות שלי" והוסיפי/סווגי עוד רעיונות קודם.';
+    cta.textContent =
+      cachedPronoun === 'אתה'
+        ? 'לך ל"הרעיונות שלי" והוסף/סווג עוד רעיונות קודם.'
+        : 'לכי ל"הרעיונות שלי" והוסיפי/סווגי עוד רעיונות קודם.';
     gateMsg.appendChild(cta);
     return;
   }
@@ -904,7 +916,10 @@ export function refreshGate() {
 
   const cta = document.createElement('p');
   cta.className = 'content-plan-gate-cta';
-  cta.textContent = 'רעיונות שסומנו כ"בוצע" לא נספרים כאן. לכי ל"הרעיונות שלי" והוסיפי/סווגי עוד רעיונות, ואז אפשר לבנות תכנית מאוזנת באמת.';
+  cta.textContent =
+    cachedPronoun === 'אתה'
+      ? 'רעיונות שסומנו כ"בוצע" לא נספרים כאן. לך ל"הרעיונות שלי" והוסף/סווג עוד רעיונות, ואז אפשר לבנות תכנית מאוזנת באמת.'
+      : 'רעיונות שסומנו כ"בוצע" לא נספרים כאן. לכי ל"הרעיונות שלי" והוסיפי/סווגי עוד רעיונות, ואז אפשר לבנות תכנית מאוזנת באמת.';
   gateMsg.appendChild(cta);
 }
 

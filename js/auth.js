@@ -1,4 +1,5 @@
 import { auth } from './firebase-init.js';
+import { loginErrorText } from './login-error-text.js';
 import {
   GoogleAuthProvider,
   signInWithPopup,
@@ -41,7 +42,7 @@ getRedirectResult(auth).catch((err) => {
   console.error('getRedirectResult failed:', err);
   const errorEl = document.getElementById('login-error');
   if (errorEl) {
-    errorEl.textContent = `ההתחברות נכשלה: ${err.code || err.message || err}`;
+    errorEl.textContent = loginErrorText(err);
     errorEl.hidden = false;
   }
 });

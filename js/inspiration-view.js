@@ -16,9 +16,12 @@ let cachedVideosPromise = null;
 
 // No server-side orderBy on purpose: sorting by two fields (domain, order)
 // needs a Firestore composite index, which either fails the query outright
-// until one is created, or adds real latency - the collection is small
-// (~150 docs today), so a plain fetch + client-side sort is both simpler
-// and faster than depending on an index.
+// until one is created, or adds real latency. NOTE (2026-09-14): this
+// collection is no longer small - 357 docs and ~1MB of JSON, confirmed via
+// direct Firestore query, not the ~150 this comment used to say. That's a
+// real, growing load-time cost (see the inspiration-bank-ui audit finding) -
+// a plain fetch + client-side sort is still simpler than a composite index,
+// but the "collection is small" justification no longer holds on its own.
 async function loadVideos() {
   if (!cachedVideosPromise) {
     cachedVideosPromise = getDocs(collection(db, 'inspirationBank')).then((snapshot) =>
@@ -28,6 +31,25 @@ async function loadVideos() {
     );
   }
   return cachedVideosPromise;
+}
+
+// מסנן התחומים ב-index.html מקודד סטטית - לא נגזר מהנתונים האמיתיים, אז
+// תחום ריק (למשל "אחר", 0 סרטונים כרגע) נשאר בתפריט ומראה מסך ריק, ותחום
+// חדש שייכנס לצינור התוכן לא יופיע עד שמישהו יזכור לעדכן את ה-HTML ידנית.
+// בונה מחדש את האופציות מתוך התחומים שבאמת קיימים בנתונים שנטענו.
+function rebuildDomainFilterOptions(videos) {
+  const select = document.getElementById('inspiration-domain-filter');
+  const currentValue = select.value;
+  const uniqueDomains = [...new Set(videos.map((v) => v.domain))].sort((a, b) => a.localeCompare(b, 'he'));
+
+  select.innerHTML = '<option value="">כל התחומים</option>';
+  for (const domain of uniqueDomains) {
+    const option = document.createElement('option');
+    option.value = domain;
+    option.textContent = domain;
+    select.appendChild(option);
+  }
+  if (uniqueDomains.includes(currentValue)) select.value = currentValue;
 }
 
 // The "כל התחומים" (all domains) view needs videos genuinely mixed across
@@ -172,6 +194,7 @@ async function renderForDomain(domain) {
   status.hidden = true;
   grid.innerHTML = '<p class="inspiration-loading">טוען השראה…</p>';
   const videos = await loadVideos();
+  rebuildDomainFilterOptions(videos);
   const filtered = domain ? videos.filter((v) => v.domain === domain) : interleaveByDomain(videos);
   renderCards(filtered);
 }

@@ -57,16 +57,39 @@ function parseSSEChunk(buffer, chunkText) {
 // not its own concatenation, for anything beyond live display).
 async function streamCheckIdea(messages, ideaProfile, onDelta) {
   const idToken = await auth.currentUser.getIdToken();
-  const response = await fetch(CHECK_IDEA_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${idToken}`,
-    },
-    body: JSON.stringify({ messages, profile: ideaProfile }),
-  });
+
+  // withTimeout (למעלה) כבר קיימת בדיוק בשביל "חיבור שנתקע בלי לפתור ובלי
+  // לדחות" - אבל היא מעולם לא עטפה את הקריאה הזו. חיבור stream שנתקע (לא
+  // סגור, פשוט שקט) לא היה נופל אף פעם, כי אין timeout על reader.read()
+  // עצמה. ה-idle timer מתאפס בכל בית שמגיע (כולל heartbeat), כך שחיבור
+  // תקין עם "חשיבה" ארוכה לא נפגע - רק חיבור שבאמת נדם לגמרי נחתך.
+  const controller = new AbortController();
+  let idleTimer;
+  const resetIdleTimer = () => {
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(() => controller.abort(), 45000);
+  };
+  resetIdleTimer();
+
+  let response;
+  try {
+    response = await fetch(CHECK_IDEA_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${idToken}`,
+      },
+      body: JSON.stringify({ messages, profile: ideaProfile }),
+      signal: controller.signal,
+    });
+  } catch (err) {
+    clearTimeout(idleTimer);
+    if (err.name === 'AbortError') throw new Error('החיבור נתקע, נסו שוב.');
+    throw err;
+  }
 
   if (!response.ok) {
+    clearTimeout(idleTimer);
     let message = 'משהו השתבש, נסו שוב בבקשה.';
     try {
       const errData = await response.json();
@@ -81,22 +104,33 @@ async function streamCheckIdea(messages, ideaProfile, onDelta) {
   const decoder = new TextDecoder();
   let buffer = '';
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    const parsed = parseSSEChunk(buffer, decoder.decode(value, { stream: true }));
-    buffer = parsed.remainder;
-    for (const event of parsed.events) {
-      if (event.error) {
-        throw new Error(event.error);
+  try {
+    while (true) {
+      let done, value;
+      try {
+        ({ done, value } = await reader.read());
+      } catch (err) {
+        if (err.name === 'AbortError') throw new Error('החיבור נתקע, נסו שוב.');
+        throw err;
       }
-      if (typeof event.delta === 'string') {
-        onDelta(event.delta);
-      }
-      if (event.done) {
-        return event.reply || '';
+      resetIdleTimer();
+      if (done) break;
+      const parsed = parseSSEChunk(buffer, decoder.decode(value, { stream: true }));
+      buffer = parsed.remainder;
+      for (const event of parsed.events) {
+        if (event.error) {
+          throw new Error(event.error);
+        }
+        if (typeof event.delta === 'string') {
+          onDelta(event.delta);
+        }
+        if (event.done) {
+          return event.reply || '';
+        }
       }
     }
+  } finally {
+    clearTimeout(idleTimer);
   }
   throw new Error('משהו השתבש, נסו שוב בבקשה.');
 }

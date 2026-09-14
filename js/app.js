@@ -1,4 +1,5 @@
 import { onAuthChange, signInWithGoogle, signOutUser } from './auth.js';
+import { loginErrorText } from './login-error-text.js';
 import { auth, db, functions } from './firebase-init.js';
 import { doc, getDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 import { saveProfile } from './user-profile.js';
@@ -140,6 +141,11 @@ if (window.visualViewport) {
   const updateViewportVars = () => {
     document.documentElement.style.setProperty('--vv-height', `${vv.height}px`);
     document.documentElement.style.setProperty('--vv-top', `${vv.offsetTop}px`);
+    // אותה בעיה בדיוק פוגעת בשורת קלט הצ'אט (position:fixed; bottom:0
+    // קשיח) - כשהמקלדת נפתחת, "bottom-gap" הזה הוא כמה היא "אוכלת" מלמטה,
+    // כדי ששורת הקלט תישאר מעליה במקום מתחתיה, בלתי נגישה.
+    const bottomGap = window.innerHeight - (vv.height + vv.offsetTop);
+    document.documentElement.style.setProperty('--vv-bottom-gap', `${Math.max(0, bottomGap)}px`);
   };
   vv.addEventListener('resize', updateViewportVars);
   vv.addEventListener('scroll', updateViewportVars);
@@ -234,9 +240,7 @@ document.getElementById('google-signin-btn').addEventListener('click', async () 
     if (IGNORABLE_LOGIN_ERROR_CODES.has(err.code)) return;
     console.error('signInWithGoogle failed:', err);
     const errorEl = document.getElementById('login-error');
-    // Show the real code, not a generic message - a generic "try again" is
-    // exactly what made an earlier real failure look like "nothing happens."
-    errorEl.textContent = `ההתחברות נכשלה: ${err.code || err.message || err}`;
+    errorEl.textContent = loginErrorText(err);
     errorEl.hidden = false;
   }
 });

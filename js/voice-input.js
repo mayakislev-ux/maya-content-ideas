@@ -41,6 +41,16 @@ export function wireVoiceInput({ buttonId, textareaId }) {
   if (!button || !textarea) return { stop: () => {} };
   if (!voiceInputSupported()) {
     button.hidden = true;
+    // כשל שקט לגמרי עד עכשיו - הכפתור פשוט נעלם, בלי שום הסבר. חיווי קטן
+    // וחד-פעמי כדי שמי שכן מצפה למיקרופון (בדפדפן שלא תומך, כמו Firefox
+    // בטלפון) תדע שהיא לא "מפספסת" משהו - זו לא בעיה חוסמת, תמיד אפשר לכתוב.
+    if (!document.getElementById(`${textareaId}-voice-unsupported-hint`)) {
+      const hint = document.createElement('p');
+      hint.id = `${textareaId}-voice-unsupported-hint`;
+      hint.className = 'voice-input-unsupported-hint';
+      hint.textContent = 'הקלטה קולית לא זמינה בדפדפן הזה - אפשר לכתוב';
+      textarea.insertAdjacentElement('afterend', hint);
+    }
     return { stop: () => {} };
   }
   button.hidden = false;

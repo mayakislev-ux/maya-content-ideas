@@ -150,6 +150,10 @@ async function runAiClassification() {
   const aiChip = document.querySelector('.category-chip-ai');
 
   if (!titleEl.value.trim()) {
+    // persuasionSelect.value כבר הפך ל-AI_OPTION ברגע שהמשתמש/ת בחר/ה
+    // באפשרות הזו בתפריט (לפני שהקוד הזה בכלל רץ) - בלי לאפס אותו כאן, ערך
+    // שבור "__ai__" נשאר תקוע בשדה ועובר לשמירה כאילו הוא ערך חוקי.
+    if (persuasionSelect.value === AI_OPTION) persuasionSelect.value = '';
     alertDialog('קודם תכתבו את "הרעיון", ואז אני אוכל להציע.');
     return;
   }
@@ -169,6 +173,7 @@ async function runAiClassification() {
     });
   } catch (err) {
     console.error('classifyIdea failed:', err);
+    if (persuasionSelect.value === AI_OPTION) persuasionSelect.value = '';
     const hasHebrewText = /[֐-׿]/.test(err.message || '');
     alert(hasHebrewText ? err.message : 'משהו השתבש בהצעה האוטומטית, נסו שוב או בחרו ידנית.');
   } finally {
@@ -198,7 +203,15 @@ export function wireIdeaForm() {
   document.getElementById('delete-idea-btn').addEventListener('click', async () => {
     if (!editingId) return;
     const deletedId = editingId;
-    await deleteIdea(deletedId);
+    try {
+      await deleteIdea(deletedId);
+    } catch (err) {
+      console.error('idea delete failed:', err);
+      const errorEl = document.getElementById('form-error');
+      errorEl.textContent = 'מחיקת הרעיון נכשלה, בדקו חיבור ונסו שוב';
+      errorEl.hidden = false;
+      return;
+    }
     closeModal();
     showToast('הרעיון נמחק', {
       actionLabel: 'בטלו',

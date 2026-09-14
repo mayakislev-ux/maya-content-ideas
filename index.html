@@ -40,8 +40,8 @@
     <p id="login-error" class="error-text" role="alert" hidden></p>
     <div id="inapp-browser-warning" class="inapp-warning" role="alert" hidden>
       <p>ההתחברות עם Google לא עובדת בתוך וואטסאפ/אינסטגרם/פייסבוק - צריך לפתוח את הקישור בדפדפן רגיל (ספארי או כרום).</p>
-      <p>בטלפון: לחצי על שלוש הנקודות (⋮) או סימן השיתוף למעלה, ובחרי "פתיחה בדפדפן"/"Open in Browser". אפשר גם להעתיק את הקישור ולהדביק אותו ישירות בספארי:</p>
-      <button type="button" id="copy-link-btn" class="btn-primary">העתיקי את הקישור</button>
+      <p>בטלפון: לחצי/לחץ על שלוש הנקודות (⋮) או סימן השיתוף למעלה, ובחרי/ובחר "פתיחה בדפדפן"/"Open in Browser". אפשר גם להעתיק את הקישור ולהדביק אותו ישירות בספארי:</p>
+      <button type="button" id="copy-link-btn" class="btn-primary">העתיקי/העתק את הקישור</button>
       <p id="copy-link-confirm" class="copy-confirm" hidden>הקישור הועתק ✓</p>
     </div>
     <button type="button" id="open-policy-btn-login" class="btn-text policy-link">מדיניות פרטיות ותנאי שימוש</button>
@@ -190,6 +190,7 @@
           <option value="אישי">אישי</option>
           <option value="מכירתי">מכירתי</option>
           <option value="בידורי">בידורי</option>
+          <option value="__none__">📝 ללא קטגוריה (טיוטות)</option>
         </select>
         <select id="filter-audience-scope" aria-label="סינון לפי קהל יעד">
           <option value="">כל סוגי הקהל</option>
@@ -676,7 +677,7 @@
   <div class="modal-content modal-content-wide">
     <button type="button" id="content-plan-pick-ideas-close-btn" class="modal-close-x" aria-label="סגירה">✕</button>
     <h2 id="content-plan-pick-ideas-title">בחירת רעיונות ספציפיים</h2>
-    <p class="content-plan-pick-ideas-hint">רעיונות שתסמני יקבלו עדיפות ראשונה בתוך הקטגוריה שלהם - אבל אם תסמני יותר ממה שיש מקום, רק המדורגים הכי גבוה מהסימון ייכנסו בפועל.</p>
+    <p class="content-plan-pick-ideas-hint">רעיונות שתסמני/שתסמן יקבלו עדיפות ראשונה בתוך הקטגוריה שלהם - אבל אם תסמני/תסמן יותר ממה שיש מקום, רק המדורגים הכי גבוה מהסימון ייכנסו בפועל.</p>
     <div class="content-plan-pick-ideas-toolbar">
       <div class="content-plan-pick-ideas-toolbar-row">
         <input type="search" id="content-plan-pick-ideas-search" class="content-plan-pick-ideas-search" placeholder="חיפוש רעיון...">

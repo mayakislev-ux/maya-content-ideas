@@ -15,7 +15,7 @@ export const MUST_INCLUDE_TYPES = [
   'סיפורי הצלחה ותוצאות',
   "אג'נדות עסקיות (ביקורות ודעות)",
   "אג'נדות אישיות",
-  'סרטונים על מי שאת מעבר לעסק',
+  'סרטונים על מי שאת/ה מעבר לעסק',
   'בעיות ותסכולים של הקהל',
   'תוכן על סלבס בהקשר לתחום',
 ];
@@ -78,7 +78,9 @@ export function categoryIcon(category) {
 export function filterIdeas(ideas, { text = '', category = '', audienceScope = '', persuasionStage = '', rating = '' } = {}) {
   const needle = text.trim().toLowerCase();
   return ideas.filter((idea) => {
-    if (category && idea.category !== category) return false;
+    if (category === '__none__') {
+      if (idea.category) return false;
+    } else if (category && idea.category !== category) return false;
     if (persuasionStage && idea.persuasionStage !== persuasionStage) return false;
     if (rating && idea.rating !== rating) return false;
     if (audienceScope && idea.audienceScope !== audienceScope) return false;
@@ -94,7 +96,7 @@ export function validateIdea({ title, category, persuasionStage, rating, audienc
   const errors = [];
   if (!title || !title.trim()) errors.push('שדה "הרעיון" חובה');
   if (!category || !CATEGORIES.includes(category)) errors.push('קטגוריה לא תקינה');
-  if (!persuasionStage) errors.push('שדה "שלב שכנוע" חובה');
+  if (!persuasionStage || !PERSUASION_STAGES.includes(persuasionStage)) errors.push('שדה "שלב שכנוע" חובה');
   if (!rating) errors.push('שדה "דירוג" חובה');
   if (!audienceScope) errors.push('שדה "למי הסרטון מדבר" חובה');
   return errors;

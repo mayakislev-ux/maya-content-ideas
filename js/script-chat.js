@@ -1,5 +1,4 @@
-import { functions, auth } from './firebase-init.js';
-import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
+import { auth } from './firebase-init.js';
 import { getProfile, saveProfile } from './user-profile.js';
 import { showView } from './view-router.js';
 import { addBubble, addThinkingBubble, addChoiceBubble, setBubbleText, playSuccessSound } from './chat-ui.js';
@@ -10,10 +9,106 @@ import { startIdeaChat } from './idea-chat.js';
 import { FORMAT_CHOICES } from './ideas-logic.js';
 
 const ADMIN_EMAIL = 'mayakislev@gmail.com';
-const writeScript = httpsCallable(functions, 'writeScript');
+
+// writeScript היה onCall יחיד בלי סטרימינג - אותה "מחלקת באג" בדיוק שכבר
+// תוקנה ב-checkIdea/generateContentPlan/generateWarmingPlan (בקשות ארוכות
+// שנראות "תקועות" או נופלות ב-timeout). תבנית זהה לזו שכבר עובדת ב-idea-chat.js
+// (streamCheckIdea/parseSSEChunk), מועתקת ולא ממומשת מחדש.
+const WRITE_SCRIPT_URL = 'https://us-central1-content-ideas-becd7.cloudfunctions.net/writeScript';
 
 function isAdmin() {
   return auth.currentUser && auth.currentUser.email === ADMIN_EMAIL;
+}
+
+function parseSSEChunk(buffer, chunkText) {
+  const combined = buffer + chunkText;
+  const blocks = combined.split('\n\n');
+  const remainder = blocks.pop();
+  const events = [];
+  for (const block of blocks) {
+    const dataLine = block.split('\n').find((line) => line.startsWith('data:'));
+    if (!dataLine) continue;
+    try {
+      events.push(JSON.parse(dataLine.slice(5).trim()));
+    } catch (err) {
+      console.error('Failed to parse writeScript SSE data line:', dataLine, err);
+    }
+  }
+  return { events, remainder };
+}
+
+async function streamWriteScript(messages, ideaProfile, ideaCtx, onDelta) {
+  const idToken = await auth.currentUser.getIdToken();
+  const controller = new AbortController();
+  let idleTimer;
+  const resetIdleTimer = () => {
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(() => controller.abort(), 45000);
+  };
+  resetIdleTimer();
+
+  let response;
+  try {
+    response = await fetch(WRITE_SCRIPT_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${idToken}`,
+      },
+      body: JSON.stringify({ messages, profile: ideaProfile, ideaContext: ideaCtx }),
+      signal: controller.signal,
+    });
+  } catch (err) {
+    clearTimeout(idleTimer);
+    if (err.name === 'AbortError') throw new Error('החיבור נתקע, נסו שוב.');
+    throw err;
+  }
+
+  if (!response.ok) {
+    clearTimeout(idleTimer);
+    let message = 'משהו השתבש, נסו שוב בבקשה.';
+    try {
+      const errData = await response.json();
+      if (errData && errData.error) message = errData.error;
+    } catch (err) {
+      // response body wasn't JSON - fall back to the generic message above
+    }
+    throw new Error(message);
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  try {
+    while (true) {
+      let done, value;
+      try {
+        ({ done, value } = await reader.read());
+      } catch (err) {
+        if (err.name === 'AbortError') throw new Error('החיבור נתקע, נסו שוב.');
+        throw err;
+      }
+      resetIdleTimer();
+      if (done) break;
+      const parsed = parseSSEChunk(buffer, decoder.decode(value, { stream: true }));
+      buffer = parsed.remainder;
+      for (const event of parsed.events) {
+        if (event.error) {
+          throw new Error(event.error);
+        }
+        if (typeof event.delta === 'string') {
+          onDelta(event.delta);
+        }
+        if (event.done) {
+          return event.reply || '';
+        }
+      }
+    }
+  } finally {
+    clearTimeout(idleTimer);
+  }
+  throw new Error('משהו השתבש, נסו שוב בבקשה.');
 }
 
 // Duplicated (not imported) from idea-chat.js on purpose - both modules can
@@ -157,12 +252,16 @@ function greetAndAskForIdea() {
 // There's rarely one single "correct" format for an idea - forcing a pick
 // with no way out was the complaint. This option asks the AI to suggest a
 // few fitting options instead of committing to one blind.
-const NOT_SURE_FORMAT_CHOICE = 'לא בטוח/ה 🤔 תני לי כמה אפשרויות';
+const NOT_SURE_FORMAT_CHOICE = 'לא בטוח/ה 🤔 כמה אפשרויות בבקשה';
 
 function askFormat() {
   addChoiceBubble(messagesEl(), 'איזה פורמט הכי מתאים לתסריט הזה?', [...FORMAT_CHOICES, NOT_SURE_FORMAT_CHOICE], (choice) => {
     if (choice === NOT_SURE_FORMAT_CHOICE) {
-      sendMessage('לא בטוח/ה איזה פורמט הכי מתאים לרעיון הזה - תציעי כמה אפשרויות שיתאימו, עם הסבר קצר לכל אחת למה היא מתאימה, ואז אבחר.');
+      // תור השיחה שולח את זה כאילו המשתמש/ת עצמו/ה כתב/ה אותו (role='user',
+      // מוצג כבועת-צ'אט על המסך) - "תציעי" קשיח לא התאים כשגבר יראה משפט
+      // שנטען כאילו הוא כתב אותו עם פנייה בלשון נקבה ל-AI.
+      const suggestVerb = profile.pronoun === 'אתה' ? 'תציע' : 'תציעי';
+      sendMessage(`לא בטוח/ה איזה פורמט הכי מתאים לרעיון הזה - ${suggestVerb} כמה אפשרויות שיתאימו, עם הסבר קצר לכל אחת למה היא מתאימה, ואז אבחר.`);
       return;
     }
     sendMessage(`הפורמט שבחרתי: ${choice}`);
@@ -178,8 +277,27 @@ async function sendMessage(text) {
   const thinkingBubble = addThinkingBubble(messagesEl());
 
   try {
-    const result = await writeScript({ messages: history, profile, ideaContext });
-    let reply = result.data.reply;
+    // Same iOS Safari "Load failed" mid-stream retry as idea-chat.js's
+    // sendIdeaMessage - a single retry catches most transient drops.
+    let finalReply;
+    for (let attempt = 1; ; attempt++) {
+      let liveText = '';
+      try {
+        if (attempt > 1) setBubbleText(thinkingBubble, '');
+        finalReply = await streamWriteScript(history, profile, ideaContext, (delta) => {
+          liveText += delta;
+          setBubbleText(thinkingBubble, liveText);
+          messagesEl().scrollTop = messagesEl().scrollHeight;
+        });
+        break;
+      } catch (err) {
+        const hasHebrewText = /[֐-׿]/.test(err.message || '');
+        if (hasHebrewText || attempt >= 2) throw err;
+        console.error(`writeScript stream failed, retrying (attempt ${attempt}):`, err);
+      }
+    }
+
+    let reply = finalReply;
 
     if (reply.includes(REDIRECT_MARKER)) {
       const visibleReply = reply.replace(REDIRECT_MARKER, '').trim();
@@ -213,7 +331,8 @@ async function sendMessage(text) {
     history.push({ role: 'assistant', content: visibleReply });
   } catch (err) {
     console.error('writeScript failed:', err);
-    setBubbleText(thinkingBubble, 'משהו השתבש, נסו שוב בבקשה.');
+    const hasHebrewText = /[֐-׿]/.test(err.message || '');
+    setBubbleText(thinkingBubble, hasHebrewText ? err.message : 'החיבור נכשל, כנראה בגלל רשת לא יציבה. נסו שוב.');
   } finally {
     input.disabled = false;
     newScriptBtn.disabled = false;

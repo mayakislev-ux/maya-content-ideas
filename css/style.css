@@ -448,7 +448,7 @@ h1, h2, h3 {
 body.focus-mode .app-header { display: none; }
 body.focus-mode .bottom-nav { display: none !important; }
 body.focus-mode .chat-toolbar { top: 0; }
-body.focus-mode .chat-input-row { bottom: 0; }
+body.focus-mode .chat-input-row { bottom: var(--vv-bottom-gap, 0px); }
 
 .view {
   animation: viewIn 260ms var(--ease-snap);
@@ -668,6 +668,13 @@ body.focus-mode .chat-input-row { bottom: 0; }
   border-color: rgba(255, 255, 255, 0.6);
   cursor: pointer;
 }
+.stat-pill-draft {
+  cursor: pointer;
+  border-style: dashed;
+  border-color: #d99a2b;
+  background: #fdf3e2;
+}
+.stat-pill-draft .n { color: #a3670f; }
 
 .quick-filter-chips {
   display: flex;
@@ -1241,7 +1248,7 @@ body.focus-mode .chat-input-row { bottom: 0; }
      a real, reported bug this time (send button was hidden behind
      the bottom nav), not just a theoretical risk. */
   .chat-input-row.chat-input-row {
-    bottom: var(--bottom-nav-h, 70px);
+    bottom: calc(var(--bottom-nav-h, 70px) + var(--vv-bottom-gap, 0px));
   }
 
   .chat-input-row textarea {
@@ -1451,7 +1458,10 @@ body.focus-mode .chat-input-row { bottom: 0; }
 
 .chat-input-row {
   position: fixed;
-  bottom: 0;
+  /* --vv-bottom-gap (app.js) הוא כמה המקלדת "אוכלת" מלמטה מהמסך הנראה
+     בפועל - בלי זה שורת הקלט נשארת מתחת למקלדת ב-iOS Safari, בלתי
+     נגישה, בדיוק אותה בעיה שכבר תוקנה כאן למודלים דרך --vv-height/--vv-top. */
+  bottom: var(--vv-bottom-gap, 0px);
   left: 50%;
   transform: translateX(-50%);
   width: 100%;
@@ -1487,6 +1497,17 @@ body.focus-mode .chat-input-row { bottom: 0; }
 .chat-choice-btn:disabled {
   opacity: 0.5;
   cursor: default;
+}
+
+.voice-input-unsupported-hint {
+  /* .chat-input-row הוא flex ו-position:fixed - מוצא את הרמז הזה מזרימת
+     ה-flex (כדי לא לדחוק את כפתור השליחה) ומעגן אותו מתחת לשורה עצמה. */
+  position: absolute;
+  top: 100%;
+  right: 1.5rem;
+  margin: 0.3rem 0 0;
+  font-size: 0.72rem;
+  color: var(--muted);
 }
 
 .chat-input-row textarea {
@@ -3584,31 +3605,37 @@ textarea:focus-visible,
   color: var(--accent);
 }
 
-.inspiration-card-translate-btn {
-  margin-top: 0.4rem;
-  padding: 0.4rem 0.6rem;
+.inspiration-card-translate-btn,
+.inspiration-card-copy-btn {
+  /* min-height בפיקסלים (לא rem) כדי שיהיה מובטח 44px אמיתיים למגע גם
+     במובייל, בלי תלות בגודל ה-root font-size שגדל שם בכלל גלובלי נפרד. */
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 0.8rem;
   border: 1px solid var(--border-color);
   border-radius: 999px;
-  background: var(--surface);
-  color: var(--text);
   font-size: 0.72rem;
   font-weight: 700;
   cursor: pointer;
+}
+
+.inspiration-card-translate-btn {
+  margin-top: 0.6rem;
+  background: var(--surface);
+  color: var(--text);
 }
 
 .inspiration-card-translate-btn:hover { background: var(--accent-100); }
 
 .inspiration-card-copy-btn {
-  margin-top: 0.35rem;
-  padding: 0.4rem 0.6rem;
-  border: 1px solid var(--border-color);
-  border-radius: 999px;
+  margin-top: 0.6rem;
   background: var(--accent-100);
   color: var(--accent-700, var(--accent));
-  font-size: 0.72rem;
-  font-weight: 700;
-  cursor: pointer;
 }
+
+.inspiration-card-copy-btn:hover { opacity: 0.85; }
 
 .inspiration-card-copy-btn:hover { opacity: 0.85; }
 

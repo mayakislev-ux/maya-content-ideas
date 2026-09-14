@@ -5,6 +5,8 @@ import { showToast } from './toast.js';
 import { animateCountUp } from './count-up.js';
 import { burstConfetti } from './confetti.js';
 import { startIdeaChatWithExistingIdea } from './idea-chat.js';
+import { getProfile } from './user-profile.js';
+import { showView } from './view-router.js';
 
 // אימוג'י (📋/🔍) לא היו מובנים כאייקוני פעולה - במיוחד 🔍 (זכוכית
 // מגדלת), שנקרא באופן טבעי כ"חיפוש" ולא כ"בדיקה חוזרת בצ'אט". אייקוני
@@ -40,7 +42,7 @@ function currentLevel(count) {
 const MILESTONES = [10, 25, 50, 100];
 const seenMilestones = new Set(JSON.parse(localStorage.getItem('idea-milestones-seen') || '[]'));
 
-function celebrateMilestone(count, ideas) {
+async function celebrateMilestone(count, ideas) {
   if (!MILESTONES.includes(count) || seenMilestones.has(count)) return;
   seenMilestones.add(count);
   localStorage.setItem('idea-milestones-seen', JSON.stringify([...seenMilestones]));
@@ -52,9 +54,13 @@ function celebrateMilestone(count, ideas) {
     n: ideas.filter((idea) => idea.category === category).length,
   })).sort((a, b) => b.n - a.n);
   const leader = counts[0];
-  const detail = leader && leader.n > 0
-    ? `הכי הרבה כתבת ב"${leader.category}" (${leader.n})`
-    : 'המשיכי ככה';
+  let detail = 'המשיכי ככה';
+  if (leader && leader.n > 0) {
+    detail = `הכי הרבה כתבת ב"${leader.category}" (${leader.n})`;
+  } else {
+    const profile = await getProfile();
+    detail = profile && profile.pronoun === 'אתה' ? 'תמשיך ככה' : 'המשיכי ככה';
+  }
   showToast(`🎉 ${count} רעיונות במאגר שלך! ${detail}`, { duration: 6000 });
 }
 
@@ -221,6 +227,12 @@ function renderStatScroll() {
     count: active.filter((idea) => idea.category === category).length,
   })).filter((row) => row.count > 0);
 
+  // רעיונות בלי קטגוריה (הוספה מהירה) נעלמים בשקט מבניית תכנית תוכן
+  // (getReadyIdeas שם סופרת רק idea.category) - הפיל הזה נותן תזכורת קבועה
+  // וגלויה, לא רק כשיש פחות מ-MIN_READY_IDEAS רעיונות מסווגים (אז כבר יש
+  // הודעת gate נפרדת ב-content-plan.js, אבל היא נעלמת ברגע שיש מספיק).
+  const draftCount = active.filter((idea) => !idea.category).length;
+
   container.innerHTML = `
     <button type="button" class="stat-pill stat-pill-level${leveledUp ? ' level-up-glow' : ''}" id="goal-edit-btn">
       <span class="n">${level.icon} ${level.name}</span>
@@ -235,6 +247,12 @@ function renderStatScroll() {
       </div>`
       )
       .join('')}
+    ${draftCount > 0
+      ? `<button type="button" class="stat-pill stat-pill-draft" id="drafts-pending-btn">
+      <span class="n">📝 ${draftCount}</span>
+      <span class="l">טיוטות ממתינות לסיווג</span>
+    </button>`
+      : ''}
   `;
 
   document.getElementById('goal-edit-btn').addEventListener('click', () => {
@@ -243,6 +261,18 @@ function renderStatScroll() {
     modal.hidden = false;
     document.getElementById('goal-edit-input').focus();
   });
+
+  const draftsBtn = document.getElementById('drafts-pending-btn');
+  if (draftsBtn) {
+    draftsBtn.addEventListener('click', () => {
+      showView('archive');
+      const categorySelect = document.getElementById('filter-category');
+      if (categorySelect) {
+        categorySelect.value = '__none__';
+        categorySelect.dispatchEvent(new Event('change'));
+      }
+    });
+  }
 }
 
 export function wireGoalEditModal() {
@@ -555,7 +585,12 @@ function renderItem(idea, onItemClick, index = 0) {
     undoBtn.textContent = '↩ החזרה לפעילים';
     undoBtn.addEventListener('click', async (e) => {
       e.stopPropagation();
-      await uncompleteIdea(idea.id);
+      try {
+        await uncompleteIdea(idea.id);
+      } catch (err) {
+        console.error('uncompleteIdea failed:', err);
+        showToast('הפעולה נכשלה, נסו שוב');
+      }
     });
     actionsGroup.appendChild(undoBtn);
   } else {
@@ -567,7 +602,12 @@ function renderItem(idea, onItemClick, index = 0) {
       e.stopPropagation();
       inner.classList.add('archive-item-pop');
       if (navigator.vibrate) navigator.vibrate(15);
-      await markIdeaCompleted(idea.id);
+      try {
+        await markIdeaCompleted(idea.id);
+      } catch (err) {
+        console.error('markIdeaCompleted failed:', err);
+        showToast('הפעולה נכשלה, נסו שוב');
+      }
     });
     actionsGroup.appendChild(doneBtn);
   }
@@ -650,15 +690,20 @@ function renderItem(idea, onItemClick, index = 0) {
     inner.style.transition = 'transform 0.2s ease';
     inner.style.transform = 'translateX(0)';
 
-    if (deltaX > 70) {
-      inner.classList.add('archive-item-pop');
-      if (navigator.vibrate) navigator.vibrate(15);
-      if (idea.completedAt) await uncompleteIdea(idea.id);
-      else await markIdeaCompleted(idea.id);
-    } else if (deltaX < -70) {
-      if (navigator.vibrate) navigator.vibrate(15);
-      await deleteIdea(idea.id);
-      showToast('הרעיון נמחק', { actionLabel: 'בטלו', onAction: () => restoreIdea(idea.id) });
+    try {
+      if (deltaX > 70) {
+        inner.classList.add('archive-item-pop');
+        if (navigator.vibrate) navigator.vibrate(15);
+        if (idea.completedAt) await uncompleteIdea(idea.id);
+        else await markIdeaCompleted(idea.id);
+      } else if (deltaX < -70) {
+        if (navigator.vibrate) navigator.vibrate(15);
+        await deleteIdea(idea.id);
+        showToast('הרעיון נמחק', { actionLabel: 'בטלו', onAction: () => restoreIdea(idea.id) });
+      }
+    } catch (err) {
+      console.error('swipe action failed:', err);
+      showToast('הפעולה נכשלה, נסו שוב');
     }
 
     setTimeout(() => {

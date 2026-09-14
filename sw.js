@@ -21,7 +21,17 @@ self.addEventListener('activate', (event) => {
 // סיכון ל"עדיין רואה גרסה ישנה", כי הם פשוט לא הדברים שמשתנים בין דיפלוי
 // לדיפלוי (בניגוד ל-HTML/CSS/JS של האפליקציה עצמה, שכן).
 function isImmutableAsset(url) {
-  return /\/assets\/fonts\//.test(url) || /\/assets\/favicon\.png(?:\?|$)/.test(url) || url.includes('gstatic.com/firebasejs/');
+  return (
+    /\/assets\/fonts\//.test(url) ||
+    /\/assets\/favicon\.png(?:\?|$)/.test(url) ||
+    // מאגר ההשראה מוריד מחדש 11MB של תמונות thumbnail מהרשת בכל פתיחת טאב,
+    // כי no-store היה חוסם אפילו שימוש חוזר באותה תמונה שכבר נראתה באותו
+    // session - קובץ חדש לתמונת thumbnail תמיד מקבל שם/נתיב חדש (לא דורסים
+    // קובץ קיים), אז cache-first פה בטוח בדיוק כמו שהוא בטוח עבור הפונטים.
+    /\/assets\/inspiration-thumbnails\//.test(url) ||
+    /\/assets\/(app|header)-background\.jpg(?:\?|$)/.test(url) ||
+    url.includes('gstatic.com/firebasejs/')
+  );
 }
 
 // Network-first: always prefer a fresh network response so app updates show up

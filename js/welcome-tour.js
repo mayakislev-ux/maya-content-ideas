@@ -75,7 +75,7 @@ function buildElements() {
     <h3></h3>
     <p></p>
     <div class="tour-callout-footer">
-      <button type="button" class="tour-skip-btn">דלגי ✕</button>
+      <button type="button" class="tour-skip-btn">דילוג ✕</button>
       <div class="tour-callout-dots"></div>
       <button type="button" class="tour-next-btn"></button>
     </div>
