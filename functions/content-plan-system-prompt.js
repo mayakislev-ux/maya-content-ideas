@@ -6,7 +6,7 @@ const MUST_INCLUDE_TYPES = [
   'סיפורי הצלחה ותוצאות',
   "אג'נדות עסקיות (ביקורות ודעות)",
   "אג'נדות אישיות",
-  'סרטונים על מי שאת מעבר לעסק',
+  'סרטונים על מי שאת/ה מעבר לעסק',
   'בעיות ותסכולים של הקהל',
   'תוכן על סלבס בהקשר לתחום',
 ];
@@ -17,8 +17,9 @@ const MUST_INCLUDE_TYPES = [
 // בפועל שבר את "לחודש" בכל כמות אחרת: 25 תכנים יצא 7 שבועות, לא חודש.
 const WEEKS_PER_PLAN = 4;
 
-function buildContentPlanPrompt({ pieceCount, ideas, primaryAudience, secondaryAudience, includeSecondaryAudience }) {
+function buildContentPlanPrompt({ pieceCount, ideas, primaryAudience, secondaryAudience, includeSecondaryAudience, pronoun }) {
   const weeksCount = WEEKS_PER_PLAN;
+  const ownerLabel = pronoun === 'אתה' ? 'בעל עסק (לקוח "אקדמיית המהלך השיווקי")' : 'בעל/ת עסק (לקוח/ת "אקדמיית המהלך השיווקי")';
 
   const ideasBlock = ideas
     .map(
@@ -41,7 +42,7 @@ function buildContentPlanPrompt({ pieceCount, ideas, primaryAudience, secondaryA
     }
   }
 
-  return `את/ה עוזר/ת תוכן שבונה תכנית תוכן חודשית לבעלת עסק (לקוחת "אקדמיית המהלך השיווקי"), אך ורק מתוך רשימת רעיונות שכבר קיימת אצלה במאגר - לא ממציאים רעיונות חדשים, רק משבצים ומתייגים.
+  return `את/ה עוזר/ת תוכן שבונה תכנית תוכן חודשית ל${ownerLabel}, אך ורק מתוך רשימת רעיונות שכבר קיימת במאגר שלו/שלה - לא ממציאים רעיונות חדשים, רק משבצים ומתייגים.
 ${audienceBlock}
 המשימה: תכנית ל-${weeksCount} שבועות, ${pieceCount} פריטי תוכן מתוך הרשימה למטה.
 

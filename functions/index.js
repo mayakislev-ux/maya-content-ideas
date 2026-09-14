@@ -84,6 +84,33 @@ async function enforceRateLimit(uid, fnName) {
   });
 }
 
+// checkIdea/generateContentPlan/generateWarmingPlan עושות retry אוטומטי יחיד
+// בצד הלקוח על כשל רשת חולף (אותה "Load failed" ב-iOS Safari שמתועדת למעלה)
+// - עם enforceRateLimit הישן, כל ניסיון (גם כשל חולף) צורך יחידת מכסה, אז
+// לחיצה אחת שנתקלת בניתוק רשת רגעי שורפת 2 יחידות בלי שהמשתמשת יודעת. הפיצול
+// הזה מפריד בדיקה (לפני הקריאה היקרה ל-Anthropic) מספירה בפועל (רק אחרי
+// שהתשובה התקבלה בהצלחה) - כדי שרק ייצור אמיתי שהצליח ייספר נגד המכסה.
+async function checkRateLimitNotExceeded(uid, fnName) {
+  const today = new Date().toISOString().slice(0, 10);
+  const ref = db.collection('rateLimits').doc(`${uid}_${today}_${fnName}`);
+  const limit = DAILY_LIMITS[fnName];
+  const snap = await ref.get();
+  const count = snap.exists ? snap.data().count : 0;
+  if (count >= limit) {
+    throw new HttpsError('resource-exhausted', 'הגעת למכסת השימוש היומית ב-AI, נסו שוב מחר');
+  }
+}
+
+async function incrementRateLimit(uid, fnName) {
+  const today = new Date().toISOString().slice(0, 10);
+  const ref = db.collection('rateLimits').doc(`${uid}_${today}_${fnName}`);
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    const count = snap.exists ? snap.data().count : 0;
+    tx.set(ref, { count: count + 1, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+  });
+}
+
 function countClarifyingRepliesSinceLastAngles(messages) {
   let count = 0;
   for (let i = messages.length - 1; i >= 0; i--) {
@@ -507,7 +534,7 @@ exports.checkIdea = onRequest(
     }
 
     try {
-      await enforceRateLimit(uid, 'checkIdea');
+      await checkRateLimitNotExceeded(uid, 'checkIdea');
     } catch (err) {
       res.status(429).json({ error: err.message || 'הגעת למכסת השימוש היומית ב-AI, נסו שוב מחר' });
       return;
@@ -531,7 +558,7 @@ exports.checkIdea = onRequest(
         },
         body: JSON.stringify({
           model: 'claude-sonnet-5',
-          max_tokens: 4096,
+          max_tokens: 8192,
           system: cachedText(systemPrompt),
           messages: withCacheControl(messages),
           stream: true,
@@ -606,6 +633,27 @@ exports.checkIdea = onRequest(
 
     if (usage) await recordTokenUsage('checkIdea', usage);
 
+    // אבחון אמיתי (2026-09-14): 5.6% מהבקשות בייצור חוזרות אחרי 80-99 שניות
+    // עם fullText כמעט ריק, בלי אף console.error - כי הן "מצליחות" מבחינת
+    // הקוד (מגיעות עד כאן) אבל פשוט לא מכילות טקסט אמיתי. הלוג הזה נותן
+    // ראייה למקרה הבא בדיוק (outputTokens/stop_reason אמיתיים), וה-guard
+    // מבטיח שתשובה ריקה לא "תצליח" בשקט מול המשתמשת - תמיד עדיף שגיאה
+    // גלויה עם אפשרות לנסות שוב, על פני בועת "חושבת..." שנעלמת עם כלום.
+    console.log('checkIdea: stream complete', {
+      uid,
+      fullTextChars: fullText.length,
+      outputTokens: usage && usage.output_tokens,
+    });
+
+    if (!fullText.trim()) {
+      console.error('checkIdea: stream completed with empty reply text', { uid, usage });
+      res.write(`data: ${JSON.stringify({ error: 'לא הצלחנו לייצר תשובה כרגע, נסו שוב בעוד רגע' })}\n\n`);
+      res.end();
+      return;
+    }
+
+    await incrementRateLimit(uid, 'checkIdea');
+
     // rewriteInHebrewIfNeeded already catches its own errors internally and
     // falls back to the original text - no try/catch needed here.
     const finalReply = await rewriteInHebrewIfNeeded(fullText, anthropicApiKey.value(), 'checkIdea');
@@ -615,45 +663,162 @@ exports.checkIdea = onRequest(
   }
 );
 
-exports.writeScript = onCall({ secrets: [anthropicApiKey], region: 'us-central1', timeoutSeconds: 180 }, async (request) => {
-  if (!request.auth) {
-    throw new HttpsError('unauthenticated', 'יש להתחבר כדי להשתמש בתכונה הזו');
+// עד עכשיו onCall רגיל בלי סטרימינג - בדיוק אותה צורה ש-checkIdea עצמה
+// הייתה בה לפני שתוקנה (ראו ההערה שם, 2026-08-05: "Truncated response
+// body... request timed out" בזמן שדווח שהצ'אט "בקושי זז"), ואותה מחלקת
+// באג בדיוק ש-generateWarmingPlan ו-classifyIdea תיעדו אצלן. תבנית זהה,
+// מועתקת מ-checkIdea למעלה - לא ממציאים כלום חדש, רק מיישמים את התיקון
+// שכבר הוכח בשלוש פונקציות אחיות באותו קובץ.
+exports.writeScript = onRequest(
+  { secrets: [anthropicApiKey], region: 'us-central1', cors: ALLOWED_STREAM_ORIGINS, timeoutSeconds: 180 },
+  async (req, res) => {
+    if (req.method !== 'POST') {
+      res.status(405).json({ error: 'Method not allowed' });
+      return;
+    }
+
+    const authHeader = req.get('Authorization') || '';
+    const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    if (!idToken) {
+      res.status(401).json({ error: 'יש להתחבר כדי להשתמש בתכונה הזו' });
+      return;
+    }
+
+    let uid, email;
+    try {
+      const decoded = await admin.auth().verifyIdToken(idToken);
+      uid = decoded.uid;
+      email = decoded.email;
+    } catch (err) {
+      console.error('writeScript: invalid ID token:', err.message);
+      res.status(401).json({ error: 'התחברות לא תקינה, נסו להתחבר מחדש' });
+      return;
+    }
+
+    if (email !== ADMIN_EMAIL) {
+      res.status(403).json({ error: 'התכונה הזו זמינה כרגע רק למנהלת' });
+      return;
+    }
+
+    const messages = req.body && req.body.messages;
+    if (!Array.isArray(messages) || messages.length === 0) {
+      res.status(400).json({ error: 'חסרות הודעות בשיחה' });
+      return;
+    }
+    try {
+      assertMessagesWithinLimit(messages, 60000);
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+      return;
+    }
+
+    try {
+      await checkRateLimitNotExceeded(uid, 'writeScript');
+    } catch (err) {
+      res.status(429).json({ error: err.message || 'הגעת למכסת השימוש היומית ב-AI, נסו שוב מחר' });
+      return;
+    }
+
+    const profile = (req.body && req.body.profile) || null;
+    const ideaContext = (req.body && req.body.ideaContext) || null;
+    let systemPrompt = buildScriptSystemPrompt(profile, ideaContext);
+
+    if (messages.filter((m) => m.role === 'assistant').length >= 3) {
+      systemPrompt += '\n\n⚠️ הנחיה דחופה: כבר נשלחו 3 הודעות או יותר בשיחה הזו בשלב חילוץ התוכן. אסור לשאול עוד שאלת הבהרה נוספת - חובה לעבור עכשיו, בהודעה הזו, ישירות לשלב הבא (שער הוק, ואז כתיבת הוקים) על סמך מה שכבר נמסר, גם אם אין בדיוק 5 פרטים מושלמים. עדיף להשתמש במה שיש מאשר להמשיך לשאול עוד.';
+    }
+
+    let anthropicResponse;
+    try {
+      anthropicResponse = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'x-api-key': anthropicApiKey.value(),
+          'anthropic-version': '2023-06-01',
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-5',
+          max_tokens: 4096,
+          system: cachedText(systemPrompt),
+          messages: withCacheControl(messages),
+          stream: true,
+        }),
+      });
+    } catch (err) {
+      console.error('writeScript: network error calling Anthropic API:', err);
+      res.set('Content-Type', 'text/event-stream');
+      res.write(`data: ${JSON.stringify({ error: 'לא ניתן להתחבר כרגע לשירות ה-AI, נסו שוב בעוד רגע' })}\n\n`);
+      res.end();
+      return;
+    }
+
+    if (!anthropicResponse.ok || !anthropicResponse.body) {
+      const errText = await anthropicResponse.text().catch(() => '');
+      console.error('writeScript: Anthropic API error:', anthropicResponse.status, errText);
+      res.set('Content-Type', 'text/event-stream');
+      res.write(`data: ${JSON.stringify({ error: 'שגיאה בפנייה ל-AI, נסו שוב' })}\n\n`);
+      res.end();
+      return;
+    }
+
+    res.set('Content-Type', 'text/event-stream');
+    res.set('Cache-Control', 'no-cache');
+    res.set('Connection', 'keep-alive');
+    if (res.flushHeaders) res.flushHeaders();
+
+    const reader = anthropicResponse.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let fullText = '';
+    let usage = null;
+
+    const heartbeat = setInterval(() => {
+      res.write(': heartbeat\n\n');
+    }, 15000);
+
+    try {
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const parsed = parseSSEChunk(buffer, decoder.decode(value, { stream: true }));
+        buffer = parsed.remainder;
+        for (const event of parsed.events) {
+          if (event.type === 'message_start' && event.message && event.message.usage) {
+            usage = { ...event.message.usage };
+          } else if (event.type === 'content_block_delta' && event.delta && event.delta.type === 'text_delta') {
+            fullText += event.delta.text;
+            res.write(`data: ${JSON.stringify({ delta: event.delta.text })}\n\n`);
+          } else if (event.type === 'message_delta' && event.usage) {
+            usage = { ...usage, ...event.usage };
+          } else if (event.type === 'error') {
+            console.error('writeScript: Anthropic stream error event:', event.error);
+          }
+        }
+      }
+    } catch (err) {
+      console.error('writeScript: error reading Anthropic stream:', err);
+    } finally {
+      clearInterval(heartbeat);
+    }
+
+    if (usage) await recordTokenUsage('writeScript', usage);
+
+    if (!fullText.trim()) {
+      console.error('writeScript: stream completed with empty reply text', { uid, usage });
+      res.write(`data: ${JSON.stringify({ error: 'לא הצלחנו לייצר תשובה כרגע, נסו שוב בעוד רגע' })}\n\n`);
+      res.end();
+      return;
+    }
+
+    await incrementRateLimit(uid, 'writeScript');
+
+    const finalReply = await rewriteInHebrewIfNeeded(fullText, anthropicApiKey.value(), 'writeScript');
+
+    res.write(`data: ${JSON.stringify({ done: true, reply: finalReply })}\n\n`);
+    res.end();
   }
-  if (request.auth.token.email !== ADMIN_EMAIL) {
-    throw new HttpsError('permission-denied', 'התכונה הזו זמינה כרגע רק למנהלת');
-  }
-
-  const messages = request.data && request.data.messages;
-  if (!Array.isArray(messages) || messages.length === 0) {
-    throw new HttpsError('invalid-argument', 'חסרות הודעות בשיחה');
-  }
-  assertMessagesWithinLimit(messages, 60000);
-
-  await enforceRateLimit(request.auth.uid, 'writeScript');
-
-  const profile = (request.data && request.data.profile) || null;
-  const ideaContext = (request.data && request.data.ideaContext) || null;
-  let systemPrompt = buildScriptSystemPrompt(profile, ideaContext);
-
-  if (messages.filter((m) => m.role === 'assistant').length >= 3) {
-    systemPrompt += '\n\n⚠️ הנחיה דחופה: כבר נשלחו 3 הודעות או יותר בשיחה הזו בשלב חילוץ התוכן. אסור לשאול עוד שאלת הבהרה נוספת - חובה לעבור עכשיו, בהודעה הזו, ישירות לשלב הבא (שער הוק, ואז כתיבת הוקים) על סמך מה שכבר נמסר, גם אם אין בדיוק 5 פרטים מושלמים. עדיף להשתמש במה שיש מאשר להמשיך לשאול עוד.';
-  }
-
-  const data = await callAnthropic(
-    anthropicApiKey.value(),
-    {
-      model: 'claude-sonnet-5',
-      max_tokens: 4096,
-      system: cachedText(systemPrompt),
-      messages: withCacheControl(messages),
-    },
-    'writeScript'
-  );
-
-  let reply = getResponseText(data) || '';
-  reply = await rewriteInHebrewIfNeeded(reply, anthropicApiKey.value(), 'writeScript');
-  return { reply };
-});
+);
 
 // היחיד מבין 5 הפונקציות שמשתמשות ב-AI שלא קיבל timeoutSeconds מפורש - נופל
 // אל ברירת המחדל (60 שניות). הפלט קטן (max_tokens 200) כך שלא נצפתה תקלה
@@ -1001,7 +1166,7 @@ exports.generateWarmingPlan = onRequest(
     }
 
     try {
-      await enforceRateLimit(uid, 'generateWarmingPlan');
+      await checkRateLimitNotExceeded(uid, 'generateWarmingPlan');
     } catch (err) {
       res.status(429).json({ error: err.message || 'הגעת למכסת השימוש היומית ב-AI, נסו שוב מחר' });
       return;
@@ -1068,6 +1233,8 @@ exports.generateWarmingPlan = onRequest(
       // dedupe since the same missing piece of info (e.g. no real client
       // story) is very likely to show up from both generations.
       const missingInfo = [...new Set([...(ongoing.missingInfo || []), ...(presale.missingInfo || [])])];
+
+      await incrementRateLimit(uid, 'generateWarmingPlan');
 
       res.write(
         `data: ${JSON.stringify({
@@ -1159,7 +1326,7 @@ exports.generateContentPlan = onRequest(
     }
 
     try {
-      await enforceRateLimit(uid, 'generateContentPlan');
+      await checkRateLimitNotExceeded(uid, 'generateContentPlan');
     } catch (err) {
       res.status(429).json({ error: err.message || 'הגעת למכסת השימוש היומית ב-AI, נסו שוב מחר' });
       return;
@@ -1181,6 +1348,7 @@ exports.generateContentPlan = onRequest(
       primaryAudience,
       secondaryAudience,
       includeSecondaryAudience,
+      pronoun: profile.pronoun || '',
     });
 
     let anthropicResponse;
@@ -1299,6 +1467,8 @@ exports.generateContentPlan = onRequest(
       res.end();
       return;
     }
+
+    await incrementRateLimit(uid, 'generateContentPlan');
 
     res.write(
       `data: ${JSON.stringify({ done: true, plan: { weeks: parsed.weeks, seriesNote: parsed.seriesNote || '' } })}\n\n`
