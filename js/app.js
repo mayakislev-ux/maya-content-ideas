@@ -523,7 +523,13 @@ onAuthChange(async (user) => {
     }
   }
   const isAdmin = user.email === ADMIN_EMAIL;
-  document.getElementById('hub-link-script').hidden = !isAdmin;
+  // כתיבת תסריטים מכובה זמנית לגמרי (גם למנהלת) - בקשה מפורשת של מאיה
+  // (2026-09-14) כדי לא להיתקע על פריסה מחדש של writeScript (המרת
+  // callable ל-HTTPS דורשת מחיקת הפונקציה הישנה קודם, פעולה שדורשת אישור
+  // נפרד). הקוד כולו נשאר שלם ב-js/script-chat.js ו-functions/index.js -
+  // רק נקודת הכניסה כבויה, כדי שיהיה קל להחזיר בעתיד. ראו גם השורה
+  // המקבילה ב-js/idea-chat.js (addPostIdeaButtons).
+  document.getElementById('hub-link-script').hidden = true;
   document.getElementById('send-notification-btn').hidden = !isAdmin;
   document.getElementById('token-usage-btn').hidden = !isAdmin;
   document.getElementById('view-feedback-btn').hidden = !isAdmin;

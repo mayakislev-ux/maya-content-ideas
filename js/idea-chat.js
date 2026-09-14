@@ -244,7 +244,10 @@ function addPostIdeaButtons(bubble, finalizedText, ideaSummary) {
   saveBtn.addEventListener('click', () => saveFinalIdea(finalizedText));
   bubble.appendChild(saveBtn);
 
-  if (isAdmin() && ideaSummary) {
+  // כתיבת תסריטים מכובה זמנית (ראו ההערה המקבילה ב-js/app.js ליד
+  // hub-link-script) - "false &&" משאיר את כל הקוד שלם ומוכן לחזור בקלות,
+  // רק לא מציג את הכפתור.
+  if (false && isAdmin() && ideaSummary) {
     const scriptBtn = document.createElement('button');
     scriptBtn.type = 'button';
     scriptBtn.className = 'chat-cta-btn';
