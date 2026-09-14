@@ -1,5 +1,6 @@
 import { onAuthChange, signInWithGoogle, signOutUser } from './auth.js';
 import { loginErrorText } from './login-error-text.js';
+import { isInAppBrowser, showInAppBrowserWarning } from './inapp-browser.js';
 import { auth, db, functions } from './firebase-init.js';
 import { doc, getDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 import { saveProfile } from './user-profile.js';
@@ -47,31 +48,10 @@ function loadAdminModules() {
   return adminModulesPromise;
 }
 
-// Google blocks OAuth sign-in inside in-app webviews (WhatsApp/Instagram/
-// Facebook/Messenger) for security reasons - it either shows its own "this
-// browser may not be secure" block or silently fails, which from inside the
-// app just looked like "click sign-in, nothing happens" / "bounces back."
-// Links sent to clients are opened from WhatsApp constantly, so detect this
-// up front and tell her exactly what to do instead of leaving the Google
-// button there to fail mysteriously.
-function isInAppBrowser() {
-  const ua = navigator.userAgent || '';
-  return /FBAN|FBAV|Instagram|WhatsApp|Line\/|Messenger|TikTok|musical_ly|Twitter|LinkedInApp|GSA\/|Gmail/i.test(ua);
-}
-
+// Proactive check on load - see js/inapp-browser.js for the full picture,
+// including the reactive check in auth.js that catches what this misses.
 if (isInAppBrowser()) {
-  document.getElementById('google-signin-btn').hidden = true;
-  const warning = document.getElementById('inapp-browser-warning');
-  warning.hidden = false;
-  document.getElementById('copy-link-btn').addEventListener('click', async () => {
-    try {
-      await navigator.clipboard.writeText(location.href);
-    } catch {
-      // clipboard API unavailable/blocked - fall back to selecting nothing,
-      // the confirm text still tells her the button was pressed
-    }
-    document.getElementById('copy-link-confirm').hidden = false;
-  });
+  showInAppBrowserWarning();
 }
 
 const THEME_KEY = 'theme-preference';

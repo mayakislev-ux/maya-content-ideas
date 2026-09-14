@@ -1,5 +1,6 @@
 import { auth } from './firebase-init.js';
 import { loginErrorText } from './login-error-text.js';
+import { showInAppBrowserWarning } from './inapp-browser.js';
 import {
   GoogleAuthProvider,
   signInWithPopup,
@@ -21,11 +22,30 @@ const provider = new GoogleAuthProvider();
 // attempts. Try popup first instead (same pattern already working in her
 // other two apps) and only fall back to redirect if a popup is genuinely
 // blocked - don't force redirect by device type.
+//
+// auth/operation-not-supported-in-this-environment used to also fall back to
+// redirect - REMOVED after a real incident (2026-09-14): this exact error is
+// Firebase's own signal that the popup failed because it's running inside an
+// embedded webview (most commonly an in-app browser like WhatsApp's, which
+// app.js's user-agent sniff doesn't always catch - iOS in-app browsers often
+// don't add any app-identifying token to navigator.userAgent at all). In
+// that environment, redirect doesn't just fail cleanly - it sends the user
+// to a RAW, unrecoverable Firebase-hosted error page ("missing initial
+// state"), because the embedded browser can't reliably carry storage across
+// the full external round-trip to accounts.google.com and back. The app's
+// own JS never runs again on that page, so there's no way to catch or
+// explain that failure after the fact - the only real fix is to never
+// attempt redirect for this specific error, and show the same "open this in
+// a real browser" warning the proactive check already has ready.
 export async function signInWithGoogle() {
   try {
     await signInWithPopup(auth, provider);
   } catch (err) {
-    if (err.code === 'auth/popup-blocked' || err.code === 'auth/operation-not-supported-in-this-environment') {
+    if (err.code === 'auth/operation-not-supported-in-this-environment') {
+      showInAppBrowserWarning();
+      return;
+    }
+    if (err.code === 'auth/popup-blocked') {
       await signInWithRedirect(auth, provider);
       return;
     }
