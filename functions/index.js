@@ -547,6 +547,12 @@ exports.checkIdea = onRequest(
       systemPrompt += '\n\n⚠️ הנחיה דחופה: כבר נשלחו 2 הודעות הבהרה או יותר על הרעיון הנוכחי בשיחה הזו. אסור לשאול שום שאלת הבהרה נוספת - חובה לעבור עכשיו, בהודעה הזו, ישירות לשלב ב\' (5 זוויות הנגשה) על סמך מה שכבר ידוע, גם אם זה לא מושלם. אם הרעיון כבר ברור מספיק, אפשר גם [[RECOGNIZED_EXCELLENT]] אם זה מתאים.';
     }
 
+    // מדידת זמנים (18/09): לדעת מנתונים אמיתיים איפה הולכות 40-90 השניות
+    const t0 = Date.now();
+    let firstThinkingMs = null;
+    let firstTextMs = null;
+    let stopReason = null;
+
     let anthropicResponse;
     try {
       anthropicResponse = await fetch('https://api.anthropic.com/v1/messages', {
@@ -612,7 +618,10 @@ exports.checkIdea = onRequest(
         for (const event of parsed.events) {
           if (event.type === 'message_start' && event.message && event.message.usage) {
             usage = { ...event.message.usage };
+          } else if (event.type === 'content_block_start' && event.content_block && event.content_block.type === 'thinking') {
+            if (firstThinkingMs === null) firstThinkingMs = Date.now() - t0;
           } else if (event.type === 'content_block_delta' && event.delta && event.delta.type === 'text_delta') {
+            if (firstTextMs === null) firstTextMs = Date.now() - t0;
             fullText += event.delta.text;
             res.write(`data: ${JSON.stringify({ delta: event.delta.text })}\n\n`);
           } else if (event.type === 'message_delta' && event.usage) {
@@ -620,6 +629,7 @@ exports.checkIdea = onRequest(
             // that changed (output_tokens) - merge onto message_start's base
             // so input/cache-token counts from message_start aren't lost.
             usage = { ...usage, ...event.usage };
+            if (event.delta && event.delta.stop_reason) stopReason = event.delta.stop_reason;
           } else if (event.type === 'error') {
             console.error('checkIdea: Anthropic stream error event:', event.error);
           }
@@ -627,9 +637,11 @@ exports.checkIdea = onRequest(
       }
     } catch (err) {
       console.error('checkIdea: error reading Anthropic stream:', err);
-    } finally {
-      clearInterval(heartbeat);
     }
+
+    // ה-heartbeat ממשיך לרוץ עד הסוף: תיקון העברית ושמירות ה-DB שאחרי הזרם יכולים
+    // לקחת זמן, ובלי סימני חיים האפליקציה מנתקת אחרי 45 שניות ומוחקת תשובה שכבר הגיעה.
+    try {
 
     if (usage) await recordTokenUsage('checkIdea', usage);
 
@@ -643,6 +655,10 @@ exports.checkIdea = onRequest(
       uid,
       fullTextChars: fullText.length,
       outputTokens: usage && usage.output_tokens,
+      stopReason,
+      firstThinkingMs,
+      firstTextMs,
+      streamMs: Date.now() - t0,
     });
 
     if (!fullText.trim()) {
@@ -660,6 +676,13 @@ exports.checkIdea = onRequest(
 
     res.write(`data: ${JSON.stringify({ done: true, reply: finalReply })}\n\n`);
     res.end();
+    } catch (err) {
+      console.error('checkIdea: post-stream step failed:', err);
+      res.write(`data: ${JSON.stringify({ error: 'משהו השתבש, נסו שוב בבקשה.' })}\n\n`);
+      res.end();
+    } finally {
+      clearInterval(heartbeat);
+    }
   }
 );
 

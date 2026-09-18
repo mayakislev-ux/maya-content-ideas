@@ -349,9 +349,11 @@ async function sendIdeaMessage(text) {
   if (history.length === 0) originalIdeaText = text;
   history.push({ role: 'user', content: text });
   const thinkingBubble = addThinkingBubble(messagesEl());
+  const stopStatus = showThinkingStatus(thinkingBubble);
 
   try {
     const onDelta = (liveTextRef) => (delta) => {
+      stopStatus();
       liveTextRef.value += delta;
       // Avoid flashing the raw "[[RECOGNIZED_EXCELLENT]]" marker text on
       // screen: while the buffered text is still short enough that it could
@@ -423,10 +425,40 @@ async function sendIdeaMessage(text) {
     const hasHebrewText = /[֐-׿]/.test(err.message || '');
     setBubbleText(thinkingBubble, hasHebrewText ? err.message : 'החיבור נכשל, כנראה בגלל רשת לא יציבה. נסו שוב.');
   } finally {
+    stopStatus();
     input.disabled = false;
     newIdeaBtn.disabled = false;
     input.focus();
   }
+}
+
+// ה-AI חושב 20-60 שניות לפני המילה הראשונה. במקום נקודות בלבד (שנראות כמו
+// "נתקע"), מראים מה קורה עכשיו. נעצר ברגע שהטקסט האמיתי מתחיל להגיע.
+const THINKING_STATUSES = [
+  'קוראת את הרעיון שלך...',
+  'חושבת על הקהל שלך...',
+  'בונה זוויות הנגשה...',
+  'מחדדת את הזוויות הכי חזקות...',
+  'עוד כמה שניות, מסדרת את התשובה...',
+];
+
+function showThinkingStatus(bubble) {
+  const status = document.createElement('div');
+  status.className = 'chat-thinking-status';
+  let i = 0;
+  const firstTimer = setTimeout(() => {
+    status.textContent = THINKING_STATUSES[0];
+    bubble.appendChild(status);
+  }, 3000);
+  const interval = setInterval(() => {
+    i = Math.min(i + 1, THINKING_STATUSES.length - 1);
+    status.textContent = THINKING_STATUSES[i];
+  }, 9000);
+  return () => {
+    clearTimeout(firstTimer);
+    clearInterval(interval);
+    status.remove();
+  };
 }
 
 function startOnboarding() {
