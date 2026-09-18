@@ -17,6 +17,7 @@ import { wireWarmingView } from './warming.js';
 import { wireInspirationView, openInspirationView } from './inspiration-view.js';
 import { showView, getLastView } from './view-router.js';
 import { showToast } from './toast.js';
+import { startUpdateCheck } from './update-check.js';
 import { hasCompletedTour, showWelcomeTour } from './welcome-tour.js';
 import {
   enableNotifications,
@@ -131,6 +132,9 @@ if (window.visualViewport) {
   vv.addEventListener('scroll', updateViewportVars);
   updateViewportVars();
 }
+
+// חלון "יש גרסה חדשה" שחוזר עד שמעדכנים - לא תלוי בשינוי של sw.js
+startUpdateCheck();
 
 if ('serviceWorker' in navigator) {
   // A new service worker taking control (self.skipWaiting() in sw.js makes

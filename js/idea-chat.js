@@ -56,8 +56,6 @@ function parseSSEChunk(buffer, chunkText) {
 // Hebrew rewrite ran server-side - the caller should use the resolved value,
 // not its own concatenation, for anything beyond live display).
 async function streamCheckIdea(messages, ideaProfile, onDelta) {
-  const idToken = await auth.currentUser.getIdToken();
-
   // withTimeout (למעלה) כבר קיימת בדיוק בשביל "חיבור שנתקע בלי לפתור ובלי
   // לדחות" - אבל היא מעולם לא עטפה את הקריאה הזו. חיבור stream שנתקע (לא
   // סגור, פשוט שקט) לא היה נופל אף פעם, כי אין timeout על reader.read()
@@ -70,6 +68,22 @@ async function streamCheckIdea(messages, ideaProfile, onDelta) {
     idleTimer = setTimeout(() => controller.abort(), 45000);
   };
   resetIdleTimer();
+
+  // 18/09: הלוגים הראו 3 ימים בלי אף בקשה שהגיעה לשרת, בזמן שהלקוחות ראו "חושב..."
+  // בלי סוף. getIdToken() היה ה-await היחיד בלי הגבלת זמן בדרך לשרת (הוא יכול
+  // להיתקע על IndexedDB אחרי שהאפליקציה הייתה ברקע), ולכן עכשיו הוא מוגבל.
+  const user = auth.currentUser;
+  if (!user) {
+    clearTimeout(idleTimer);
+    throw new Error('צריך להתחבר מחדש. רעננו את הדף ונסו שוב.');
+  }
+  let idToken;
+  try {
+    idToken = await withTimeout(user.getIdToken(), 15000);
+  } catch (err) {
+    clearTimeout(idleTimer);
+    throw new Error('החיבור נתקע. רעננו את הדף ונסו שוב.');
+  }
 
   let response;
   try {
@@ -299,8 +313,10 @@ function advanceOnboarding() {
 
 async function finishOnboarding() {
   profile = { ...draftProfile };
-  await saveProfile(profile);
   onboardingStep = null;
+  // לא מחכים לשמירה: כתיבה ל-Firestore על חיבור תקוע יכולה לא להסתיים אף פעם,
+  // והצ'אט היה נשאר בלי תשובה אחרי השאלה האחרונה
+  withTimeout(saveProfile(profile), 10000).catch((err) => console.error('saveProfile failed:', err));
   document.getElementById('chat-input').hidden = false;
   greetAndAskForIdea();
 }
@@ -315,7 +331,7 @@ function greetAndAskForIdea() {
   const registerVerb = profile.pronoun === 'אתה' ? 'רשום' : 'רשמי';
   addBubble(
     messagesEl(),
-    `${profile.name}, ${registerVerb} לי מה הרעיון שלך ואדייק אותך.\n\n💡 טיפ: אם קשה לך להמציא רעיון מ-0 (וזה רוב האנשים!) - הכי מומלץ להתחיל משכפול רעיון וזווית הנגשה שראית ברשת ומצאו חן בעיניך. ככה לא צריך לשבור את הראש על רעיון חדש, לא צריך לחשוב לבד איך לצלם כי הפורמט כבר מוכח, וזה גם עוזר לפתח הבנה שיווקית של מה עובד. מדריך מלא לשכפול תוכן: https://docs.google.com/document/d/16E3UA0ukElNLcxHT_5C84XrWUZJ3iN0AVPD4BiNphx8/edit?tab=t.0`,
+    `${profile.name ? `${profile.name}, ` : ''}${registerVerb} לי מה הרעיון שלך ואדייק אותך.\n\n💡 טיפ: אם קשה לך להמציא רעיון מ-0 (וזה רוב האנשים!) - הכי מומלץ להתחיל משכפול רעיון וזווית הנגשה שראית ברשת ומצאו חן בעיניך. ככה לא צריך לשבור את הראש על רעיון חדש, לא צריך לחשוב לבד איך לצלם כי הפורמט כבר מוכח, וזה גם עוזר לפתח הבנה שיווקית של מה עובד. מדריך מלא לשכפול תוכן: https://docs.google.com/document/d/16E3UA0ukElNLcxHT_5C84XrWUZJ3iN0AVPD4BiNphx8/edit?tab=t.0`,
     'assistant'
   );
 }
