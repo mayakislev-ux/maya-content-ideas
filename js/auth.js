@@ -1,4 +1,5 @@
-import { auth } from './firebase-init.js';
+import { auth, functions } from './firebase-init.js';
+import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
 import { loginErrorText } from './login-error-text.js';
 import { showInAppBrowserWarning } from './inapp-browser.js';
 import {
@@ -8,7 +9,34 @@ import {
   getRedirectResult,
   signOut,
   onAuthStateChanged,
+  signInWithCustomToken,
 } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
+
+// 19/09/2026 (מאיה: "שהמעבר ישאר חלק ולא ידרוש מהן להתחבר"): הפורטל
+// ("המהלך השיווקי") פותח את האפליקציה עם #portal=<אסימון> בכתובת. מוחקים
+// אותו מהכתובת מיד, מחליפים אותו בשרת (portalSso) באסימון כניסה לאותו
+// חשבון לפי המייל, ונכנסים - בלי מסך התחברות ובלי לבחור חשבון גוגל.
+const portalHandoffToken = (() => {
+  const m = /^#portal=([\w.-]+)$/.exec(window.location.hash);
+  if (!m) return null;
+  history.replaceState(null, '', window.location.pathname + window.location.search);
+  return m[1];
+})();
+
+export const portalHandoff = portalHandoffToken
+  ? httpsCallable(functions, 'portalSso')({ idToken: portalHandoffToken })
+      // כבר מחוברת לאותו חשבון? לא מתחברים שוב (זה היה מריץ את כל הטעינה פעמיים)
+      .then(async (res) => {
+        await auth.authStateReady();
+        if (auth.currentUser?.uid === res.data.uid) return null;
+        return signInWithCustomToken(auth, res.data.token);
+      })
+      .then(() => ({ ok: true }))
+      .catch((err) => {
+        console.error('portal handoff failed:', err);
+        return { ok: false, message: err?.message || 'המעבר מהפורטל לא הצליח' };
+      })
+  : null;
 
 const provider = new GoogleAuthProvider();
 

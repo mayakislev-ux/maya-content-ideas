@@ -1680,6 +1680,7 @@ exports.sendNotification = onCall({ secrets: [vapidPrivateKey], region: 'us-cent
   return { sent, failed };
 });
 
+Object.assign(exports, require('./portal-sso'));
 Object.assign(exports, require('./grow-payment-webhook'));
 Object.assign(exports, require('./gift-auto-reply'));
 Object.assign(exports, require('./quick-deal'));

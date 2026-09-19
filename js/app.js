@@ -1,9 +1,9 @@
-import { onAuthChange, signInWithGoogle, signOutUser } from './auth.js';
+import { onAuthChange, signInWithGoogle, signOutUser, portalHandoff } from './auth.js';
 import { loginErrorText } from './login-error-text.js';
 import { isInAppBrowser, showInAppBrowserWarning } from './inapp-browser.js';
 import { auth, db, functions } from './firebase-init.js';
 import { doc, getDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
-import { saveProfile } from './user-profile.js';
+import { saveProfile, getProfile } from './user-profile.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
 import { subscribeToIdeas } from './ideas-store.js';
 import { renderArchive, wireArchiveControls, getCurrentIdeas, wirePullToRefresh, wireGoalEditModal } from './archive-view.js';
@@ -450,7 +450,46 @@ document.getElementById('enable-notifications-btn').addEventListener('click', as
   if (ok) document.getElementById('enable-notifications-btn').hidden = true;
 });
 
+// מעבר מהפורטל בתהליך: לא מראים מסך התחברות עד שהכניסה האוטומטית מסתיימת
+let portalHandoffPending = Boolean(portalHandoff);
+if (portalHandoff) {
+  portalHandoff.then((result) => {
+    portalHandoffPending = false;
+    if (!result.ok && !auth.currentUser) {
+      document.getElementById('launch-splash').hidden = true;
+      document.getElementById('login-screen').hidden = false;
+      const errorEl = document.getElementById('login-error');
+      errorEl.textContent = 'המעבר מהפורטל לא הצליח. אפשר להתחבר כאן עם גוגל, או לחזור לפורטל ולנסות שוב';
+      errorEl.hidden = false;
+    }
+  });
+}
+
+// 19/09/2026: "חזרה לפורטל" - רק למי שיש לה חשבון בפורטל (מחזור 5 ומעלה,
+// מסומן בפרופיל כשנכנסה מהפורטל) ולמאיה (לפאנל הניהול). מחזורים 1-4 לא
+// בפורטל, ואצלן הכפתור לא מופיע.
+const PORTAL_URL = 'https://maya-client-portal.web.app';
+async function showPortalBackButton(user) {
+  const btn = document.getElementById('portal-back-btn');
+  if (!btn) return;
+  let link = user.email === ADMIN_EMAIL ? 'owner' : null;
+  if (!link) {
+    try {
+      link = (await getProfile())?.portalLink || null;
+    } catch (err) {
+      console.error('portal link check failed:', err);
+    }
+  }
+  if (!link) {
+    btn.hidden = true;
+    return;
+  }
+  btn.href = `${PORTAL_URL}${link === 'owner' ? '/admin/home' : '/portal/home'}`;
+  btn.hidden = false;
+}
+
 onAuthChange(async (user) => {
+  if (!user && portalHandoffPending) return;
   document.getElementById('launch-splash').hidden = true;
 
   if (unsubscribeIdeas) {
@@ -494,6 +533,7 @@ onAuthChange(async (user) => {
   // מוצלחת נותנת סיגנל "פעילות אמיתית" אמין, שהשרת מעדיף על lastSignInTime.
   saveProfile({ lastActiveAt: serverTimestamp() }).catch((err) => console.error('lastActiveAt update failed:', err));
   setGreeting(user.displayName);
+  showPortalBackButton(user);
   if (user.photoURL) {
     const logo = document.querySelector('.app-logo');
     if (logo) {
