@@ -4495,3 +4495,22 @@ textarea:focus-visible,
 
 .portal-back-btn--login { margin: 14px auto 0; display: inline-flex; background: #5b2a86; color: #fff; }
 .portal-back-btn--login[hidden] { display: none; }
+
+/* 19/09/2026 ערב (מאיה: "במחשב הכפתור של חזרה לפורטל לא מספיק בולט וברור"):
+   כפתור מלא בזהב עם מסגרת, בולט על הכותרת הסגולה ועל רקע בהיר */
+@media (min-width: 721px) {
+  .portal-back-btn:not(.portal-back-btn--login) {
+    height: 2.875rem;
+    padding: 0 16px 0 20px;
+    gap: 8px;
+    background: #f6c945;
+    color: #2a1348;
+    font-size: 1rem;
+    font-weight: 800;
+    border: 2px solid #fff;
+    box-shadow: 0 4px 14px rgba(28, 15, 61, 0.35);
+  }
+  .portal-back-btn:not(.portal-back-btn--login):hover { background: #ffd85c; }
+  .portal-back-btn:not(.portal-back-btn--login) svg { width: 18px; height: 18px; }
+}
+@media (max-width: 720px) { .pbb-long { display: none; } }
