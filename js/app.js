@@ -453,6 +453,8 @@ document.getElementById('enable-notifications-btn').addEventListener('click', as
 // מעבר מהפורטל בתהליך: לא מראים מסך התחברות עד שהכניסה האוטומטית מסתיימת
 let portalHandoffPending = Boolean(portalHandoff);
 if (portalHandoff) {
+  const splashText = document.getElementById('launch-splash-text');
+  if (splashText) splashText.hidden = false;
   portalHandoff.then((result) => {
     portalHandoffPending = false;
     if (!result.ok && !auth.currentUser) {

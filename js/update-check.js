@@ -9,7 +9,8 @@
 const STAMP_URL = './manifest.json';
 const CHECK_EVERY_MS = 5 * 60 * 1000;
 const SNOOZE_MS = 10 * 60 * 1000;
-const MAX_SNOOZES = 2;
+// 19/09/2026 (מאיה: "שיקפוץ תמיד עד שמעדכנים"): בלי "אחר כך" בכלל
+const MAX_SNOOZES = 0;
 
 let loadedStamp = null;
 let snoozedUntil = 0;
