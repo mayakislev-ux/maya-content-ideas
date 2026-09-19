@@ -5,6 +5,7 @@
 // לחשבון עם אותו מייל כאן - אותו חשבון בדיוק, עם כל הרעיונות שכבר יש לה.
 // מסמנים בפרופיל שהיא מהפורטל, כדי שיופיע אצלה "חזרה לפורטל". מחזורים 1-4
 // לא בפורטל, אז אצלן אין סימון ואין כפתור.
+const crypto = require('crypto');
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const admin = require('firebase-admin');
 
@@ -29,6 +30,18 @@ exports.portalSso = onCall({ region: 'us-central1', invoker: 'public' }, async (
   } catch (err) {
     console.warn('portalSso: bad portal token', err.code || err.message);
     throw new HttpsError('unauthenticated', 'פג תוקף המעבר מהפורטל. חזרו לפורטל ולחצו שוב');
+  }
+  // 19/09/2026 (בדיקת אבטחה): אסימון חדש בלבד (עד 2 דקות מהנפקה) ושימוש
+  // אחד בלבד. אסימון שדלף (היסטוריה, צילום מסך) לא ניתן לשימוש חוזר.
+  const ageSec = Math.floor(Date.now() / 1000) - Number(decoded.iat || 0);
+  if (!(ageSec >= -60 && ageSec <= 120)) {
+    throw new HttpsError('unauthenticated', 'פג תוקף המעבר מהפורטל. חזרו לפורטל ולחצו שוב');
+  }
+  const usedRef = admin.firestore().collection('portalSsoUsed').doc(crypto.createHash('sha256').update(idToken).digest('hex'));
+  try {
+    await usedRef.create({ uid: decoded.uid, at: admin.firestore.FieldValue.serverTimestamp() });
+  } catch {
+    throw new HttpsError('unauthenticated', 'הקישור הזה כבר שומש. חזרו לפורטל ולחצו שוב');
   }
   const email = String(decoded.email || '').toLowerCase();
   const role = decoded.role;

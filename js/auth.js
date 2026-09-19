@@ -17,10 +17,20 @@ import {
 // אותו מהכתובת מיד, מחליפים אותו בשרת (portalSso) באסימון כניסה לאותו
 // חשבון לפי המייל, ונכנסים - בלי מסך התחברות ובלי לבחור חשבון גוגל.
 const portalHandoffToken = (() => {
+  // הסקריפט הקטן ב-<head> של index.html כבר מחק את האסימון מהכתובת ושמר אותו כאן
+  let t = null;
+  try {
+    t = sessionStorage.getItem('portalHandoff');
+    sessionStorage.removeItem('portalHandoff');
+  } catch {
+    // אין אחסון: ננסה מהכתובת עצמה
+  }
   const m = /^#portal=([\w.-]+)$/.exec(window.location.hash);
-  if (!m) return null;
-  history.replaceState(null, '', window.location.pathname + window.location.search);
-  return m[1];
+  if (m) {
+    history.replaceState(null, '', window.location.pathname + window.location.search);
+    t = t || m[1];
+  }
+  return t;
 })();
 
 export const portalHandoff = portalHandoffToken

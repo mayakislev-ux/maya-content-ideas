@@ -16,6 +16,16 @@
 <link rel="preconnect" href="https://www.gstatic.com">
 <link rel="preconnect" href="https://firestore.googleapis.com">
 <link rel="preconnect" href="https://us-central1-content-ideas-becd7.cloudfunctions.net">
+<script>
+  // 19/09/2026: אסימון המעבר מהפורטל נמחק מהכתובת לפני שמשהו אחר נטען,
+  // כדי שלא יישמר בהיסטוריה. js/auth.js לוקח אותו מכאן.
+  (function () {
+    var m = /^#portal=([\w.-]+)$/.exec(location.hash);
+    if (!m) return;
+    try { sessionStorage.setItem('portalHandoff', m[1]); } catch (e) { return; }
+    history.replaceState(null, '', location.pathname + location.search);
+  })();
+</script>
 </head>
 <body>
 
