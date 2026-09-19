@@ -79,3 +79,60 @@ exports.agentPortalLaunch0859 = onSchedule(
     }
   }
 );
+
+// 19/09/2026 (מאיה): תזכורת "מחר נפגשים" למחזור 6 במוצאי כיפור, 21/09/2026 בשעה
+// 20:00 בדיוק, עם "גמר חתימה טובה" בראש ההודעה. מחליפה את ה-GitHub Action
+// (שאיחר בעבר בשעתיים וגרם לכפילות). רק לקבוצת ההכרזות של מחזור 6.
+const KIPPUR_DATE = '2026-09-21';
+const KIPPUR_BANNER = 'https://firebasestorage.googleapis.com/v0/b/maya-client-portal.firebasestorage.app/o/public%2Fbanner-tomorrow-meeting.jpeg?alt=media&token=f47e192f-edf6-45ff-8bfd-97e59ea7d6f6';
+const KIPPUR_CAPTION = `גמר חתימה טובה 🤍
+
+מחר זה קורה🤩
+נפגשים למפגש ה-4 שלנו בזום!
+
+⏰ שעות: 10:00–14:00
+
+מה להכין?‼️
+*אין דבר כזה לעלות למפגש בלי לצפות בפרק שנפתח - המהלך הויזואלי ולעשות את המשימות.* זה מפגש יישום – לא מפגש לימוד. תבואו אחרי שצפיתם, רשמתם שאלות, התחלתם ליישם, וכל דבר שלא ברור או נתקעתם עליו - נפתור ביחד במפגש.
+
+תבואו עם אנרגיות!
+נתראה מחר`;
+
+exports.agentKippurReminder2000 = onSchedule(
+  {
+    schedule: '0 20 21 9 *',
+    timeZone: 'Asia/Jerusalem',
+    region: 'us-central1',
+    retryCount: 0,
+    timeoutSeconds: 120,
+    secrets: [greenApiIdInstance, greenApiTokenInstance],
+  },
+  async () => {
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jerusalem' }).format(new Date());
+    if (today !== KIPPUR_DATE) {
+      console.log('agentKippurReminder2000: not the send date, skipping', { today });
+      return;
+    }
+    const chatId = '120363428535207121@g.us';
+    const lockRef = admin.firestore().collection('oneOffSends').doc(`kippur-reminder-${KIPPUR_DATE}-${chatId}`);
+    try {
+      await lockRef.create({ state: 'sending', at: new Date().toISOString() });
+    } catch (err) {
+      console.warn('agentKippurReminder2000: already sent (lock exists), skipping');
+      return;
+    }
+    try {
+      const res = await fetch(`https://api.green-api.com/waInstance${greenApiIdInstance.value()}/sendFileByUrl/${greenApiTokenInstance.value()}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json; charset=utf-8' },
+        body: JSON.stringify({ chatId, urlFile: KIPPUR_BANNER, fileName: 'תזכורת.jpeg', caption: KIPPUR_CAPTION }),
+      });
+      const text = await res.text();
+      await lockRef.update({ state: res.ok ? 'sent' : 'failed', http: res.status, response: text.slice(0, 300) });
+      console.log('agentKippurReminder2000:', res.status, text.slice(0, 120));
+    } catch (err) {
+      await lockRef.update({ state: 'unknown', error: String(err).slice(0, 300) }).catch(() => {});
+      console.error('agentKippurReminder2000: send crashed', err);
+    }
+  }
+);
