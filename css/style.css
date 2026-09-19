@@ -4492,3 +4492,6 @@ textarea:focus-visible,
 .launch-splash-text[hidden] { display: none; }
 @keyframes splash-pulse { 50% { opacity: 0.55; } }
 @media (prefers-reduced-motion: reduce) { .launch-splash-text { animation: none; } }
+
+.portal-back-btn--login { margin: 14px auto 0; display: inline-flex; background: #5b2a86; color: #fff; }
+.portal-back-btn--login[hidden] { display: none; }

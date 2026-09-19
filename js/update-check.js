@@ -74,6 +74,9 @@ function buildDialog() {
 
 function showUpdateDialog() {
   if (dialogOpen || Date.now() < snoozedUntil) return;
+  // 19/09/2026 (פיילוט): לא באמצע כתיבה של רעיון או צ'אט - יופיע בבדיקה הבאה
+  const el = document.activeElement;
+  if (el && (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT' || el.isContentEditable)) return;
   const dialog = document.getElementById('update-dialog') || buildDialog();
   const later = dialog.querySelector('#update-dialog-later');
   const mustUpdate = snoozes >= MAX_SNOOZES;

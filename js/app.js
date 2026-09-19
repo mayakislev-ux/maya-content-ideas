@@ -463,6 +463,9 @@ if (portalHandoff) {
       const errorEl = document.getElementById('login-error');
       errorEl.textContent = 'המעבר מהפורטל לא הצליח. אפשר להתחבר כאן עם גוגל, או לחזור לפורטל ולנסות שוב';
       errorEl.hidden = false;
+      // 19/09/2026 (פיילוט): דרך חזרה גלויה (באפליקציה מותקנת באייפון אין כפתור אחורה)
+      const back = document.getElementById('login-portal-back');
+      if (back) back.hidden = false;
     }
   });
 }
