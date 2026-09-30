@@ -23,9 +23,26 @@ const TAB = {
 // כמה עמודות של קבוצות/דמויות יש בלשונית קהל היעד (B..F)
 const MAX_AUDIENCES = 5;
 
-function clean(value) {
+// 30/09/2026 (מאיה: "צריך כל פער / תוצאה / כאב בעיה בשורה בנפרד, שיהיה
+// מסודר", "פיספסת המון דברים שכתובים בטבלה"):
+//
+// התשובות בגיליון בנויות משורות אמיתיות - בסעיף הכאבים שלה 83 שורות,
+// באג'נדות 129 - והקוד כאן מחק את כל מעברי השורה ב-\s+ ואז חתך לשישה
+// פריטים. משם הגיעו גם הגושים וגם התוכן שנעלם.
+//
+// flat נשאר לכותרות, ששם רווח כפול באמת לא מעניין. text שומר על השורות.
+function flat(value) {
   return String(value == null ? '' : value).replace(/\s+/g, ' ').trim();
 }
+
+function text(value) {
+  return String(value == null ? '' : value)
+    .split(/\r?\n/)
+    .map((line) => line.replace(/[ \t]+/g, ' ').trim())
+    .join('\n')
+    .trim();
+}
+const clean = flat;
 
 /** האם תא השאלה מכיל את כל מילות המפתח */
 function labelMatches(cell, keywords) {
@@ -44,7 +61,7 @@ function answersFor(rows, keywords, col = 1) {
   for (const row of rows || []) {
     if (!Array.isArray(row)) continue;
     if (!labelMatches(row[0], keywords)) continue;
-    out.push(clean(row[col]));
+    out.push(text(row[col]));
   }
   return out;
 }
@@ -53,7 +70,7 @@ function answersFor(rows, keywords, col = 1) {
 function answerAt(rows, keywords, index) {
   const all = answersFor(rows, keywords);
   if (!all.length) return '';
-  return clean(all[index]) || clean(all[0]);
+  return text(all[index]) || text(all[0]);
 }
 
 /** מספר השורה (0-based) שהשאלה שלה תואמת, או -1 */
@@ -90,20 +107,26 @@ function audienceCell(audienceRows, keywords, col) {
   const idx = rowIndexOf(audienceRows, keywords);
   if (idx === -1) return '';
   const row = audienceRows[idx] || [];
-  return clean(row[col]);
+  return text(row[col]);
 }
 
+// השאלות בגיליון. הנוסח משתנה בין התבניות (בקובץ של מאיה "איפה בעצמכם
+// השגתם את התוצאות האלו?", אצל לקוחה "איפה בעצמכם אתם השגתם את החלומות,
+// התשוקות והתוצאות האלה?"), ולכן ההתאמה היא לפי מילות מפתח משותפות.
 const PERSONA_Q = {
+  audienceResults: ['התוצאות', 'עוזרים'],
   gapDirect: ['איפה בעצמכם', 'השגתם'],
   gapIndirect: ['תוצאות עקיפות'],
+  livesTheDream: ['חיים ביום יום'],
+  audienceProblems: ['בעיות', 'ללקוחות שלכם'],
   reflection: ['איפה חוויתם בעצמכם'],
-  mirrorStory: ['סיפור אישי'],
+  audienceDreams: ['החלומות', 'של הקהל'],
   needToHear: ['צריך לשמוע'],
+  mirrorStory: ['סיפור אישי'],
   whyMe: ['ולא סתם עוד מישהו'],
   different: ['שונים ממה שאנשים אחרים'],
   critique: ['ביקורת מקצועית'],
 };
-
 const AUDIENCE_Q = {
   buys: ['מה הם קונים'],
   whoBuys: ['מי קונה'],
@@ -118,18 +141,77 @@ const AUDIENCE_Q = {
   ifNot: ['אם לא פותרים'],
 };
 
-/** הופך תא של הגיליון לשורות תצוגה. בגיליון הן מסומנות ב-1. 2. או ב-* ו-• */
-function toBullets(text, max = 6) {
-  const raw = clean(text);
-  if (!raw) return [];
-  const parts = raw
-    .split(/(?:^|\s)(?:\d+\.\s|[•*·–]\s|„)/)
-    .map((p) => clean(p).replace(/^[”"']+|[”"']+$/g, ''))
-    .filter((p) => p.length > 12);
-  const list = parts.length > 1 ? parts : [raw];
-  return list.slice(0, max);
+/**
+ * הופך תא של הגיליון לשורות תצוגה, אחת לכל פריט.
+ *
+ * 30/09/2026 (מאיה): "צריך כל פער / תוצאה / כאב בעיה בשורה בנפרד לרשום
+ * שיהיה מסודר" ו"פיספסת המון דברים שכתובים בטבלה".
+ *
+ * קודם מפצלים לפי מעברי שורה, שזה המבנה האמיתי שבו היא כותבת. אחר כך,
+ * רק בשורה שנשארה ארוכה ומכילה סימון פנימי, מפצלים גם לפיו. הסימונים
+ * שבאמת מופיעים אצלה כוללים ספרות באימוג'י (1️⃣), נקודה-מספר, כוכבית,
+ * בולט, ומקף ארוך. אין יותר תקרה: מה שכתוב בגיליון נכנס במלואו.
+ */
+// לוכסן בודד בתוך מחרוזת JS נבלע ("\s" הופך ל-"s"), ולכן הסימונים
+// נכתבים כאן עם לוכסן כפול. בלי זה הפיצול פשוט לא תופס כלום, בשקט.
+const MARKERS =
+  '(?:^|\\s)(?:[1-9]\\uFE0F?\\u20E3|\\d+[.)]\\s|[\\u2022\\u25AA\\u25CF*\\u00B7]\\s|[\\u2013\\u2014]\\s|\\u201E)';
+const MARKER_SPLIT = new RegExp(MARKERS, 'gu');
+const LEADING =
+  new RegExp('^(?:[1-9]\\uFE0F?\\u20E3|\\d+[.)]|[\\u2022\\u25AA\\u25CF*\\u00B7\\u2013\\u2014-])\\s*', 'u');
+const QUOTES = new RegExp('^[\\u201C\\u201D"\']+|[\\u201C\\u201D"\']+$', 'g');
+function stripBullet(line) {
+  return line.replace(LEADING, '').replace(QUOTES, '').trim();
 }
 
+// שורה שממשיכה את קודמתה, ולא פותחת פריט חדש. בגיליון שלה משפט אחד
+// נפרס על כמה שורות ("אם פספסתי שבוע" / "הרסתי את האלגוריתם"), ופיצול
+// עיוור לפי שורות היה קורע אותם לשברים חסרי משמעות.
+const ENDS_ITEM = new RegExp('[.!?:;\\u2022]$');
+const STARTS_ITEM = new RegExp('^(?:[1-9]\\uFE0F?\\u20E3|\\d+[.)]|[\\u2022\\u25AA\\u25CF*\\u00B7\\u2013\\u2014-]\\s)', 'u');
+
+/**
+ * הופך תא של הגיליון לפריטים, אחד לכל דבר שהיא כתבה.
+ *
+ * 30/09/2026 (מאיה): "צריך כל פער / תוצאה / כאב בעיה בשורה בנפרד לרשום
+ * שיהיה מסודר" ו"פיספסת המון דברים שכתובים בטבלה".
+ *
+ * שורה פותחת פריט חדש כשיש לה סימון, או כשהשורה שלפניה הסתיימה במשפט.
+ * אחרת היא המשך של אותו פריט. אין תקרה: הכל נכנס.
+ */
+function toBullets(value) {
+  const raw = text(value);
+  if (!raw) return [];
+
+  const items = [];
+  let prev = null;
+  for (const line of raw.split(String.fromCharCode(10))) {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      prev = null;
+      continue;
+    }
+    // כמה סימונים באותה שורה = כמה פריטים שנדחסו לשורה אחת
+    const inner = trimmed.split(MARKER_SPLIT).map(stripBullet).filter((x) => x.length > 1);
+    if (inner.length > 1) {
+      items.push(...inner);
+      prev = null;
+      continue;
+    }
+    const one = stripBullet(trimmed);
+    if (one.length < 2) continue;
+    const isNew = STARTS_ITEM.test(trimmed) || prev === null || ENDS_ITEM.test(prev);
+    if (isNew) {
+      items.push(one);
+      prev = one;
+    } else {
+      items[items.length - 1] += ' ' + one;
+      prev = items[items.length - 1];
+    }
+  }
+  // כותרת משנה שנשארה לבד לא מוסיפה כלום
+  return items.filter((x) => x.length > 2);
+}
 // 30/09/2026, תיקון של מאיה: "את לא צריכה לכתוב להם מה להגיד אלא רק נושאים",
 // "בחלק של להראות שיש ביקוש את לא צריכה להמציא, פשוט תכתבי להם ככותרת, שלא
 // יבלבל", "בחלק של הסגירה אין צורך שתפרטי כי לימדתי אותן רצף של 4 סטוריז".
@@ -158,15 +240,15 @@ const TOPIC_ROWS = {
   },
 };
 
-function filledRow({ key, kind, tool, source, bullets, stage }) {
-  const row = { key, kind, tool, source, bullets, fromSheet: true };
+function filledRow({ key, kind, tool, source, groups, stage }) {
+  const row = { key, kind, tool, source, groups: groups || [], fromSheet: true };
   if (stage) row.stage = stage;
   return row;
 }
 
 /** כלי שאין לו מקור בגיליון: כותרת ונושא, בלי שדה מילוי ובלי תסריט */
 function topicRow(spec) {
-  return { ...spec, source: '', bullets: [], fromSheet: false };
+  return { ...spec, source: '', groups: [], bullets: [], fromSheet: false };
 }
 
 /**
@@ -176,38 +258,99 @@ function topicRow(spec) {
  * המצב אצל כמעט כולן, כי הן מילאו את הפרסונה פעם אחת ואת קהלי היעד כמה
  * פעמים, ועדיף להציג את מה שיש מאשר שורה ריקה.
  */
+// ההגדרה של כל כלי, במילים של מאיה מתוך "סיכום - חימום קהל בסטורי".
+// היא מוצגת מתחת לשם הכלי, אחרי ש-30/09/2026 היא כתבה "לדעתי יש לך
+// בלבול בפער ישיר, זה לא תוצאות שהוא רוצה, זה תוצאות שהוא רוצה שאני
+// השגתי בעצמי". ההגדרה על המסך מונעת בדיוק את הבלבול הזה.
+const TOOL_DEF = {
+  'gap-direct': 'תוצאה שהקהל רוצה בעצמו, ושלך כבר יש. הדברים הברורים שהם חולמים עליהם ושאת השגת בעצמך',
+  'gap-indirect': 'סגנון החיים והתחושה שהשירות שלך מאפשר. הדברים שהם לא אומרים בקול',
+  reflection: 'שיראו את עצמם בתוכן שלך. הכאבים שלהם, המחשבות שלהם, ושגם את היית שם',
+  mirror: 'שיראו שזה אפשרי גם בשבילם. הדרך ונקודת ההתחלה, לא רק התוצאה',
+  demand: 'צילומי מסך של פניות שהגיעו. גם מעט, גם מהשבועיים האחרונים',
+  welcome: 'מי את, איזה ערך את נותנת, ולמה כדאי להם להישאר',
+  problem: 'להציף בעיה נפוצה, לחשוף טעות שהם עושים בלי לדעת, שיגידו בראש זה בדיוק אני',
+  solution: 'לשרוף גשרים מול פתרונות אחרים, לנפץ אמונה מגבילה, ולהראות הצלחות',
+  close: 'רצף של ארבעה סטוריז, סביב תוצאה אחת של לקוחה או שלך',
+  fomo: 'להמשיך להדליק אש אחרי הסגירה. לקוחות בפעולה, ומה קורה עכשיו בתהליך',
+};
+
+/**
+ * הטבלה של קהל אחד.
+ *
+ * 30/09/2026 (מאיה): "בכל הסעיפים פיספסת המון דברים שכתובים בטבלה... צריך
+ * סדר ולוודא שלא פיספסת דברים". לכן אין כאן יותר אף תקרה על מספר הפריטים:
+ * כל מה שכתוב בגיליון נכנס, כל פריט בשורה משלו.
+ *
+ * החלוקה עצמה היא לפי "סיכום - חימום קהל בסטורי" שלה, כולל השאלות המנחות
+ * של כל חוק - הכאבים והאמונות המגבילות שייכים לחוק ההשתקפות, והביקורת על
+ * התחום שייכת לשלב הפתרון ("לשרוף גשרים").
+ */
+/**
+ * הטבלה של קהל אחד.
+ *
+ * 30/09/2026 (מאיה): "בכל הסעיפים פיספסת המון דברים שכתובים בטבלה... צריך
+ * סדר ולוודא שלא פיספסת דברים".
+ *
+ * שני הדברים יחד: אין יותר תקרה על מספר הפריטים, וכל מקור מוצג בקבוצה
+ * משלו עם הכותרת שלו. בלי הקבוצות, חוק ההשתקפות היה ערימה אחת של 372
+ * פריטים משש שאלות שונות, וזה בדיוק ההפך מסדר.
+ *
+ * החלוקה לפי "סיכום - חימום קהל בסטורי" שלה, כולל השאלות המנחות של כל
+ * חוק: הכאבים והאמונות שייכים לחוק ההשתקפות, והביקורת על התחום שייכת
+ * לשלב הפתרון ("לשרוף גשרים").
+ */
 function tableForAudience({ personaRows, audienceRows, col, index }) {
   const p = (q) => answerAt(personaRows, PERSONA_Q[q], index);
   const a = (q) => audienceCell(audienceRows, AUDIENCE_Q[q], col);
+
+  // [כותרת הקבוצה, התוכן] -> קבוצות עם תוכן בלבד
+  const group = (pairs) =>
+    pairs
+      .map(([label, value]) => ({ label, items: toBullets(value) }))
+      .filter((g) => g.items.length);
 
   const ongoing = [
     filledRow({
       key: 'gap-direct',
       kind: 'ongoing',
       tool: 'חוק הפער · ישיר',
-      source: 'פרסונה שיווקית · התוצאות שלך',
-      bullets: toBullets(p('gapDirect')),
+      source: 'פרסונה שיווקית',
+      groups: group([['התוצאות שאת עצמך השגת', p('gapDirect')]]),
     }),
     filledRow({
       key: 'gap-indirect',
       kind: 'ongoing',
       tool: 'חוק הפער · עקיף',
-      source: 'פרסונה שיווקית · תוצאות עקיפות',
-      bullets: toBullets(p('gapIndirect')),
+      source: 'פרסונה שיווקית',
+      groups: group([
+        ['תוצאות עקיפות שהשגת', p('gapIndirect')],
+        ['איך את חיה את החלומות שלהם ביום יום', p('livesTheDream')],
+      ]),
     }),
     filledRow({
       key: 'reflection',
       kind: 'ongoing',
       tool: 'חוק ההשתקפות',
-      source: 'פרסונה + כאבי הקהל',
-      bullets: [...toBullets(p('reflection'), 3), ...toBullets(a('pains'), 3)],
+      source: 'פרסונה + ניתוח קהל יעד',
+      groups: group([
+        ['הבעיות, הפחדים והאמונות שלהם', p('audienceProblems')],
+        ['איפה את בעצמך חווית את אותו דבר', p('reflection')],
+        ['הכאבים שלהם', a('pains')],
+        ['איך הם מתנהגים ביום יום', a('behaviour')],
+        ['השאלות שהם שואלים', a('questions')],
+        ['האמונות שמונעות מהם לקנות', a('beliefs')],
+      ]),
     }),
     filledRow({
       key: 'mirror',
       kind: 'ongoing',
       tool: 'חוק הראי',
-      source: 'פרסונה · הסיפור האישי',
-      bullets: toBullets(p('mirrorStory'), 3),
+      source: 'פרסונה שיווקית',
+      groups: group([
+        ['הסיפור האישי שלך', p('mirrorStory')],
+        ['מה הם צריכים לשמוע כדי לזוז', p('needToHear')],
+      ]),
     }),
     topicRow(TOPIC_ROWS.demand),
     topicRow(TOPIC_ROWS.welcome),
@@ -219,45 +362,51 @@ function tableForAudience({ personaRows, audienceRows, col, index }) {
       kind: 'sale',
       stage: 1,
       tool: 'מודעות לבעיה',
-      source: 'קהל יעד · כאבים, התנהגות, ומה קורה אם לא',
-      bullets: [...toBullets(a('pains'), 3), ...toBullets(a('ifNot'), 2), ...toBullets(a('behaviour'), 1)],
+      source: 'ניתוח קהל יעד',
+      groups: group([
+        ['הכאבים שלהם', a('pains')],
+        ['מה קורה אם הם לא פותרים את זה', a('ifNot')],
+        ['הטעויות שהם עושים בלי לדעת', a('behaviour')],
+        ['השאלות שהם שואלים', a('questions')],
+      ]),
     }),
     filledRow({
       key: 'solution',
       kind: 'sale',
       stage: 2,
       tool: 'מודעות לפתרון',
-      source: 'קהל יעד · אמונות ודרכים אחרות',
-      bullets: [
-        ...toBullets(a('beliefs'), 3),
-        ...toBullets(a('alternatives'), 2),
-        ...toBullets(p('critique'), 1),
-      ],
+      source: 'ניתוח קהל יעד + פרסונה',
+      groups: group([
+        ['אמונות מגבילות לנפץ', a('beliefs')],
+        ['פתרונות אחרים שהם שוקלים, גשרים לשרוף', a('alternatives')],
+        ['הביקורת שלך על התחום', p('critique')],
+        ['למה דווקא את, ולא עוד מישהו', p('whyMe')],
+        ['במה הדרך שלך שונה', p('different')],
+        ['התוצאה שהם מקבלים ממך', a('result')],
+      ]),
     }),
     closeRow({ whenBuys: a('whenBuys') }),
     topicRow(TOPIC_ROWS.fomo),
   ];
 
-  // שורה שנשלפה מהגיליון ויצאה ריקה אומרת את זה במילים, אבל לא הופכת לשדה
-  // מילוי: מאיה, 30/09/2026, "את לא צריכה לכתוב להם מה להגיד אלא רק נושאים".
+  // שורה שנשלפה מהגיליון ויצאה ריקה אומרת את זה במילים, אבל לא הופכת
+  // לשדה מילוי: מאיה, "את לא צריכה לכתוב להם מה להגיד אלא רק נושאים".
   const repair = (row) => {
-    if (!row.fromSheet || row.bullets.length) return row;
-    return { ...row, fromSheet: false, bullets: [], topic: `בקובץ שלך זה עדיין ריק (${row.source})` };
+    const groups = row.groups || [];
+    const bullets = groups.flatMap((g) => g.items);
+    const out = { ...row, groups, bullets, definition: TOOL_DEF[row.key] || null };
+    if (!out.fromSheet || bullets.length) return out;
+    return {
+      ...out,
+      fromSheet: false,
+      groups: [],
+      bullets: [],
+      topic: `בקובץ שלך זה עדיין ריק (${row.source})`,
+    };
   };
 
   return { ongoing: ongoing.map(repair), sale: sale.map(repair) };
 }
-
-/**
- * שלב הסגירה.
- *
- * 30/09/2026, מאיה: "בחלק של הסגירה אין צורך שתפרטי, כי לימדתי אותן רצף של
- * 4 סטוריז למכירה. הן בוחרות תוצאה כלשהי של לקוח, שלהן אפילו".
- *
- * לכן כאן אין שליפה מסל מוצרים ואין בקשה למחיר. יש את הרצף שהיא לימדה,
- * כארבעה שלבים בשמות שלה, ושורה אחת שאומרת שהתוצאה יכולה להיות של לקוחה או
- * שלהן. הטריגר מהגיליון נשאר, כי הוא שלהן וכן עוזר לבחור מתי.
- */
 function closeRow({ whenBuys }) {
   return {
     key: 'close',
@@ -273,7 +422,8 @@ function closeRow({ whenBuys }) {
       'סטורי 3 · דיבור למצלמה לחיזוק התוצאה',
       'סטורי 4 · הנעה לפעולה עם טריגר',
     ],
-    bullets: toBullets(whenBuys, 2),
+    groups: toBullets(whenBuys).length ? [{ label: 'מתי הם קונים, הטריגר', items: toBullets(whenBuys) }] : [],
+    bullets: toBullets(whenBuys),
   };
 }
 

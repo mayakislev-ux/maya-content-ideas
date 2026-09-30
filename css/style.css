@@ -4974,3 +4974,65 @@ textarea:focus-visible,
   font: inherit;
   font-size: 0.8125rem;
 }
+
+/* 30/09/2026 (מאיה: "צריך סדר ולוודא שלא פיספסת דברים"): כל מקור בגיליון
+   הוא קבוצה עם כותרת ומספר פריטים. קבוצה ארוכה נפתחת בלחיצה, כדי שהכל
+   יהיה שם בלי שהמסך יהפוך לקיר. */
+.st-def {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: var(--muted);
+}
+.st-group {
+  border: 1px solid var(--border-color);
+  border-radius: var(--card-radius-sm);
+  background: var(--bg);
+  overflow: hidden;
+}
+.st-group + .st-group {
+  margin-top: 0.4rem;
+}
+.st-group > summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  padding: 0.5rem 0.7rem;
+  cursor: pointer;
+  list-style: none;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--accent-strong);
+}
+.st-group > summary::-webkit-details-marker {
+  display: none;
+}
+.st-group > summary::before {
+  content: "";
+  flex-shrink: 0;
+  width: 0;
+  height: 0;
+  border-inline-start: 5px solid var(--accent);
+  border-block: 4px solid transparent;
+  transition: transform 150ms ease;
+}
+.st-group[open] > summary::before {
+  transform: rotate(-90deg);
+}
+.st-group__label {
+  flex-grow: 1;
+}
+.st-group__count {
+  flex-shrink: 0;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--accent-tint);
+  color: var(--accent-700);
+  font-size: 0.6875rem;
+  font-weight: 800;
+}
+.st-group .st-bullets {
+  padding: 0 1.4rem 0.7rem;
+  gap: 0.35rem;
+}

@@ -273,3 +273,92 @@ test('עמודת "קבוצה 5:" בלי שם לא הופכת לקהל', () => {
     'עצמאיות ביופי',
   ]);
 });
+
+// 30/09/2026, סבב תיקונים של מאיה מול הטבלה שלה: "צריך כל פער / תוצאה /
+// כאב בעיה בשורה בנפרד לרשום שיהיה מסודר", "בכל הסעיפים פיספסת המון דברים
+// שכתובים בטבלה", "צריך סדר ולוודא שלא פיספסת דברים", "לדעתי יש לך בלבול
+// בפער ישיר, זה לא תוצאות שהוא רוצה, זה תוצאות שהוא רוצה שאני השגתי בעצמי".
+const LF = String.fromCharCode(10);
+const many = (n, p) => Array.from({ length: n }, (_, i) => `${p} ${i + 1}.`).join(LF);
+
+const BIG_PERSONA = [
+  ['שאלה', 'התשובה שלך'],
+  ['איפה בעצמכם השגתם את התוצאות האלו?', many(20, 'תוצאה שהשגתי')],
+  ['תרשמו גם תוצאות עקיפות שהשגתם', many(9, 'תוצאה עקיפה')],
+  ['איך אתם בעצמכם חיים ביום יום את החלומות של הקהל שלכם?', many(7, 'ככה אני חיה')],
+  ['אילו בעיות/פחדים/אמונות מגבילות יש ללקוחות שלכם?', many(30, 'בעיה שלהם')],
+  ['איפה חוויתם בעצמכם את אותן בעיות ?', many(4, 'גם אני')],
+  ['איזה סיפור אישי שלכם יעורר בקהל השראה ויגרום לו להזהות?', 'סיפור אחד ארוך שנשאר שלם.'],
+  ['ביקורת מקצועית על התחום שלכם', many(8, 'ביקורת')],
+];
+
+const bigTabs = () => ({ [TAB.persona]: BIG_PERSONA, [TAB.audience]: AUDIENCE_ROWS });
+const rowOf = (key) => {
+  const a = buildStoryTable(bigTabs()).audiences[0];
+  return [...a.ongoing, ...a.sale].find((r) => r.key === key);
+};
+
+test('שום דבר לא נחתך: כל מה שכתוב בגיליון נכנס', () => {
+  assert.equal(rowOf('gap-direct').bullets.length, 20, 'עשרים תוצאות, לא שש');
+  const reflection = rowOf('reflection');
+  assert.ok(reflection.bullets.length >= 34, `ציפינו לכל הפריטים, קיבלנו ${reflection.bullets.length}`);
+});
+
+test('כל פריט בשורה נפרדת, ולא גוש אחד', () => {
+  const items = rowOf('gap-direct').bullets;
+  assert.ok(items.every((x) => !x.includes(LF)), "אין שורות מרובות בתוך פריט");
+  assert.match(items[0], /תוצאה שהשגתי 1/);
+  assert.match(items[19], /תוצאה שהשגתי 20/);
+});
+
+test('כל מקור בקבוצה משלו, עם כותרת', () => {
+  const reflection = rowOf('reflection');
+  const labels = reflection.groups.map((g) => g.label);
+  assert.ok(labels.includes('הבעיות, הפחדים והאמונות שלהם'));
+  assert.ok(labels.includes('איפה את בעצמך חווית את אותו דבר'));
+  assert.ok(labels.includes('הכאבים שלהם'));
+  assert.ok(reflection.groups.every((g) => g.items.length > 0), "קבוצה ריקה לא מוצגת");
+  // הספירה בכל קבוצה נכונה
+  const mine = reflection.groups.find((g) => g.label === 'איפה את בעצמך חווית את אותו דבר');
+  assert.equal(mine.items.length, 4);
+});
+
+test('חוק הפער הישיר הוא רק מה שהיא עצמה השיגה', () => {
+  const direct = rowOf('gap-direct');
+  assert.deepEqual(direct.groups.map((g) => g.label), ['התוצאות שאת עצמך השגת']);
+  const text = direct.bullets.join(" ");
+  assert.ok(!text.includes("בעיה שלהם"), "לא הבעיות של הקהל");
+  assert.ok(!text.includes("תוצאה עקיפה"), "ולא התוצאות העקיפות");
+  assert.match(direct.definition, /ושלך כבר יש/);
+  assert.match(direct.definition, /שאת השגת בעצמך/);
+});
+
+test('הפער העקיף כולל גם איך היא חיה את החלומות שלהם', () => {
+  const indirect = rowOf('gap-indirect');
+  assert.deepEqual(indirect.groups.map((g) => g.label), [
+    'תוצאות עקיפות שהשגת',
+    'איך את חיה את החלומות שלהם ביום יום',
+  ]);
+  assert.equal(indirect.bullets.length, 16);
+});
+
+test('לכל כלי יש הגדרה במילים של מאיה', () => {
+  const a = buildStoryTable(bigTabs()).audiences[0];
+  for (const row of [...a.ongoing, ...a.sale]) {
+    assert.ok(row.definition && row.definition.length > 20, `${row.key} בלי הגדרה`);
+  }
+});
+
+test('משפט שנפרס על כמה שורות נשאר פריט אחד', () => {
+  const split = ['צריך להעלות כל יום כדי לראות תוצאות', 'אם פספסתי שבוע', 'הרסתי את האלגוריתם'].join(LF);
+  assert.equal(toBullets(split).length, 1);
+  const real = ['פריט ראשון שמסתיים בנקודה.', 'פריט שני שגם מסתיים בנקודה.'].join(LF);
+  assert.equal(toBullets(real).length, 2);
+});
+
+test('ספרות באימוג׳ מפצלות לפריטים', () => {
+  const emoji = [String.fromCharCode(49, 65039, 8419) + " שאפתנות", String.fromCharCode(50, 65039, 8419) + " נחישות"].join(LF);
+  const out = toBullets(emoji);
+  assert.equal(out.length, 2);
+  assert.equal(out[0], "שאפתנות");
+});

@@ -79,11 +79,21 @@ export function esc(text) {
  * הטקסט של שורה אחת כפי שהוא מוצג וכפי שהוא נכנס לתוכנית.
  * סדר הקדימות: עריכה שלה, אחר כך תשובה שלה, אחר כך מה שנשלף מהגיליון.
  */
-export function rowText(row, audienceId, { answers = {}, overrides = {} } = {}) {
-  const override = ((overrides[audienceId] || {})[row.key] || '').trim();
+export function rowOverride(row, audienceId, { overrides = {} } = {}) {
+  return ((overrides[audienceId] || {})[row.key] || '').trim();
+}
+
+/** הטקסט של שורה: מה שהיא כתבה, אחרת כל מה שנשלף מהגיליון */
+export function rowText(row, audienceId, saved = {}) {
+  const override = rowOverride(row, audienceId, saved);
   if (override) return override;
+  const answers = saved.answers || {};
   const answer = ((answers[audienceId] || {})[row.key] || '').trim();
   if (answer) return answer;
+  const groups = Array.isArray(row.groups) ? row.groups : [];
+  if (groups.length) {
+    return groups.map((g) => `${g.label}:\n` + g.items.map((x) => `- ${x}`).join('\n')).join('\n\n');
+  }
   return (row.bullets || []).join('\n');
 }
 
@@ -142,38 +152,54 @@ export function planInputs(audience, saved) {
   };
 }
 
-function rowHtml(row, audience, saved) {
-  const text = rowText(row, audience.id, saved);
-  const stage = row.stage ? `<span class="st-stage">${row.stage}</span>` : '<span class="st-bar"></span>';
+// 30/09/2026 (מאיה): "צריך כל פער / תוצאה / כאב בעיה בשורה בנפרד לרשום
+// שיהיה מסודר", "פיספסת המון דברים שכתובים בטבלה", "צריך סדר ולוודא שלא
+// פיספסת דברים".
+//
+// לכן כל מקור בגיליון מוצג כקבוצה נפרדת עם הכותרת שלה ועם מספר הפריטים,
+// וכל פריט בשורה משלו. קבוצה ארוכה נפתחת בלחיצה, כדי שהכל יהיה שם בלי
+// שהמסך יהפוך לקיר.
+const OPEN_UP_TO = 6;
 
-  const bullets = text
-    .split('\n')
-    .map((l) => l.trim())
-    .filter(Boolean)
-    .map((l) => `<li>${esc(l)}</li>`)
-    .join('');
+function groupHtml(group) {
+  const open = group.items.length <= OPEN_UP_TO ? " open" : "";
+  const items = group.items.map((x) => `<li>${esc(x)}</li>`).join("");
+  return `<details class="st-group"${open}>
+      <summary><span class="st-group__label">${esc(group.label)}</span><span class="st-group__count">${group.items.length}</span></summary>
+      <ul class="st-bullets">${items}</ul>
+    </details>`;
+}
+
+function rowHtml(row, audience, saved) {
+  const override = rowOverride(row, audience.id, saved);
+  const stage = row.stage ? `<span class="st-stage">${row.stage}</span>` : '<span class="st-bar"></span>';
+  const groups = Array.isArray(row.groups) ? row.groups : [];
 
   // רצף הסגירה. מאיה: "לימדתי אותן רצף של 4 סטוריז", ולכן הוא מוצג כרצף
   // ממוספר ולא כפסקה, בשמות שלה בדיוק.
   const steps = Array.isArray(row.steps) && row.steps.length
-    ? `<ol class="st-steps">${row.steps.map((x) => `<li>${esc(x)}</li>`).join('')}</ol>`
-    : '';
+    ? `<ol class="st-steps">${row.steps.map((x) => `<li>${esc(x)}</li>`).join("")}</ol>`
+    : "";
+
+  const body = override
+    ? `<ul class="st-bullets">${override.split("\n").map((l) => l.trim()).filter(Boolean).map((l) => `<li>${esc(l)}</li>`).join("")}</ul>`
+    : groups.map(groupHtml).join("");
 
   return `
-    <li class="st-row${row.fromSheet ? '' : ' st-row--topic'}" data-key="${esc(row.key)}">
+    <li class="st-row${row.fromSheet ? "" : " st-row--topic"}" data-key="${esc(row.key)}">
       <div class="st-row__head">${stage}<h3 class="st-row__tool">${esc(row.tool)}</h3></div>
-      ${row.fromSheet ? `<span class="st-chip">${esc(row.source)}</span>` : ''}
-      ${row.topic ? `<p class="st-topic">${esc(row.topic)}</p>` : ''}
+      ${row.definition ? `<p class="st-def">${esc(row.definition)}</p>` : ""}
+      ${row.fromSheet ? `<span class="st-chip">${esc(row.source)}</span>` : ""}
+      ${row.topic ? `<p class="st-topic">${esc(row.topic)}</p>` : ""}
       ${steps}
-      ${bullets ? `<ul class="st-bullets">${bullets}</ul>` : ''}
+      ${body}
       <button type="button" class="st-edit" data-row="${esc(row.key)}">לערוך או להוסיף</button>
       <label class="st-field" hidden>
         <span class="st-field__label">${esc(row.tool)}</span>
-        <textarea class="st-input" rows="4" data-row="${esc(row.key)}" data-kind="override">${esc(text)}</textarea>
+        <textarea class="st-input" rows="6" data-row="${esc(row.key)}" data-kind="override">${esc(rowText(row, audience.id, saved))}</textarea>
       </label>
     </li>`;
 }
-
 export function renderStoryTable(table, audienceId) {
   const audience = selectedAudience(table, audienceId);
   if (!audience) return '';
