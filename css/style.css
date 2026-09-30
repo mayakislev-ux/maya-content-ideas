@@ -4527,6 +4527,14 @@ textarea:focus-visible,
   flex-direction: column;
   gap: 1rem;
 }
+/* 30/09/2026: תכונת hidden לא מנצחת כלל CSS עם display, ולכן כל אלמנט
+   שמוסתר מהקוד חייב את הכלל הזה במפורש. זה בדיוק מה שגרם לטופס הדבקת
+   הקישור להופיע למאיה אף שהקוד הסתיר אותו. */
+.story-table-panel[hidden],
+.st-status[hidden],
+.st-resync[hidden] {
+  display: none;
+}
 
 .st-status {
   margin: 0;
@@ -4540,30 +4548,6 @@ textarea:focus-visible,
 .st-status--warn {
   background: var(--warm-tint);
   color: var(--warm-strong);
-}
-
-.st-sheet-ask {
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-  padding: 1rem;
-  background: var(--card-bg);
-  border: 1px solid var(--border-color);
-  border-radius: var(--card-radius);
-}
-.st-sheet-ask input {
-  min-height: 44px;
-  padding: 0.7rem 0.85rem;
-  border: 1px solid var(--border-color);
-  border-radius: var(--card-radius-sm);
-  background: var(--bg);
-  color: var(--text);
-  font: inherit;
-}
-.st-sheet-ask__note {
-  margin: 0;
-  font-size: 0.8125rem;
-  color: var(--muted);
 }
 
 /* שער הכניסה: כמה מולא, מה חסר, והכפתור */
@@ -4949,4 +4933,15 @@ textarea:focus-visible,
 .st-steps li::marker {
   color: var(--warm);
   font-weight: 800;
+}
+
+/* 30/09/2026: כל אלמנט שהקוד מסתיר עם hidden, אבל מחלקה שלו קובעת display
+   ולכן הוא ממשיך להופיע. חמישה מהם היו באפליקציה עוד לפני טבלת החימום:
+   מחוון "נשמר", שני כפתורי המיקרופון, שורת הקהל המשני בתכנית התוכן, ותיבת
+   התוצאה של רעיון אקראי. יש עכשיו בדיקה שנופלת אם מישהו מוסיף עוד אחד. */
+.draft-saved-indicator[hidden],
+.mic-btn[hidden],
+.content-plan-checkbox-row[hidden],
+.random-result[hidden] {
+  display: none;
 }

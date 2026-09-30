@@ -569,17 +569,9 @@
     <section id="story-table-panel" class="story-table-panel">
       <p id="st-status" class="st-status" hidden></p>
 
-      <form id="st-sheet-form" class="st-sheet-ask" hidden>
-        <label for="st-sheet-url">קישור לקובץ העבודה האישי שלך</label>
-        <input id="st-sheet-url" type="url" inputmode="url"
-          placeholder="https://docs.google.com/spreadsheets/d/...">
-        <button type="submit" class="btn-primary">לטעון את הקובץ</button>
-        <p class="st-sheet-ask__note">פעם אחת בלבד. אחר כך זה יזכור אותו.</p>
-      </form>
-
       <div id="story-table"></div>
 
-      <button type="button" id="st-resync-btn" class="btn-text st-resync">לרענן מהקובץ</button>
+      <button type="button" id="st-resync-btn" class="btn-text st-resync" hidden>לרענן מהקובץ</button>
     </section>
 
     <div id="st-plan-sheet" class="st-plan-sheet" hidden>

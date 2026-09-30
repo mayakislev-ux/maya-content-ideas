@@ -104,27 +104,44 @@ function showStatus(text, warn = false) {
   status.className = warn ? 'st-status st-status--warn' : 'st-status';
 }
 
-async function runSync(sheetUrl) {
+/**
+ * 30/09/2026 (מאיה, כשראתה את המסך): "לא רוצה ששימו לינק לקובץ, רוצה
+ * שאוטומטי כבר לכל אחת יהיה את הטבלה שבנויה מהקובץ שלה שכבר מסונכרן, סתם
+ * בלאגן".
+ *
+ * לכן אין יותר שדה להדבקת קישור. כשאין טבלה, המסך חוזר בשקט לטופס הישן
+ * ומציג שורה אחת מסבירה, במקום לבקש ממנה לעשות עבודה של חיבור קבצים.
+ */
+function fallbackToForm(message) {
+  el('story-table').innerHTML = '';
+  el('warming-form').hidden = false;
+  showStatus(message, false);
+}
+
+async function runSync() {
   if (state.busy) return;
   state.busy = true;
   showStatus('קוראים את הקובץ שלך...');
   try {
-    const res = await syncStoryTable(sheetUrl);
-    // מי שאין לה קובץ מקושר מקבלת את השדה להדביק קישור פעם אחת
-    el('st-sheet-form').hidden = res.reason !== 'no-sheet';
+    const res = await syncStoryTable();
     if (!res.ready) {
-      showStatus(res.message || 'לא הצלחנו לבנות את הטבלה.', true);
-      el('story-table').innerHTML = '';
+      fallbackToForm(
+        res.reason === 'no-sheet'
+          ? 'הקובץ האישי שלך עוד לא מחובר כאן. אפשר לבנות תוכנית גם בלעדיו, ומאיה תחבר אותו.'
+          : res.message || 'לא הצלחנו לבנות את הטבלה מהקובץ שלך.'
+      );
       return;
     }
     const saved = await loadStoryTable();
     state.table = saved || { audiences: res.audiences, answers: {}, overrides: {} };
     state.audienceId = (state.table.audiences[0] || {}).id || null;
     showStatus('');
+    el('warming-form').hidden = true;
+    el('st-resync-btn').hidden = false;
     refresh();
   } catch (err) {
     console.error('syncStoryTable failed:', err);
-    showStatus('לא הצלחנו לקרוא את הקובץ כרגע. אפשר לנסות שוב.', true);
+    fallbackToForm('לא הצלחנו לקרוא את הקובץ כרגע. אפשר לבנות תוכנית גם בלעדיו.');
   } finally {
     state.busy = false;
   }
@@ -133,8 +150,7 @@ async function runSync(sheetUrl) {
 export async function wireStoryTableView() {
   const panel = el('story-table-panel');
   const sheet = el('st-plan-sheet');
-  const sheetForm = el('st-sheet-form');
-  if (!panel || !sheet || !sheetForm) return;
+  if (!panel || !sheet) return;
 
   panel.addEventListener('click', (e) => {
     const pill = e.target.closest('.st-pill');
@@ -173,18 +189,13 @@ export async function wireStoryTableView() {
     if (choice && !choice.disabled) buildPlan(choice.dataset.audience);
   });
 
-  sheetForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const url = el('st-sheet-url').value.trim();
-    if (!url) return;
-    runSync(url);
-  });
-
   try {
     const saved = await loadStoryTable();
     if (saved && saved.audiences.length) {
       state.table = saved;
       state.audienceId = saved.audiences[0].id;
+      el('warming-form').hidden = true;
+      el('st-resync-btn').hidden = false;
       refresh();
       return;
     }
