@@ -25,6 +25,7 @@ import {
 } from './story-table-render.js';
 import { showToast } from './toast.js';
 import { auth } from './firebase-init.js';
+import { onAuthChange } from './auth.js';
 
 const OWNER_EMAIL = 'mayakislev@gmail.com';
 
@@ -243,6 +244,24 @@ export async function wireStoryTableView() {
     if (choice && !choice.disabled) buildPlan(choice.dataset.audience);
   });
 
+  // 30/09/2026 (מאיה: "למה לא התעדכן אצלי?"): הפונקציה הזאת רצה באתחול,
+  // והמשתמש נכנס רק מאוחר יותר ב-onAuthChange. לכן הקריאה לנתונים הייתה
+  // מתבצעת כש-auth.currentUser עדיין null, נכשלת בשקט, ונופלת לטבלת
+  // הנושאים - בכל פתיחה, בלי קשר למה שבאמת שמור. הטעינה מחכה עכשיו
+  // למשתמש, והחיווט של האירועים למעלה נשאר מיידי.
+  let loadedFor = null;
+  onAuthChange(async (user) => {
+    if (!user) {
+      loadedFor = null;
+      return;
+    }
+    if (loadedFor === user.uid) return;
+    loadedFor = user.uid;
+    await loadInitial();
+  });
+}
+
+async function loadInitial() {
   try {
     const saved = await loadStoryTable();
     if (saved && saved.audiences.length) {

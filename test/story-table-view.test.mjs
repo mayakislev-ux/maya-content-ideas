@@ -211,3 +211,26 @@ test('שמות הכלים בלקוח זהים לאלה שבשרת', () => {
   const serverTools = [...a.ongoing, ...a.sale].map((r) => r.tool);
   assert.deepEqual(DEFAULT_TOOLS, serverTools);
 });
+
+
+// 30/09/2026 (מאיה: "למה לא התעדכן אצלי?"): wireStoryTableView רצה באתחול
+// האפליקציה, והמשתמש נכנס רק מאוחר יותר ב-onAuthChange. הקריאה לנתונים
+// התבצעה כש-auth.currentUser היה null, נכשלה בשקט, והמסך נפל לטבלת הנושאים
+// בכל פתיחה בלי קשר למה ששמור. זה מה שהסתיר ממנה טבלה מלאה.
+test('הטעינה מחכה למשתמש ולא רצה באתחול', () => {
+  assert.match(VIEW, /onAuthChange/, 'הטעינה תלויה בכניסת המשתמש');
+
+  const wireBody = VIEW.slice(
+    VIEW.indexOf('export async function wireStoryTableView'),
+    VIEW.indexOf('async function loadInitial')
+  );
+  assert.ok(wireBody.length > 100, 'מצאנו את גוף הפונקציה');
+  assert.ok(!/loadStoryTable\(\)/.test(wireBody), 'אין קריאה לנתונים לפני שיש משתמש');
+  assert.ok(!/runSync\(\)/.test(wireBody.replace(/onAuthChange[\s\S]*$/, '')), 'אין סנכרון לפני שיש משתמש');
+  assert.match(wireBody, /loadInitial\(\)/, 'הטעינה נקראת רק מתוך onAuthChange');
+});
+
+test('טעינה חוזרת לא רצה פעמיים לאותו משתמש', () => {
+  assert.match(VIEW, /loadedFor === user\.uid/, 'שומר על טעינה אחת לכל משתמש');
+  assert.match(VIEW, /loadedFor = null/, 'מתאפס ביציאה, כדי שמשתמשת אחרת תיטען');
+});
