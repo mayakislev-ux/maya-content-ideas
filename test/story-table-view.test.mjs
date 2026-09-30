@@ -35,9 +35,12 @@ test('הטופס הישן מוסתר, והטבלה לפניו', () => {
 // ----------------------------------------------------------------------------
 // הזרימה
 // ----------------------------------------------------------------------------
+import { createRequire } from 'node:module';
 import {
   audienceCounts,
   countsLine,
+  defaultTable,
+  DEFAULT_TOOLS,
   renderStoryTable,
   selectedAudience,
   planChoicesHtml,
@@ -170,4 +173,41 @@ test('בחירת קהל שאינו קיים נופלת לקהל הראשון ו�
   assert.equal(selectedAudience(null, 'a1'), null);
   assert.equal(renderStoryTable(null, 'a1'), '');
   assert.equal(renderStoryTable({ audiences: [] }, 'a1'), '');
+});
+
+
+// 30/09/2026 (מאיה): "לא רוצה את המסך הזה בכלל, רוצה ישר את הטבלה של הסטורי
+// ולמעלה כפתור כמו שאמרתי לך".
+test('הטבלה עולה גם בלי שום תוכן מהקובץ', () => {
+  const t = defaultTable();
+  const a = t.audiences[0];
+  assert.equal(a.ongoing.length + a.sale.length, 10, 'כל עשרת הכלים');
+  assert.ok(a.ongoing.every((r) => r.topic), 'לכל כלי יש נושא');
+  assert.ok(a.sale.every((r) => r.topic));
+  const html = renderStoryTable(t, 'default');
+  assert.match(html, />בניית תוכנית</);
+  assert.doesNotMatch(html, /disabled/, 'הכפתור עובד גם בלי הקובץ');
+  assert.match(html, /סטורי 1 · עצירה/, 'רצף הסגירה מוצג גם כאן');
+  assert.match(html, /חוק הפער · ישיר/);
+  assert.match(html, /אחרי המכירה · פומו/);
+});
+
+test('אין אף מסלול בקוד שמחזיר את הטופס הישן', () => {
+  assert.ok(!VIEW.includes('fallbackToForm'), 'הנפילה לטופס הוסרה');
+  const shows = [...VIEW.matchAll(/warming-form'\)\.hidden\s*=\s*(\w+)/g)].map((m) => m[1]);
+  assert.ok(shows.length > 0, 'ציפינו שהקוד יגע בטופס');
+  assert.deepEqual([...new Set(shows)], ['true'], 'הטופס רק מוסתר, אף פעם לא מוצג');
+});
+
+// שתי הרשימות חיות בשני קבצים (אחד לשרת, אחד ללקוח) ואסור שיתפצלו
+test('שמות הכלים בלקוח זהים לאלה שבשרת', () => {
+  const require = createRequire(import.meta.url);
+  const { buildStoryTable, TAB } = require('../functions/story-table-extract.js');
+  const built = buildStoryTable({
+    [TAB.persona]: [['שאלה', 'תשובה']],
+    [TAB.audience]: [['שאלות לניתוח קהל היעד', 'קבוצה 1: כלשהו']],
+  });
+  const a = built.audiences[0];
+  const serverTools = [...a.ongoing, ...a.sale].map((r) => r.tool);
+  assert.deepEqual(DEFAULT_TOOLS, serverTools);
 });

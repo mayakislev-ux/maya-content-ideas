@@ -15,6 +15,7 @@ import {
   planChoicesHtml,
   planInputs,
   selectedAudience,
+  defaultTable,
 } from './story-table-render.js';
 import { showToast } from './toast.js';
 
@@ -105,17 +106,18 @@ function showStatus(text, warn = false) {
 }
 
 /**
- * 30/09/2026 (מאיה, כשראתה את המסך): "לא רוצה ששימו לינק לקובץ, רוצה
- * שאוטומטי כבר לכל אחת יהיה את הטבלה שבנויה מהקובץ שלה שכבר מסונכרן, סתם
- * בלאגן".
+ * 30/09/2026 (מאיה): "לא רוצה את המסך הזה בכלל, רוצה ישר את הטבלה של
+ * הסטורי ולמעלה כפתור כמו שאמרתי לך".
  *
- * לכן אין יותר שדה להדבקת קישור. כשאין טבלה, המסך חוזר בשקט לטופס הישן
- * ומציג שורה אחת מסבירה, במקום לבקש ממנה לעשות עבודה של חיבור קבצים.
+ * אין מסך ביניים, אין טופס, ואין מסך שגיאה. כשאין תוכן מהקובץ, מוצגת
+ * הטבלה עם הנושאים בלבד, והכפתור למעלה עובד בדיוק אותו דבר.
  */
-function fallbackToForm(message) {
-  el('story-table').innerHTML = '';
-  el('warming-form').hidden = false;
-  showStatus(message, false);
+function showTable(table) {
+  state.table = table;
+  state.audienceId = (table.audiences[0] || {}).id || null;
+  el('warming-form').hidden = true;
+  el('st-resync-btn').hidden = false;
+  refresh();
 }
 
 async function runSync() {
@@ -125,23 +127,18 @@ async function runSync() {
   try {
     const res = await syncStoryTable();
     if (!res.ready) {
-      fallbackToForm(
-        res.reason === 'no-sheet'
-          ? 'הקובץ האישי שלך עוד לא מחובר כאן. אפשר לבנות תוכנית גם בלעדיו, ומאיה תחבר אותו.'
-          : res.message || 'לא הצלחנו לבנות את הטבלה מהקובץ שלך.'
-      );
+      // הנושאים אינם תלויים בקובץ, ולכן הטבלה עולה בכל מקרה
+      showStatus('');
+      showTable(defaultTable());
       return;
     }
     const saved = await loadStoryTable();
-    state.table = saved || { audiences: res.audiences, answers: {}, overrides: {} };
-    state.audienceId = (state.table.audiences[0] || {}).id || null;
     showStatus('');
-    el('warming-form').hidden = true;
-    el('st-resync-btn').hidden = false;
-    refresh();
+    showTable(saved && saved.audiences.length ? saved : { audiences: res.audiences, answers: {}, overrides: {} });
   } catch (err) {
     console.error('syncStoryTable failed:', err);
-    fallbackToForm('לא הצלחנו לקרוא את הקובץ כרגע. אפשר לבנות תוכנית גם בלעדיו.');
+    showStatus('');
+    showTable(defaultTable());
   } finally {
     state.busy = false;
   }
@@ -192,15 +189,13 @@ export async function wireStoryTableView() {
   try {
     const saved = await loadStoryTable();
     if (saved && saved.audiences.length) {
-      state.table = saved;
-      state.audienceId = saved.audiences[0].id;
-      el('warming-form').hidden = true;
-      el('st-resync-btn').hidden = false;
-      refresh();
+      showTable(saved);
       return;
     }
   } catch (err) {
     console.error('loadStoryTable failed:', err);
   }
+  // הטבלה עולה מיד עם הנושאים, והסנכרון ממלא אותה ברקע כשהוא מצליח
+  showTable(defaultTable());
   runSync();
 }
