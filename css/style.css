@@ -4945,3 +4945,32 @@ textarea:focus-visible,
 .random-result[hidden] {
   display: none;
 }
+
+/* 30/09/2026: שורת המנהלת מעל הטבלה. רק מאיה רואה אותה, והיא משמשת
+   לראות מה לקוחה אמיתית רואה, כי הקובץ שלה עצמה ריק. */
+.st-owner-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.7rem 0.85rem;
+  background: var(--surface);
+  border: 1px dashed var(--border-color);
+  border-radius: var(--card-radius-sm);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+.st-owner-bar[hidden] {
+  display: none;
+}
+.st-owner-bar select {
+  flex-grow: 1;
+  min-height: 44px;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--card-radius-sm);
+  background: var(--card-bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.8125rem;
+}

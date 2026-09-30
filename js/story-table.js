@@ -9,7 +9,13 @@
 // כל ההיגיון הטהור נמצא ב-story-table-render.js ונבדק שם. כאן נשארו רק
 // אירועים, טעינה ושמירה.
 
-import { loadStoryTable, syncStoryTable, saveOverride } from './story-table-store.js';
+import {
+  loadStoryTable,
+  syncStoryTable,
+  saveOverride,
+  listStoryTables,
+  loadStoryTableFor,
+} from './story-table-store.js';
 import {
   renderStoryTable,
   planChoicesHtml,
@@ -18,8 +24,11 @@ import {
   defaultTable,
 } from './story-table-render.js';
 import { showToast } from './toast.js';
+import { auth } from './firebase-init.js';
 
-const state = { table: null, audienceId: null, busy: false };
+const OWNER_EMAIL = 'mayakislev@gmail.com';
+
+const state = { table: null, audienceId: null, busy: false, preview: false };
 
 function el(id) {
   return document.getElementById(id);
@@ -46,6 +55,10 @@ function setSaved(input, ok) {
 async function persist(input) {
   const audience = selectedAudience(state.table, state.audienceId);
   if (!audience) return;
+  if (state.preview) {
+    showToast('את צופה בטבלה של לקוחה. עריכה כאן לא נשמרת.');
+    return;
+  }
   const key = input.dataset.row;
   const text = input.value.trim();
   // כל עריכה היא override. אין יותר שדות שמבקשים תוכן, ולכן אין "answers"
@@ -144,6 +157,50 @@ async function runSync() {
   }
 }
 
+/**
+ * 30/09/2026 (מאיה: "אבל למה לא מפורט?"): היא הסתכלה על החשבון שלה, שהקובץ
+ * שלו ריק, וראתה טבלה של נושאים בלי מילים. השורה הזאת נותנת לה לראות את
+ * הטבלה של לקוחה אמיתית, ומוצגת רק לה.
+ */
+async function wireOwnerBar() {
+  const bar = el('st-owner-bar');
+  const pick = el('st-owner-pick');
+  if (!bar || !pick) return;
+  if ((auth.currentUser && auth.currentUser.email) !== OWNER_EMAIL) return;
+
+  let rows = [];
+  try {
+    rows = await listStoryTables();
+  } catch (err) {
+    console.error('listStoryTables failed:', err);
+    return;
+  }
+  if (!rows.length) return;
+
+  pick.innerHTML =
+    '<option value="">הטבלה שלי</option>' +
+    rows.map((r) => `<option value="${r.uid}">${r.name} (${r.count} קהלים)</option>`).join('');
+  bar.hidden = false;
+
+  pick.addEventListener('change', async () => {
+    const uid = pick.value;
+    if (!uid) {
+      state.preview = false;
+      const mine = await loadStoryTable();
+      showTable(mine && mine.audiences.length ? mine : defaultTable());
+      return;
+    }
+    try {
+      const other = await loadStoryTableFor(uid);
+      state.preview = true;
+      showTable(other && other.audiences.length ? other : defaultTable());
+    } catch (err) {
+      console.error('loadStoryTableFor failed:', err);
+      showToast('לא הצלחנו לטעון את הטבלה של הלקוחה.');
+    }
+  });
+}
+
 export async function wireStoryTableView() {
   const panel = el('story-table-panel');
   const sheet = el('st-plan-sheet');
@@ -190,6 +247,7 @@ export async function wireStoryTableView() {
     const saved = await loadStoryTable();
     if (saved && saved.audiences.length) {
       showTable(saved);
+      wireOwnerBar();
       return;
     }
   } catch (err) {
@@ -198,4 +256,5 @@ export async function wireStoryTableView() {
   // הטבלה עולה מיד עם הנושאים, והסנכרון ממלא אותה ברקע כשהוא מצליח
   showTable(defaultTable());
   runSync();
+  wireOwnerBar();
 }

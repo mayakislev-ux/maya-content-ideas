@@ -2,6 +2,8 @@ import { db, auth, functions } from './firebase-init.js';
 import {
   doc,
   getDoc,
+  getDocs,
+  collection,
   setDoc,
   serverTimestamp,
 } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
@@ -55,3 +57,25 @@ export async function saveOverride(audienceId, rowKey, text) {
 
 // ההיגיון הטהור (מה מוצג, מה חסר, מה נכנס לתוכנית) יושב ב-story-table-render.js
 // כדי שאפשר יהיה לבדוק אותו בלי דפדפן. כאן נשארה רק הגישה ל-Firestore.
+
+// 30/09/2026 (מאיה: "אבל למה לא מפורט?"): היא הסתכלה על החשבון שלה, שהקובץ
+// שלו ריק, וחשבה שהמסך שבור. שתי הפונקציות האלה נותנות לה לראות את הטבלה
+// של לקוחה אמיתית. חוקי Firestore מרשים למאיה קריאה בלבד, אף פעם לא כתיבה.
+export async function listStoryTables() {
+  const snap = await getDocs(collection(db, 'storyTables'));
+  return snap.docs
+    .map((d) => ({ uid: d.id, name: d.data().clientName || d.id, count: (d.data().audiences || []).length }))
+    .filter((r) => r.count > 0)
+    .sort((a, b) => a.name.localeCompare(b.name, 'he'));
+}
+
+export async function loadStoryTableFor(uid) {
+  const snap = await getDoc(doc(db, 'storyTables', uid));
+  if (!snap.exists()) return null;
+  const data = snap.data();
+  return {
+    audiences: Array.isArray(data.audiences) ? data.audiences : [],
+    answers: data.answers || {},
+    overrides: data.overrides || {},
+  };
+}

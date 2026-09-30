@@ -96,6 +96,8 @@ exports.makeSyncStoryTable = ({ enforceAllowlist }) =>
           ownerUid: uid,
           sheetId,
           sheetSource: source,
+          // השם נשמר כדי שמאיה תוכל לבחור לקוחה בשמה כשהיא בודקת מה הן רואות
+          clientName: request.auth.token.name || request.auth.token.email || uid,
           audiences: table.audiences,
           syncedAt: admin.firestore.FieldValue.serverTimestamp(),
         },

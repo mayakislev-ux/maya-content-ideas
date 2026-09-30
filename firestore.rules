@@ -31,6 +31,10 @@ service cloud.firestore {
     // אין צורך ב-ownerUid בתוך המסמך כמו באוספים שהמזהה שלהם אקראי.
     match /storyTables/{uid} {
       allow read, write: if isAllowed() && request.auth.uid == uid;
+      // 30/09/2026 (מאיה: "אבל למה לא מפורט?"): היא הסתכלה על החשבון שלה,
+      // שהקובץ שלו ריק, וחשבה שהמסך שבור. מאיה קוראת כל טבלה כדי לראות מה
+      // לקוחה רואה. קריאה בלבד, בלי כתיבה.
+      allow read: if isAdmin();
     }
     match /contentPlans/{planId} {
       allow read, update, delete: if isAllowed() && request.auth.uid == resource.data.ownerUid;
