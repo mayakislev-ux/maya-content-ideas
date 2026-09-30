@@ -562,7 +562,38 @@
 
     <div id="warming-saved-list" class="warming-saved-list" hidden></div>
 
-    <form id="warming-form" class="warming-form">
+    <!-- 30/09/2026 (מאיה): "קודם זה מעביר אותן לדף מסודר כמו טבלה... ורק אז
+         אחרי שיש טבלה יהיה למעלה כפתור של לבנות תכנית ולאיזה קהל".
+         הטופס החופשי שהיה כאן לא נמחק - הוא מולא מהטבלה ונשלח מאחורי הקלעים,
+         וכך כל מה שעובד היום (סטרימינג, ניסיון חוזר, שמירה) נשאר כמו שהוא. -->
+    <section id="story-table-panel" class="story-table-panel">
+      <p id="st-status" class="st-status" hidden></p>
+
+      <form id="st-sheet-form" class="st-sheet-ask" hidden>
+        <label for="st-sheet-url">קישור לקובץ העבודה האישי שלך</label>
+        <input id="st-sheet-url" type="url" inputmode="url"
+          placeholder="https://docs.google.com/spreadsheets/d/...">
+        <button type="submit" class="btn-primary">לטעון את הקובץ</button>
+        <p class="st-sheet-ask__note">פעם אחת בלבד. אחר כך זה יזכור אותו.</p>
+      </form>
+
+      <div id="story-table"></div>
+
+      <button type="button" id="st-resync-btn" class="btn-text st-resync">לרענן מהקובץ</button>
+    </section>
+
+    <div id="st-plan-sheet" class="st-plan-sheet" hidden>
+      <div class="st-plan-sheet__card" role="dialog" aria-modal="true" aria-labelledby="st-plan-title">
+        <span class="st-plan-sheet__grip"></span>
+        <h2 id="st-plan-title">בניית תוכנית</h2>
+        <p class="st-plan-sheet__sub">התוכנית תיבנה מהשורות שמילאת בטבלה, ולא משאלות מחדש.</p>
+        <div class="st-audiences__label">לאיזה קהל</div>
+        <div id="st-plan-choices" class="st-plan-choices"></div>
+        <button type="button" id="st-plan-close" class="btn-text">ביטול</button>
+      </div>
+    </div>
+
+    <form id="warming-form" class="warming-form" hidden>
       <label>איזה מוצר/הצעה מקדמים בסבב הזה? *
         <input id="warming-product" type="text" required placeholder="לדוגמה: הקורס להכשרת מטפלות רגשיות">
       </label>

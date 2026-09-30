@@ -146,4 +146,64 @@ async function fetchExtraContentLinks(text) {
   return { error: false, content: sections.join('\n\n') };
 }
 
-module.exports = { fetchExtraContentLinks, sheetsServiceAccountKey };
+/**
+ * 30/09/2026: טבלת החימום צריכה תאים, לא טקסט.
+ *
+ * fetchExtraContentLinks מחזיר את הגיליון כטקסט אחד שנועד להיכנס לפרומפט,
+ * ושם המבנה נמחק בכוונה. לטבלה צריך בדיוק את ההפך, שורות ועמודות, כדי
+ * לדעת שהעמודה של "קבוצה 2" היא העמודה של "קבוצה 2". לכן קריאה נפרדת.
+ *
+ * מחזיר { [tabTitle]: rows[][] } ללשוניות שנמצאו, או null כשאין גישה בכלל,
+ * ואז מי שקורא יכול לומר ללקוחה משהו אמיתי במקום להציג טבלה ריקה.
+ */
+async function fetchSheetTabs(sheetId, tabTitles) {
+  let keyValue;
+  try {
+    keyValue = sheetsServiceAccountKey.value();
+  } catch (err) {
+    return null;
+  }
+  if (!keyValue) return null;
+
+  let credentials;
+  try {
+    credentials = JSON.parse(keyValue);
+  } catch (err) {
+    console.error('Invalid SHEETS_SERVICE_ACCOUNT_KEY JSON:', err.message);
+    return null;
+  }
+
+  try {
+    const auth = new google.auth.GoogleAuth({
+      credentials,
+      scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+    });
+    const sheets = google.sheets({ version: 'v4', auth });
+
+    // רק לשוניות שקיימות בפועל. batchGet על טווח של לשונית שאינה קיימת
+    // מחזיר שגיאה לכל הבקשה ולא רק לאותה לשונית, ואז גם מה שכן היה נעלם.
+    // הלקוחות מוחקות ומשנות לשוניות, אז זה קורה באמת.
+    const meta = await sheets.spreadsheets.get({
+      spreadsheetId: sheetId,
+      fields: 'sheets.properties.title',
+    });
+    const present = (meta.data.sheets || []).map((s) => s.properties.title);
+    const wanted = tabTitles.filter((t) => present.includes(t));
+    if (!wanted.length) return {};
+
+    const res = await sheets.spreadsheets.values.batchGet({
+      spreadsheetId: sheetId,
+      ranges: wanted.map((t) => `'${t}'!A1:L120`),
+    });
+    const out = {};
+    wanted.forEach((title, i) => {
+      out[title] = ((res.data.valueRanges || [])[i] || {}).values || [];
+    });
+    return out;
+  } catch (err) {
+    console.error('fetchSheetTabs failed:', sheetId, err.message);
+    return null;
+  }
+}
+
+module.exports = { fetchExtraContentLinks, fetchSheetTabs, sheetsServiceAccountKey };

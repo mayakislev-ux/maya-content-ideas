@@ -14,6 +14,7 @@ import { wireFeedbackForm } from './feedback.js';
 import { wireContentPlanView, refreshGate as refreshContentPlanGate } from './content-plan.js';
 import { wireConfirmDialog } from './confirm-dialog.js';
 import { wireWarmingView } from './warming.js';
+import { wireStoryTableView } from './story-table.js';
 import { wireInspirationView, openInspirationView } from './inspiration-view.js';
 import { showView, getLastView } from './view-router.js';
 import { showToast } from './toast.js';
@@ -441,9 +442,17 @@ wireIdeaChat();
 wireFeedbackForm();
 wireContentPlanView();
 wireWarmingView();
+wireStoryTableView();
 wireInspirationView();
 wireConfirmDialog();
-document.getElementById('hub-link-warming').addEventListener('click', () => showView('warming'));
+// 30/09/2026: הטבלה נטענת פעם אחת, וחוזרת להיות גלויה בכל כניסה למסך.
+// אחרי שנבנתה תוכנית הפאנל מוסתר כדי לפנות מקום לתוצאה, ובלי השורה הזאת
+// המסך היה נפתח בפעם הבאה על תוכנית ישנה בלי דרך חזרה לטבלה.
+document.getElementById('hub-link-warming').addEventListener('click', () => {
+  showView('warming');
+  const panel = document.getElementById('story-table-panel');
+  if (panel) panel.hidden = false;
+});
 
 document.getElementById('enable-notifications-btn').addEventListener('click', async () => {
   const ok = await enableNotifications();

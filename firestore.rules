@@ -27,6 +27,11 @@ service cloud.firestore {
       allow read, update, delete: if isAllowed() && request.auth.uid == resource.data.ownerUid;
       allow create: if isAllowed() && request.auth.uid == request.resource.data.ownerUid;
     }
+    // 30/09/2026: טבלת החימום. מסמך אחד לכל לקוחה, לפי ה-uid שלה, ולכן
+    // אין צורך ב-ownerUid בתוך המסמך כמו באוספים שהמזהה שלהם אקראי.
+    match /storyTables/{uid} {
+      allow read, write: if isAllowed() && request.auth.uid == uid;
+    }
     match /contentPlans/{planId} {
       allow read, update, delete: if isAllowed() && request.auth.uid == resource.data.ownerUid;
       allow create: if isAllowed() && request.auth.uid == request.resource.data.ownerUid;

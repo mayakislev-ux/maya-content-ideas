@@ -4514,3 +4514,439 @@ textarea:focus-visible,
   .portal-back-btn:not(.portal-back-btn--login) svg { width: 18px; height: 18px; }
 }
 @media (max-width: 720px) { .pbb-long { display: none; } }
+
+/* ============================================================================
+   טבלת חימום בסטורי (30/09/2026)
+   מאיה: "אולי צריך UI UX חזק". הכרטיס הוא היחידה, לא השורה: בטלפון טבלה
+   אמיתית עם עמודות לא נקראת, ולכן כל כלי הוא כרטיס עם כותרת, מאיפה זה בא,
+   והתוכן עצמו. שני מצבים בלבד, וההבדל ביניהם הוא צבע: כחול = נשלף מהקובץ,
+   ורוד = אנחנו מבקשים ממך.
+   ============================================================================ */
+.story-table-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.st-status {
+  margin: 0;
+  padding: 0.85rem 1rem;
+  border-radius: var(--card-radius-sm);
+  background: var(--accent-tint);
+  color: var(--accent-strong);
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+.st-status--warn {
+  background: var(--warm-tint);
+  color: var(--warm-strong);
+}
+
+.st-sheet-ask {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 1rem;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--card-radius);
+}
+.st-sheet-ask input {
+  min-height: 44px;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--card-radius-sm);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+}
+.st-sheet-ask__note {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+/* שער הכניסה: כמה מולא, מה חסר, והכפתור */
+.st-gate {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.1rem;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+}
+.st-gate__lead {
+  margin: 0;
+  font-size: 1.0625rem;
+  font-weight: 800;
+  line-height: 1.35;
+}
+.st-gate__sub {
+  margin: 0;
+  font-size: 0.9375rem;
+  color: var(--muted);
+  line-height: 1.55;
+}
+.st-progress {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+.st-progress__bar {
+  flex-grow: 1;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--accent-tint);
+  overflow: hidden;
+}
+.st-progress__bar span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+.st-progress__num {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--accent);
+  white-space: nowrap;
+}
+.st-build {
+  width: 100%;
+  min-height: 48px;
+}
+/* מאיה, 27/09/2026 על הפורטל: כפתור שלא עושה כלום נראה שבור. לכן הכפתור
+   הנעול כאן נושא את הסיבה בתוך הטקסט שלו, ולא רק נראה אפור. */
+.st-build:disabled {
+  background: var(--accent-tint);
+  color: var(--muted);
+  cursor: not-allowed;
+  font-size: 0.9375rem;
+}
+
+.st-audiences {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.st-audiences__label {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+.st-audiences__note {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+.st-pills {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+  -webkit-overflow-scrolling: touch;
+}
+.st-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 44px;
+  padding: 0.55rem 0.9rem;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: var(--card-bg);
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.8125rem;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+.st-pill.is-on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 700;
+}
+.st-pill__miss {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--warm);
+  color: #fff;
+  font-size: 0.6875rem;
+  font-weight: 800;
+}
+
+.st-section {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin: 0.5rem 0 0;
+  font-size: 1.0625rem;
+  font-weight: 900;
+}
+.st-section span {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.st-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.st-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 0.9rem 0.95rem;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--card-radius);
+}
+.st-row--missing {
+  border-color: var(--warm-100);
+}
+.st-row.is-saved {
+  border-color: var(--accent-300);
+}
+.st-row.is-savefail {
+  border-color: var(--warm);
+}
+.st-row__head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.st-row__tool {
+  flex-grow: 1;
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 800;
+  line-height: 1.3;
+}
+.st-bar {
+  width: 4px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--accent);
+}
+.st-stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--warm);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+.st-chip {
+  align-self: flex-start;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  background: var(--accent-tint);
+  color: var(--accent-700);
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+.st-chip--missing {
+  background: var(--warm-tint);
+  color: var(--warm-strong);
+}
+.st-why {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  color: var(--muted);
+}
+.st-bullets {
+  margin: 0;
+  padding-inline-start: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+}
+.st-edit {
+  align-self: flex-start;
+  min-height: 44px;
+  padding: 0.55rem 0.9rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--card-radius-sm);
+  background: var(--card-bg);
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.st-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.st-field[hidden] {
+  display: none;
+}
+.st-field__label {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+.st-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.7rem 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--card-radius-sm);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  resize: vertical;
+}
+.st-resync {
+  align-self: center;
+}
+
+/* בחירת הקהל לפני הבנייה */
+.st-plan-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: flex-end;
+  background: rgba(23, 27, 58, 0.45);
+}
+.st-plan-sheet[hidden] {
+  display: none;
+}
+.st-plan-sheet__card {
+  width: 100%;
+  max-height: 88vh;
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding: 1rem 1.1rem calc(1.5rem + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  background: var(--card-bg);
+  border-radius: var(--card-radius) var(--card-radius) 0 0;
+}
+.st-plan-sheet__grip {
+  align-self: center;
+  width: 44px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--border-color);
+}
+.st-plan-sheet__card h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 900;
+}
+.st-plan-sheet__sub {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--muted);
+  line-height: 1.55;
+}
+.st-plan-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+.st-choice {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-height: 44px;
+  padding: 0.8rem 0.85rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--card-radius-sm);
+  background: var(--card-bg);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+.st-choice.is-on {
+  border: 2px solid var(--accent);
+  background: var(--accent-tint);
+}
+.st-choice:disabled {
+  cursor: not-allowed;
+}
+.st-choice__dot {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: 1px solid var(--border-color);
+  background: var(--card-bg);
+}
+.st-choice.is-on .st-choice__dot {
+  border: 5px solid var(--accent);
+}
+.st-choice__text {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.st-choice__name {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--text);
+}
+.st-choice__meta {
+  font-size: 0.6875rem;
+  color: var(--muted);
+}
+.st-choice__meta.is-missing {
+  color: var(--warm-strong);
+  font-weight: 700;
+}
+
+/* 30/09/2026, תיקון של מאיה: "את לא צריכה לכתוב להם מה להגיד אלא רק נושאים".
+   כלי שאין לו מקור בקובץ מוצג כנושא, בגוון שקט ובלי שדה מילוי - הוא לא
+   "חסר", הוא פשוט נושא. */
+.st-row--topic {
+  background: var(--surface);
+}
+.st-topic {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.55;
+  color: var(--accent-strong);
+}
+/* הרצף שמאיה לימדה, ארבעה סטוריז בסדר קבוע */
+.st-steps {
+  margin: 0;
+  padding-inline-start: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  font-weight: 600;
+}
+.st-steps li::marker {
+  color: var(--warm);
+  font-weight: 800;
+}

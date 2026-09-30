@@ -1691,3 +1691,10 @@ Object.assign(exports, require('./daily-summary'));
 Object.assign(exports, require('./seminar-registration-count'));
 Object.assign(exports, require('./daily-summary'));
 Object.assign(exports, require('./seminar-registration-count'));
+
+Object.assign(exports, require('./marathon-launch'));
+
+// 30/09/2026: טבלת החימום בסטורי. הפונקציה מקבלת את enforceAllowlist מכאן
+// כדי לא לשכפל את בדיקת ההרשאה, שהיא אותה בדיקה בכל שאר הפונקציות.
+const { makeSyncStoryTable } = require('./story-table');
+exports.syncStoryTable = makeSyncStoryTable({ enforceAllowlist });
