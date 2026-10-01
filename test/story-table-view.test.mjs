@@ -131,22 +131,62 @@ test('כל שורה אפשר לערוך ולהוסיף לה', () => {
   assert.equal((html.match(/data-kind="override"/g) || []).length, 4);
 });
 
-test('עריכה שלה גוברת על מה שנשלף מהגיליון', () => {
-  const t = table({}, { a1: { 'gap-direct': 'הניסוח שלי' } });
-  assert.equal(rowText(AUD.ongoing[0], 'a1', t), 'הניסוח שלי');
-  assert.match(renderStoryTable(t, 'a1'), /הניסוח שלי/);
-  assert.doesNotMatch(renderStoryTable(t, 'a1'), /<li>עצמאות כלכלית<\/li>/);
+// 30/09/2026, ביקורת 10 סוכנים: תיבת העריכה נטענה עם כל תוכן השורה שטוח,
+// ולכן די היה לפתוח אותה ולגעת במקום אחר כדי שכל הקיבוץ יתמוטט לתמיד.
+test('מה שהיא מוסיפה נוסף, ולא מוחק את מה שנשלף מהגיליון', () => {
+  const t = table({}, { a1: { 'gap-direct': 'התוספת שלי' } });
+  const html = renderStoryTable(t, 'a1');
+  assert.match(html, /<li>עצמאות כלכלית<\/li>/, 'מה שנשלף מהקובץ נשאר');
+  assert.match(html, /מה שהוספת/, 'והתוספת מוצגת בקבוצה משלה');
+  assert.match(html, /<li>התוספת שלי<\/li>/);
 });
 
-test('מה שנכנס לתוכנית נבנה מהטבלה, כולל הנושאים והרצף', () => {
+test('מה שנכנס לתוכנית נבנה מהטבלה, ונכנס למגבלת השרת', () => {
   const inputs = planInputs(AUD, table());
   assert.equal(inputs.product, 'קורס מקצועי למתחילות');
   assert.equal(inputs.audience, 'מתחילות מאפס');
   assert.match(inputs.extraContext, /=== חימום שוטף ===/);
   assert.match(inputs.extraContext, /=== חימום לקראת מכירה ===/);
-  assert.match(inputs.extraContext, /חוק הפער · ישיר: עצמאות כלכלית/);
+  assert.match(inputs.extraContext, /חוק הפער · ישיר/);
   assert.match(inputs.extraContext, /הראו שיש ביקוש: צילום מסך של פניות/);
-  assert.match(inputs.extraContext, /סטורי 1 · עצירה \/ סטורי 2/, 'הרצף נכנס כמו שלימדה');
+  assert.match(inputs.extraContext, /סטורי 1 · עצירה \/ סטורי 2/, "הרצף נכנס כמו שלימדה");
+});
+
+// 30/09/2026, ביקורת 10 סוכנים: השרת חוסם extraContext מעל 5,000 תווים,
+// והטבלה שלחה לשם עשרות אלפי תווים. כלומר בניית תוכנית נכשלה ב-400 אצל כל
+// לקוחה שהקובץ שלה מלא, ועבדה רק אצל מי שהקובץ שלה ריק.
+test('מה שנשלח לשרת תמיד נכנס למגבלת ה-5000 תווים', () => {
+  const many = (n, p) => Array.from({ length: n }, (_, i) => `${p} ${i + 1} משפט עברי באורך סביר לבדיקה`);
+  const row = (key, tool, groups) => ({ key, tool, fromSheet: true, groups, bullets: groups.flatMap((g) => g.items) });
+  const huge = {
+    id: 'a1',
+    name: 'מתחילות מאפס',
+    primary: true,
+    buys: 'קורס',
+    ongoing: [
+      row('gap-direct', 'חוק הפער · ישיר', [{ label: 'התוצאות שלך', items: many(38, 'תוצאה') }]),
+      row('reflection', 'חוק ההשתקפות', [
+        { label: 'הבעיות', items: many(116, 'בעיה') },
+        { label: 'הכאבים', items: many(109, 'כאב') },
+        { label: 'השאלות', items: many(60, 'שאלה') },
+        { label: 'האמונות', items: many(77, 'אמונה') },
+      ]),
+    ],
+    sale: [row('problem', 'מודעות לבעיה', [{ label: 'הכאבים', items: many(109, 'כאב') }])],
+  };
+  const inputs = planInputs(huge, { answers: {}, overrides: {} });
+  assert.ok(inputs.extraContext.length <= 5000, `extraContext יצא ${inputs.extraContext.length} תווים`);
+  assert.ok(inputs.product.length <= 500);
+  assert.ok(inputs.audience.length <= 500);
+  assert.match(inputs.extraContext, /ועוד \d+/, 'אומר כמה הושמט ולא מעלים בשקט');
+  assert.match(inputs.extraContext, /חוק ההשתקפות/, 'כל הכלים עדיין שם');
+});
+
+test('תא רב-שורתי לא נדחף כמו שהוא לשדה חד-שורתי', () => {
+  const a = { ...AUD, buys: ['קורס מקצועי', 'למתחילות מאפס'].join(String.fromCharCode(10)) };
+  const inputs = planInputs(a, table());
+  assert.ok(!inputs.product.includes(String.fromCharCode(10)));
+  assert.equal(inputs.product, 'קורס מקצועי, למתחילות מאפס');
 });
 
 test('כל הקהלים בחירים, כי אין מה להשלים', () => {
@@ -233,4 +273,20 @@ test('הטעינה מחכה למשתמש ולא רצה באתחול', () => {
 test('טעינה חוזרת לא רצה פעמיים לאותו משתמש', () => {
   assert.match(VIEW, /loadedFor === user\.uid/, 'שומר על טעינה אחת לכל משתמש');
   assert.match(VIEW, /loadedFor = null/, 'מתאפס ביציאה, כדי שמשתמשת אחרת תיטען');
+});
+
+// 30/09/2026: שמירה קראה ל-addedGroupHtml בלי לייבא אותו, וכל שמירה הייתה
+// נופלת ב-ReferenceError. הטסט הזה משווה את מה שהקוד משתמש בו מול מה שיוצא
+// מהמודול הטהור.
+test('כל מה שהמסך משתמש בו מהמודול הטהור באמת מיובא', async () => {
+  const mod = await import('../js/story-table-render.js');
+  const exported = Object.keys(mod);
+  const block = VIEW.split("from './story-table-render.js'")[0];
+  const open = block.lastIndexOf('import {');
+  const imported = block.slice(open + 8, block.lastIndexOf('}'))
+    .split(',').map((x) => x.trim()).filter(Boolean);
+  assert.ok(imported.length > 2, "מצאנו את רשימת הייבוא");
+  const used = exported.filter((name) => VIEW.includes(name + "("));
+  const missing = used.filter((name) => !imported.includes(name));
+  assert.deepEqual(missing, [], "נעשה שימוש בלי ייבוא: " + missing.join(", "));
 });

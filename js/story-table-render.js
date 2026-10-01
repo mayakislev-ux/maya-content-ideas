@@ -90,7 +90,7 @@ export function rowText(row, audienceId, saved = {}) {
   const answers = saved.answers || {};
   const answer = ((answers[audienceId] || {})[row.key] || '').trim();
   if (answer) return answer;
-  const groups = Array.isArray(row.groups) ? row.groups : [];
+  const groups = rowGroups(row);
   if (groups.length) {
     return groups.map((g) => `${g.label}:\n` + g.items.map((x) => `- ${x}`).join('\n')).join('\n\n');
   }
@@ -130,36 +130,93 @@ export function countsLine(counts) {
  * שהפונקציה של התוכנית ממילא מקבלת (מוצר, קהל, הקשר) נבנים עכשיו מהטבלה
  * ולא מהקלדה מחדש, ולכן הפרומפט עצמו לא משתנה בכלל, רק מה שנכנס אליו.
  */
-export function planInputs(audience, saved) {
-  const line = (row) => {
-    const parts = [];
-    const text = rowText(row, audience.id, saved).trim();
-    if (text) parts.push(text);
-    if (row.topic) parts.push(row.topic);
-    // רצף הסגירה נכנס לתוכנית כמו שמאיה לימדה אותו, ולא מנוסח מחדש
-    if (Array.isArray(row.steps) && row.steps.length) parts.push(row.steps.join(' / '));
-    return parts.length ? `${row.tool}: ${parts.join(' | ')}` : '';
-  };
-  const section = (title, rows) => [`=== ${title} ===`, ...rows.map(line).filter(Boolean)].join('\n');
+// 30/09/2026, ביקורת 10 סוכנים: השרת חוסם extraContext מעל 5,000 תווים
+// (functions/index.js, assertMaxLength(extraContext, 5000, 'הקשר נוסף')),
+// ועד עכשיו נשלחו לשם עשרות אלפי תווים. כלומר כפתור "בניית תוכנית" נכשל
+// ב-400 אצל כל לקוחה שהקובץ שלה באמת מלא, ועבד רק אצל מי שהקובץ שלה ריק.
+// זו רגרסיה מהסרת התקרות באותו יום: התקרה הישנה של שישה פריטים החזיקה
+// את זה מתחת לגבול בלי שאיש שם לב.
+//
+// התיקון אינו להרים את הגבול בשרת, אלא לבחור מה נכנס: מכל קבוצה נלקחים
+// הפריטים הראשונים, ונרשם כמה הושמטו. הטבלה עצמה ממשיכה להציג הכל.
+export const CONTEXT_LIMIT = 4600;
+const PER_GROUP = 6;
 
-  return {
-    product: audience.buys || audience.name,
-    audience: audience.name,
-    extraContext: [
-      section('חימום שוטף', audience.ongoing || []),
-      section('חימום לקראת מכירה', audience.sale || []),
-    ].join('\n\n'),
-  };
+// 30/09/2026, ביקורת 10 סוכנים: שבע טבלאות אמיתיות עדיין שמורות במבנה
+// הישן (bullets בלי groups), והרנדור החדש צייר להן כרטיסים ריקים לגמרי.
+// כל מקום שקורא groups נופל עכשיו חזרה ל-bullets.
+function rowGroups(row) {
+  const groups = Array.isArray(row.groups) ? row.groups : [];
+  if (groups.length) return groups;
+  const bullets = Array.isArray(row.bullets) ? row.bullets.filter(Boolean) : [];
+  return bullets.length ? [{ label: row.source || 'מהקובץ שלך', items: bullets }] : [];
 }
 
-// 30/09/2026 (מאיה): "צריך כל פער / תוצאה / כאב בעיה בשורה בנפרד לרשום
-// שיהיה מסודר", "פיספסת המון דברים שכתובים בטבלה", "צריך סדר ולוודא שלא
-// פיספסת דברים".
-//
-// לכן כל מקור בגיליון מוצג כקבוצה נפרדת עם הכותרת שלה ועם מספר הפריטים,
-// וכל פריט בשורה משלו. קבוצה ארוכה נפתחת בלחיצה, כדי שהכל יהיה שם בלי
-// שהמסך יהפוך לקיר.
+function rowForPlan(row, audienceId, saved) {
+  const override = rowOverride(row, audienceId, saved);
+  const parts = [];
+  if (override) parts.push(override);
+  else {
+    for (const g of rowGroups(row)) {
+      const take = g.items.slice(0, PER_GROUP);
+      const rest = g.items.length - take.length;
+      parts.push(`${g.label}: ${take.join(' / ')}${rest > 0 ? ` (ועוד ${rest})` : ''}`);
+    }
+  }
+  if (row.topic) parts.push(row.topic);
+  // רצף הסגירה נכנס לתוכנית כמו שמאיה לימדה אותו, ולא מנוסח מחדש
+  if (Array.isArray(row.steps) && row.steps.length) parts.push(row.steps.join(' / '));
+  return parts.length ? `${row.tool}: ${parts.join(' | ')}` : '';
+}
+
+/** חותך לגבול של השרת על גבול שורה, ולא באמצע מילה */
+export function fitContext(textValue, limit = CONTEXT_LIMIT) {
+  if (textValue.length <= limit) return textValue;
+  const lines = textValue.split(String.fromCharCode(10));
+  const kept = [];
+  let size = 0;
+  for (const l of lines) {
+    if (size + l.length + 1 > limit - 40) break;
+    kept.push(l);
+    size += l.length + 1;
+  }
+  return kept.join(String.fromCharCode(10)) + String.fromCharCode(10) + '(נקטע כדי להיכנס למגבלת האורך)';
+}
+
+/**
+ * מה שנכנס לתוכנית.
+ *
+ * מאיה: "ואז גם הכל יהיה הרבה יותר מדויק כי זה ישלוף משם". שלושת השדות
+ * שהפונקציה של התוכנית ממילא מקבלת נבנים מהטבלה ולא מהקלדה מחדש.
+ */
+export function planInputs(audience, saved) {
+  const section = (title, rows) =>
+    [`=== ${title} ===`, ...rows.map((r) => rowForPlan(r, audience.id, saved)).filter(Boolean)].join(String.fromCharCode(10));
+
+  const context = [
+    section('חימום שוטף', audience.ongoing || []),
+    section('חימום לקראת מכירה', audience.sale || []),
+  ].join(String.fromCharCode(10) + String.fromCharCode(10));
+
+  // שדות המוצר והקהל מוגבלים ל-500 בשרת, ו"מה הם קונים" הוא תא רב-שורתי
+  const oneLine = (v) => String(v || '').split(String.fromCharCode(10)).map((x) => x.trim()).filter(Boolean).join(', ').slice(0, 480);
+
+  return {
+    product: oneLine(audience.buys) || audience.name,
+    audience: audience.name,
+    extraContext: fitContext(context),
+  };
+}
+// כל מקור בגיליון מוצג כקבוצה נפרדת עם הכותרת שלה ועם מספר הפריטים, וכל
+// פריט בשורה משלו. קבוצה ארוכה נפתחת בלחיצה, כדי שהכל יהיה שם בלי שהמסך
+// יהפוך לקיר.
 const OPEN_UP_TO = 6;
+
+/** הקבוצה של מה שהיא הוסיפה, מרונדרת גם בשמירה נקודתית */
+export function addedGroupHtml(value) {
+  const items = String(value || '').split(String.fromCharCode(10)).map((l) => l.trim()).filter(Boolean);
+  return items.length ? groupHtml({ label: 'מה שהוספת', items }) : '';
+}
 
 function groupHtml(group) {
   const open = group.items.length <= OPEN_UP_TO ? " open" : "";
@@ -169,11 +226,14 @@ function groupHtml(group) {
       <ul class="st-bullets">${items}</ul>
     </details>`;
 }
-
+// 30/09/2026, ביקורת 10 סוכנים: תיבת העריכה נטענה עם כל תוכן השורה שטוח,
+// ולכן די היה לפתוח אותה ולגעת במקום אחר כדי שכל הקיבוץ שמאיה ביקשה
+// יתמוטט לערימה אחת, לתמיד ובלי ביטול. עכשיו התיבה ריקה, ומה שהיא כותבת
+// נוסף כקבוצה משלה. הקובץ נשאר המקור, ושום דבר שנשלף ממנו לא נמחק.
 function rowHtml(row, audience, saved) {
-  const override = rowOverride(row, audience.id, saved);
-  const stage = row.stage ? `<span class="st-stage">${row.stage}</span>` : '<span class="st-bar"></span>';
-  const groups = Array.isArray(row.groups) ? row.groups : [];
+  const added = rowOverride(row, audience.id, saved);
+  const stage = row.stage ? `<span class="st-stage">${esc(row.stage)}</span>` : '<span class="st-bar"></span>';
+  const groups = rowGroups(row);
 
   // רצף הסגירה. מאיה: "לימדתי אותן רצף של 4 סטוריז", ולכן הוא מוצג כרצף
   // ממוספר ולא כפסקה, בשמות שלה בדיוק.
@@ -181,9 +241,9 @@ function rowHtml(row, audience, saved) {
     ? `<ol class="st-steps">${row.steps.map((x) => `<li>${esc(x)}</li>`).join("")}</ol>`
     : "";
 
-  const body = override
-    ? `<ul class="st-bullets">${override.split("\n").map((l) => l.trim()).filter(Boolean).map((l) => `<li>${esc(l)}</li>`).join("")}</ul>`
-    : groups.map(groupHtml).join("");
+  const addedHtml = added
+    ? addedGroupHtml(added)
+    : "";
 
   return `
     <li class="st-row${row.fromSheet ? "" : " st-row--topic"}" data-key="${esc(row.key)}">
@@ -192,11 +252,12 @@ function rowHtml(row, audience, saved) {
       ${row.fromSheet ? `<span class="st-chip">${esc(row.source)}</span>` : ""}
       ${row.topic ? `<p class="st-topic">${esc(row.topic)}</p>` : ""}
       ${steps}
-      ${body}
-      <button type="button" class="st-edit" data-row="${esc(row.key)}">לערוך או להוסיף</button>
+      ${groups.map(groupHtml).join("")}
+      <div class="st-added" data-added="${esc(row.key)}">${addedHtml}</div>
+      <button type="button" class="st-edit" data-row="${esc(row.key)}">להוסיף משלך</button>
       <label class="st-field" hidden>
-        <span class="st-field__label">${esc(row.tool)}</span>
-        <textarea class="st-input" rows="6" data-row="${esc(row.key)}" data-kind="override">${esc(rowText(row, audience.id, saved))}</textarea>
+        <span class="st-field__label">מה שתוסיפי כאן יצטרף לשורה, ולא ימחק כלום</span>
+        <textarea class="st-input" rows="4" data-row="${esc(row.key)}" data-kind="override">${esc(added)}</textarea>
       </label>
     </li>`;
 }
@@ -228,15 +289,15 @@ export function renderStoryTable(table, audienceId) {
       <div class="st-pills">${pills}</div>
       <p class="st-audiences__note">${
         secondary > 0
-          ? `קהל עיקרי. יש עוד ${secondary} קהלים בקובץ שלך, ולכל אחד תוכנית משלו.`
+          ? `${audience.primary ? 'קהל עיקרי' : 'קהל משני'}. יש בקובץ שלך ${secondary === 1 ? 'עוד קהל אחד' : `עוד ${secondary} קהלים`}, ולכל אחד תוכנית משלו.`
           : 'הקהל היחיד שמולא בקובץ שלך.'
       }</p>
     </div>
 
-    <h2 class="st-section">חימום שוטף <span>5 כלים</span></h2>
+    <h2 class="st-section">חימום שוטף <span>${(audience.ongoing || []).length} כלים</span></h2>
     <ul class="st-list">${(audience.ongoing || []).map((r) => rowHtml(r, audience, table)).join('')}</ul>
 
-    <h2 class="st-section">חימום לקראת מכירה <span>4 שלבים</span></h2>
+    <h2 class="st-section">חימום לקראת מכירה <span>${(audience.sale || []).length} שלבים</span></h2>
     <ul class="st-list">${(audience.sale || []).map((r) => rowHtml(r, audience, table)).join('')}</ul>
   `;
 }

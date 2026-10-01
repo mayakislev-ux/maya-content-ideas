@@ -36,13 +36,14 @@ function toSheetId(value) {
  * פעם מחדש כמו שהיה עד היום בשדה ההקשר החופשי.
  */
 async function resolveSheetId(db, uid, override) {
-  const fromCall = toSheetId(override);
-  if (fromCall) return { sheetId: fromCall, source: 'call' };
-
   const snap = await db.collection('profiles').doc(uid).get();
   const saved = toSheetId(snap.exists ? snap.data().sheetId : '');
   if (saved) return { sheetId: saved, source: snap.data().sheetSource || 'profile' };
 
+  // 30/09/2026, ביקורת 10 סוכנים: עד כאן אפשר היה לשלוח מזהה של כל גיליון
+  // ולקבל את התוכן שלו. הקישור נקבע על ידי מאיה בלבד, ולכן אין יותר
+  // קבלת מזהה מהקריאה.
+  if (override) console.warn('syncStoryTable: ignoring caller-supplied sheet', { uid });
   return { sheetId: '', source: '' };
 }
 
@@ -98,16 +99,15 @@ exports.makeSyncStoryTable = ({ enforceAllowlist }) =>
           sheetSource: source,
           // השם נשמר כדי שמאיה תוכל לבחור לקוחה בשמה כשהיא בודקת מה הן רואות
           clientName: request.auth.token.name || request.auth.token.email || uid,
-          audiences: table.audiences,
+          // 30/09/2026, ביקורת 10 סוכנים: כל פריט נשמר פעמיים (groups ו-bullets)
+          // וניפח את המסמך ב-49%. המסמך הגדול הגיע ל-74% ממגבלת 1MB של
+          // Firestore. bullets נגזר מ-groups בצד הלקוח, ולכן אינו נשמר.
+          audiences: table.audiences.map(stripDerived),
           syncedAt: admin.firestore.FieldValue.serverTimestamp(),
         },
         { merge: true }
       );
 
-      // הקישור שהודבק בקריאה נשמר, כדי שלא יידרש שוב
-      if (source === 'call') {
-        await db.collection('profiles').doc(uid).set({ sheetId, sheetSource: 'pasted' }, { merge: true });
-      }
 
       return { ready: true, reason: '', audiences: table.audiences, sheetId };
     }

@@ -17,6 +17,7 @@ import {
   loadStoryTableFor,
 } from './story-table-store.js';
 import {
+  addedGroupHtml,
   renderStoryTable,
   planChoicesHtml,
   planInputs,
@@ -72,7 +73,12 @@ async function persist(input) {
   try {
     await saveOverride(audience.id, key, text);
     setSaved(input, true);
-    refresh({ keepFocus: key });
+    // 30/09/2026, ביקורת 10 סוכנים: refresh מלא בנה מחדש 216KB של HTML,
+    // סגר כל קבוצה שהיא פתחה, סגר את התיבה וזרק את הפוקוס. עכשיו מתעדכנת
+    // רק השורה שנגעו בה.
+    const host = input.closest(".st-row");
+    const slot = host && host.querySelector("[data-added]");
+    if (slot) slot.innerHTML = addedGroupHtml(text);
   } catch (err) {
     console.error('story table save failed:', err);
     // מחזירים את המצב הקודם, אחרת המסך מראה שנשמר משהו שלא נשמר
@@ -106,7 +112,10 @@ function buildPlan(audienceId) {
   el('warming-audience').value = inputs.audience;
   el('warming-context').value = inputs.extraContext;
   el('st-plan-sheet').hidden = true;
-  el('story-table-panel').hidden = true;
+  // 30/09/2026, ביקורת 10 סוכנים: הסתרת הפאנל הסתירה גם את הודעת השגיאה
+  // של הטופס, ולכן כישלון בבניית תוכנית נראה כמו מסך לבן. הטבלה נשארת
+  // גלויה, והתוצאה מופיעה מתחתיה.
+  showStatus('בונה את התוכנית מהטבלה שלך...');
   if (form.requestSubmit) form.requestSubmit();
   else form.dispatchEvent(new Event('submit', { cancelable: true }));
 }
