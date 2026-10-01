@@ -20,7 +20,12 @@ test('כל מזהה שהקוד מחפש קיים ב-HTML', () => {
     ...[...VIEW.matchAll(/(?:^|[^A-Za-z])el\('([^']+)'\)/g)].map((m) => m[1]),
   ];
   assert.ok(ids.length >= 8, 'ציפינו לכמה מזהים, אחרת הבדיקה לא בודקת כלום');
-  const missing = ids.filter((id) => !HTML.includes(`id="${id}"`));
+  // 01/10/2026: שורת המנהלת אינה ב-HTML בכוונה. מאיה: "אני לא רוצה אפילו
+  // שיראו את האופציה לצפות אחת לשנייה", ולכן היא נבנית בקוד רק עבורה.
+  const builtInCode = ['st-owner-bar', 'st-owner-pick'];
+  const missing = ids
+    .filter((id) => !builtInCode.includes(id))
+    .filter((id) => !HTML.includes(`id="${id}"`));
   assert.deepEqual(missing, [], `מזהים שלא קיימים ב-HTML: ${missing.join(', ')}`);
 });
 
@@ -289,4 +294,15 @@ test('כל מה שהמסך משתמש בו מהמודול הטהור באמת מ
   const used = exported.filter((name) => VIEW.includes(name + "("));
   const missing = used.filter((name) => !imported.includes(name));
   assert.deepEqual(missing, [], "נעשה שימוש בלי ייבוא: " + missing.join(", "));
+});
+
+// 01/10/2026 (מאיה): "אני לא רוצה אפילו שיראו את האופציה לצפות אחת לשנייה".
+test('שורת המנהלת לא קיימת בדף שהלקוחות מקבלות', () => {
+  assert.ok(!HTML.includes('st-owner-bar'), 'לא במקור הדף');
+  assert.ok(!HTML.includes('st-owner-pick'), 'וגם לא הבחירה');
+  assert.match(VIEW, /OWNER_EMAIL/, 'והקוד בונה אותה רק למאיה');
+  const fn = VIEW.slice(VIEW.indexOf('async function wireOwnerBar'), VIEW.indexOf('export async function wireStoryTableView'));
+  const guard = fn.indexOf('OWNER_EMAIL');
+  const creates = fn.indexOf('createElement');
+  assert.ok(guard > -1 && creates > guard, "הבדיקה על המייל קודמת לבניית השורה");
 });

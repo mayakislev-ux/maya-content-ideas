@@ -152,65 +152,60 @@ const AUDIENCE_Q = {
  * שבאמת מופיעים אצלה כוללים ספרות באימוג'י (1️⃣), נקודה-מספר, כוכבית,
  * בולט, ומקף ארוך. אין יותר תקרה: מה שכתוב בגיליון נכנס במלואו.
  */
-// לוכסן בודד בתוך מחרוזת JS נבלע ("\s" הופך ל-"s"), ולכן הסימונים
-// נכתבים כאן עם לוכסן כפול. בלי זה הפיצול פשוט לא תופס כלום, בשקט.
-const MARKERS =
-  '(?:^|\\s)(?:[1-9]\\uFE0F?\\u20E3|\\d+[.)]\\s|[\\u2022\\u25AA\\u25CF*\\u00B7]\\s|[\\u2013\\u2014]\\s|\\u201E)';
-const MARKER_SPLIT = new RegExp(MARKERS, 'gu');
-const LEADING =
-  new RegExp('^(?:[1-9]\\uFE0F?\\u20E3|\\d+[.)]|[\\u2022\\u25AA\\u25CF*\\u00B7\\u2013\\u2014-])\\s*', 'u');
+// 01/10/2026 (מאיה, על טבלה של לקוחה): "בהרבה כפתורים שלוחצים ואז נפתח,
+// נגיד אצל אופק, ראיתי כתוב מגילה ענקית. תפעילי היגיון, וכל סיפור או
+// נקודה תשימי בשורה בנפרד. זה עמוס לעין, אי אפשר לעבוד ככה".
+//
+// הסיבה הייתה היוריסטיקה שלי: שורה הצטרפה לקודמתה אלא אם הקודמת הסתיימה
+// בסימן פיסוק. אצל רותם הלוי התא מכיל 184 שורות נקיות שכל אחת מתחילה
+// ב-"-" בלי רווח, ובלי נקודות בסוף - ולכן כולן הודבקו לפריט אחד של 5,205
+// תווים. 602 פריטים בכל הטבלאות היו מעל 400 תווים.
+//
+// הכלל עכשיו פשוט וצפוי: שורה בגיליון היא פריט. בתא של גיליון זו כמעט
+// תמיד הכוונה, וזה בדיוק מה שהיא ביקשה. משפט ארוך בלי סימון נשאר שלם,
+// ורק אם הוא ענק באמת הוא נחתך על גבול משפט.
+const LEADING = new RegExp('^(?:[1-9]\\uFE0F?\\u20E3|\\d+[.)]|[\\u2022\\u25AA\\u25CF*\\u00B7\\u2013\\u2014-])\\s*', 'u');
 const QUOTES = new RegExp('^[\\u201C\\u201D"\']+|[\\u201C\\u201D"\']+$', 'g');
+const INLINE = new RegExp('(?:^|\\s)(?:[1-9]\\uFE0F?\\u20E3|\\d+[.)]\\s|[\\u2022\\u25AA\\u25CF]\\s?)', 'gu');
+const LONG = 320;
+
 function stripBullet(line) {
   return line.replace(LEADING, '').replace(QUOTES, '').trim();
 }
 
-// שורה שממשיכה את קודמתה, ולא פותחת פריט חדש. בגיליון שלה משפט אחד
-// נפרס על כמה שורות ("אם פספסתי שבוע" / "הרסתי את האלגוריתם"), ופיצול
-// עיוור לפי שורות היה קורע אותם לשברים חסרי משמעות.
-const ENDS_ITEM = new RegExp('[.!?:;\\u2022]$');
-const STARTS_ITEM = new RegExp('^(?:[1-9]\\uFE0F?\\u20E3|\\d+[.)]|[\\u2022\\u25AA\\u25CF*\\u00B7\\u2013\\u2014-]\\s)', 'u');
+/** פריט ענק בלי סימונים נחתך על גבול משפט, ולא באמצע מילה */
+function bySentence(one) {
+  if (one.length <= LONG) return [one];
+  const parts = one.split(new RegExp('(?<=[.!?])\\s+', 'u'));
+  if (parts.length < 2) return [one];
+  const out = [];
+  for (const part of parts) {
+    const t = part.trim();
+    if (!t) continue;
+    if (out.length && (out[out.length - 1] + ' ' + t).length <= LONG) out[out.length - 1] += ' ' + t;
+    else out.push(t);
+  }
+  return out;
+}
 
-/**
- * הופך תא של הגיליון לפריטים, אחד לכל דבר שהיא כתבה.
- *
- * 30/09/2026 (מאיה): "צריך כל פער / תוצאה / כאב בעיה בשורה בנפרד לרשום
- * שיהיה מסודר" ו"פיספסת המון דברים שכתובים בטבלה".
- *
- * שורה פותחת פריט חדש כשיש לה סימון, או כשהשורה שלפניה הסתיימה במשפט.
- * אחרת היא המשך של אותו פריט. אין תקרה: הכל נכנס.
- */
+/** הופך תא של הגיליון לפריטים. שורה בגיליון = פריט. */
 function toBullets(value) {
   const raw = text(value);
   if (!raw) return [];
-
-  const items = [];
-  let prev = null;
+  const out = [];
   for (const line of raw.split(String.fromCharCode(10))) {
     const trimmed = line.trim();
-    if (!trimmed) {
-      prev = null;
-      continue;
-    }
+    if (!trimmed) continue;
     // כמה סימונים באותה שורה = כמה פריטים שנדחסו לשורה אחת
-    const inner = trimmed.split(MARKER_SPLIT).map(stripBullet).filter((x) => x.length > 1);
-    if (inner.length > 1) {
-      items.push(...inner);
-      prev = null;
-      continue;
-    }
-    const one = stripBullet(trimmed);
-    if (one.length < 2) continue;
-    const isNew = STARTS_ITEM.test(trimmed) || prev === null || ENDS_ITEM.test(prev);
-    if (isNew) {
-      items.push(one);
-      prev = one;
-    } else {
-      items[items.length - 1] += ' ' + one;
-      prev = items[items.length - 1];
+    const inner = trimmed.split(INLINE).map(stripBullet).filter((x) => x.length > 1);
+    const pieces = inner.length > 1 ? inner : [stripBullet(trimmed)];
+    for (const piece of pieces) {
+      for (const item of bySentence(piece)) {
+        if (item.length > 2) out.push(item);
+      }
     }
   }
-  // כותרת משנה שנשארה לבד לא מוסיפה כלום
-  return items.filter((x) => x.length > 2);
+  return out;
 }
 // 30/09/2026, תיקון של מאיה: "את לא צריכה לכתוב להם מה להגיד אלא רק נושאים",
 // "בחלק של להראות שיש ביקוש את לא צריכה להמציא, פשוט תכתבי להם ככותרת, שלא

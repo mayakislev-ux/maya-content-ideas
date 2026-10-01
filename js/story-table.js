@@ -179,11 +179,28 @@ async function runSync() {
  * הטבלה של לקוחה אמיתית, ומוצגת רק לה.
  */
 async function wireOwnerBar() {
-  const bar = el('st-owner-bar');
-  const pick = el('st-owner-pick');
-  if (!bar || !pick) return;
+  // 01/10/2026 (מאיה): "אני לא רוצה אפילו שיראו את האופציה לצפות אחת
+  // לשנייה". לכן השורה הזאת אינה קיימת ב-HTML בכלל, ונבנית בקוד רק
+  // כשהמייל הוא של מאיה. לקוחה לא רואה אותה גם אם תפתח את מקור הדף.
   if ((auth.currentUser && auth.currentUser.email) !== OWNER_EMAIL) return;
-
+  const host = el('story-table-panel');
+  const anchor = el('story-table');
+  if (!host || !anchor) return;
+  let bar = el('st-owner-bar');
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'st-owner-bar';
+    bar.className = 'st-owner-bar';
+    bar.hidden = true;
+    const label = document.createElement('label');
+    label.setAttribute('for', 'st-owner-pick');
+    label.textContent = 'לצפות בטבלה של';
+    const sel = document.createElement('select');
+    sel.id = 'st-owner-pick';
+    bar.append(label, sel);
+    host.insertBefore(bar, anchor);
+  }
+  const pick = el('st-owner-pick');
   let rows = [];
   try {
     rows = await listStoryTables();
