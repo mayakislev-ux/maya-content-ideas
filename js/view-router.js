@@ -1,7 +1,7 @@
 // Chronological order matching the actual workflow: save an idea, check it,
 // learn how to find more, browse inspiration, plan the content roadmap,
 // write the script, plan the month, then warm up the audience beforehand.
-const VIEWS = ['home', 'archive', 'progress', 'chat', 'guide', 'ideas-guide', 'inspiration', 'roadmap', 'script', 'content-plan', 'warming', 'feedback', 'client-usage'];
+const VIEWS = ['home', 'archive', 'progress', 'chat', 'guide', 'ideas-guide', 'inspiration', 'roadmap', 'content-plan', 'warming', 'feedback', 'client-usage'];
 const EMBED_VIEWS = ['roadmap', 'content-plan'];
 const LAST_VIEW_KEY = 'last-view';
 
@@ -18,11 +18,6 @@ export function showView(name) {
   document.getElementById('add-idea-fab').hidden = !['home', 'archive'].includes(name);
   document.getElementById('embed-back-btn').hidden = !EMBED_VIEWS.includes(name);
   document.getElementById('content-plan-open-builder-btn').hidden = name !== 'content-plan';
-  if (name !== 'script') {
-    document.body.classList.remove('focus-mode');
-    const focusBtn = document.getElementById('focus-mode-btn');
-    if (focusBtn) focusBtn.textContent = '🎯 מצב מיקוד';
-  }
   sessionStorage.setItem(LAST_VIEW_KEY, name);
 }
 

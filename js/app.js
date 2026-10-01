@@ -373,11 +373,6 @@ document.getElementById('bottomnav-more').addEventListener('click', () => {
   menuOverlay.hidden = !isOpen;
 });
 
-document.getElementById('focus-mode-btn').addEventListener('click', (e) => {
-  const isFocused = document.body.classList.toggle('focus-mode');
-  e.target.textContent = isFocused ? '✕ יציאה ממיקוד' : '🎯 מצב מיקוד';
-});
-
 // Keyboard accessibility: Escape closes whatever overlay is currently open,
 // same as clicking outside it - previously only the mouse/touch path worked.
 document.addEventListener('keydown', (e) => {
