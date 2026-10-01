@@ -291,20 +291,6 @@
     </form>
   </main>
 
-  <main id="script-view" class="view" hidden>
-    <div class="chat-toolbar">
-      <h2 class="chat-view-title">✍️ כתיבת תסריטים</h2>
-      <button id="new-script-btn" class="btn-text">🔄 תסריט חדש</button>
-      <button type="button" id="focus-mode-btn" class="btn-text" aria-label="מצב מיקוד">🎯 מצב מיקוד</button>
-    </div>
-    <div class="chat-messages" id="script-messages" role="log" aria-live="polite"></div>
-    <form id="script-form" class="chat-input-row">
-      <textarea id="script-input" enterkeyhint="send" placeholder="כתיבה כאן..." required aria-label="הודעה לצ'אט כתיבת תסריטים"></textarea>
-      <button type="button" id="script-mic-btn" class="mic-btn" aria-label="הקלטה קולית" hidden>🎤</button>
-      <button type="submit" class="btn-primary">שליחה</button>
-    </form>
-  </main>
-
   <main id="guide-view" class="view guide-view" hidden>
     <h2>מרכז למידה</h2>
     <p class="hub-intro">מצאו את הכלי או המדריך שאתם צריכים.</p>
@@ -316,11 +302,6 @@
           <span class="hub-action-icon">🔍</span>
           <span class="hub-action-label">בדיקת רעיון</span>
           <span class="hub-action-desc">בדקו אם הרעיון מספיק חזק</span>
-        </button>
-        <button type="button" id="hub-link-script" class="hub-action-card" hidden>
-          <span class="hub-action-icon">✍️</span>
-          <span class="hub-action-label">כתיבת תסריטים</span>
-          <span class="hub-action-desc">הפכו רעיון לתסריט מלא</span>
         </button>
         <button type="button" id="hub-link-content-plan" class="hub-action-card">
           <span class="hub-action-icon">📅</span>

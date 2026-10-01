@@ -28,9 +28,9 @@ import {
 } from './push-notifications.js';
 import { showIosInstallOverlayIfNeeded } from './ios-install-overlay.js';
 
-// script-chat.js / notification-admin.js are real code, not stubs - they're
+// notification-admin.js / client-usage.js are real code, not stubs - they're
 // imported (and fetched over the network) only once we know the signed-in
-// user is the admin, since writeScript/sendNotification stay admin-only
+// user is the admin, since sendNotification stays admin-only
 // (see ADMIN_EMAIL checks in these files and in functions/index.js). For
 // the vast majority of real users (her clients, not her), that's dead
 // weight on the critical path of every single app load. warming.js used to
@@ -42,7 +42,6 @@ let adminModulesPromise = null;
 function loadAdminModules() {
   if (!adminModulesPromise) {
     adminModulesPromise = Promise.all([
-      import('./script-chat.js'),
       import('./notification-admin.js'),
       import('./client-usage.js'),
     ]);
@@ -323,7 +322,6 @@ document.getElementById('hub-link-chat').addEventListener('click', () => {
   startIdeaChat();
 });
 document.getElementById('tab-feedback').addEventListener('click', () => showView('feedback'));
-// hub-link-script click handler is wired inside onAuthChange, once we've
 // confirmed the signed-in user is the admin and the lazy-loaded module is
 // ready - see loadAdminModules() above. hub-link-warming is wired below,
 // unconditionally, alongside the app's other everyday features.
@@ -561,13 +559,10 @@ onAuthChange(async (user) => {
     }
   }
   const isAdmin = user.email === ADMIN_EMAIL;
-  // כתיבת תסריטים מכובה זמנית לגמרי (גם למנהלת) - בקשה מפורשת של מאיה
-  // (2026-09-14) כדי לא להיתקע על פריסה מחדש של writeScript (המרת
-  // callable ל-HTTPS דורשת מחיקת הפונקציה הישנה קודם, פעולה שדורשת אישור
-  // נפרד). הקוד כולו נשאר שלם ב-js/script-chat.js ו-functions/index.js -
-  // רק נקודת הכניסה כבויה, כדי שיהיה קל להחזיר בעתיד. ראו גם השורה
-  // המקבילה ב-js/idea-chat.js (addPostIdeaButtons).
-  document.getElementById('hub-link-script').hidden = true;
+  /* 01/10/2026 (מאיה): "אני רוצה לבטל את הכתיבת תסריטים במוח
+     השיווקי אין צורך בכלל". התכונה היתה כבויה מאז 14/09 ועכשיו הוסרה
+     לגמרי: המסך, הכפתור, js/script-chat.js, functions/script-system-prompt.js
+     והפונקציה writeScript. לא היו תסריטים שמורים, ולכן לא אבד שום מידע. */
   document.getElementById('send-notification-btn').hidden = !isAdmin;
   document.getElementById('token-usage-btn').hidden = !isAdmin;
   document.getElementById('view-feedback-btn').hidden = !isAdmin;
@@ -581,14 +576,9 @@ onAuthChange(async (user) => {
   // logic below, even for the admin's own account.
   if (isAdmin && !adminModulesWired) {
     adminModulesWired = true;
-    loadAdminModules().then(([scriptChatModule, notificationAdminModule, clientUsageModule]) => {
-      scriptChatModule.wireScriptChat();
+    loadAdminModules().then(([notificationAdminModule, clientUsageModule]) => {
       notificationAdminModule.wireNotificationAdmin();
       clientUsageModule.wireClientUsageView();
-      document.getElementById('hub-link-script').addEventListener('click', () => {
-        showView('script');
-        scriptChatModule.startScriptChat();
-      });
       document.getElementById('client-usage-btn').addEventListener('click', () => {
         showView('client-usage');
         clientUsageModule.loadClientUsage();

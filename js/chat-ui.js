@@ -1,4 +1,4 @@
-// Shared chat-bubble rendering, used by both idea-chat.js and script-chat.js
+// Shared chat-bubble rendering, used by idea-chat.js
 // so URL/bold-text handling, the "thinking" indicator, and choice buttons stay
 // in exactly one place instead of drifting between two near-identical copies.
 

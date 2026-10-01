@@ -11,11 +11,6 @@ import { burstConfetti } from './confetti.js';
 import { confirmDialog } from './confirm-dialog.js';
 import { updateIdea } from './ideas-store.js';
 import { showToast } from './toast.js';
-// Dynamically imported instead of a static top-level import - script-chat.js
-// (and the admin-only writeScript feature it drives) is otherwise dead
-// weight fetched by every single user of this file, even though the button
-// that actually calls it only ever renders for the admin (isAdmin() below).
-
 const ADMIN_EMAIL = 'mayakislev@gmail.com';
 
 // checkIdea used to be a plain httpsCallable - converted to a raw streaming
@@ -258,21 +253,6 @@ function addPostIdeaButtons(bubble, finalizedText, ideaSummary) {
   saveBtn.addEventListener('click', () => saveFinalIdea(finalizedText));
   bubble.appendChild(saveBtn);
 
-  // כתיבת תסריטים מכובה זמנית (ראו ההערה המקבילה ב-js/app.js ליד
-  // hub-link-script) - "false &&" משאיר את כל הקוד שלם ומוכן לחזור בקלות,
-  // רק לא מציג את הכפתור.
-  if (false && isAdmin() && ideaSummary) {
-    const scriptBtn = document.createElement('button');
-    scriptBtn.type = 'button';
-    scriptBtn.className = 'chat-cta-btn';
-    scriptBtn.textContent = '✍️ כתיבת תסריט על הרעיון הזה';
-    scriptBtn.addEventListener('click', async () => {
-      showView('script');
-      const { startScriptChatWithIdea } = await import('./script-chat.js');
-      startScriptChatWithIdea(ideaSummary);
-    });
-    bubble.appendChild(scriptBtn);
-  }
 }
 
 function resetChat() {
