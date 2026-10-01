@@ -1,5 +1,14 @@
 const path = require('path');
-const PDFDocument = require('pdfkit');
+// 01/10/2026 (מאיה: "בניית תוכנית לוקחת יותר מדי זמן... יש דרך בחינם?"):
+// המודול הזה נטען בכל הפעלה קרה של כל פונקציה בפרויקט, גם כשאף אחד לא
+// צריך אותו. מדידה בפועל: googleapis 13.5 שניות, pdfkit 3, nodemailer 0.4,
+// web-push 0.36. טעינה עצלה מזיזה את העלות לפונקציה שבאמת משתמשת בו,
+// ובפעם הראשונה בלבד. זה לא עולה כלום.
+let pdfkit = null;
+function PDFDocument(...args) {
+  if (!pdfkit) pdfkit = require('pdfkit');
+  return new pdfkit(...args);
+}
 
 const GOLD = '#d9ac5e';
 const PURPLE_DEEP = '#24093f';
@@ -44,7 +53,7 @@ function drawMixedRight(doc, hebrewPart, ltrPart, x, y, width, font, size, color
  */
 function buildTicketPdf({ fullName, ticketType, orderId, isCouple }) {
   return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ size: 'A4', margin: 0 });
+    const doc = PDFDocument({ size: 'A4', margin: 0 });
     const chunks = [];
     doc.on('data', (c) => chunks.push(c));
     doc.on('end', () => resolve(Buffer.concat(chunks)));

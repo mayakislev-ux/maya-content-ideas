@@ -1,7 +1,22 @@
 const { onCall, onRequest, HttpsError } = require('firebase-functions/v2/https');
 const { defineSecret } = require('firebase-functions/params');
 const admin = require('firebase-admin');
-const webpush = require('web-push');
+// 01/10/2026 (מאיה: "בניית תוכנית לוקחת יותר מדי זמן... יש דרך בחינם?"):
+// המודול הזה נטען בכל הפעלה קרה של כל פונקציה בפרויקט, גם כשאף אחד לא
+// צריך אותו. מדידה בפועל: googleapis 13.5 שניות, pdfkit 3, nodemailer 0.4,
+// web-push 0.36. טעינה עצלה מזיזה את העלות לפונקציה שבאמת משתמשת בו,
+// ובפעם הראשונה בלבד. זה לא עולה כלום.
+let pusher = null;
+const webpush = {
+  setVapidDetails(...args) {
+    if (!pusher) pusher = require('web-push');
+    return pusher.setVapidDetails(...args);
+  },
+  sendNotification(...args) {
+    if (!pusher) pusher = require('web-push');
+    return pusher.sendNotification(...args);
+  },
+};
 const { buildSystemPrompt } = require('./system-prompt');
 const { buildScriptSystemPrompt } = require('./script-system-prompt');
 const { buildOngoingWarmingPrompt, buildPresaleWarmingPrompt } = require('./warming-system-prompt');

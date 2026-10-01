@@ -1,4 +1,13 @@
-const { google } = require('googleapis');
+// 01/10/2026 (מאיה: "בניית תוכנית לוקחת יותר מדי זמן... יש דרך בחינם?"):
+// המודול הזה נטען בכל הפעלה קרה של כל פונקציה בפרויקט, גם כשאף אחד לא
+// צריך אותו. מדידה בפועל: googleapis 13.5 שניות, pdfkit 3, nodemailer 0.4,
+// web-push 0.36. טעינה עצלה מזיזה את העלות לפונקציה שבאמת משתמשת בו,
+// ובפעם הראשונה בלבד. זה לא עולה כלום.
+let googleapis = null;
+function loadGoogle() {
+  if (!googleapis) googleapis = require('googleapis').google;
+  return googleapis;
+}
 const { defineSecret } = require('firebase-functions/params');
 
 const sheetsServiceAccountKey = defineSecret('SHEETS_SERVICE_ACCOUNT_KEY');
@@ -27,11 +36,11 @@ async function fetchSheetViaServiceAccount(sheetId) {
   }
 
   try {
-    const auth = new google.auth.GoogleAuth({
+    const auth = new (loadGoogle()).auth.GoogleAuth({
       credentials,
       scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
     });
-    const sheets = google.sheets({ version: 'v4', auth });
+    const sheets = loadGoogle().sheets({ version: 'v4', auth });
 
     // A spreadsheet can have many tabs (audience tables, persona notes,
     // ideas, etc. often live on separate tabs, not the first/default one)
@@ -174,11 +183,11 @@ async function fetchSheetTabs(sheetId, tabTitles) {
   }
 
   try {
-    const auth = new google.auth.GoogleAuth({
+    const auth = new (loadGoogle()).auth.GoogleAuth({
       credentials,
       scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
     });
-    const sheets = google.sheets({ version: 'v4', auth });
+    const sheets = loadGoogle().sheets({ version: 'v4', auth });
 
     // רק לשוניות שקיימות בפועל. batchGet על טווח של לשונית שאינה קיימת
     // מחזיר שגיאה לכל הבקשה ולא רק לאותה לשונית, ואז גם מה שכן היה נעלם.

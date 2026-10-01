@@ -1,7 +1,18 @@
 const { onRequest } = require('firebase-functions/v2/https');
 const { defineSecret } = require('firebase-functions/params');
 const crypto = require('crypto');
-const nodemailer = require('nodemailer');
+// 01/10/2026 (מאיה: "בניית תוכנית לוקחת יותר מדי זמן... יש דרך בחינם?"):
+// המודול הזה נטען בכל הפעלה קרה של כל פונקציה בפרויקט, גם כשאף אחד לא
+// צריך אותו. מדידה בפועל: googleapis 13.5 שניות, pdfkit 3, nodemailer 0.4,
+// web-push 0.36. טעינה עצלה מזיזה את העלות לפונקציה שבאמת משתמשת בו,
+// ובפעם הראשונה בלבד. זה לא עולה כלום.
+let mailer = null;
+const nodemailer = {
+  createTransport(...args) {
+    if (!mailer) mailer = require('nodemailer');
+    return mailer.createTransport(...args);
+  },
+};
 const { buildTicketPdf } = require('./ticket-pdf');
 
 const webhookSecret = defineSecret('GROW_WEBHOOK_SECRET');
