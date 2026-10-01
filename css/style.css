@@ -5221,3 +5221,24 @@ textarea:focus-visible,
   align-self: center;
   min-height: 44px;
 }
+
+/* 01/10/2026: החזרה מהתוכנית לטבלה. כפתור אמיתי ולא קישור קטן, כי אחרי
+   תוכנית ארוכה צריך משהו שרואים. */
+.st-back {
+  display: block;
+  width: 100%;
+  min-height: 48px;
+  margin-bottom: 0.9rem;
+  border: 1px solid #3b47a3;
+  border-radius: 12px;
+  background: #0f1854;
+  color: #ffffff;
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 800;
+  text-decoration: none;
+  cursor: pointer;
+}
+.st-back[hidden] {
+  display: none;
+}

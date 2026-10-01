@@ -131,7 +131,7 @@ function buildPlan(audienceId) {
   // 30/09/2026, ביקורת 10 סוכנים: הסתרת הפאנל הסתירה גם את הודעת השגיאה
   // של הטופס, ולכן כישלון בבניית תוכנית נראה כמו מסך לבן. הטבלה נשארת
   // גלויה, והתוצאה מופיעה מתחתיה.
-  showStatus('בונה את התוכנית מהטבלה שלך...');
+  el('story-table-panel').hidden = true;
   if (form.requestSubmit) form.requestSubmit();
   else form.dispatchEvent(new Event('submit', { cancelable: true }));
 }
@@ -253,10 +253,45 @@ async function wireOwnerBar() {
   });
 }
 
+/**
+ * 01/10/2026 (מאיה): "בניית תוכנית לוקחת יותר מדי זמן, ואז שבונה לא ברור
+ * לי איפה זה". התוכנית נבנתה מתחת לטבלה הארוכה והמסך נשאר איפה שהיה.
+ * עכשיו הטבלה מתחבאת לזמן הבנייה, התוכנית מופיעה למעלה, ויש חזרה ברורה.
+ * וכשהבנייה נכשלת הטבלה חוזרת מיד עם ההודעה, במקום מסך ריק.
+ */
+function wirePlanOutcome() {
+  const back = el('st-back-to-table');
+  if (!back) return;
+
+  document.addEventListener('warming-plan-ready', () => {
+    back.hidden = false;
+    const view = el('warming-view');
+    if (view && view.scrollIntoView) view.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+
+  document.addEventListener('warming-plan-failed', (e) => {
+    const panel = el('story-table-panel');
+    if (panel) panel.hidden = false;
+    back.hidden = true;
+    showStatus((e.detail && e.detail.message) || 'לא הצלחנו לבנות את התוכנית. אפשר לנסות שוב.', true);
+  });
+
+  back.addEventListener('click', () => {
+    back.hidden = true;
+    el('warming-result').innerHTML = '';
+    el('warming-missing-info').hidden = true;
+    el('warming-save-btn').hidden = true;
+    el('warming-save-btn-top').hidden = true;
+    el('story-table-panel').hidden = false;
+    showStatus('');
+  });
+}
+
 export async function wireStoryTableView() {
   const panel = el('story-table-panel');
   const sheet = el('st-plan-sheet');
   if (!panel || !sheet) return;
+  wirePlanOutcome();
 
   panel.addEventListener('click', (e) => {
     const pill = e.target.closest('.st-pill');

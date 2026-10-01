@@ -393,3 +393,31 @@ test('החלון ממורכז ולא צמוד לתחתית', async () => {
   const card = CSS.slice(cardAt, CSS.indexOf('}', cardAt));
   assert.ok(card.includes('max-width'), 'ולא נמתח לכל הרוחב');
 });
+
+// 01/10/2026 (מאיה): "בניית תוכנית לוקחת יותר מדי זמן, ואז שבונה לא ברור
+// לי איפה זה". התוכנית נבנתה מתחת לטבלה הארוכה והמסך נשאר איפה שהיה.
+test('אחרי שהתוכנית מוכנה לוקחים אותה אליה, ויש חזרה ברורה', () => {
+  assert.ok(HTML.includes('id="st-back-to-table"'), 'יש חזרה לטבלה');
+  assert.ok(VIEW.includes('warming-plan-ready'), 'המסך מקשיב לסיום');
+  assert.ok(VIEW.includes('scrollIntoView'), 'ולוקח אותה לשם');
+  const at = VIEW.indexOf("warming-plan-ready");
+  const block = VIEW.slice(at, at + 400);
+  assert.ok(block.includes('back.hidden = false'), 'והחזרה נחשפת');
+});
+
+test('כישלון בבנייה מחזיר את הטבלה ואומר מה קרה', () => {
+  assert.ok(VIEW.includes('warming-plan-failed'), 'המסך מקשיב לכישלון');
+  const at = VIEW.indexOf("warming-plan-failed");
+  const block = VIEW.slice(at, at + 420);
+  assert.ok(block.includes('panel.hidden = false'), 'הטבלה חוזרת');
+  assert.ok(block.includes('showStatus('), 'והסיבה מוצגת במקום שרואים');
+});
+
+test('הפופאפ מראה שלבים ולא מונה שניות', async () => {
+  const { readFileSync } = await import('node:fs');
+  const W = readFileSync(new URL('../js/warming.js', import.meta.url), 'utf8');
+  assert.ok(W.includes('const STEPS'), 'יש שלבים');
+  assert.ok(W.includes('בונה שבועיים של חימום שוטף'));
+  const fn = W.slice(W.indexOf('function startCountdown'), W.indexOf('function stopCountdown'));
+  assert.ok(!fn.includes('שניות`'), 'כבר לא מונה שניות עולה');
+});

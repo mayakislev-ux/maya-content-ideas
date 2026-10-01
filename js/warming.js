@@ -85,15 +85,26 @@ let currentMeta = null;
 let currentPlanId = null;
 let countdownInterval = null;
 
+// 01/10/2026 (מאיה): "בניית תוכנית לוקחת יותר מדי זמן, ואז שבונה לא ברור
+// לי איפה זה". מונה שניות עולה מדגיש בדיוק את מה שמפריע. השלבים כאן הם
+// מה שבאמת קורה בשרת: קריאת הטבלה, ואז שתי קריאות AI במקביל, אחת לשבועיים
+// החימום השוטף ואחת לשבוע המכירה. הזמנים הם הערכה ולכן הניסוח לא מבטיח.
+const STEPS = [
+  [0, 'קוראת את הטבלה שלך'],
+  [3, 'בונה שבועיים של חימום שוטף'],
+  [14, 'בונה את שבוע החימום לקראת מכירה'],
+  [30, 'מסדרת את הימים'],
+  [55, 'כמעט שם'],
+];
+
 function startCountdown() {
   const el = document.getElementById('warming-countdown');
-  // היה ספירה-לאחור מ-40 שניות קבוע - מדידה אמיתית הראתה שזה יכול לקחת
-  // יותר (2 קריאות AI במקביל, לפעמים שליפת Sheets/Docs) ואז נתקע ב"עוד
-  // רגע" בלי קשר לזמן האמיתי. סופרת עכשיו כלפי מעלה את הזמן האמיתי שעובר.
   const startTime = Date.now();
   const tick = () => {
     const elapsed = Math.round((Date.now() - startTime) / 1000);
-    el.textContent = `בונה תוכנית... ${elapsed} שניות`;
+    let label = STEPS[0][1];
+    for (const [at, text] of STEPS) if (elapsed >= at) label = text;
+    el.textContent = label;
   };
   tick();
   countdownInterval = setInterval(tick, 1000);
@@ -439,6 +450,9 @@ export function wireWarmingView() {
       currentPlanId = null;
       renderPlan(currentPlan);
       renderMissingInfo(result.missingInfo);
+      // 01/10/2026: מי שהגיעה מהטבלה צריכה שיקחו אותה לתוכנית, ולא תחפש
+      // אותה מתחת לטבלה ארוכה
+      document.dispatchEvent(new CustomEvent('warming-plan-ready'));
       if (eligibleIdeas.length > 15) {
         truncationNoteEl.textContent = `✂️ התוכנית נבנתה מתוך 15 הרעיונות המדורגים הכי גבוה עם טקסט זווית, מתוך ${eligibleIdeas.length} שיש לך במאגר`;
         truncationNoteEl.hidden = false;
@@ -446,10 +460,14 @@ export function wireWarmingView() {
     } catch (err) {
       console.error('generateWarmingPlan failed:', err);
       const hasHebrewText = /[\u0590-\u05FF]/.test(err.message || '');
-      errorEl.textContent = hasHebrewText
+      const message = hasHebrewText
         ? `משהו השתבש בבניית התוכנית: ${err.message}. נסו שוב.`
         : 'החיבור נכשל, כנראה בגלל רשת לא יציבה. נסו שוב.';
+      errorEl.textContent = message;
       errorEl.hidden = false;
+      // הודעת השגיאה יושבת בתוך הטופס, שמוסתר במסך הטבלה. בלי זה כישלון
+      // נראה כאילו פשוט לא קרה כלום.
+      document.dispatchEvent(new CustomEvent('warming-plan-failed', { detail: { message } }));
     } finally {
       generateBtn.disabled = false;
       loadingEl.hidden = true;
