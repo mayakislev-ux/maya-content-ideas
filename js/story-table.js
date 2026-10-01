@@ -76,9 +76,15 @@ async function persist(input) {
     // 30/09/2026, ביקורת 10 סוכנים: refresh מלא בנה מחדש 216KB של HTML,
     // סגר כל קבוצה שהיא פתחה, סגר את התיבה וזרק את הפוקוס. עכשיו מתעדכנת
     // רק השורה שנגעו בה.
-    const host = input.closest(".st-row");
-    const slot = host && host.querySelector("[data-added]");
-    if (slot) slot.innerHTML = addedGroupHtml(text);
+    const inSlot = input.closest(".st-slot");
+    if (inSlot) {
+      // משבצת ידנית מציגה את מה שנכתב בה, ומתעדכנת לבדה
+      refresh({ keepFocus: null });
+    } else {
+      const host = input.closest(".st-row");
+      const box = host && host.querySelector("[data-added]");
+      if (box) box.innerHTML = addedGroupHtml(text);
+    }
   } catch (err) {
     console.error('story table save failed:', err);
     // מחזירים את המצב הקודם, אחרת המסך מראה שנשמר משהו שלא נשמר
@@ -221,6 +227,13 @@ export async function wireStoryTableView() {
     if (pill) {
       state.audienceId = pill.dataset.audience;
       refresh();
+      return;
+    }
+    const slotAdd = e.target.closest('.st-slot__add');
+    if (slotAdd) {
+      const field = slotAdd.closest('.st-slot').querySelector('.st-field');
+      field.hidden = false;
+      field.querySelector('textarea').focus();
       return;
     }
     const edit = e.target.closest('.st-edit');

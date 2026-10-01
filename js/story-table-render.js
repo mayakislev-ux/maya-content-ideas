@@ -210,7 +210,9 @@ export function planInputs(audience, saved) {
 // כל מקור בגיליון מוצג כקבוצה נפרדת עם הכותרת שלה ועם מספר הפריטים, וכל
 // פריט בשורה משלו. קבוצה ארוכה נפתחת בלחיצה, כדי שהכל יהיה שם בלי שהמסך
 // יהפוך לקיר.
-const OPEN_UP_TO = 6;
+// 30/09/2026 (מאיה): "את כל הכפתורים הנפתחים תשאירי סגורים, ורק בלחיצה
+// אפשר לפתוח ולראות, שלא יעמיס".
+const OPEN_UP_TO = 0;
 
 /** הקבוצה של מה שהיא הוסיפה, מרונדרת גם בשמירה נקודתית */
 export function addedGroupHtml(value) {
@@ -230,6 +232,25 @@ function groupHtml(group) {
 // ולכן די היה לפתוח אותה ולגעת במקום אחר כדי שכל הקיבוץ שמאיה ביקשה
 // יתמוטט לערימה אחת, לתמיד ובלי ביטול. עכשיו התיבה ריקה, ומה שהיא כותבת
 // נוסף כקבוצה משלה. הקובץ נשאר המקור, ושום דבר שנשלף ממנו לא נמחק.
+// 30/09/2026 (מאיה): "תוסיפי כאן עוד כפתור שיצטרכו להשלים לבד". משבצת
+// ידנית היא כותרת עם כפתור משלה, ומה שהיא כותבת בה נשמר בנפרד מהשורה.
+function slotHtml(slot, row, audience, saved) {
+  const value = ((saved.overrides || {})[audience.id] || {})[slot.key] || '';
+  const items = value.split(String.fromCharCode(10)).map((l) => l.trim()).filter(Boolean);
+  const body = items.length
+    ? `<ul class="st-bullets">${items.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>`
+    : '<p class="st-slot__empty">עוד לא הוספת כאן</p>';
+  return `<div class="st-slot" data-slot="${esc(slot.key)}">
+      <div class="st-slot__head"><span class="st-slot__label">${esc(slot.label)}</span>
+      <button type="button" class="st-slot__add" data-row="${esc(slot.key)}">${items.length ? "לערוך" : "להוסיף"}</button></div>
+      ${body}
+      <label class="st-field" hidden>
+        <span class="st-field__label">${esc(slot.label)}</span>
+        <textarea class="st-input" rows="4" data-row="${esc(slot.key)}" data-kind="override">${esc(value)}</textarea>
+      </label>
+    </div>`;
+}
+
 function rowHtml(row, audience, saved) {
   const added = rowOverride(row, audience.id, saved);
   const stage = row.stage ? `<span class="st-stage">${esc(row.stage)}</span>` : '<span class="st-bar"></span>';
@@ -253,6 +274,7 @@ function rowHtml(row, audience, saved) {
       ${row.topic ? `<p class="st-topic">${esc(row.topic)}</p>` : ""}
       ${steps}
       ${groups.map(groupHtml).join("")}
+      ${(row.slots || []).map((slot) => slotHtml(slot, row, audience, saved)).join("")}
       <div class="st-added" data-added="${esc(row.key)}">${addedHtml}</div>
       <button type="button" class="st-edit" data-row="${esc(row.key)}">להוסיף משלך</button>
       <label class="st-field" hidden>

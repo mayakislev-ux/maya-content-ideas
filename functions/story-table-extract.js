@@ -240,15 +240,28 @@ const TOPIC_ROWS = {
   },
 };
 
+// 30/09/2026 (מאיה): "בחוק הראי תוסיפי כאן עוד כפתור שיצטרכו להשלים לבד,
+// סיפורי לקוחות שהיו במקום שלהם והצליחו", "במודעות לפתרון תוסיפי כפתור
+// ידני של סיפורי הצלחה שאפשר להוסיף", ובטעויות "פשוט תשאירי ריק".
+//
+// משבצת כזאת היא כותרת עם כפתור הוספה משלה. היא לא נשלפת מהגיליון, והיא
+// לא שדה שמבקש מהן לכתוב תוכן מראש - הכותרת היא הנושא, בדיוק כמו שאר
+// הנושאים בטבלה.
+const SLOTS = {
+  mirror: [{ key: 'mirror-stories', label: 'סיפורי לקוחות שהיו במקום שלהם והצליחו' }],
+  solution: [{ key: 'solution-wins', label: 'סיפורי הצלחה להראות' }],
+  problem: [{ key: 'problem-mistakes', label: 'הטעויות שהם עושים בלי לדעת' }],
+};
+
 function filledRow({ key, kind, tool, source, groups, stage }) {
-  const row = { key, kind, tool, source, groups: groups || [], fromSheet: true };
+  const row = { key, kind, tool, source, groups: groups || [], slots: SLOTS[key] || [], fromSheet: true };
   if (stage) row.stage = stage;
   return row;
 }
 
 /** כלי שאין לו מקור בגיליון: כותרת ונושא, בלי שדה מילוי ובלי תסריט */
 function topicRow(spec) {
-  return { ...spec, source: '', groups: [], bullets: [], fromSheet: false };
+  return { ...spec, source: '', groups: [], bullets: [], slots: SLOTS[spec.key] || [], fromSheet: false };
 }
 
 /**
@@ -337,7 +350,6 @@ function tableForAudience({ personaRows, audienceRows, col, index }) {
         ['הבעיות, הפחדים והאמונות שלהם', p('audienceProblems')],
         ['איפה את בעצמך חווית את אותו דבר', p('reflection')],
         ['הכאבים שלהם', a('pains')],
-        ['איך הם מתנהגים ביום יום', a('behaviour')],
         ['השאלות שהם שואלים', a('questions')],
         ['האמונות שמונעות מהם לקנות', a('beliefs')],
       ]),
@@ -366,7 +378,6 @@ function tableForAudience({ personaRows, audienceRows, col, index }) {
       groups: group([
         ['הכאבים שלהם', a('pains')],
         ['מה קורה אם הם לא פותרים את זה', a('ifNot')],
-        ['הטעויות שהם עושים בלי לדעת', a('behaviour')],
         ['השאלות שהם שואלים', a('questions')],
       ]),
     }),
@@ -394,7 +405,7 @@ function tableForAudience({ personaRows, audienceRows, col, index }) {
   const repair = (row) => {
     const groups = row.groups || [];
     const bullets = groups.flatMap((g) => g.items);
-    const out = { ...row, groups, bullets, definition: TOOL_DEF[row.key] || null };
+    const out = { ...row, groups, bullets, slots: row.slots || [], definition: TOOL_DEF[row.key] || null };
     if (!out.fromSheet || bullets.length) return out;
     return {
       ...out,
@@ -413,6 +424,7 @@ function closeRow({ whenBuys }) {
     kind: 'sale',
     stage: 3,
     tool: 'סגירת המכירה',
+    slots: [],
     source: '',
     fromSheet: false,
     topic: 'בוחרות תוצאה אחת, של לקוחה או שלהן, ועליה בונות את הרצף',
