@@ -5097,6 +5097,24 @@ textarea:focus-visible,
   font-weight: 900;
   color: #ffffff;
 }
+/* 01/10/2026 (מאיה): "שבזמן שזה בונה יהיה טיימר ספירה לאחורה".
+   המספר גדול בכוונה, כדי שהוא יהיה הדבר הראשון שרואים, ובספרות ברוחב קבוע
+   כדי שהשורה לא תרקוד בכל שנייה. */
+.wl-modal__clock {
+  font-size: 2.5rem;
+  font-weight: 800;
+  line-height: 1.1;
+  color: #ffd84d;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+.wl-modal__clocknote {
+  margin-top: 0.15rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #c3c9f0;
+}
+.wl-modal__clock.is-over { color: #ffb4a2; }
 .wl-modal__count {
   font-size: 0.9375rem;
   font-weight: 800;

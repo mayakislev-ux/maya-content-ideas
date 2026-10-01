@@ -413,11 +413,31 @@ test('כישלון בבנייה מחזיר את הטבלה ואומר מה קר�
   assert.ok(block.includes('showStatus('), 'והסיבה מוצגת במקום שרואים');
 });
 
-test('הפופאפ מראה שלבים ולא מונה שניות', async () => {
+// 01/10/2026 (מאיה): "שזה יבנה לי תכנית של שבוע חימום שוטף ושבוע
+// מכירה, ושבזמן שזה בונה יהיה טיימר ספירה לאחורה כמה זמן זה לוקח". עד כאן
+// הפופאפ הראה שלבים בלבד, והתוכנית היתה שלושה שבועות.
+test('הפופאפ סופר לאחורה, והתוכנית היא שני שבועות', async () => {
   const { readFileSync } = await import('node:fs');
   const W = readFileSync(new URL('../js/warming.js', import.meta.url), 'utf8');
-  assert.ok(W.includes('const STEPS'), 'יש שלבים');
-  assert.ok(W.includes('בונה שבועיים של חימום שוטף'));
-  const fn = W.slice(W.indexOf('function startCountdown'), W.indexOf('function stopCountdown'));
-  assert.ok(!fn.includes('שניות`'), 'כבר לא מונה שניות עולה');
+  const H = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+
+  assert.ok(W.includes("from './warming-timer.js'"), 'הטיימר מגיע מהמודול שיש עליו טסטים');
+  assert.ok(W.includes('warming-timer-clock'), 'יש שעון במסך');
+  assert.ok(H.includes('id="warming-timer-clock"'), 'והוא קיים באמת ב-index.html');
+  assert.ok(W.includes('recordPlanDuration'), 'הזמן האמיתי נשמר, אחרת הספירה לאחורה היא המצאה');
+  assert.ok(W.includes('AbortError'), 'יש גבול זמן לבנייה, והחלונית לא נתקעת ללא הסבר');
+
+  assert.ok(!/שבועיים של חימום/.test(W), 'אין יותר שבועיים של חימום שוטף');
+  assert.ok(!/שבוע 3/.test(W), 'אין יותר שבוע 3');
+  assert.match(W, /week1: '[^']*חימום שוטף'/);
+  assert.match(W, /week3: '[^']*מכירה'/);
+});
+
+// 01/10/2026: פתיחת תוכנית שמורה רינדרה אותה מתחת לטבלה הארוכה בלי לקחת
+// לשם את המסך. אותו "לא ברור לי איפה זה", רק בנתיב השני.
+test('גם בנייה חדשה וגם פתיחת תוכנית שמורה לוקחות למסך של התוכנית', async () => {
+  const { readFileSync } = await import('node:fs');
+  const W = readFileSync(new URL('../js/warming.js', import.meta.url), 'utf8');
+  const fired = W.match(/warming-plan-ready/g) || [];
+  assert.equal(fired.length, 2, 'שני הנתיבים מודיעים שהתוכנית מוכנה');
 });

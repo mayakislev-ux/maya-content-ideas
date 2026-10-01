@@ -4,6 +4,7 @@ import { saveWarmingPlan, updateWarmingPlan, listWarmingPlans, deleteWarmingPlan
 import { showToast } from './toast.js';
 import { makeEditable, makeEditableSelect } from './editable.js';
 import { confirmDialog } from './confirm-dialog.js';
+import { estimateSeconds, recordDuration, timerView, stepText } from './warming-timer.js';
 
 // היה httpsCallable - בקשה חוסמת יחידה. מדידה אמיתית (2026-08-11) הראתה 41
 // שניות שקטות לגמרי לפני שהלקוח רואה משהו - תלמידות בסדנה חיה דיווחו שזה
@@ -28,7 +29,7 @@ function parseSSEChunk(buffer, chunkText) {
   return { events, remainder };
 }
 
-async function streamGenerateWarmingPlan({ product, audience, extraContext, existingIdeasTitles }) {
+async function streamGenerateWarmingPlan({ product, audience, extraContext, existingIdeasTitles, signal }) {
   const idToken = await auth.currentUser.getIdToken();
   const response = await fetch(GENERATE_WARMING_PLAN_URL, {
     method: 'POST',
@@ -37,6 +38,7 @@ async function streamGenerateWarmingPlan({ product, audience, extraContext, exis
       Authorization: `Bearer ${idToken}`,
     },
     body: JSON.stringify({ product, audience, extraContext, existingIdeasTitles }),
+    signal,
   });
 
   if (!response.ok) {
@@ -68,9 +70,12 @@ async function streamGenerateWarmingPlan({ product, audience, extraContext, exis
 }
 
 const WEEK_LABELS = {
-  week1: '🗓️ שבוע 1 - חימום שוטף',
-  week2: '🗓️ שבוע 2 - חימום שוטף',
-  week3: '🔥 שבוע 3 - חימום לקראת מכירה',
+  /* 01/10/2026 (מאיה): "שזה יבנה לי תכנית של שבוע חימום שוטף
+     ושבוע מכירה". עד כאן זה בנה שלושה שבועות. week2 נשאר כאן כדי
+     שתוכניות שכבר שמורות אצל לקוחות ימשיכו להיראות נכון. */
+  week1: '🗓️ שבוע חימום שוטף',
+  week2: '🗓️ שבוע חימום שוטף נוסף',
+  week3: '🔥 שבוע המכירה',
 };
 
 const STAGE_LABELS = {
@@ -86,28 +91,46 @@ let currentPlanId = null;
 let countdownInterval = null;
 
 // 01/10/2026 (מאיה): "בניית תוכנית לוקחת יותר מדי זמן, ואז שבונה לא ברור
-// לי איפה זה". מונה שניות עולה מדגיש בדיוק את מה שמפריע. השלבים כאן הם
-// מה שבאמת קורה בשרת: קריאת הטבלה, ואז שתי קריאות AI במקביל, אחת לשבועיים
-// החימום השוטף ואחת לשבוע המכירה. הזמנים הם הערכה ולכן הניסוח לא מבטיח.
-const STEPS = [
-  [0, 'קוראת את הטבלה שלך'],
-  [3, 'בונה שבועיים של חימום שוטף'],
-  [14, 'בונה את שבוע החימום לקראת מכירה'],
-  [30, 'מסדרת את הימים'],
-  [55, 'כמעט שם'],
-];
+// לי איפה זה", ואחר כך "שבזמן שזה בונה יהיה טיימר ספירה לאחורה כמה זמן זה
+// לוקח". הספירה לאחורה והלמידה של הזמן האמיתי יושבות ב-warming-timer.js,
+// כי שם אפשר לבדוק אותן. כאן רק מחברים אותן למסך.
+let planStartedAt = 0;
 
 function startCountdown() {
-  const el = document.getElementById('warming-countdown');
-  const startTime = Date.now();
+  const stepEl = document.getElementById('warming-countdown');
+  const clockEl = document.getElementById('warming-timer-clock');
+  const noteEl = document.getElementById('warming-timer-note');
+  const estimate = estimateSeconds(safeStorage());
+  planStartedAt = Date.now();
+
   const tick = () => {
-    const elapsed = Math.round((Date.now() - startTime) / 1000);
-    let label = STEPS[0][1];
-    for (const [at, text] of STEPS) if (elapsed >= at) label = text;
-    el.textContent = label;
+    const elapsed = Math.round((Date.now() - planStartedAt) / 1000);
+    const view = timerView(elapsed, estimate);
+    if (clockEl) {
+      clockEl.textContent = view.clock;
+      clockEl.classList.toggle('is-over', view.over);
+    }
+    if (noteEl) noteEl.textContent = view.note;
+    if (stepEl) stepEl.textContent = stepText(elapsed);
   };
   tick();
   countdownInterval = setInterval(tick, 1000);
+}
+
+/* נקרא רק כשהבנייה הצליחה, כדי שההערכה הבאה תיבנה על זמנים אמיתיים ולא על
+   בניות שנכשלו באמצע. */
+function recordPlanDuration() {
+  if (!planStartedAt) return;
+  recordDuration(safeStorage(), (Date.now() - planStartedAt) / 1000);
+  planStartedAt = 0;
+}
+
+function safeStorage() {
+  try {
+    return window.localStorage;
+  } catch {
+    return null;
+  }
 }
 
 function stopCountdown() {
@@ -431,20 +454,34 @@ export function wireWarmingView() {
     saveBtnTop.hidden = true;
     startCountdown();
 
+    /* גבול זמן לכל הבנייה, כולל הניסיון החוזר.
+       עד כאן לא היה שום גבול: לשרת יש 180 שניות, יש לו ניסיון חוזר פנימי,
+       ולדפדפן יש ניסיון חוזר נוסף, כלומר החלונית היתה יכולה להישאר סגורה
+       על המסך כמה דקות בלי שום הסבר. ההודעה בעברית בכוונה: שגיאה
+       בעברית היא הסימן שלא מנסים שוב לבד. */
+    const budget = new AbortController();
+    const budgetTimer = setTimeout(() => budget.abort(), 170000);
+
     try {
       let result;
       let attempt = 1;
       while (true) {
         try {
-          result = await streamGenerateWarmingPlan({ product, audience, extraContext, existingIdeasTitles });
+          result = await streamGenerateWarmingPlan({ product, audience, extraContext, existingIdeasTitles, signal: budget.signal });
           break;
         } catch (retryErr) {
+          if (retryErr && retryErr.name === 'AbortError') {
+            throw new Error('הבנייה לקחה יותר מדי זמן ונעצרה. נסו שוב');
+          }
           const retryHasHebrewText = /[֐-׿]/.test(retryErr.message || '');
           if (retryHasHebrewText || attempt >= 2) throw retryErr;
           console.error(`generateWarmingPlan failed, retrying (attempt ${attempt}):`, retryErr);
           attempt++;
         }
       }
+      /* רק בנייה שהצליחה מלמדת את ההערכה לפעם הבאה. בנייה שנכשלה
+         או שבוטלה היתה מעוותת את הטיימר לכולן. */
+      recordPlanDuration();
       currentPlan = result.plan;
       currentMeta = { product, audience, extraContext };
       currentPlanId = null;
@@ -471,6 +508,7 @@ export function wireWarmingView() {
     } finally {
       generateBtn.disabled = false;
       loadingEl.hidden = true;
+      clearTimeout(budgetTimer);
       stopCountdown();
     }
   });
@@ -523,6 +561,10 @@ export function wireWarmingView() {
           document.getElementById('warming-missing-info').hidden = true;
           truncationNoteEl.hidden = true;
           savedListEl.hidden = true;
+          /* 01/10/2026: פתיחת תוכנית שמורה רינדרה אותה מתחת לטבלה הארוכה
+             בלי לקחת לשם את המסך. זה בדיוק "שבונה לא ברור לי איפה זה",
+             שתוקן עד כאן רק בנתיב של בנייה חדשה. */
+          document.dispatchEvent(new CustomEvent('warming-plan-ready'));
         },
         async (p) => {
           const confirmed = await confirmDialog(`למחוק את התוכנית "${p.product} - ${p.audience}"? הפעולה לא הפיכה.`, { okLabel: 'מחיקה', cancelLabel: 'ביטול' });

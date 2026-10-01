@@ -1386,7 +1386,7 @@ exports.generateWarmingPlan = onRequest(
         callAndParse(buildPresaleWarmingPrompt(promptArgs)),
       ]);
 
-      if (!Array.isArray(ongoing.week1) || !Array.isArray(ongoing.week2) || !Array.isArray(presale.week3)) {
+      if (!Array.isArray(ongoing.week1) || !Array.isArray(presale.week3)) {
         console.error('generateWarmingPlan response missing expected weeks:', JSON.stringify({ ongoing, presale }));
         res.write(`data: ${JSON.stringify({ error: 'התקבלה תשובה לא תקינה, נסו שוב' })}\n\n`);
         res.end();
@@ -1403,7 +1403,7 @@ exports.generateWarmingPlan = onRequest(
       res.write(
         `data: ${JSON.stringify({
           done: true,
-          plan: { week1: ongoing.week1, week2: ongoing.week2, week3: presale.week3 },
+          plan: { week1: ongoing.week1, week3: presale.week3 },
           missingInfo,
         })}\n\n`
       );
