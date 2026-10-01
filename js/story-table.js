@@ -149,25 +149,34 @@ function showTable(table) {
   refresh();
 }
 
-async function runSync() {
+async function runSync(quiet = false) {
   if (state.busy) return;
   state.busy = true;
-  showStatus('קוראים את הקובץ שלך...');
+  if (!quiet) showStatus('קוראים את הקובץ שלך...');
   try {
     const res = await syncStoryTable();
     if (!res.ready) {
-      // הנושאים אינם תלויים בקובץ, ולכן הטבלה עולה בכל מקרה
-      showStatus('');
-      showTable(defaultTable());
+      // 01/10/2026, ביקורת 10 סוכנים: כשלון רענון החליף טבלה אמיתית בטבלת
+      // נושאים ריקה. טבלה שכבר על המסך לא נמחקת בגלל קריאה שנכשלה.
+      showStatus("");
+      if (!state.table) showTable(defaultTable());
       return;
     }
     const saved = await loadStoryTable();
-    showStatus('');
-    showTable(saved && saved.audiences.length ? saved : { audiences: res.audiences, answers: {}, overrides: {} });
+    const next = saved && saved.audiences.length ? saved : { audiences: res.audiences, answers: {}, overrides: {} };
+    showStatus("");
+    // ברענון שקט מציירים מחדש רק אם באמת השתנה משהו בקובץ, כדי לא לסגור
+    // קבוצה שהיא פתחה בדיוק עכשיו
+    const before = JSON.stringify((state.table || {}).audiences || null);
+    if (quiet && before === JSON.stringify(next.audiences)) {
+      state.table = next;
+      return;
+    }
+    showTable(next);
   } catch (err) {
     console.error('syncStoryTable failed:', err);
-    showStatus('');
-    showTable(defaultTable());
+    showStatus("");
+    if (!state.table) showTable(defaultTable());
   } finally {
     state.busy = false;
   }
@@ -306,6 +315,12 @@ async function loadInitial() {
     if (saved && saved.audiences.length) {
       showTable(saved);
       wireOwnerBar();
+      // 01/10/2026 (מאיה: "אם מישהי מעדכנת בטבלת הפרסונה או קהל יעד, זה
+      // מסונכרן?"): עד כאן הסנכרון רץ רק כשלא הייתה טבלה בכלל, או בלחיצה
+      // על הכפתור. מי שעדכנה את הגיליון לא ראתה את זה אף פעם. עכשיו הקובץ
+      // נקרא מחדש בכל פתיחה, ברקע, אחרי שהטבלה השמורה כבר על המסך - כך
+      // שאין המתנה, והתוכן תמיד עדכני.
+      runSync(true);
       return;
     }
   } catch (err) {

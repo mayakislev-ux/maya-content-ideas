@@ -306,3 +306,64 @@ test('שורת המנהלת לא קיימת בדף שהלקוחות מקבלות
   const creates = fn.indexOf('createElement');
   assert.ok(guard > -1 && creates > guard, "הבדיקה על המייל קודמת לבניית השורה");
 });
+
+// 01/10/2026 (מאיה): "אם מישהי מעדכנת בטבלת הפרסונה או קהל יעד, את תעדכני
+// גם שם? זה מסונכרן?"
+//
+// הסנכרון חד כיווני: האפליקציה קוראת מהגיליון ולעולם לא כותבת אליו
+// (ההרשאה היא spreadsheets.readonly). ועד התיקון הזה היא גם לא קראה מחדש:
+// הסנכרון רץ רק כשלא הייתה טבלה בכלל, או בלחיצה על הכפתור, ולכן מי
+// שעדכנה את הגיליון לא ראתה את זה אף פעם.
+test('הקובץ נקרא מחדש בכל פתיחה, ברקע', () => {
+  const load = VIEW.slice(VIEW.indexOf('async function loadInitial'));
+  assert.ok(load.includes('runSync(true)'), 'רענון שקט גם כשיש טבלה שמורה');
+  const showAt = load.indexOf('showTable(saved)');
+  const syncAt = load.indexOf('runSync(true)');
+  assert.ok(showAt > -1 && syncAt > showAt, 'קודם מציגים את השמורה, ורק אז מסנכרנים');
+});
+
+test('רענון שנכשל לא מוחק טבלה שכבר על המסך', () => {
+  const sync = VIEW.slice(VIEW.indexOf('async function runSync'), VIEW.indexOf('export async function wireStoryTableView'));
+  const falls = sync.split('showTable(defaultTable())').length - 1;
+  assert.ok(falls > 0, 'יש נפילה לטבלת נושאים');
+  const guarded = sync.split('if (!state.table) showTable(defaultTable())').length - 1;
+  assert.equal(guarded, falls, 'וכל אחת מהן מוגנת בבדיקה שאין כבר טבלה');
+});
+
+test('האפליקציה לא יכולה לכתוב לגיליון', async () => {
+  const { readFileSync } = await import('node:fs');
+  const sheets = readFileSync(new URL('../functions/sheets-content.js', import.meta.url), 'utf8');
+  assert.ok(sheets.includes('spreadsheets.readonly'), 'הרשאת קריאה בלבד');
+  assert.ok(!sheets.includes('spreadsheets.values.update'), 'אין עדכון');
+  assert.ok(!sheets.includes('values.append'), 'אין הוספה');
+  assert.ok(!sheets.includes("auth/spreadsheets'"), "ואין הרשאת כתיבה מלאה");
+});
+
+// 01/10/2026 (מאיה): "במובייל כשלחצתי על כפתור הכנת תוכנית, רק בתחתית המסך
+// זה הראה לי שזה בונה תוכנית. אשמח שזה יקפיץ פופאפ שאי אפשר לצאת ממנו עד
+// שהתוכנית לא נבנית, גם במחשב".
+test('בניית תוכנית חוסמת את המסך, ואין ממנה יציאה', async () => {
+  const { readFileSync } = await import('node:fs');
+  const CSS = readFileSync(new URL('../css/style.css', import.meta.url), 'utf8');
+  assert.ok(HTML.includes('class="warming-loading wl-modal"'), 'החיווי הוא פופאפ');
+  assert.ok(HTML.includes('role="alertdialog"'), 'ומוכרז כחלון');
+  const at = CSS.indexOf('.wl-modal {');
+  const block = CSS.slice(at, CSS.indexOf("}", at));
+  assert.ok(block.includes('position: fixed'), 'חוסם את כל המסך');
+  assert.ok(block.includes('inset: 0'));
+  // אין בו כפתור סגירה, ושום קוד לא סוגר אותו חוץ מסיום הבנייה
+  // עד סוף הכרטיס של הפופאפ, ולא עד הכפתור הבא בדף
+  const modal = HTML.slice(HTML.indexOf('id="warming-loading"'), HTML.indexOf('wl-modal__note'));
+  assert.ok(!modal.includes('<button'), 'אין בו כפתור יציאה');
+});
+
+test('יש טיפול אמיתי בנייד לטבלה', async () => {
+  const { readFileSync } = await import('node:fs');
+  const CSS = readFileSync(new URL('../css/style.css', import.meta.url), 'utf8');
+  const at = CSS.indexOf('@media (max-width: 560px)');
+  assert.ok(at > -1, 'יש שבירה ייעודית לנייד');
+  const block = CSS.slice(at, CSS.indexOf('@media', at + 10));
+  for (const sel of ['.st-row', '.st-bullets', '.st-slot__head', '.st-pills', '.st-build']) {
+    assert.ok(block.includes(sel), sel + ' מטופל בנייד');
+  }
+});

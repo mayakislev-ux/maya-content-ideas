@@ -599,9 +599,18 @@
       <button type="submit" class="btn-primary" id="warming-generate-btn">🔥 בניית תוכנית חימום</button>
     </form>
 
-    <div id="warming-loading" class="warming-loading" hidden>
-      <div class="warming-spinner">🕐</div>
-      <div id="warming-countdown">בונה תוכנית...</div>
+    <!-- 01/10/2026 (מאיה): "במובייל כשלחצתי על כפתור הכנת תוכנית, רק בתחתית
+         המסך זה הראה לי שזה בונה תוכנית. אשמח שזה יקפיץ פופאפ שאי אפשר לצאת
+         ממנו עד שהתוכנית לא נבנית, גם במחשב". החיווי היה שורה בתוך הדף,
+         ובנייד הוא נפל מתחת לקיפול. עכשיו הוא חוסם את כל המסך. -->
+    <div id="warming-loading" class="warming-loading wl-modal" role="alertdialog" aria-live="assertive"
+      aria-busy="true" aria-labelledby="wl-title" hidden>
+      <div class="wl-modal__card">
+        <div class="warming-spinner" aria-hidden="true">🕐</div>
+        <h2 class="wl-modal__title" id="wl-title">בונה לך את התוכנית</h2>
+        <div id="warming-countdown" class="wl-modal__count">רגע אחד...</div>
+        <p class="wl-modal__note">לוקח עד דקה. אפשר להישאר כאן, זה ייפתח לבד.</p>
+      </div>
     </div>
     <button type="button" id="warming-save-btn-top" class="btn-primary warming-save-btn" aria-label="שמירת התוכנית (למעלה)" hidden>💾 שמירת התוכנית</button>
     <p id="warming-truncation-note" class="warming-truncation-note" hidden></p>

@@ -5055,3 +5055,149 @@ textarea:focus-visible,
 .random-result[hidden] {
   display: none;
 }
+
+/* 01/10/2026 (מאיה): "במובייל כשלחצתי על כפתור הכנת תוכנית, רק בתחתית המסך
+   זה הראה לי שזה בונה תוכנית. אשמח שזה יקפיץ פופאפ שאי אפשר לצאת ממנו עד
+   שהתוכנית לא נבנית, גם במחשב, ובפופאפ שיהיה נוח".
+   אין ממנו יציאה בכוונה: הוא נסגר לבד כשהתוכנית מוכנה או כשיש שגיאה.
+   .warming-loading לבדה נשארת כמו שהיא, עבור תכנית התוכן. */
+.wl-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  padding: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 16, 58, 0.94);
+}
+.wl-modal[hidden] {
+  display: none;
+}
+.wl-modal__card {
+  width: 100%;
+  max-width: 340px;
+  box-sizing: border-box;
+  padding: 1.6rem 1.3rem 1.5rem;
+  border-radius: 20px;
+  background: #1b2566;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  text-align: center;
+}
+.wl-modal .warming-spinner {
+  font-size: 2.4rem;
+  line-height: 1;
+}
+.wl-modal__title {
+  margin: 0;
+  font-size: 1.1875rem;
+  font-weight: 900;
+  color: #ffffff;
+}
+.wl-modal__count {
+  font-size: 0.9375rem;
+  font-weight: 800;
+  color: #ffd84d;
+}
+.wl-modal__note {
+  margin: 0.2rem 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: #c3c9f0;
+}
+
+/* ============================================================================
+   01/10/2026 (מאיה): "גם במובייל ה-UI UX לא משהו, אז תסדרי ותתקני".
+   עד כאן לא היה לטבלה שום טיפול ייעודי לנייד: המסך נתן 24px שוליים מכל צד,
+   כלומר 312px תוכן בפלאפון של 360, וכל הטקסט נשאר 13px. ============================================================================ */
+@media (max-width: 560px) {
+  .warming-view {
+    padding: 1rem 0.75rem 5rem;
+  }
+  .story-table-panel {
+    gap: 0.75rem;
+  }
+
+  /* הראש: הכפתור הוא הדבר הכי גדול על המסך, כי הוא הפעולה */
+  .st-gate {
+    padding: 0.95rem 0.9rem 1.05rem;
+    border-radius: 16px;
+  }
+  .st-gate__lead {
+    font-size: 1rem;
+  }
+  .st-build {
+    min-height: 56px;
+    font-size: 1.125rem;
+  }
+
+  /* הכרטיס: פחות שוליים פנימיים, יותר מקום למילים */
+  .st-row {
+    padding: 0.8rem 0.75rem;
+    border-radius: 16px;
+    gap: 0.5rem;
+  }
+  .st-row__tool {
+    font-size: 1rem;
+  }
+  .st-def {
+    font-size: 0.8125rem;
+  }
+
+  /* הפריטים עצמם גדלים, כי בהם קוראים בפועל */
+  .st-bullets {
+    font-size: 0.875rem;
+    padding: 0 1.15rem 0.7rem;
+  }
+  .st-group > summary {
+    padding: 0.5rem 0.6rem;
+    font-size: 0.8125rem;
+  }
+  /* כותרת ארוכה נשברת במקום לדחוס את המספר החוצה */
+  .st-group__label {
+    overflow-wrap: anywhere;
+  }
+  .st-group__count {
+    flex-shrink: 0;
+  }
+
+  /* המשבצת הידנית: הכותרת והכפתור יורדים לשתי שורות במקום להידחס */
+  .st-slot__head {
+    flex-wrap: wrap;
+  }
+  .st-slot__label {
+    flex-basis: 100%;
+  }
+  .st-slot__add {
+    margin-inline-start: auto;
+  }
+
+  /* גלולות הקהל: גלילה אופקית בלי להיחתך בקצה */
+  .st-pills {
+    margin-inline: -0.75rem;
+    padding-inline: 0.75rem;
+    scroll-padding-inline: 0.75rem;
+  }
+  .st-pill {
+    scroll-snap-align: start;
+  }
+
+  .st-plan-sheet__card {
+    max-height: 92vh;
+  }
+  .wl-modal__card {
+    max-width: 100%;
+  }
+}
+
+/* פריט ארוך בלי רווחים לא שובר את הכרטיס בשום רוחב */
+.st-bullets li,
+.st-topic,
+.st-def,
+.st-row__tool,
+.st-choice__name {
+  overflow-wrap: anywhere;
+}
