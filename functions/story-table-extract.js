@@ -87,6 +87,21 @@ function rowIndexOf(rows, keywords) {
 // לגמרי, ובלי הסינון הזה נפתח קהל חמישי בלי שם ובלי תוכן, שנראה כמו תקלה.
 const EMPTY_GROUP_LABEL = /^(?:קבוצה|דמות)\s*\d*\s*:?\s*$/;
 
+/**
+ * האם לעמודה הזאת יש בכלל תשובות.
+ *
+ * 01/10/2026: בקובץ של מלי ברקולין כל חמש הכותרות הן "קבוצה 1:", "קבוצה 2:"
+ * בלי שם אחרי הנקודתיים, אבל כל התשובות מתחתיהן מלאות. הסינון של כותרת ריקה
+ * הפיל את כולן, והיא קיבלה מסך בלי שום קהל. מאז כותרת בלי שם נפסלת רק אם גם
+ * אין מתחתיה שום תשובה, וזה בדיוק המקרה שהסינון נולד בשבילו.
+ */
+function columnHasAnswers(audienceRows, col, headerRow) {
+  for (let i = headerRow + 1; i < audienceRows.length; i++) {
+    if (clean((audienceRows[i] || [])[col])) return true;
+  }
+  return false;
+}
+
 function audienceNames(audienceRows) {
   const headerRow = rowIndexOf(audienceRows, ['שאלות לניתוח קהל היעד']);
   if (headerRow === -1) return [];
@@ -95,9 +110,12 @@ function audienceNames(audienceRows) {
   for (let col = 1; col <= MAX_AUDIENCES; col++) {
     const raw = clean(row[col]);
     if (!raw) continue;
-    if (EMPTY_GROUP_LABEL.test(raw)) continue;
+    const unnamed = EMPTY_GROUP_LABEL.test(raw);
+    if (unnamed && !columnHasAnswers(audienceRows, col, headerRow)) continue;
     const afterColon = raw.split(':').slice(1).join(':').trim();
-    names.push({ col, raw, name: afterColon || raw });
+    // כותרת בלי שם אבל עם תשובות: מציגים "קבוצה 1" בלי הנקודתיים התלויות
+    const label = afterColon || raw.replace(/:\s*$/, '').trim();
+    names.push({ col, raw, name: label, unnamed: unnamed && !afterColon });
   }
   return names;
 }
