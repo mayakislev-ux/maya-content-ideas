@@ -30,7 +30,7 @@ import { onAuthChange } from './auth.js';
 
 const OWNER_EMAIL = 'mayakislev@gmail.com';
 
-const state = { table: null, audienceId: null, busy: false, preview: false };
+const state = { table: null, audienceId: null, busy: false, preview: false, planAudienceId: null };
 
 function el(id) {
   return document.getElementById(id);
@@ -94,12 +94,22 @@ async function persist(input) {
   }
 }
 
+// 01/10/2026 (מאיה): "לחצתי על בניית תוכנית אבל אין כפתור התחל". לחיצה
+// על קהל רק בוחרת אותו, והבנייה קורית רק בלחיצה על הכפתור.
+function paintChoices() {
+  const choices = el('st-plan-choices');
+  if (!choices || !state.table) return;
+  choices.innerHTML = planChoicesHtml(state.table, state.planAudienceId);
+}
+
 function openPlanSheet() {
   const sheet = el('st-plan-sheet');
-  const choices = el('st-plan-choices');
-  if (!sheet || !choices || !state.table) return;
-  choices.innerHTML = planChoicesHtml(state.table, state.audienceId);
+  if (!sheet || !state.table) return;
+  state.planAudienceId = state.audienceId;
+  paintChoices();
   sheet.hidden = false;
+  const go = el('st-plan-go');
+  if (go) go.focus();
 }
 
 /**
@@ -289,7 +299,12 @@ export async function wireStoryTableView() {
       return;
     }
     const choice = e.target.closest('.st-choice');
-    if (choice && !choice.disabled) buildPlan(choice.dataset.audience);
+    if (choice && !choice.disabled) {
+      state.planAudienceId = choice.dataset.audience;
+      paintChoices();
+      return;
+    }
+    if (e.target.closest('#st-plan-go')) buildPlan(state.planAudienceId || state.audienceId);
   });
 
   // 30/09/2026 (מאיה: "למה לא התעדכן אצלי?"): הפונקציה הזאת רצה באתחול,

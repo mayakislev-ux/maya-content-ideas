@@ -574,13 +574,16 @@
       <button type="button" id="st-resync-btn" class="btn-text st-resync" hidden>לרענן מהקובץ</button>
     </section>
 
+    <!-- 01/10/2026 (מאיה): "לחצתי על בניית תוכנית אבל אין כפתור התחל,
+         ולמה זה לא באמצע המסך, זה לא נוח". בחירת קהל רק בוחרת, והבנייה
+         קורית רק בלחיצה על הכפתור. -->
     <div id="st-plan-sheet" class="st-plan-sheet" hidden>
       <div class="st-plan-sheet__card" role="dialog" aria-modal="true" aria-labelledby="st-plan-title">
-        <span class="st-plan-sheet__grip"></span>
         <h2 id="st-plan-title">בניית תוכנית</h2>
         <p class="st-plan-sheet__sub">התוכנית תיבנה מהשורות שמילאת בטבלה, ולא משאלות מחדש.</p>
         <div class="st-audiences__label">לאיזה קהל</div>
         <div id="st-plan-choices" class="st-plan-choices"></div>
+        <button type="button" id="st-plan-go" class="btn-primary st-plan-go">בניית התוכנית</button>
         <button type="button" id="st-plan-close" class="btn-text">ביטול</button>
       </div>
     </div>

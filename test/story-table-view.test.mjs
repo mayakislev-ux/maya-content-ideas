@@ -367,3 +367,29 @@ test('יש טיפול אמיתי בנייד לטבלה', async () => {
     assert.ok(block.includes(sel), sel + ' מטופל בנייד');
   }
 });
+
+// 01/10/2026 (מאיה): "לחצתי על בניית תוכנית אבל אין כפתור התחל, ולמה זה
+// לא באמצע המסך, זה לא נוח מבחינת UI UX".
+test('לבחירת הקהל יש כפתור שמתחיל את הבנייה', () => {
+  assert.ok(HTML.includes('id="st-plan-go"'), 'יש כפתור');
+  assert.ok(VIEW.includes("#st-plan-go"), 'והקוד מאזין לו');
+  // לחיצה על קהל רק בוחרת, ולא בונה
+  const click = VIEW.slice(VIEW.indexOf('.st-choice'), VIEW.indexOf('sheetForm') > -1 ? VIEW.indexOf('sheetForm') : VIEW.length);
+  const selectAt = VIEW.indexOf('state.planAudienceId = choice.dataset.audience');
+  const buildAt = VIEW.indexOf('buildPlan(state.planAudienceId');
+  assert.ok(selectAt > -1, 'הבחירה נשמרת');
+  assert.ok(buildAt > selectAt, 'והבנייה קורית רק אחריה, בכפתור');
+});
+
+test('החלון ממורכז ולא צמוד לתחתית', async () => {
+  const { readFileSync } = await import('node:fs');
+  const CSS = readFileSync(new URL('../css/style.css', import.meta.url), 'utf8');
+  const at = CSS.indexOf('.st-plan-sheet {');
+  const block = CSS.slice(at, CSS.indexOf('}', at));
+  assert.ok(block.includes('align-items: center'), 'ממורכז אנכית');
+  assert.ok(block.includes('justify-content: center'), 'וגם אופקית');
+  assert.ok(!block.includes('align-items: flex-end'), 'כבר לא צמוד לתחתית');
+  const cardAt = CSS.indexOf('.st-plan-sheet__card {');
+  const card = CSS.slice(cardAt, CSS.indexOf('}', cardAt));
+  assert.ok(card.includes('max-width'), 'ולא נמתח לכל הרוחב');
+});
