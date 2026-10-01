@@ -4516,20 +4516,21 @@ textarea:focus-visible,
 @media (max-width: 720px) { .pbb-long { display: none; } }
 
 /* ============================================================================
-   טבלת חימום בסטורי (30/09/2026)
-   מאיה: "אולי צריך UI UX חזק". הכרטיס הוא היחידה, לא השורה: בטלפון טבלה
-   אמיתית עם עמודות לא נקראת, ולכן כל כלי הוא כרטיס עם כותרת, מאיפה זה בא,
-   והתוכן עצמו. שני מצבים בלבד, וההבדל ביניהם הוא צבע: כחול = נשלף מהקובץ,
-   ורוד = אנחנו מבקשים ממך.
+   טבלת חימום בסטורי (01/10/2026)
+   מאיה בחרה את כיוון "כרטיסים כהים" מתוך שלושה: "מפריע לי ה-UI UX, משהו
+   בצבעים מרגיש אותו דבר, זה דורש ממני מאמץ מנטלי להבין בכלל מה קורה, קצת
+   לבן מדי, צריך UI UX שיהפוך את כל הדף ל-0 מאמץ מנטלי ומובן לילד בן 10".
+
+   העיקרון: כל כלי הוא כרטיס כהה אחד על רקע בהיר. העין נתפסת על כרטיס בכל
+   פעם במקום על עמוד שלם, והצבע אומר מיד באיזה חלק את: כחול כהה לחימום
+   השוטף, ארגמן כהה למכירה, וזהב לכל מה שהיא צריכה לגעת בו.
+   כל הצבעים כאן נבדקו ליחס ניגודיות 8:1 ומעלה.
    ============================================================================ */
 .story-table-panel {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.9rem;
 }
-/* 30/09/2026: תכונת hidden לא מנצחת כלל CSS עם display, ולכן כל אלמנט
-   שמוסתר מהקוד חייב את הכלל הזה במפורש. זה בדיוק מה שגרם לטופס הדבקת
-   הקישור להופיע למאיה אף שהקוד הסתיר אותו. */
 .story-table-panel[hidden],
 .st-status[hidden],
 .st-resync[hidden] {
@@ -4538,73 +4539,55 @@ textarea:focus-visible,
 
 .st-status {
   margin: 0;
-  padding: 0.85rem 1rem;
-  border-radius: var(--card-radius-sm);
-  background: var(--accent-tint);
-  color: var(--accent-strong);
+  padding: 0.8rem 1rem;
+  border-radius: 14px;
+  background: #0f1854;
+  color: #ffffff;
   font-weight: 600;
-  font-size: 0.95rem;
+  font-size: 0.9375rem;
 }
 .st-status--warn {
-  background: var(--warm-tint);
-  color: var(--warm-strong);
+  background: #5c0d3c;
+  color: #ffd1ec;
 }
 
-/* שער הכניסה: כמה מולא, מה חסר, והכפתור */
+/* ראש המסך: כהה, ובתוכו הפעולה היחידה */
 .st-gate {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  padding: 1.1rem;
-  background: var(--card-bg);
-  border: 1px solid var(--border-color);
-  border-radius: var(--card-radius);
-  box-shadow: var(--card-shadow);
+  gap: 0.7rem;
+  padding: 1.1rem 1.05rem 1.2rem;
+  background: #0f1854;
+  border-radius: 18px;
 }
 .st-gate__lead {
   margin: 0;
   font-size: 1.0625rem;
-  font-weight: 800;
-  line-height: 1.35;
+  font-weight: 900;
+  line-height: 1.3;
+  color: #ffffff;
 }
 .st-gate__sub {
   margin: 0;
-  font-size: 0.9375rem;
-  color: var(--muted);
-  line-height: 1.55;
-}
-.st-progress {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-}
-.st-progress__bar {
-  flex-grow: 1;
-  height: 8px;
-  border-radius: 999px;
-  background: var(--accent-tint);
-  overflow: hidden;
-}
-.st-progress__bar span {
-  display: block;
-  height: 100%;
-  background: var(--accent);
-}
-.st-progress__num {
-  font-size: 0.8125rem;
-  font-weight: 700;
-  color: var(--accent);
-  white-space: nowrap;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: #c3c9f0;
 }
 .st-build {
   width: 100%;
-  min-height: 48px;
+  min-height: 54px;
+  border: 0;
+  border-radius: 14px;
+  background: #ffd84d;
+  color: #241c00;
+  font-family: inherit;
+  font-size: 1.0625rem;
+  font-weight: 900;
+  cursor: pointer;
 }
-/* מאיה, 27/09/2026 על הפורטל: כפתור שלא עושה כלום נראה שבור. לכן הכפתור
-   הנעול כאן נושא את הסיבה בתוך הטקסט שלו, ולא רק נראה אפור. */
 .st-build:disabled {
-  background: var(--accent-tint);
-  color: var(--muted);
+  background: #2b3576;
+  color: #9aa3d8;
   cursor: not-allowed;
   font-size: 0.9375rem;
 }
@@ -4612,46 +4595,46 @@ textarea:focus-visible,
 .st-audiences {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.45rem;
 }
 .st-audiences__label {
-  font-size: 0.8125rem;
-  font-weight: 700;
-  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  color: #5a6090;
 }
 .st-audiences__note {
   margin: 0;
   font-size: 0.75rem;
-  color: var(--muted);
+  color: #5a6090;
 }
 .st-pills {
   display: flex;
-  gap: 0.5rem;
+  gap: 0.45rem;
   overflow-x: auto;
-  padding-bottom: 0.25rem;
+  padding-bottom: 0.2rem;
   -webkit-overflow-scrolling: touch;
 }
 .st-pill {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.3rem;
   min-height: 44px;
-  padding: 0.55rem 0.9rem;
-  border: 1px solid var(--border-color);
-  border-radius: 999px;
-  background: var(--card-bg);
-  color: var(--muted);
+  padding: 0.5rem 0.9rem;
+  border: 1px solid #d3d7ef;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #5a6090;
   font: inherit;
   font-size: 0.8125rem;
   white-space: nowrap;
   cursor: pointer;
-  transition: background-color 150ms ease, color 150ms ease;
 }
 .st-pill.is-on {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #fff;
-  font-weight: 700;
+  background: #0f1854;
+  border-color: #0f1854;
+  color: #ffffff;
+  font-weight: 800;
 }
 .st-pill__miss {
   display: inline-flex;
@@ -4661,24 +4644,27 @@ textarea:focus-visible,
   height: 18px;
   padding: 0 4px;
   border-radius: 999px;
-  background: var(--warm);
-  color: #fff;
+  background: #ffd84d;
+  color: #241c00;
   font-size: 0.6875rem;
-  font-weight: 800;
+  font-weight: 900;
 }
 
+/* שם האזור: שקט, כי הכרטיסים כבר אומרים את זה בצבע */
 .st-section {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 0.5rem;
-  margin: 0.5rem 0 0;
-  font-size: 1.0625rem;
+  margin: 0.4rem 0 0;
+  font-size: 0.75rem;
   font-weight: 900;
+  letter-spacing: 0.04em;
+  color: #5a6090;
 }
 .st-section span {
   font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--muted);
+  font-weight: 700;
+  color: #8a90b8;
 }
 
 .st-list {
@@ -4687,92 +4673,213 @@ textarea:focus-visible,
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.7rem;
 }
+
+/* הכרטיס. כחול כהה לחימום שוטף, ארגמן כהה למכירה (כל שורה עם מספר שלב). */
 .st-row {
+  --card: #1b2566;
+  --inset: #151d52;
+  --line: #3b47a3;
+  --soft: #c3c9f0;
   display: flex;
   flex-direction: column;
   gap: 0.55rem;
-  padding: 0.9rem 0.95rem;
-  background: var(--card-bg);
-  border: 1px solid var(--border-color);
-  border-radius: var(--card-radius);
+  padding: 0.95rem;
+  background: var(--card);
+  border: 0;
+  border-radius: 18px;
 }
-.st-row--missing {
-  border-color: var(--warm-100);
+.st-row:has(.st-stage) {
+  --card: #5c0d3c;
+  --inset: #4a0a30;
+  --line: #9c2370;
+  --soft: #f3c8e3;
 }
 .st-row.is-saved {
-  border-color: var(--accent-300);
+  box-shadow: inset 0 0 0 2px #ffd84d;
 }
 .st-row.is-savefail {
-  border-color: var(--warm);
+  box-shadow: inset 0 0 0 2px #ff7ac8;
 }
 .st-row__head {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 0.5rem;
 }
 .st-row__tool {
   flex-grow: 1;
   margin: 0;
-  font-size: 0.9375rem;
-  font-weight: 800;
-  line-height: 1.3;
+  font-size: 1.0625rem;
+  font-weight: 900;
+  line-height: 1.25;
+  color: #ffffff;
 }
 .st-bar {
-  width: 4px;
-  height: 20px;
-  border-radius: 999px;
-  background: var(--accent);
+  display: none;
 }
 .st-stage {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 999px;
-  background: var(--warm);
-  color: #fff;
-  font-size: 0.75rem;
-  font-weight: 800;
+  flex-shrink: 0;
+  font-size: 0.8125rem;
+  font-weight: 900;
+  color: #ffb3dd;
 }
-.st-chip {
-  align-self: flex-start;
-  padding: 0.2rem 0.6rem;
-  border-radius: 999px;
-  background: var(--accent-tint);
-  color: var(--accent-700);
-  font-size: 0.6875rem;
-  font-weight: 700;
+.st-stage::before {
+  content: "שלב ";
 }
-.st-chip--missing {
-  background: var(--warm-tint);
-  color: var(--warm-strong);
-}
-.st-why {
+.st-def {
   margin: 0;
   font-size: 0.8125rem;
-  line-height: 1.6;
-  color: var(--muted);
+  line-height: 1.55;
+  color: var(--soft);
+}
+.st-chip {
+  display: none;
+}
+.st-topic {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 700;
+  line-height: 1.5;
+  color: #ffd84d;
+}
+
+/* קבוצה סגורה נראית ככפתור, כי זה מה שהיא */
+.st-group {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--inset);
+  overflow: hidden;
+}
+.st-group + .st-group {
+  margin-top: 0.35rem;
+}
+.st-group > summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 46px;
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  list-style: none;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+.st-group > summary::-webkit-details-marker {
+  display: none;
+}
+.st-group > summary::after {
+  content: "+";
+  flex-shrink: 0;
+  font-size: 1.125rem;
+  font-weight: 900;
+  color: #ffd84d;
+  line-height: 1;
+}
+.st-group[open] > summary::after {
+  content: "\2212";
+}
+.st-group__label {
+  flex-grow: 1;
+}
+.st-group__count {
+  flex-shrink: 0;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: #ffd84d;
+  color: #241c00;
+  font-size: 0.6875rem;
+  font-weight: 900;
 }
 .st-bullets {
   margin: 0;
-  padding-inline-start: 1.1rem;
+  padding: 0 1.4rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  color: #e8ebfb;
+}
+
+.st-steps {
+  margin: 0;
+  padding-inline-start: 1.2rem;
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
   font-size: 0.8125rem;
-  line-height: 1.6;
+  line-height: 1.5;
+  font-weight: 700;
+  color: #ffffff;
 }
+.st-steps li::marker {
+  color: #ffd84d;
+  font-weight: 900;
+}
+
+/* משבצת שהיא ממלאת בעצמה: זהב, כי זה מה שתורה */
+.st-slot {
+  border: 1px solid #ffd84d;
+  border-radius: 12px;
+  background: #2a2208;
+  padding: 0.6rem 0.7rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.st-slot + .st-slot,
+.st-group + .st-slot,
+.st-slot + .st-group {
+  margin-top: 0.35rem;
+}
+.st-slot__head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.st-slot__label {
+  flex-grow: 1;
+  font-size: 0.8125rem;
+  font-weight: 800;
+  color: #ffd84d;
+}
+.st-slot__add {
+  flex-shrink: 0;
+  min-height: 44px;
+  padding: 0.4rem 0.95rem;
+  border: 0;
+  border-radius: 10px;
+  background: #ffd84d;
+  color: #241c00;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+.st-slot__empty {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #d8cfa4;
+}
+.st-slot .st-bullets {
+  padding: 0 1.1rem 0.2rem;
+  color: #f4ecd2;
+}
+
+.st-added:empty {
+  display: none;
+}
+
 .st-edit {
   align-self: flex-start;
   min-height: 44px;
-  padding: 0.55rem 0.9rem;
-  border: 1px solid var(--border-color);
-  border-radius: var(--card-radius-sm);
-  background: var(--card-bg);
-  color: var(--accent);
+  padding: 0.45rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: transparent;
+  color: #ffffff;
   font: inherit;
   font-size: 0.75rem;
   font-weight: 700;
@@ -4789,16 +4896,16 @@ textarea:focus-visible,
 .st-field__label {
   font-size: 0.6875rem;
   font-weight: 700;
-  color: var(--muted);
+  color: var(--soft);
 }
 .st-input {
   width: 100%;
   box-sizing: border-box;
   padding: 0.7rem 0.75rem;
-  border: 1px solid var(--border-color);
-  border-radius: var(--card-radius-sm);
-  background: var(--bg);
-  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #ffffff;
+  color: #171b3a;
   font: inherit;
   font-size: 0.8125rem;
   line-height: 1.5;
@@ -4808,6 +4915,34 @@ textarea:focus-visible,
   align-self: center;
 }
 
+/* שורת המנהלת */
+.st-owner-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.65rem 0.8rem;
+  background: #e4e7fa;
+  border: 1px dashed #aeb6e4;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #3a4288;
+}
+.st-owner-bar[hidden] {
+  display: none;
+}
+.st-owner-bar select {
+  flex-grow: 1;
+  min-height: 44px;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid #aeb6e4;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #171b3a;
+  font: inherit;
+  font-size: 0.8125rem;
+}
+
 /* בחירת הקהל לפני הבנייה */
 .st-plan-sheet {
   position: fixed;
@@ -4815,7 +4950,7 @@ textarea:focus-visible,
   z-index: 60;
   display: flex;
   align-items: flex-end;
-  background: rgba(23, 27, 58, 0.45);
+  background: rgba(15, 24, 84, 0.55);
 }
 .st-plan-sheet[hidden] {
   display: none;
@@ -4828,32 +4963,39 @@ textarea:focus-visible,
   padding: 1rem 1.1rem calc(1.5rem + env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
-  gap: 0.85rem;
-  background: var(--card-bg);
-  border-radius: var(--card-radius) var(--card-radius) 0 0;
+  gap: 0.8rem;
+  background: #0f1854;
+  border-radius: 18px 18px 0 0;
 }
 .st-plan-sheet__grip {
   align-self: center;
   width: 44px;
   height: 4px;
   border-radius: 999px;
-  background: var(--border-color);
+  background: #3b47a3;
 }
 .st-plan-sheet__card h2 {
   margin: 0;
   font-size: 1.25rem;
   font-weight: 900;
+  color: #ffffff;
 }
 .st-plan-sheet__sub {
   margin: 0;
   font-size: 0.8125rem;
-  color: var(--muted);
-  line-height: 1.55;
+  line-height: 1.5;
+  color: #c3c9f0;
+}
+.st-plan-sheet .st-audiences__label {
+  color: #9aa3d8;
+}
+.st-plan-sheet .btn-text {
+  color: #c3c9f0;
 }
 .st-plan-choices {
   display: flex;
   flex-direction: column;
-  gap: 0.55rem;
+  gap: 0.5rem;
 }
 .st-choice {
   display: flex;
@@ -4861,30 +5003,27 @@ textarea:focus-visible,
   gap: 0.7rem;
   min-height: 44px;
   padding: 0.8rem 0.85rem;
-  border: 1px solid var(--border-color);
-  border-radius: var(--card-radius-sm);
-  background: var(--card-bg);
+  border: 1px solid #3b47a3;
+  border-radius: 12px;
+  background: #151d52;
   font: inherit;
   text-align: start;
   cursor: pointer;
 }
 .st-choice.is-on {
-  border: 2px solid var(--accent);
-  background: var(--accent-tint);
-}
-.st-choice:disabled {
-  cursor: not-allowed;
+  border-color: #ffd84d;
+  background: #1b2566;
 }
 .st-choice__dot {
   flex-shrink: 0;
   width: 18px;
   height: 18px;
   border-radius: 999px;
-  border: 1px solid var(--border-color);
-  background: var(--card-bg);
+  border: 1px solid #3b47a3;
+  background: #0f1854;
 }
 .st-choice.is-on .st-choice__dot {
-  border: 5px solid var(--accent);
+  border: 5px solid #ffd84d;
 }
 .st-choice__text {
   flex-grow: 1;
@@ -4894,195 +5033,25 @@ textarea:focus-visible,
 }
 .st-choice__name {
   font-size: 0.875rem;
-  font-weight: 700;
-  color: var(--text);
+  font-weight: 800;
+  color: #ffffff;
 }
 .st-choice__meta {
   font-size: 0.6875rem;
-  color: var(--muted);
+  color: #c3c9f0;
 }
 .st-choice__meta.is-missing {
-  color: var(--warm-strong);
+  color: #ffb3dd;
   font-weight: 700;
-}
-
-/* 30/09/2026, תיקון של מאיה: "את לא צריכה לכתוב להם מה להגיד אלא רק נושאים".
-   כלי שאין לו מקור בקובץ מוצג כנושא, בגוון שקט ובלי שדה מילוי - הוא לא
-   "חסר", הוא פשוט נושא. */
-.st-row--topic {
-  background: var(--surface);
-}
-.st-topic {
-  margin: 0;
-  font-size: 0.875rem;
-  font-weight: 600;
-  line-height: 1.55;
-  color: var(--accent-strong);
-}
-/* הרצף שמאיה לימדה, ארבעה סטוריז בסדר קבוע */
-.st-steps {
-  margin: 0;
-  padding-inline-start: 1.2rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-  font-size: 0.8125rem;
-  line-height: 1.55;
-  font-weight: 600;
-}
-.st-steps li::marker {
-  color: var(--warm);
-  font-weight: 800;
 }
 
 /* 30/09/2026: כל אלמנט שהקוד מסתיר עם hidden, אבל מחלקה שלו קובעת display
    ולכן הוא ממשיך להופיע. חמישה מהם היו באפליקציה עוד לפני טבלת החימום:
    מחוון "נשמר", שני כפתורי המיקרופון, שורת הקהל המשני בתכנית התוכן, ותיבת
-   התוצאה של רעיון אקראי. יש עכשיו בדיקה שנופלת אם מישהו מוסיף עוד אחד. */
+   התוצאה של רעיון אקראי. יש בדיקה שנופלת אם מישהו מוסיף עוד אחד. */
 .draft-saved-indicator[hidden],
 .mic-btn[hidden],
 .content-plan-checkbox-row[hidden],
 .random-result[hidden] {
   display: none;
-}
-
-/* 30/09/2026: שורת המנהלת מעל הטבלה. רק מאיה רואה אותה, והיא משמשת
-   לראות מה לקוחה אמיתית רואה, כי הקובץ שלה עצמה ריק. */
-.st-owner-bar {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  padding: 0.7rem 0.85rem;
-  background: var(--surface);
-  border: 1px dashed var(--border-color);
-  border-radius: var(--card-radius-sm);
-  font-size: 0.8125rem;
-  font-weight: 700;
-  color: var(--muted);
-}
-.st-owner-bar[hidden] {
-  display: none;
-}
-.st-owner-bar select {
-  flex-grow: 1;
-  min-height: 44px;
-  padding: 0.5rem 0.6rem;
-  border: 1px solid var(--border-color);
-  border-radius: var(--card-radius-sm);
-  background: var(--card-bg);
-  color: var(--text);
-  font: inherit;
-  font-size: 0.8125rem;
-}
-
-/* 30/09/2026 (מאיה: "צריך סדר ולוודא שלא פיספסת דברים"): כל מקור בגיליון
-   הוא קבוצה עם כותרת ומספר פריטים. קבוצה ארוכה נפתחת בלחיצה, כדי שהכל
-   יהיה שם בלי שהמסך יהפוך לקיר. */
-.st-def {
-  margin: 0;
-  font-size: 0.8125rem;
-  line-height: 1.55;
-  color: var(--muted);
-}
-.st-group {
-  border: 1px solid var(--border-color);
-  border-radius: var(--card-radius-sm);
-  background: var(--bg);
-  overflow: hidden;
-}
-.st-group + .st-group {
-  margin-top: 0.4rem;
-}
-.st-group > summary {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  min-height: 44px;
-  padding: 0.5rem 0.7rem;
-  cursor: pointer;
-  list-style: none;
-  font-size: 0.8125rem;
-  font-weight: 700;
-  color: var(--accent-strong);
-}
-.st-group > summary::-webkit-details-marker {
-  display: none;
-}
-.st-group > summary::before {
-  content: "";
-  flex-shrink: 0;
-  width: 0;
-  height: 0;
-  border-inline-start: 5px solid var(--accent);
-  border-block: 4px solid transparent;
-  transition: transform 150ms ease;
-}
-.st-group[open] > summary::before {
-  transform: rotate(-90deg);
-}
-.st-group__label {
-  flex-grow: 1;
-}
-.st-group__count {
-  flex-shrink: 0;
-  padding: 1px 8px;
-  border-radius: 999px;
-  background: var(--accent-tint);
-  color: var(--accent-700);
-  font-size: 0.6875rem;
-  font-weight: 800;
-}
-.st-group .st-bullets {
-  padding: 0 1.4rem 0.7rem;
-  gap: 0.35rem;
-}
-
-/* 30/09/2026 (מאיה): "תוסיפי כאן עוד כפתור שיצטרכו להשלים לבד". משבצת ידנית
-   נראית אחרת מקבוצה שנשלפה מהקובץ, כדי שיהיה ברור במבט שזה תורה. */
-.st-slot {
-  border: 1px dashed var(--warm-100);
-  border-radius: var(--card-radius-sm);
-  background: var(--warm-tint);
-  padding: 0.6rem 0.7rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-}
-.st-slot + .st-slot,
-.st-group + .st-slot,
-.st-slot + .st-group {
-  margin-top: 0.4rem;
-}
-.st-slot__head {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-.st-slot__label {
-  flex-grow: 1;
-  font-size: 0.8125rem;
-  font-weight: 700;
-  color: var(--warm-strong);
-}
-.st-slot__add {
-  flex-shrink: 0;
-  min-height: 44px;
-  padding: 0.4rem 0.8rem;
-  border: 1px solid var(--warm-300);
-  border-radius: var(--card-radius-sm);
-  background: var(--card-bg);
-  color: var(--warm-strong);
-  font: inherit;
-  font-size: 0.75rem;
-  font-weight: 800;
-  cursor: pointer;
-}
-.st-slot__empty {
-  margin: 0;
-  font-size: 0.75rem;
-  color: var(--muted);
-}
-.st-slot .st-bullets {
-  padding-inline-start: 1.1rem;
-  font-size: 0.8125rem;
 }
