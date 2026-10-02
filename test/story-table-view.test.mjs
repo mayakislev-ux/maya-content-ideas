@@ -322,12 +322,22 @@ test('הקובץ נקרא מחדש בכל פתיחה, ברקע', () => {
   assert.ok(showAt > -1 && syncAt > showAt, 'קודם מציגים את השמורה, ורק אז מסנכרנים');
 });
 
-test('רענון שנכשל לא מוחק טבלה שכבר על המסך', () => {
+test('רענון שנכשל לא מוחק טבלה שכבר על המסך, וגם לא נבלע בשקט', () => {
   const sync = VIEW.slice(VIEW.indexOf('async function runSync'), VIEW.indexOf('export async function wireStoryTableView'));
+
+  // כל נפילה לטבלת הנושאים חייבת להיות מוגנת בבדיקה שאין כבר טבלה
   const falls = sync.split('showTable(defaultTable())').length - 1;
   assert.ok(falls > 0, 'יש נפילה לטבלת נושאים');
-  const guarded = sync.split('if (!state.table) showTable(defaultTable())').length - 1;
-  assert.equal(guarded, falls, 'וכל אחת מהן מוגנת בבדיקה שאין כבר טבלה');
+  const inlineGuards = sync.split('if (!state.table) showTable(defaultTable())').length - 1;
+  const branchGuards = sync.split('if (state.table) {').length - 1;
+  assert.equal(inlineGuards + branchGuards, falls, 'כל אחת מהן מוגנת');
+
+  /* 02/10/2026 (מאיה): "עדכנתי בבוקר את טבלת קהל יעד וכל הסעיפים אצלי לא
+     השתנו". הסנכרון קרס בשרת יממה שלמה, וכאן הכישלון נבלע בלי שום סימן.
+     הטבלה הישנה נשארה על המסך ונראתה עדכנית. */
+  const fail = sync.slice(sync.indexOf('} catch (err)'));
+  assert.match(fail, /showStatus\(/, 'כישלון רענון מוצג');
+  assert.match(fail, /מהסנכרון הקודם/, 'ונאמר במפורש שמה שרואים אינו עדכני');
 });
 
 test('האפליקציה לא יכולה לכתוב לגיליון', async () => {

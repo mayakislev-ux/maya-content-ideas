@@ -16,6 +16,26 @@ const { buildStoryTable, TAB } = require('./story-table-extract');
 const { fetchSheetTabs, sheetsServiceAccountKey } = require('./sheets-content');
 
 const WANTED_TABS = [TAB.persona, TAB.audience, TAB.products];
+
+/**
+ * מסיר את מה שנגזר בצד הלקוח לפני השמירה.
+ *
+ * 30/09/2026, ביקורת 10 סוכנים: כל פריט נשמר פעמיים, גם ב-groups וגם
+ * ב-bullets, וניפח את המסמך ב-49%. המסמך הגדול הגיע ל-74% ממגבלת 1MB של
+ * Firestore. bullets נגזר מ-groups בצד הלקוח ולכן אינו נשמר.
+ *
+ * 02/10/2026 (מאיה): "עדכנתי בבוקר את טבלת קהל יעד וכל הסעיפים אצלי לא
+ * השתנו". הקריאה לפונקציה הזאת נכנסה ב-01/10 אבל היא עצמה מעולם לא הוגדרה,
+ * ולכן כל סנכרון קרס ב-ReferenceError. הטבלאות של כל הלקוחות היו קפואות
+ * מאז, והכישלון היה שקט לגמרי כי רענון שקט לא מציג שגיאה.
+ */
+function stripDerived(audience) {
+  const strip = (rows) => (Array.isArray(rows) ? rows : []).map((row) => {
+    const { bullets, ...rest } = row || {};
+    return rest;
+  });
+  return { ...audience, ongoing: strip(audience && audience.ongoing), sale: strip(audience && audience.sale) };
+}
 const SHEET_ID_PATTERN = /^[a-zA-Z0-9_-]{20,}$/;
 const SHEETS_URL_PATTERN = /\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/;
 

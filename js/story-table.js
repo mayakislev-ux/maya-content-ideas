@@ -186,9 +186,17 @@ async function runSync(quiet = false) {
     }
     showTable(next);
   } catch (err) {
+    /* 02/10/2026 (מאיה): "עדכנתי בבוקר את טבלת קהל יעד וכל
+       הסעיפים אצלי לא השתנו". הסנכרון קרס בשרת יממה שלמה,
+       וכאן הכישלון נבלע בלי שום סימן. הטבלה הישנה נשארה על המסך
+       ונראתה עדכנית. רענון שנכשל חייב להיות נראה, גם כשהוא שקט. */
     console.error('syncStoryTable failed:', err);
-    showStatus("");
-    if (!state.table) showTable(defaultTable());
+    if (state.table) {
+      showStatus('לא הצלחנו לקרוא את הקובץ עכשיו. מה שמוצג הוא מהסנכרון הקודם.', true);
+    } else {
+      showStatus('');
+      showTable(defaultTable());
+    }
   } finally {
     state.busy = false;
   }
