@@ -1,0 +1,37 @@
+rules_version = '2';
+
+// 02/10/2026 (מאיה): "צריך בחלק של הסטורי כרגע רק לי תיקייה שאני יכולה
+// בעצם להעלות תמונות לרקעים של סטוריז".
+//
+// כרגע זה שלה בלבד. לא "מוסתר בממשק" אלא חסום בשרת: גם מי שתנחש את הכתובת
+// של קובץ לא תקבל אותו, וגם מי שתנסה להעלות תיחסם. כשזה ייפתח ללקוחות,
+// התנאי של המייל יוחלף והנתיב לפי uid כבר מוכן לזה.
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isMaya() {
+      return request.auth != null
+        && request.auth.token.email == 'mayakislev@gmail.com'
+        && request.auth.token.email_verified == true;
+    }
+
+    match /storyAssets/{uid}/{file} {
+      allow read: if isMaya() && request.auth.uid == uid;
+
+      // 10MB ותמונות בלבד. בלי התנאי הזה אפשר להעלות וידאו של חצי ג'יגה
+      // בטעות ולשלם על זה.
+      allow create, update: if isMaya()
+        && request.auth.uid == uid
+        && request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+
+      allow delete: if isMaya() && request.auth.uid == uid;
+    }
+
+    // כל השאר סגור
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}
