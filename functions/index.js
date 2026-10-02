@@ -20,7 +20,7 @@ const webpush = {
 const { buildSystemPrompt } = require('./system-prompt');
 const { buildOngoingWarmingPrompt, buildPresaleWarmingPrompt } = require('./warming-system-prompt');
 const { buildContentPlanPrompt } = require('./content-plan-system-prompt');
-const { buildStorySequencePrompt, stripFraming } = require('./story-sequence-prompt');
+const { buildStorySequencePrompt, stripFraming, checkSequence } = require('./story-sequence-prompt');
 const { fetchExtraContentLinks, sheetsServiceAccountKey } = require('./sheets-content');
 const { CATEGORIES, PERSUASION_STAGES, CATEGORY_DEFINITIONS, PERSUASION_STAGE_DEFINITIONS } = require('./ideas-constants');
 const { FORMAT_TAGS, FORMAT_TAG_DEFINITIONS, SUBCATEGORIES_BY_DOMAIN } = require('./inspiration-constants');
@@ -1332,7 +1332,7 @@ exports.breakdownStorySequence = onRequest(
     const heartbeat = setInterval(() => res.write(': heartbeat\n\n'), 15000);
 
     try {
-      const prompt = buildStorySequencePrompt({ topic, context, cta, assets });
+      const promptArgs = { topic, context, cta, assets };
 
       /* 02/10/2026 (מאיה): "לא הצלחתי לפרק את הנושא, נסו שוב. מילאתי וזה
          פשוט לא עבד". הלוג הראה שהתשובה נחתכה באמצע משפט, בתוך שדה של סקר.
@@ -1343,13 +1343,16 @@ exports.breakdownStorySequence = onRequest(
          ולמה הניסיון החוזר לא עזר: הוא שלח בדיוק את אותה בקשה, אז הוא נחתך
          שוב באותו מקום. מעכשיו מזהים חיתוך במפורש, ומבקשים בניסיון השני
          להתקצר. */
-      async function callAndParse(attempt = 1, extraInstruction = '') {
+      async function callAndParse(attempt = 1, extraInstruction = '', corrections = '') {
         const data = await callAnthropic(
           anthropicApiKey.value(),
           {
             model: 'claude-sonnet-5',
             max_tokens: 8000,
-            messages: [{ role: 'user', content: prompt + extraInstruction }],
+            messages: [{
+              role: 'user',
+              content: buildStorySequencePrompt({ ...promptArgs, corrections }) + extraInstruction,
+            }],
           },
           'breakdownStorySequence'
         );
@@ -1379,8 +1382,32 @@ exports.breakdownStorySequence = onRequest(
         }
       }
 
-      const parsed = await callAndParse();
-      const stories = Array.isArray(parsed.stories) ? parsed.stories : [];
+      let parsed = await callAndParse();
+      let stories = Array.isArray(parsed.stories) ? parsed.stories : [];
+
+      /* 02/10/2026: הפרומפט לבדו לא החזיק. הרצף שמאיה כינתה "מזעזע" הפר
+         שלושה כללים שאפשר לזהות מכנית, בלי לקרוא אותו בכלל. לכן בודקים, ואם
+         משהו הופר מבקשים פעם אחת נוספת עם התיקון המדויק. פעם אחת ולא יותר,
+         כי עדיף רצף עם פגם אחד מאשר המתנה של דקה נוספת. */
+      if (stories.length) {
+        const problems = checkSequence(stories);
+        if (problems.length) {
+          console.warn('breakdownStorySequence rule violations:', problems.join(' | '));
+          const retryText = problems.map((t, i) => `${i + 1}. ${t}`).join(String.fromCharCode(10));
+          try {
+            const second = await callAndParse(1, '', retryText);
+            const secondStories = Array.isArray(second.stories) ? second.stories : [];
+            // לוקחים את השנייה רק אם היא באמת טובה יותר
+            if (secondStories.length && checkSequence(secondStories).length < problems.length) {
+              parsed = second;
+              stories = secondStories;
+            }
+          } catch (err) {
+            console.error('breakdownStorySequence correction pass failed:', err.message);
+          }
+        }
+      }
+
       if (!stories.length) {
         console.error('breakdownStorySequence returned no stories:', JSON.stringify(parsed).slice(0, 300));
         res.write(`data: ${JSON.stringify({ error: 'התקבלה תשובה לא תקינה, נסו שוב' })}\n\n`);
