@@ -5494,3 +5494,116 @@ textarea:focus-visible,
 .sq-line { display: block; }
 .sq-gap { display: block; height: 0.55rem; }
 .sq-empty { margin: 0.5rem 0; font-size: 0.78rem; color: #5a61a0; }
+
+/* 02/10/2026 (מאיה): "בגלל שהסטוריז בצבע מותג... שיהיה אופציה להוסיף את זה
+   וגם את השם של הפונט הקבוע של הסטורי, ותעשי כמה שיותר דומה לקבוע שלהם".
+   לכן לצד ההוראות יש תצוגה של הסטורי עצמו, בצבעים ובפונט שלה. */
+.sq-brand {
+  margin-bottom: 0.5rem;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid #c9cfee;
+  border-radius: 9px;
+  background: #fff;
+}
+.sq-brand summary {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #3a4288;
+  cursor: pointer;
+}
+.sq-brand-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
+  gap: 0.4rem;
+  margin: 0.6rem 0 0.4rem;
+}
+.sq-brand-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.66rem;
+  font-weight: 700;
+  color: #5a61a0;
+}
+.sq-brand-grid input[type="color"] {
+  width: 100%;
+  height: 34px;
+  padding: 0;
+  border: 1px solid #c9cfee;
+  border-radius: 7px;
+  background: none;
+  cursor: pointer;
+}
+.sq-brand input[type="text"] { margin-bottom: 0.3rem; }
+.sq-brand-note { margin: 0; font-size: 0.66rem; color: #8186b0; }
+
+.sq-saved { margin: 0.6rem 0 0; }
+.sq-saved-head { margin: 0 0 0.3rem; font-size: 0.68rem; font-weight: 800; color: #5a61a0; }
+.sq-chip {
+  max-width: 100%;
+  margin: 0 0 0.3rem 0.3rem;
+  padding: 0.35rem 0.6rem;
+  border: 1px solid #c9cfee;
+  border-radius: 999px;
+  background: #fff;
+  font: inherit;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #3a4288;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+/* ההוראות והתצוגה זו לצד זו כשיש מקום, וזו מעל זו בטלפון */
+.sq-card { display: grid; grid-template-columns: 1fr; gap: 0.6rem; }
+@media (min-width: 620px) {
+  .sq-card { grid-template-columns: 1fr 150px; align-items: start; }
+}
+.sq-card-preview { display: flex; justify-content: center; }
+
+/* 9:16, כמו סטורי אמיתי */
+.sp-frame {
+  width: 150px;
+  aspect-ratio: 9 / 16;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.7rem 0.6rem;
+  border-radius: 12px;
+  overflow: hidden;
+  font-size: 0.58rem;
+  line-height: 1.5;
+  text-align: center;
+}
+.sp-frame--cam {
+  align-items: center;
+  justify-content: center;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+.sp-text { font-weight: 700; }
+.sp-l { display: block; }
+.sp-gap { display: block; height: 0.4rem; }
+.sp-punch { display: block; margin-top: 0.3rem; font-weight: 800; font-size: 0.66rem; }
+.sp-small { margin: 0.3rem 0 0; font-size: 0.5rem; line-height: 1.4; }
+/* הדמיית מדבקת הסקר של אינסטגרם. את האמיתית מוסיפים באינסטגרם עצמו. */
+.sp-poll {
+  margin-top: 0.4rem;
+  padding: 0.3rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #111;
+}
+.sp-poll-q { margin: 0 0 0.25rem; font-size: 0.5rem; font-weight: 800; }
+.sp-poll-opts { display: flex; gap: 0.2rem; }
+.sp-poll-opts span {
+  flex: 1;
+  padding: 0.18rem 0.1rem;
+  border-radius: 5px;
+  background: #f1f1f5;
+  font-size: 0.46rem;
+  font-weight: 700;
+}

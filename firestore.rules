@@ -36,6 +36,18 @@ service cloud.firestore {
       // לקוחה רואה. קריאה בלבד, בלי כתיבה.
       allow read: if isAdmin();
     }
+    /* 02/10/2026 (מאיה): "בגלל שהסטוריז בצבע מותג אז הייתי רוצה
+       שאת הטקסט והצבעים תתאימי בול לגוונים של הצבעי מותג... ושהכל ישמר
+       תמיד ולא כל פעם מחדש". הגדרות המותג והרצפים שנבנו, לכל אחת
+       בנפרד. כרגע זה של מאיה בלבד, אבל הכלל כבר לפי uid כדי שלא
+       יהיה צורך לשנות את המבנה כשזה ייפתח. */
+    match /storySettings/{uid} {
+      allow read, write: if isAllowed() && request.auth.uid == uid;
+    }
+    match /storySequences/{seqId} {
+      allow read, update, delete: if isAllowed() && request.auth.uid == resource.data.ownerUid;
+      allow create: if isAllowed() && request.auth.uid == request.resource.data.ownerUid;
+    }
     match /contentPlans/{planId} {
       allow read, update, delete: if isAllowed() && request.auth.uid == resource.data.ownerUid;
       allow create: if isAllowed() && request.auth.uid == request.resource.data.ownerUid;
