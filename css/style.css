@@ -5622,3 +5622,27 @@ textarea:focus-visible,
   color: #3a4288;
   cursor: pointer;
 }
+
+/* 02/10/2026: שני טיפוסי רצף, שיקוף ועמדה. היא בוחרת, או נותנת לכלי לבחור. */
+.sq-job { display: flex; gap: 0.3rem; margin-bottom: 0.3rem; flex-wrap: wrap; }
+.sq-job-btn {
+  flex: 1;
+  min-width: 90px;
+  min-height: 38px;
+  border: 1px solid #c9cfee;
+  border-radius: 9px;
+  background: #fff;
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 800;
+  color: #3a4288;
+  cursor: pointer;
+}
+.sq-job-btn.is-on { background: #3a4288; color: #fff; border-color: #3a4288; }
+.sq-job-note { margin: 0 0 0.5rem; font-size: 0.66rem; line-height: 1.5; color: #8186b0; }
+.sq-kind {
+  margin: 0 0 0.5rem;
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #5a61a0;
+}

@@ -100,7 +100,10 @@ export function angleHtml(angle) {
 export function sequenceHtml(result, brand) {
   const stories = Array.isArray(result && result.stories) ? result.stories : [];
   if (!stories.length) return '<p class="sq-empty">לא התקבל רצף. אפשר לנסות שוב.</p>';
-  return angleHtml(result.angle) + stories.map((s, i) => storyHtml(s, i, brand)).join('');
+  /* 02/10/2026: שני מבנים שונים, ולכן כתוב איזה נבחר. כשהיא נתנה לכלי
+     לבחור, היא צריכה לדעת מה הוא בחר כדי לדעת אם זה מה שהתכוונה. */
+  const kind = result && result.job === 'stance' ? 'עמדה' : 'שיקוף';
+  return `<p class="sq-kind">רצף מסוג ${kind}</p>` + angleHtml(result.angle) + stories.map((s, i) => storyHtml(s, i, brand)).join('');
 }
 
 /** טקסט להעתקה, כדי שתוכל לשלוח את זה לעצמה לוואטסאפ לפני צילום */
@@ -131,7 +134,7 @@ async function saveSequence(topic, result) {
   const ref = await addDoc(collection(db, 'storySequences'), {
     ownerUid: user.uid,
     topic: String(topic || '').slice(0, 300),
-    angle: result.angle || { risk: '', bridge: '' },
+    job: result.job || 'mirror',
     stories: result.stories || [],
     createdAt: serverTimestamp(),
   });
@@ -154,12 +157,12 @@ async function listSequences() {
 
 /* ---------------- הקריאה לשרת ---------------- */
 
-async function callBreakdown({ topic, context, cta, assets, signal }) {
+async function callBreakdown({ topic, context, cta, assets, job, signal }) {
   const idToken = await auth.currentUser.getIdToken();
   const response = await fetch(URL_ENDPOINT, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
-    body: JSON.stringify({ topic, context, cta, assets }),
+    body: JSON.stringify({ topic, context, cta, assets, job }),
     signal,
   });
   if (!response.ok) {
@@ -221,6 +224,12 @@ export async function wireStorySequence() {
         <p class="sq-brand-note">נשמר אוטומטית, וחל על כל הרצפים מכאן והלאה.</p>
       </details>
 
+      <div class="sq-job" id="sq-job">
+        <button type="button" class="sq-job-btn is-on" data-job="auto">שתבחרי בשבילי</button>
+        <button type="button" class="sq-job-btn" data-job="mirror">שיקוף</button>
+        <button type="button" class="sq-job-btn" data-job="stance">עמדה</button>
+      </div>
+      <p class="sq-job-note">שיקוף מתאר להם רגע שקורה להם. עמדה היא דעה שלך על משהו שקורה בשוק.</p>
       <textarea id="sq-topic" rows="2" placeholder="הנושא, במשפט אחד"></textarea>
       <textarea id="sq-context" rows="2" placeholder="משהו שחייב להיכנס? סיפור, דוגמה, צילום מסך (לא חובה)"></textarea>
       <input id="sq-cta" type="text" placeholder="הנעה לפעולה, אם יש (לא חובה)">
@@ -235,6 +244,7 @@ export async function wireStorySequence() {
   host.insertBefore(box, anchor);
 
   let last = null;
+  let job = 'auto';
   let brand = { ...DEFAULT_BRAND };
 
   /* ---- צבעי המותג ---- */
@@ -288,10 +298,17 @@ export async function wireStorySequence() {
     const rows = el('sq-saved')._rows || [];
     const row = rows.find((r) => r.id === chip.dataset.id);
     if (!row) return;
-    last = { angle: row.angle, stories: row.stories };
+    last = { job: row.job, stories: row.stories };
     el('sq-topic').value = row.topic || '';
     el('sq-out').innerHTML = sequenceHtml(last, brand);
     el('sq-copy').hidden = false;
+  });
+
+  el('sq-job').addEventListener('click', (e) => {
+    const btn = e.target.closest('.sq-job-btn');
+    if (!btn) return;
+    job = btn.dataset.job;
+    [...el('sq-job').querySelectorAll('.sq-job-btn')].forEach((b) => b.classList.toggle('is-on', b === btn));
   });
 
   el('sq-toggle').addEventListener('click', async () => {
@@ -338,6 +355,7 @@ export async function wireStorySequence() {
         context: el('sq-context').value.trim(),
         cta: el('sq-cta').value.trim(),
         assets,
+        job,
         signal: budget.signal,
       });
       last = result;

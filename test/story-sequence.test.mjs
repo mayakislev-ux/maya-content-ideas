@@ -22,19 +22,19 @@ const prompt = buildStorySequencePrompt({ topic: 'נושא', context: '', cta: '
 
 test('שיקוף, לא מסירת עצה', () => {
   assert.match(prompt, /קודם כל שיקוף, לא ישר הנה 5 טיפים/);
-  assert.match(prompt, /אם הרצף מרגיש כמו עצה/);
+  assert.match(prompt, /לא ישר הנה 5 טיפים/);
   assert.match(prompt, /סטוריז 1 עד 3 הם שיקוף בלבד, בלי שום עצה/);
 });
 
 test('סצנה בהווה, לא תיק מקרה בעבר', () => {
-  assert.match(prompt, /סצנה, לא תיק מקרה/);
+  assert.match(prompt, /סצנה בהווה, לא תיק מקרה בעבר/);
   assert.match(prompt, /הסברת את התהליך/, 'הדוגמה השלילית מהרצף שנפסל');
   assert.match(prompt, /אתם מעלים סטורי/, 'והדוגמה החיובית שלה');
   assert.match(prompt, /לשון עבר מסכמת/);
 });
 
 test('הכלל המחולל ומבחן הבעלות', () => {
-  assert.match(prompt, /מעמיקה בכל סטורי/);
+  assert.match(prompt, /כל סטורי מוסיף בדיוק דבר אחד/);
   assert.match(prompt, /מבחן הבעלות/);
   assert.match(prompt, /חמישה שייכים לצופה/);
 });
@@ -60,28 +60,28 @@ test('הקצב מוגדר כמבנה, עם ארבעת הסימנים שלה', ()
 /* ========== הפעימות ========== */
 
 test('שיקוף, מחיר, טענה, מסר', () => {
-  assert.match(prompt, /1 ו-2 הם שיקוף/);
-  assert.match(prompt, /3 ו-4 הם המחיר/);
-  assert.match(prompt, /5 הוא הטענה שלה/);
+  assert.match(prompt, /טיפוס א', שיקוף/);
+  assert.match(prompt, /טיפוס ב', עמדה/);
+  assert.match(prompt, /התפקיד השיווקי קובע/);
 });
 
 test('המחיר הוא פעימה, ולא הערה', () => {
-  assert.match(prompt, /פה נכנס המחיר/);
+  assert.match(prompt, /המחיר, והוא החלק שהכי נוטים לדלג עליו/);
   assert.match(prompt, /להכאיב עוד/);
-  assert.match(prompt, /שתי פעימות שלמות מוקדשות למחיר/);
-  assert.match(prompt, /הרצף נכון ולא כואב/);
+  assert.match(prompt, /המחיר נמדד בעסק, לא ברגש/);
+  assert.match(prompt, /החלק שהכי נוטים לדלג עליו/);
 });
 
 test('הגשר שמתרגם מהרגשה לעסק', () => {
   assert.match(prompt, /נשמע כמו בעיה קטנה, אבל תחשבו מה זה אומר בפועל/);
   assert.match(prompt, /המחיר נמדד בעסק, לא ברגש/);
-  assert.match(prompt, /לא "מתיש", לא "מבלבל"/);
+  assert.match(prompt, /לא "מתיש" ולא "מבלבל"/);
 });
 
 test('שלושת כלי ההכאבה והתיוג על המסך', () => {
-  assert.match(prompt, /מצלמים ← עורכים ← מעלים ← מחכים/, 'לולאת עבודה');
+  assert.match(prompt, /מצלמים ← עורכים/, 'לולאת עבודה');
   assert.match(prompt, /כישלון סימטרי/);
-  assert.match(prompt, /מספר מצטבר שמכמת את הבזבוז/);
+  assert.match(prompt, /מספר מצטבר/);
   assert.match(prompt, /⬅️ זה המחיר/);
 });
 
@@ -92,7 +92,7 @@ test('סולם הניחושים, ולא משפט פנימי אחד', () => {
 
 test('פעימה 4 נגמרת במסקנה שנובעת מהנושא הזה בלבד', () => {
   assert.match(prompt, /שנובעת מהנושא הזה בלבד/);
-  assert.match(prompt, /פעימה 4 מניחה את המטרה שפעימה 5 מפילה/);
+  assert.match(prompt, /פותח בלצטט ולהכחיש את המסקנה מפעימה 4/);
 });
 
 /* ========== מהלכים ========== */
@@ -245,8 +245,8 @@ test('השרת חוסם לפי מייל לפני כל קריאה ל-AI', () => {
 test('השרת מבקש תיקון כשכלל הופר, ולוקח את השנייה רק אם היא טובה יותר', () => {
   const fn = server.slice(server.indexOf('exports.breakdownStorySequence'));
   const body = fn.slice(0, fn.indexOf('\n);'));
-  assert.match(body, /checkSequence\(stories\)/);
-  assert.match(body, /checkSequence\(secondStories\)\.length < problems\.length/);
+  assert.match(body, /checkSequence\(stories, parsed\.job\)/);
+  assert.match(body, /checkSequence\(secondStories, second\.job\)\.length < problems\.length/);
 });
 
 test('הגבול הועלה, וחיתוך מזוהה במקום להיראות כמו JSON שבור', () => {
@@ -311,4 +311,68 @@ test('הצירופים היומיומיים לא נחשבים עצה', () => {
   const real = [...base];
   real[0] = { n: 1, text: 'הנה 3 דברים שתתחילו לעשות היום.' };
   assert.ok(checkSequence(real).some((t) => /נותן עצה/.test(t)), 'עצה אמיתית עדיין נתפסת');
+});
+
+/* 02/10/2026 (מאיה): "שלחתי לך כבר 5-6 דוגמאות... לא מרגיש שקלטת". מהניתוח
+   של שש הדוגמאות עלה שיש שני מבנים שונים לגמרי, ולא אחד, והיא עצמה מסווגת
+   כל רצף לפי התפקיד השיווקי שלו. הכלי ידע מבנה אחד וכפה אותו על הכל, ולכן
+   נושא של עמדה קיבל מבנה של שיקוף והומצא בו קורבן. */
+
+test('שני טיפוסים, והתפקיד השיווקי בוחר', () => {
+  assert.match(prompt, /שני טיפוסים של רצף/);
+  assert.match(prompt, /מודעות לפתרון דרך ביקורת/, 'הסיווג שלה עצמה');
+  assert.match(prompt, /בשיקוף היא נותנת להם \*\*הבנה\*\*/);
+  assert.match(prompt, /בעמדה היא נותנת להם\s*\n?\*\*שאלה לשאול\*\*/);
+});
+
+test('בחירה מפורשת מביאה רק את המבנה שנבחר', () => {
+  const mirror = buildStorySequencePrompt({ topic: 'נושא', job: 'mirror' });
+  const stance = buildStorySequencePrompt({ topic: 'נושא', job: 'stance' });
+  assert.ok(mirror.includes("טיפוס א': שיקוף") && !mirror.includes("טיפוס ב': עמדה"));
+  assert.ok(stance.includes("טיפוס ב': עמדה") && !stance.includes("טיפוס א': שיקוף"));
+  assert.match(mirror, /הרצף הזה הוא שיקוף/);
+  assert.match(stance, /הרצף הזה הוא עמדה/);
+});
+
+test('בעמדה: הוכחה אישית, קריטריון, וביקורת על פרקטיקה ולא על אנשים', () => {
+  const stance = buildStorySequencePrompt({ topic: 'נושא', job: 'stance' });
+  assert.match(stance, /ההוכחה היא העבודה שלה, לא התוצאות שלה/);
+  assert.match(stance, /על מה הוא הוכיח שהשיווק שלו עובד/);
+  assert.match(stance, /מבקרים פרקטיקה, לא אנשים/);
+  assert.match(stance, /הצופה הוא קונה שבוחר, לא נכשל/);
+  assert.match(stance, /אולי זו דעה\s*\n?\s*לא פופולרית/, 'ההצהרה מסומנת כדעה');
+});
+
+test('הכללים הנבדקים שונים בין שני הטיפוסים', () => {
+  const sequence = [
+    { n: 1, text: 'אולי זו דעה לא פופולרית: זו טעות מקצועית.' },
+    { n: 2, speech: 'כי יש פער בין לדעת להסביר לבין לדעת להשתמש.' },
+    { n: 3, text: 'הצעה ← תמחור ← קהל ← משפך' },
+    { n: 4, text: 'הייתי צריכה להשתמש בו על העסק שלי.' },
+    { n: 5, speech: 'תשאלו על מה הוא הוכיח שזה עובד.' },
+    { n: 6, text: 'אל תלמדו רק ממי שיודע ללמד.', small: 'א\nב' },
+  ];
+  assert.deepEqual(checkSequence(sequence, 'stance'), [], 'עמדה תקינה');
+  // אותו רצף בדיוק נבדק כשיקוף ונופל, כי אין בו מחיר ואין פנייה ב"אתם"
+  assert.ok(checkSequence(sequence, 'mirror').length > 0, 'ולפי כללי השיקוף הוא לא תקין');
+});
+
+test('קורבן בעמדה נתפס, והוא בדיוק מה שהכלי המציא', () => {
+  const withVictim = [
+    { n: 1, text: 'אולי זו דעה לא פופולרית.' },
+    { n: 2, speech: 'כי יש פער.' },
+    { n: 3, text: 'הייתי צריכה להשתמש בו על העסק שלי.' },
+    { n: 4, text: "'כנראה שאני פשוט לא מיועד/ת לזה.'" },
+    { n: 5, speech: 'תשאלו על מה הוא הוכיח.' },
+    { n: 6, text: 'מסר', small: 'א\nב' },
+  ];
+  assert.ok(checkSequence(withVictim, 'stance').some((t) => /קונה שבוחר, לא נכשל/.test(t)));
+});
+
+test('המסך נותן לה לבחור, ומראה מה נבחר', () => {
+  assert.match(src, /data-job="auto"/);
+  assert.match(src, /data-job="mirror"/);
+  assert.match(src, /data-job="stance"/);
+  assert.match(src, /רצף מסוג \$\{kind\}/, 'כתוב על התוצאה איזה מבנה יצא');
+  assert.match(src, /job,/, 'והבחירה נשלחת לשרת');
 });

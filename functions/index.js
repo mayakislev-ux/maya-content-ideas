@@ -1305,6 +1305,10 @@ exports.breakdownStorySequence = onRequest(
     const context = ((req.body && req.body.context) || '').trim();
     const cta = ((req.body && req.body.cta) || '').trim();
     const assets = Array.isArray(req.body && req.body.assets) ? req.body.assets : [];
+    /* 02/10/2026: שיקוף או עמדה. 'auto' נותן למודל להחליט לפי הנושא, וזה
+       ברירת המחדל כי רוב הזמן הנושא עצמו אומר את זה. */
+    const rawJob = String((req.body && req.body.job) || 'auto');
+    const job = ['mirror', 'stance', 'auto'].includes(rawJob) ? rawJob : 'auto';
 
     if (!topic) {
       res.status(400).json({ error: 'צריך נושא כדי לפרק אותו לסטוריז' });
@@ -1333,7 +1337,7 @@ exports.breakdownStorySequence = onRequest(
     const heartbeat = setInterval(() => res.write(': heartbeat\n\n'), 15000);
 
     try {
-      const promptArgs = { topic, context, cta, assets };
+      const promptArgs = { topic, context, cta, assets, job };
 
       /* 02/10/2026 (מאיה): "לקח יותר מדי זמן ונעצר". קריאה אחת לוקחת 80 עד 95
          שניות. כשהבדיקה מצאה הפרה יצאה קריאה שנייה שלמה, ואם גם היא נחתכה
@@ -1372,7 +1376,7 @@ exports.breakdownStorySequence = onRequest(
           /* 02/10/2026: הפורמט אינו JSON יותר, כי מרכאות בעברית שברו אותו
              והפילו את הקריאה הראשונה בכל פעם. תשובה שנחתכה עדיין מכילה
              סטוריז שלמים לפני החיתוך, ולכן היא מתקבלת כשיש בה מספיק. */
-          const parsed = { stories: parseSequence(text) };
+          const parsed = parseSequence(text);
           if (!parsed.stories.length) throw new Error('empty');
           if (truncated && parsed.stories.length < 5) throw new Error('truncated');
           return parsed;
@@ -1403,7 +1407,7 @@ exports.breakdownStorySequence = onRequest(
          משהו הופר מבקשים פעם אחת נוספת עם התיקון המדויק. פעם אחת ולא יותר,
          כי עדיף רצף עם פגם אחד מאשר המתנה של דקה נוספת. */
       if (stories.length) {
-        const problems = checkSequence(stories);
+        const problems = checkSequence(stories, parsed.job);
         if (problems.length && timeLeft() > 100000) {
           console.warn('breakdownStorySequence rule violations:', problems.join(' | '));
           const retryText = problems.map((t, i) => `${i + 1}. ${t}`).join(String.fromCharCode(10));
@@ -1411,7 +1415,7 @@ exports.breakdownStorySequence = onRequest(
             const second = await callAndParse(1, '', retryText);
             const secondStories = Array.isArray(second.stories) ? second.stories : [];
             // לוקחים את השנייה רק אם היא באמת טובה יותר
-            if (secondStories.length && checkSequence(secondStories).length < problems.length) {
+            if (secondStories.length && checkSequence(secondStories, second.job).length < problems.length) {
               parsed = second;
               stories = secondStories;
             }
@@ -1434,10 +1438,7 @@ exports.breakdownStorySequence = onRequest(
       res.write(
         `data: ${JSON.stringify({
           done: true,
-          angle: {
-            risk: stripFraming(parsed.angle && parsed.angle.risk),
-            bridge: stripFraming(parsed.angle && parsed.angle.bridge),
-          },
+          job: parsed.job || 'mirror',
           stories,
         })}\n\n`
       );

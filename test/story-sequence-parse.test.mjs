@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
-const { parseSequence, parsePoll } = require('../functions/story-sequence-parse.js');
+const { parseSequence: parseRaw, parsePoll } = require('../functions/story-sequence-parse.js');
+const parseSequence = (raw) => parseRaw(raw).stories;
+const parseJob = (raw) => parseRaw(raw).job;
 
 /**
  * 02/10/2026 (מאיה): "הגיוני שלוקח המון זמן?". מהלוג: התשובה הראשונה
@@ -150,4 +152,11 @@ test('@@STORY בלי מספר מקבל מספר לפי הסדר', () => {
     'ב',
   ));
   assert.deepEqual(out.map((s) => s.n), [1, 2]);
+});
+
+test('@@JOB נקרא, וברירת המחדל היא שיקוף', () => {
+  assert.equal(parseJob(lines('@@JOB stance', '@@STORY 1', '@text', 'א')), 'stance');
+  assert.equal(parseJob(lines('@@JOB mirror', '@@STORY 1', '@text', 'א')), 'mirror');
+  assert.equal(parseJob(lines('@@STORY 1', '@text', 'א')), 'mirror', 'בלי השורה, שיקוף');
+  assert.equal(parseJob(lines('@@JOB שטות', '@@STORY 1', '@text', 'א')), 'mirror');
 });
