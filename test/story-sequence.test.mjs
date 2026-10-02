@@ -16,13 +16,7 @@ const server = readFileSync(new URL('../functions/index.js', import.meta.url), '
  * כתבה בעצמה, ולכן מה שנבדק כאן הוא שהכללים שלה באמת נמצאים בפרומפט.
  */
 
-test('הפרומפט נושא את כללי המבנה שלה', () => {
-  const p = buildStorySequencePrompt({ topic: 'נושא', context: '', cta: '', assets: [] });
-  assert.match(p, /שיתוף אישי/);
-  assert.match(p, /הצפת הבעיה/);
-  assert.match(p, /המסר שנשאר בראש/);
-  assert.match(p, /בין 2 ל-6 סטוריז/);
-});
+
 
 test('הכלל שהיא הדגישה הכי חזק נמצא שם במילים שלה', () => {
   const p = buildStorySequencePrompt({ topic: 'נושא', context: '', cta: '', assets: [] });
@@ -30,11 +24,7 @@ test('הכלל שהיא הדגישה הכי חזק נמצא שם במילים ש
   assert.match(p, /לא שני "דיבור למצלמה" ברצף/);
 });
 
-test('חידוד הזווית קודם לפירוק, עם הדוגמה האמיתית שלה', () => {
-  const p = buildStorySequencePrompt({ topic: 'נושא', context: '', cta: '', assets: [] });
-  assert.match(p, /קמפיינרים לא עובדים/, 'הדוגמה שלה לניסוח גס שצריך להימנע ממנו');
-  assert.ok(p.indexOf('חידוד הזווית') < p.indexOf('הנושא:'), 'מופיע לפני הנושא עצמו');
-});
+
 
 test('הפרומפט יודע אילו תמונות יש לה, ומה לעשות כשאין', () => {
   const empty = buildStorySequencePrompt({ topic: 'נושא', context: '', cta: '', assets: [] });
@@ -117,12 +107,7 @@ test('יש גבול זמן לפירוק', () => {
 // הטקסט "הניסוח הגס: ..." וב-bridge את "הגשר שאת רוצה לשרוף הוא: ...",
 // כלומר שכפל את מילות ההוראה לתוך התשובה, והממשק הציג "לא: הניסוח הגס:".
 // בנוסף יצא רק דיבור אחד למצלמה מתוך חמישה, ולא היה סקר בכלל.
-test('הפרומפט מונע את שלוש הסטיות שנמצאו בהרצה האמיתית', () => {
-  const p = buildStorySequencePrompt({ topic: 'נושא', context: '', cta: '', assets: [] });
-  assert.match(p, /בלי "הניסוח הגס:"/, 'השדות מכילים תוכן בלבד');
-  assert.match(p, /שניים של דיבור למצלמה, לא אחד/);
-  assert.match(p, /נלווה אליו סקר/);
-});
+
 
 // 02/10/2026: גם אחרי שהפרומפט ביקש תוכן בלבד, bridge חזר מהשרת החי כ"הגשר
 // שאת רוצה לשרוף הוא: ...". הממשק מציג את זה ממילא כ"כן", אז על המסך יצאה
@@ -173,4 +158,60 @@ test('הלוג שומר את מה שצריך כדי לאבחן בלי לנחש',
   const body = fn.slice(0, fn.indexOf('\n);'));
   assert.match(body, /stop_reason=\$\{data\.stop_reason\}/);
   assert.match(body, /chars=\$\{text\.length\}/);
+});
+
+/* 02/10/2026 (מאיה): "מי ביקש ממנו לבחור זווית? כבר כתבתי את הרעיון. הוא בנה
+   לי סטוריז מזעזע", ואז שלחה את הרצף שהיא כן רצתה. ההבדל הוא קצב, לא ניסוח:
+   הרצף שנכשל אמר את כל הטיעון כבר בסטורי 1 ואז חזר עליו חמש פעמים. */
+
+test('לא בוחרים לה זווית, הנושא שלה הוא הנושא', () => {
+  const p = buildStorySequencePrompt({ topic: 'נושא', context: '', cta: '', assets: [] });
+  assert.match(p, /הנושא שהיא נתנה הוא הנושא/);
+  assert.match(p, /לא "לחדד את הזווית"/);
+  assert.ok(!/חידוד הזווית/.test(p), 'השלב הזה הוסר לגמרי');
+  assert.ok(!/"angle"/.test(p), 'וגם לא מבוקש בתשובה');
+});
+
+test('הכלל שהכי חשוב לה: סטורי 1 לא מסיק מסקנה', () => {
+  const p = buildStorySequencePrompt({ topic: 'נושא', context: '', cta: '', assets: [] });
+  assert.match(p, /סטורי 1 לא מסיק שום מסקנה/);
+  assert.match(p, /בלי מסקנה עדיין/);
+  assert.match(p, /סטורי 1 אינו מסיק שום מסקנה ואינו מזכיר את הפתרון/, 'גם בכללים הקשיחים');
+  // הדוגמה השלילית שלה עצמה, כדי שהמודל יראה בדיוק מה אסור
+  assert.match(p, /ועדיין לא מבינה למה זה לא מביא תוצאות/);
+});
+
+test('הפעימות של הרצף, כולל אלה שהיו חסרות לגמרי', () => {
+  const p = buildStorySequencePrompt({ topic: 'נושא', context: '', cta: '', assets: [] });
+  assert.match(p, /אימות התסכול/, 'קודם מסכימים איתם ורק אחר כך מתקנים');
+  assert.match(p, /המחשבות שבראש שלהם/, 'סטורי של שאלות פנימיות בציטוט');
+  assert.match(p, /הטוויסט מגיע מאוחר/);
+  assert.match(p, /כאן לעצור/);
+});
+
+test('חוק הקונקרטיות, במספרים ולא בכלליות', () => {
+  const p = buildStorySequencePrompt({ topic: 'נושא', context: '', cta: '', assets: [] });
+  assert.match(p, /1,247 צפיות/);
+  assert.match(p, /0 פניות/);
+  assert.match(p, /לא "השקיעו"/);
+});
+
+test('הפורמטים העשירים שהיא משתמשת בהם, לא רק רקע וטקסט', () => {
+  const p = buildStorySequencePrompt({ topic: 'נושא', context: '', cta: '', assets: [] });
+  assert.match(p, /B-roll/);
+  assert.match(p, /צילום מסך של Notes/);
+  assert.match(p, /ולא ארבע הרצאות למצלמה/);
+  assert.match(p, /שניים מתוך הרצף הם דיבור למצלמה/);
+});
+
+test('הערת בימוי היא חלק מהתוצר, לא קישוט', () => {
+  const p = buildStorySequencePrompt({ topic: 'נושא', context: '', cta: '', assets: [] });
+  assert.match(p, /הערת בימוי/);
+  assert.match(p, /"note":"<הערת בימוי/);
+});
+
+test('סקר יכול להיות קליל, כולל אימוג׳י כאפשרות', () => {
+  const p = buildStorySequencePrompt({ topic: 'נושא', context: '', cta: '', assets: [] });
+  assert.match(p, /יותר מדי פעמים/);
+  assert.match(p, /נלווה לסטורי של התוצאה, לא בהכרח לראשון/);
 });
