@@ -142,3 +142,35 @@ test('השרת מנקה את שני השדות לפני ששולח ללקוחה'
   assert.match(server, /risk: stripFraming\(/);
   assert.match(server, /bridge: stripFraming\(/);
 });
+
+// 02/10/2026 (מאיה): "לא הצלחתי לפרק את הנושא, נסו שוב. מילאתי וזה פשוט לא
+// עבד". הלוג הראה תשובה שנחתכה באמצע שדה של סקר: הגבול היה 4000 טוקנים, וזה
+// לא מספיק לחמישה סטוריז בעברית עם תסריטי דיבור. הניסיון החוזר שלח בדיוק את
+// אותה בקשה ולכן נחתך שוב באותו מקום.
+test('הגבול הועלה, וחיתוך מזוהה במקום להיראות כמו JSON שבור', () => {
+  const fn = server.slice(server.indexOf('exports.breakdownStorySequence'));
+  const body = fn.slice(0, fn.indexOf('\n);'));
+  assert.match(body, /max_tokens: 8000/);
+  assert.match(body, /stop_reason === 'max_tokens'/);
+});
+
+test('הניסיון החוזר מבקש להתקצר, ולא חוזר על אותה בקשה', () => {
+  const fn = server.slice(server.indexOf('exports.breakdownStorySequence'));
+  const body = fn.slice(0, fn.indexOf('\n);'));
+  assert.match(body, /callAndParse\(attempt \+ 1, shorter\)/);
+  assert.match(body, /עד 5 סטוריז/);
+});
+
+test('כשזה בכל זאת נכשל, ההודעה אומרת מה קרה ומה לעשות', () => {
+  const fn = server.slice(server.indexOf('exports.breakdownStorySequence'));
+  const body = fn.slice(0, fn.indexOf('\n);'));
+  assert.match(body, /הרצף יצא ארוך מדי ונחתך/);
+  assert.match(body, /לצמצם את הנושא/);
+});
+
+test('הלוג שומר את מה שצריך כדי לאבחן בלי לנחש', () => {
+  const fn = server.slice(server.indexOf('exports.breakdownStorySequence'));
+  const body = fn.slice(0, fn.indexOf('\n);'));
+  assert.match(body, /stop_reason=\$\{data\.stop_reason\}/);
+  assert.match(body, /chars=\$\{text\.length\}/);
+});

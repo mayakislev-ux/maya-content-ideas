@@ -1334,20 +1334,48 @@ exports.breakdownStorySequence = onRequest(
     try {
       const prompt = buildStorySequencePrompt({ topic, context, cta, assets });
 
-      async function callAndParse(attempt = 1) {
+      /* 02/10/2026 (מאיה): "לא הצלחתי לפרק את הנושא, נסו שוב. מילאתי וזה
+         פשוט לא עבד". הלוג הראה שהתשובה נחתכה באמצע משפט, בתוך שדה של סקר.
+         הגבול היה 4000 טוקנים, וזה פשוט לא מספיק לרצף של חמישה סטוריז
+         בעברית עם תסריטי דיבור מלאים. עברית צורכת הרבה יותר טוקנים לאותו
+         טקסט מאנגלית.
+
+         ולמה הניסיון החוזר לא עזר: הוא שלח בדיוק את אותה בקשה, אז הוא נחתך
+         שוב באותו מקום. מעכשיו מזהים חיתוך במפורש, ומבקשים בניסיון השני
+         להתקצר. */
+      async function callAndParse(attempt = 1, extraInstruction = '') {
         const data = await callAnthropic(
           anthropicApiKey.value(),
-          { model: 'claude-sonnet-5', max_tokens: 4000, messages: [{ role: 'user', content: prompt }] },
+          {
+            model: 'claude-sonnet-5',
+            max_tokens: 8000,
+            messages: [{ role: 'user', content: prompt + extraInstruction }],
+          },
           'breakdownStorySequence'
         );
         const text = (data.content || []).map((b) => b.text || '').join('');
+        const truncated = data.stop_reason === 'max_tokens';
+
         try {
+          if (truncated) throw new Error('truncated');
           const match = text.match(/\{[\s\S]*\}/);
           return JSON.parse(match ? match[0] : text);
         } catch (err) {
-          console.error(`Failed to parse breakdownStorySequence response (attempt ${attempt}):`, text.slice(0, 400));
-          if (attempt < 2) return callAndParse(attempt + 1);
-          throw new Error('לא הצלחתי לפרק את הנושא, נסו שוב');
+          console.error(
+            `breakdownStorySequence parse failed (attempt ${attempt}, stop_reason=${data.stop_reason}, chars=${text.length}):`,
+            text.slice(0, 300)
+          );
+          if (attempt < 2) {
+            const shorter = truncated
+              ? '\n\nחשוב: התשובה הקודמת נחתכה באמצע. תן/תני בדיוק את אותו מבנה, אבל קצר יותר: עד 5 סטוריז, וכל תסריט דיבור עד 60 מילים.'
+              : '';
+            return callAndParse(attempt + 1, shorter);
+          }
+          throw new Error(
+            truncated
+              ? 'הרצף יצא ארוך מדי ונחתך. אפשר לנסות שוב, או לצמצם את הנושא למשפט אחד ממוקד.'
+              : 'לא הצלחתי לפרק את הנושא, נסו שוב'
+          );
         }
       }
 
