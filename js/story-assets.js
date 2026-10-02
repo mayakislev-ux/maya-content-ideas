@@ -51,6 +51,34 @@ export function safeName(originalName) {
   return `${stamp}-${rand}.${ext || 'jpg'}`;
 }
 
+/**
+ * כמה להקטין תמונה.
+ *
+ * 02/10/2026 (מאיה): "גדולות מדי מעצבן תטפלי". תמונה מהטלפון
+ * היא בקלות 8 עד 12MB, והיא גם גדולה בהרבה ממה שסטורי צריך. במקום
+ * להגיד לה "גדולה מדי", מקטינים בדפדפן לפני ההעלאה. 1920 בצלע
+ * הארוך הוא יותר ממסך סטורי מלא (1080x1920), וזה גם מה שגורם לגלריה
+ * להיפתח מיד במקום למשוך עשרות מגה-בייט.
+ */
+export const MAX_EDGE = 1920;
+export const SHRINK_ABOVE = 1.5 * 1024 * 1024;
+
+/** המידות אחרי הקטנה, בשמירה על יחס. תמונה קטנה נשארת כמו שהיא. */
+export function targetSize(width, height, maxEdge = MAX_EDGE) {
+  if (!width || !height) return { width: 0, height: 0 };
+  const longest = Math.max(width, height);
+  if (longest <= maxEdge) return { width, height };
+  const scale = maxEdge / longest;
+  return { width: Math.round(width * scale), height: Math.round(height * scale) };
+}
+
+/** האם בכלל כדאי לגעת בקובץ */
+export function shouldShrink(file, width, height) {
+  if (!file) return false;
+  if (file.size > SHRINK_ABOVE) return true;
+  return Math.max(width || 0, height || 0) > MAX_EDGE;
+}
+
 /** מה אפשר להעלות. מחזיר הודעה בעברית כשלא, ולא רק false. */
 export function rejectReason(file) {
   if (!file) return 'לא נבחר קובץ';
@@ -122,6 +150,39 @@ function readSize(file) {
   });
 }
 
+/**
+ * מקטין בפועל. מחזיר את הקובץ המקורי כשאי אפשר, למשל HEIC שהדפדפן לא יודע
+ * לפענח, כדי שהעלאה לא תיכשל בגלל שההקטנה נכשלה.
+ */
+async function shrink(file, width, height) {
+  if (!shouldShrink(file, width, height)) return file;
+  try {
+    const bitmap = await createImageBitmap(file);
+    let quality = 0.86;
+    let edge = MAX_EDGE;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const size = targetSize(bitmap.width, bitmap.height, edge);
+      const canvas = document.createElement('canvas');
+      canvas.width = size.width || bitmap.width;
+      canvas.height = size.height || bitmap.height;
+      canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      // eslint-disable-next-line no-await-in-loop
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality));
+      if (!blob) return file;
+      if (blob.size <= 9 * 1024 * 1024) {
+        const name = String(file.name || 'image').replace(/\.[^.]+$/, '') + '.jpg';
+        return new File([blob], name, { type: 'image/jpeg' });
+      }
+      quality -= 0.18;
+      edge = Math.round(edge * 0.75);
+    }
+    return file;
+  } catch (err) {
+    console.error('shrink failed, uploading original:', err);
+    return file;
+  }
+}
+
 export function assetCardHtml(asset) {
   const next = asset.kind === 'bg' ? 'portrait' : asset.kind === 'portrait' ? 'both' : 'bg';
   return `
@@ -156,7 +217,7 @@ export async function wireStoryAssets() {
           <input type="file" id="sa-file" accept="image/*" multiple hidden>
           <span>להעלות תמונות</span>
         </label>
-        <p class="sa-note">עד 10MB לתמונה. לחיצה על התווית מחליפה בין רקע נקי, תדמית, ושניהם.</p>
+        <p class="sa-note">תמונות גדולות מוקטנות אוטומטית, אין מה להתאים מראש. לחיצה על התווית מחליפה בין רקע נקי, תדמית, ושניהם.</p>
         <div class="sa-grid" id="sa-grid"></div>
       </div>`;
     host.insertBefore(box, anchor);
@@ -173,8 +234,16 @@ export async function wireStoryAssets() {
         : '<p class="sa-empty">עוד אין תמונות. אפשר להעלות מכאן.</p>';
       count.textContent = assets.length ? `${assets.length}` : '';
     } catch (err) {
+      /* 02/10/2026: ההודעה הקודמת לא אמרה כלום ולא הציעה כלום. כשלון רגעי
+         נראה כמו תקלה קבועה, ואי אפשר היה לדעת מה קרה. */
       console.error('listAssets failed:', err);
-      grid.innerHTML = '<p class="sa-empty">לא הצלחנו לטעון את התמונות.</p>';
+      const why = (err && (err.code || err.message)) || '';
+      grid.innerHTML =
+        `<p class="sa-empty">לא הצלחנו לטעון את התמונות.` +
+        (why ? ` <span class="sa-why">(${String(why).slice(0, 80)})</span>` : '') +
+        ` <button type="button" class="sa-retry" id="sa-retry">לנסות שוב</button></p>`;
+      const retry = document.getElementById('sa-retry');
+      if (retry) retry.addEventListener('click', refresh);
     }
   }
 
@@ -193,11 +262,18 @@ export async function wireStoryAssets() {
     if (!files.length) return;
     let ok = 0;
     for (const file of files) {
-      const reason = rejectReason(file);
-      if (reason) { showToast(`${file.name}: ${reason}`); continue; }
+      /* בודקים רק שזאת תמונה. הגודל נבדק אחרי ההקטנה, אחרת היינו דוחים
+         תמונה מהטלפון שההקטנה הייתה פותרת בשנייה. */
+      if (!String(file.type || '').startsWith('image/')) {
+        showToast(`${file.name}: אפשר להעלות תמונות בלבד`);
+        continue;
+      }
       try {
         const { width, height } = await readSize(file);
-        await uploadAsset(file, guessKind(width, height));
+        const ready = await shrink(file, width, height);
+        const reasonAfter = rejectReason(ready);
+        if (reasonAfter) { showToast(`${file.name}: ${reasonAfter}`); continue; }
+        await uploadAsset(ready, guessKind(width, height));
         ok += 1;
       } catch (err) {
         console.error('uploadAsset failed:', err);

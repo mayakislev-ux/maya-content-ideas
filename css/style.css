@@ -5607,3 +5607,18 @@ textarea:focus-visible,
   font-size: 0.46rem;
   font-weight: 700;
 }
+
+.sa-why { opacity: 0.8; }
+.sa-retry {
+  margin-inline-start: 0.4rem;
+  min-height: 30px;
+  padding: 0 0.7rem;
+  border: 1px solid #aeb6e4;
+  border-radius: 7px;
+  background: #fff;
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #3a4288;
+  cursor: pointer;
+}

@@ -82,3 +82,62 @@ test('מחיקה שואלת קודם', () => {
   const block = src.slice(src.indexOf(".sa-del"));
   assert.ok(block.includes('confirmDialog'), 'אין מחיקה בלחיצה אחת');
 });
+
+/* 02/10/2026 (מאיה): "גדולות מדי מעצבן תטפלי". תמונה מהטלפון היא בקלות 8 עד
+   12MB, והיא גם גדולה בהרבה ממה שסטורי צריך. במקום לדחות, מקטינים בדפדפן. */
+
+function targetSize(width, height, maxEdge = 1920) {
+  if (!width || !height) return { width: 0, height: 0 };
+  const longest = Math.max(width, height);
+  if (longest <= maxEdge) return { width, height };
+  const scale = maxEdge / longest;
+  return { width: Math.round(width * scale), height: Math.round(height * scale) };
+}
+function shouldShrink(file, width, height) {
+  if (!file) return false;
+  if (file.size > 1.5 * 1024 * 1024) return true;
+  return Math.max(width || 0, height || 0) > 1920;
+}
+
+test('תמונה מהטלפון מוקטנת, ויחס הצדדים נשמר', () => {
+  const a = targetSize(4032, 3024);
+  assert.equal(a.width, 1920);
+  assert.equal(a.height, 1440, '4:3 נשמר');
+  const b = targetSize(3024, 4032);
+  assert.equal(b.height, 1920, 'גם לאורך');
+  assert.equal(b.width, 1440);
+});
+
+test('תמונה שכבר קטנה לא נוגעים בה', () => {
+  assert.deepEqual(targetSize(1080, 1920), { width: 1080, height: 1920 }, 'מידות סטורי מדויקות');
+  assert.deepEqual(targetSize(800, 600), { width: 800, height: 600 });
+  assert.deepEqual(targetSize(0, 0), { width: 0, height: 0 }, 'כשלא קראנו מידות');
+});
+
+test('מתי בכלל מקטינים', () => {
+  assert.equal(shouldShrink({ size: 9 * 1024 * 1024 }, 1080, 1920), true, 'כבדה אבל במידות תקינות');
+  assert.equal(shouldShrink({ size: 300 * 1024 }, 4032, 3024), true, 'קלה אבל ענקית במידות');
+  assert.equal(shouldShrink({ size: 300 * 1024 }, 1080, 1920), false, 'קטנה בשני המובנים');
+  assert.equal(shouldShrink(null, 100, 100), false);
+});
+
+test('ההעלאה לא נחסמת מראש בגלל גודל, רק אחרי ההקטנה', () => {
+  const src2 = readFileSync(new URL('../js/story-assets.js', import.meta.url), 'utf8');
+  const handler = src2.slice(src2.indexOf("el('sa-file').addEventListener"));
+  assert.ok(handler.includes('const ready = await shrink('), 'מקטינים לפני');
+  assert.ok(handler.indexOf('const ready = await shrink(') < handler.indexOf('rejectReason(ready)'),
+    'ורק אחר כך בודקים גודל');
+  assert.ok(!/const reason = rejectReason\(file\)/.test(handler), 'אין יותר דחייה על גודל המקור');
+});
+
+test('כשההקטנה לא אפשרית מעלים את המקור במקום להיכשל', () => {
+  const src2 = readFileSync(new URL('../js/story-assets.js', import.meta.url), 'utf8');
+  const fn = src2.slice(src2.indexOf('async function shrink'), src2.indexOf('export function assetCardHtml'));
+  assert.match(fn, /catch \(err\)[\s\S]*return file/, 'HEIC או פענוח שנכשל לא מפילים העלאה');
+});
+
+test('שגיאת טעינה אומרת מה קרה ומציעה לנסות שוב', () => {
+  const src2 = readFileSync(new URL('../js/story-assets.js', import.meta.url), 'utf8');
+  assert.match(src2, /sa-retry/);
+  assert.match(src2, /err\.code \|\| err\.message/);
+});
