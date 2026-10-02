@@ -1,5 +1,5 @@
 // שינוי כאן גורם לכל מי שפתוחה על גרסה ישנה לקבל את הודעת "גרסה חדשה מוכנה" (18/09: הכנסת update-check.js)
-const CACHE_NAME = 'moach-hashiveki-v24';
+const CACHE_NAME = 'moach-hashiveki-v25';
 const APP_SHELL = ['./', './index.html', './css/style.css', './js/app.js', './manifest.json', './assets/favicon.png'];
 
 self.addEventListener('install', (event) => {
@@ -45,6 +45,17 @@ function isImmutableAsset(url) {
 // fetch with { cache: 'no-store' } bypasses that layer for real.
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+
+  /* 02/10/2026 (מאיה): "לא הצלחנו לטעון את התמונות. (storage/unauthorized)".
+     השורה למטה שולחת את הבקשה מחדש לפי הכתובת בלבד, ובקשה שנבנית
+     מכתובת אינה נושאת את כותרת Authorization. לכן כל קריאה מאובטחת
+     ל-Storage הגיעה לשרת כאילו אין התחברות ונחסמה. העלאה דווקא עבדה,
+     כי היא POST והשורה שלמעלה מחריגה אותה.
+
+     ה-service worker קיים כדי שהאפליקציה עצמה תהיה עדכנית, וזה תמיד
+     אותו מקור. לקריאות API אין לו מה לתרום, ויש לו מה לשבור. */
+  const sameOrigin = new URL(event.request.url).origin === self.location.origin;
+  if (!sameOrigin && !isImmutableAsset(event.request.url)) return;
 
   if (isImmutableAsset(event.request.url)) {
     event.respondWith(
