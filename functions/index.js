@@ -21,6 +21,7 @@ const { buildSystemPrompt } = require('./system-prompt');
 const { buildOngoingWarmingPrompt, buildPresaleWarmingPrompt } = require('./warming-system-prompt');
 const { buildContentPlanPrompt } = require('./content-plan-system-prompt');
 const { buildStorySequencePrompt, stripFraming, checkSequence } = require('./story-sequence-prompt');
+const { parseSequence } = require('./story-sequence-parse');
 const { fetchExtraContentLinks, sheetsServiceAccountKey } = require('./sheets-content');
 const { CATEGORIES, PERSUASION_STAGES, CATEGORY_DEFINITIONS, PERSUASION_STAGE_DEFINITIONS } = require('./ideas-constants');
 const { FORMAT_TAGS, FORMAT_TAG_DEFINITIONS, SUBCATEGORIES_BY_DOMAIN } = require('./inspiration-constants');
@@ -1368,9 +1369,13 @@ exports.breakdownStorySequence = onRequest(
         const truncated = data.stop_reason === 'max_tokens';
 
         try {
-          if (truncated) throw new Error('truncated');
-          const match = text.match(/\{[\s\S]*\}/);
-          return JSON.parse(match ? match[0] : text);
+          /* 02/10/2026: הפורמט אינו JSON יותר, כי מרכאות בעברית שברו אותו
+             והפילו את הקריאה הראשונה בכל פעם. תשובה שנחתכה עדיין מכילה
+             סטוריז שלמים לפני החיתוך, ולכן היא מתקבלת כשיש בה מספיק. */
+          const parsed = { stories: parseSequence(text) };
+          if (!parsed.stories.length) throw new Error('empty');
+          if (truncated && parsed.stories.length < 5) throw new Error('truncated');
+          return parsed;
         } catch (err) {
           console.error(
             `breakdownStorySequence parse failed (attempt ${attempt}, stop_reason=${data.stop_reason}, chars=${text.length}):`,
