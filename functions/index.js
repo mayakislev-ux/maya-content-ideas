@@ -20,6 +20,7 @@ const webpush = {
 const { buildSystemPrompt } = require('./system-prompt');
 const { buildOngoingWarmingPrompt, buildPresaleWarmingPrompt } = require('./warming-system-prompt');
 const { buildContentPlanPrompt } = require('./content-plan-system-prompt');
+const { buildStorySequencePrompt } = require('./story-sequence-prompt');
 const { fetchExtraContentLinks, sheetsServiceAccountKey } = require('./sheets-content');
 const { CATEGORIES, PERSUASION_STAGES, CATEGORY_DEFINITIONS, PERSUASION_STAGE_DEFINITIONS } = require('./ideas-constants');
 const { FORMAT_TAGS, FORMAT_TAG_DEFINITIONS, SUBCATEGORIES_BY_DOMAIN } = require('./inspiration-constants');
@@ -46,6 +47,7 @@ const DAILY_LIMITS = {
   checkIdea: 60,
   classifyIdea: 40,
   generateWarmingPlan: 20,
+  breakdownStorySequence: 40,
   generateContentPlan: 20,
   matchInspirationQuery: 40,
 };
@@ -1252,6 +1254,124 @@ exports.generateWarmingPlan = onRequest(
       res.end();
     } catch (err) {
       console.error('generateWarmingPlan: unexpected error:', err);
+      res.write(`data: ${JSON.stringify({ error: err.message || 'משהו השתבש, נסו שוב' })}\n\n`);
+      res.end();
+    } finally {
+      clearInterval(heartbeat);
+    }
+  }
+);
+
+/* 02/10/2026 (מאיה): "לוקח לי נושא ונגיד מפרק לי אותו ל2-6 סטוריז... הוא לא
+   מייצר, הוא אומר תפתחי מצלמה ותדברי ככה, אבל זה סטורי 1 סקר / עצירה".
+
+   השכבה שמעל תוכנית החימום: התוכנית אומרת מה השבוע, וזה אומר מה לצלם עכשיו.
+   כרגע אצל מאיה בלבד, ולכן יש כאן בדיקת מייל מפורשת ולא רק allowlist. */
+exports.breakdownStorySequence = onRequest(
+  { secrets: [anthropicApiKey], region: 'us-central1', cors: ALLOWED_STREAM_ORIGINS, timeoutSeconds: 180 },
+  async (req, res) => {
+    if (req.method !== 'POST') {
+      res.status(405).json({ error: 'Method not allowed' });
+      return;
+    }
+
+    const authHeader = req.get('Authorization') || '';
+    const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    if (!idToken) {
+      res.status(401).json({ error: 'יש להתחבר כדי להשתמש בתכונה הזו' });
+      return;
+    }
+
+    let uid, email;
+    try {
+      const decoded = await admin.auth().verifyIdToken(idToken);
+      uid = decoded.uid;
+      email = decoded.email;
+    } catch (err) {
+      console.error('breakdownStorySequence: invalid ID token:', err.message);
+      res.status(401).json({ error: 'התחברות לא תקינה, נסו להתחבר מחדש' });
+      return;
+    }
+
+    /* כרגע רק מאיה. לא מסתמכים על זה שהכפתור לא מוצג: מי שתקרא ישירות
+       לפונקציה תיחסם כאן. כשזה ייפתח ללקוחות, השורה הזאת היא מה שמשתנה. */
+    if (email !== 'mayakislev@gmail.com') {
+      res.status(403).json({ error: 'התכונה הזו עדיין לא זמינה' });
+      return;
+    }
+
+    const topic = ((req.body && req.body.topic) || '').trim();
+    const context = ((req.body && req.body.context) || '').trim();
+    const cta = ((req.body && req.body.cta) || '').trim();
+    const assets = Array.isArray(req.body && req.body.assets) ? req.body.assets : [];
+
+    if (!topic) {
+      res.status(400).json({ error: 'צריך נושא כדי לפרק אותו לסטוריז' });
+      return;
+    }
+    try {
+      assertMaxLength(topic, 500, 'נושא');
+      assertMaxLength(context, 3000, 'הקשר נוסף');
+      assertMaxLength(cta, 300, 'הנעה לפעולה');
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+      return;
+    }
+
+    try {
+      await checkRateLimitNotExceeded(uid, 'breakdownStorySequence');
+    } catch (err) {
+      res.status(429).json({ error: err.message || 'הגעת למכסת השימוש היומית ב-AI, נסו שוב מחר' });
+      return;
+    }
+
+    res.set('Content-Type', 'text/event-stream');
+    res.set('Cache-Control', 'no-cache');
+    res.set('Connection', 'keep-alive');
+    if (res.flushHeaders) res.flushHeaders();
+    const heartbeat = setInterval(() => res.write(': heartbeat\n\n'), 15000);
+
+    try {
+      const prompt = buildStorySequencePrompt({ topic, context, cta, assets });
+
+      async function callAndParse(attempt = 1) {
+        const data = await callAnthropic(
+          anthropicApiKey.value(),
+          { model: 'claude-sonnet-5', max_tokens: 4000, messages: [{ role: 'user', content: prompt }] },
+          'breakdownStorySequence'
+        );
+        const text = (data.content || []).map((b) => b.text || '').join('');
+        try {
+          const match = text.match(/\{[\s\S]*\}/);
+          return JSON.parse(match ? match[0] : text);
+        } catch (err) {
+          console.error(`Failed to parse breakdownStorySequence response (attempt ${attempt}):`, text.slice(0, 400));
+          if (attempt < 2) return callAndParse(attempt + 1);
+          throw new Error('לא הצלחתי לפרק את הנושא, נסו שוב');
+        }
+      }
+
+      const parsed = await callAndParse();
+      const stories = Array.isArray(parsed.stories) ? parsed.stories : [];
+      if (!stories.length) {
+        console.error('breakdownStorySequence returned no stories:', JSON.stringify(parsed).slice(0, 300));
+        res.write(`data: ${JSON.stringify({ error: 'התקבלה תשובה לא תקינה, נסו שוב' })}\n\n`);
+        res.end();
+        return;
+      }
+
+      await incrementRateLimit(uid, 'breakdownStorySequence');
+
+      res.write(
+        `data: ${JSON.stringify({
+          done: true,
+          angle: parsed.angle || { risk: '', bridge: '' },
+          stories,
+        })}\n\n`
+      );
+      res.end();
+    } catch (err) {
+      console.error('breakdownStorySequence: unexpected error:', err);
       res.write(`data: ${JSON.stringify({ error: err.message || 'משהו השתבש, נסו שוב' })}\n\n`);
       res.end();
     } finally {

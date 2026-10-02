@@ -28,6 +28,7 @@ import { showToast } from './toast.js';
 import { auth } from './firebase-init.js';
 import { onAuthChange } from './auth.js';
 import { wireStoryAssets } from './story-assets.js';
+import { wireStorySequence } from './story-sequence.js';
 
 const OWNER_EMAIL = 'mayakislev@gmail.com';
 
@@ -367,6 +368,7 @@ async function loadInitial() {
       showTable(saved);
       wireOwnerBar();
       wireStoryAssets();
+      wireStorySequence();
       // 01/10/2026 (מאיה: "אם מישהי מעדכנת בטבלת הפרסונה או קהל יעד, זה
       // מסונכרן?"): עד כאן הסנכרון רץ רק כשלא הייתה טבלה בכלל, או בלחיצה
       // על הכפתור. מי שעדכנה את הגיליון לא ראתה את זה אף פעם. עכשיו הקובץ
@@ -383,4 +385,5 @@ async function loadInitial() {
   runSync();
   wireOwnerBar();
   wireStoryAssets();
+  wireStorySequence();
 }

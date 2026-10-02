@@ -5372,3 +5372,125 @@ textarea:focus-visible,
   font-size: 0.75rem;
   color: #5a61a0;
 }
+
+/* 02/10/2026 (מאיה): "לוקח לי נושא ונגיד מפרק לי אותו ל2-6 סטוריז".
+   אותה שפה של התיקייה שמעליו, כי שניהם שלה בלבד. */
+.sq-box {
+  border: 1px dashed #aeb6e4;
+  border-radius: 12px;
+  background: #e4e7fa;
+  overflow: hidden;
+  margin-bottom: 0.6rem;
+}
+.sq-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 48px;
+  padding: 0 0.8rem;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #3a4288;
+  text-align: start;
+  cursor: pointer;
+}
+.sq-head > span:first-child { flex-grow: 1; }
+.sq-sign { font-size: 1rem; }
+.sq-body-wrap { padding: 0 0.8rem 0.8rem; }
+.sq-body-wrap textarea,
+.sq-body-wrap input {
+  width: 100%;
+  margin-bottom: 0.4rem;
+  padding: 0.6rem;
+  border: 1px solid #c9cfee;
+  border-radius: 9px;
+  background: #fff;
+  font: inherit;
+  font-size: 0.82rem;
+  resize: vertical;
+}
+.sq-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.2rem;
+}
+.sq-go, .sq-copy {
+  min-height: 44px;
+  padding: 0 1.1rem;
+  border: 0;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+.sq-go { background: #3a4288; color: #fff; }
+.sq-go:disabled { opacity: 0.55; cursor: default; }
+.sq-copy { background: #fff; color: #3a4288; border: 1px solid #aeb6e4; }
+.sq-status { font-size: 0.72rem; font-weight: 700; color: #5a61a0; }
+.sq-out { margin-top: 0.7rem; }
+.sq-angle {
+  margin-bottom: 0.6rem;
+  padding: 0.7rem 0.8rem;
+  border-radius: 10px;
+  background: #fff6e0;
+  border: 1px solid #f0d79a;
+}
+.sq-angle-head { margin: 0 0 0.35rem; font-size: 0.72rem; font-weight: 800; color: #8a6d1f; }
+.sq-angle-risk, .sq-angle-bridge { margin: 0.15rem 0; font-size: 0.8rem; line-height: 1.55; color: #5a4a1a; }
+.sq-angle-risk { text-decoration: line-through; opacity: 0.75; }
+.sq-angle-bridge { font-weight: 700; }
+.sq-card {
+  margin-bottom: 0.55rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: 11px;
+  background: #fff;
+  border: 1px solid #c9cfee;
+}
+.sq-role {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0 0 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #2b3170;
+}
+.sq-n {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #3a4288;
+  color: #fff;
+  font-size: 0.7rem;
+}
+.sq-format, .sq-asset, .sq-small, .sq-poll, .sq-note {
+  margin: 0.25rem 0;
+  font-size: 0.76rem;
+  line-height: 1.6;
+  color: #4a5080;
+}
+.sq-note { color: #8186b0; font-style: italic; }
+.sq-text, .sq-speech {
+  margin: 0.45rem 0;
+  padding: 0.6rem 0.7rem;
+  border-radius: 9px;
+  background: #f4f5ff;
+  font-size: 0.84rem;
+  line-height: 1.7;
+  color: #23264d;
+}
+.sq-speech b { display: block; margin-bottom: 0.3rem; font-size: 0.72rem; color: #5a61a0; }
+/* כל שורה בשורה משלה, כי שבירות השורה הן חלק מהעיצוב של הסטורי */
+.sq-line { display: block; }
+.sq-gap { display: block; height: 0.55rem; }
+.sq-empty { margin: 0.5rem 0; font-size: 0.78rem; color: #5a61a0; }
