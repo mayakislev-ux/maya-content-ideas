@@ -20,7 +20,7 @@ const webpush = {
 const { buildSystemPrompt } = require('./system-prompt');
 const { buildOngoingWarmingPrompt, buildPresaleWarmingPrompt } = require('./warming-system-prompt');
 const { buildContentPlanPrompt } = require('./content-plan-system-prompt');
-const { buildStorySequencePrompt } = require('./story-sequence-prompt');
+const { buildStorySequencePrompt, stripFraming } = require('./story-sequence-prompt');
 const { fetchExtraContentLinks, sheetsServiceAccountKey } = require('./sheets-content');
 const { CATEGORIES, PERSUASION_STAGES, CATEGORY_DEFINITIONS, PERSUASION_STAGE_DEFINITIONS } = require('./ideas-constants');
 const { FORMAT_TAGS, FORMAT_TAG_DEFINITIONS, SUBCATEGORIES_BY_DOMAIN } = require('./inspiration-constants');
@@ -1365,7 +1365,10 @@ exports.breakdownStorySequence = onRequest(
       res.write(
         `data: ${JSON.stringify({
           done: true,
-          angle: parsed.angle || { risk: '', bridge: '' },
+          angle: {
+            risk: stripFraming(parsed.angle && parsed.angle.risk),
+            bridge: stripFraming(parsed.angle && parsed.angle.bridge),
+          },
           stories,
         })}\n\n`
       );

@@ -140,4 +140,34 @@ ${assetsBlock(assets)}
 - הסטורי האחרון הוא המסר שנשאר בראש, רקע נקי, מעט מאוד טקסט`;
 }
 
-module.exports = { buildStorySequencePrompt };
+/**
+ * מנקה מסגור שהמודל מדביק לתוך השדה.
+ *
+ * 02/10/2026: גם אחרי שהפרומפט ביקש תוכן בלבד, bridge חזר כ"הגשר שאת רוצה
+ * לשרוף הוא: ...". הממשק מציג את זה ממילא כ"כן", ולכן זאת כפילות על המסך.
+ * ניקוי בקוד עובד תמיד, גם כשהמודל מתעקש.
+ */
+const FRAMING = [
+  /^\s*הגשר שאת רוצה לשרוף הוא\s*:?\s*/,
+  /^\s*הניסוח הגס\s*:?\s*/,
+  /^\s*המסר הגס\s*:?\s*/,
+  /^\s*לא\s*:\s*/,
+  /^\s*כן\s*:\s*/,
+];
+
+function stripFraming(value) {
+  let out = String(value == null ? '' : value).trim();
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const re of FRAMING) {
+      if (re.test(out)) { out = out.replace(re, ''); changed = true; }
+    }
+    // גרשיים סביב כל המשפט, שהמודל מוסיף כשהוא מצטט את עצמו
+    const quoted = out.match(/^['"“”‘’](.*)['"“”‘’]$/s);
+    if (quoted) { out = quoted[1].trim(); changed = true; }
+  }
+  return out.trim();
+}
+
+module.exports = { buildStorySequencePrompt, stripFraming };

@@ -123,3 +123,22 @@ test('הפרומפט מונע את שלוש הסטיות שנמצאו בהרצה
   assert.match(p, /שניים של דיבור למצלמה, לא אחד/);
   assert.match(p, /נלווה אליו סקר/);
 });
+
+// 02/10/2026: גם אחרי שהפרומפט ביקש תוכן בלבד, bridge חזר מהשרת החי כ"הגשר
+// שאת רוצה לשרוף הוא: ...". הממשק מציג את זה ממילא כ"כן", אז על המסך יצאה
+// כפילות. ניקוי בקוד עובד תמיד, גם כשהמודל מתעקש.
+test('מסגור שהמודל מדביק לשדה מנוקה בקוד', () => {
+  const { stripFraming } = require('../functions/story-sequence-prompt.js');
+  assert.equal(stripFraming('הגשר שאת רוצה לשרוף הוא: תוכן שנותן ידע'), 'תוכן שנותן ידע');
+  assert.equal(stripFraming('הניסוח הגס: תוכן לא שווה'), 'תוכן לא שווה');
+  assert.equal(stripFraming('לא: משהו'), 'משהו');
+  assert.equal(stripFraming('"ציטוט שלם"'), 'ציטוט שלם');
+  assert.equal(stripFraming('הגשר שאת רוצה לשרוף הוא: "עוד מסגור"'), 'עוד מסגור', 'גם כששניהם יחד');
+  assert.equal(stripFraming('משפט רגיל לגמרי'), 'משפט רגיל לגמרי', 'לא נוגע במה שתקין');
+  assert.equal(stripFraming(null), '');
+});
+
+test('השרת מנקה את שני השדות לפני ששולח ללקוחה', () => {
+  assert.match(server, /risk: stripFraming\(/);
+  assert.match(server, /bridge: stripFraming\(/);
+});
