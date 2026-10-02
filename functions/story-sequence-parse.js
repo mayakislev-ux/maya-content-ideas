@@ -28,7 +28,7 @@
  * לוקח את כל מה שאחריו עד השדה הבא.
  */
 
-const SINGLE = new Set(['role', 'format', 'asset', 'note']);
+const SINGLE = new Set(['role', 'format', 'asset', 'note', 'job']);
 const MULTI = new Set(['text', 'speech', 'small']);
 
 /** "שאלה | א | ב" או "א | ב" */
@@ -54,13 +54,13 @@ function emptyStory(n) {
 }
 
 /**
- * מחזיר { stories, job }. טקסט לפני הסטורי הראשון או אחרי האחרון נזרק, כי
+ * מחזיר { stories, goal, a, b, why }. טקסט לפני הסטורי הראשון או אחרי האחרון נזרק, כי
  * מודלים נוטים להוסיף משפט פתיחה או סיכום גם כשמבקשים שלא.
  */
 function parseSequence(raw) {
   const lines = String(raw == null ? '' : raw).split(/\r?\n/);
   const stories = [];
-  let job = '';
+  const head = { goal: '', a: '', b: '', why: '' };
   let current = null;
   let multi = null;
   let buffer = [];
@@ -74,8 +74,10 @@ function parseSequence(raw) {
   for (const line of lines) {
     /* @@JOB אומר איזה מבנה נבחר, שיקוף או עמדה. הבדיקות שאחרי זה
        שונות לכל אחד מהם, ולכן צריך לדעת. */
-    const jobLine = /^\s*@@\s*JOB[ 	]+(mirror|stance)/i.exec(line);
-    if (jobLine) { job = jobLine[1].toLowerCase(); continue; }
+    /* @@GOAL, @@A, @@B ו-@@WHY הם הכיוון האסטרטגי. בלי A ו-B הרעיון לא
+       מפוצח, ולכן הם נקראים בנפרד מהסטוריז ונבדקים. */
+    const meta = /^\s*@@\s*(GOAL|A|B|WHY)[ 	]+(.*)$/i.exec(line);
+    if (meta) { head[meta[1].toLowerCase()] = meta[2].trim(); continue; }
 
     const start = /^\s*@@\s*STORY\s*(\d+)?/i.exec(line);
     if (start) {
@@ -117,7 +119,7 @@ function parseSequence(raw) {
   const clean = stories
     .filter((s) => s.text || s.speech)
     .map((s, i) => ({ ...s, n: Number.isFinite(s.n) && s.n > 0 ? s.n : i + 1 }));
-  return { stories: clean, job: job || 'mirror' };
+  return { stories: clean, ...head };
 }
 
 module.exports = { parseSequence, parsePoll };

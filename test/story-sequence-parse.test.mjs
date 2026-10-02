@@ -5,7 +5,7 @@ import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const { parseSequence: parseRaw, parsePoll } = require('../functions/story-sequence-parse.js');
 const parseSequence = (raw) => parseRaw(raw).stories;
-const parseJob = (raw) => parseRaw(raw).job;
+const parseHead = (raw) => parseRaw(raw);
 
 /**
  * 02/10/2026 (מאיה): "הגיוני שלוקח המון זמן?". מהלוג: התשובה הראשונה
@@ -154,9 +154,27 @@ test('@@STORY בלי מספר מקבל מספר לפי הסדר', () => {
   assert.deepEqual(out.map((s) => s.n), [1, 2]);
 });
 
-test('@@JOB נקרא, וברירת המחדל היא שיקוף', () => {
-  assert.equal(parseJob(lines('@@JOB stance', '@@STORY 1', '@text', 'א')), 'stance');
-  assert.equal(parseJob(lines('@@JOB mirror', '@@STORY 1', '@text', 'א')), 'mirror');
-  assert.equal(parseJob(lines('@@STORY 1', '@text', 'א')), 'mirror', 'בלי השורה, שיקוף');
-  assert.equal(parseJob(lines('@@JOB שטות', '@@STORY 1', '@text', 'א')), 'mirror');
+test('הכיוון האסטרטגי נקרא בנפרד מהסטוריז', () => {
+  const head = parseHead(lines(
+    '@@GOAL מודעות לבעיה',
+    '@@A אני לא מספיק יצירתי',
+    '@@B אני צריך מערכת',
+    '@@WHY אין להם שליטה על הצמיחה',
+    '@@STORY 1',
+    '@job MIRROR',
+    '@text',
+    'אתם מעלים סטורי.',
+  ));
+  assert.equal(head.goal, 'מודעות לבעיה');
+  assert.equal(head.a, 'אני לא מספיק יצירתי');
+  assert.equal(head.b, 'אני צריך מערכת');
+  assert.equal(head.why, 'אין להם שליטה על הצמיחה');
+  assert.equal(head.stories[0].job, 'MIRROR');
+});
+
+test('בלי כיוון אסטרטגי השדות ריקים, ולא נופלים', () => {
+  const head = parseHead(lines('@@STORY 1', '@text', 'א'));
+  assert.equal(head.goal, '');
+  assert.equal(head.a, '');
+  assert.equal(head.stories.length, 1);
 });

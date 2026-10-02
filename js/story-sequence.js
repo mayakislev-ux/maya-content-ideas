@@ -65,7 +65,8 @@ export function storyHtml(story, index, brand) {
   const note = escapeHtml((story && story.note) || '');
   const poll = (story && story.poll) || {};
 
-  const parts = [`<h3 class="sq-role"><span class="sq-n">${n}</span>${role}</h3>`];
+  const slideJob = escapeHtml((story && story.job) || '');
+  const parts = [`<h3 class="sq-role"><span class="sq-n">${n}</span>${role}${slideJob ? `<span class="sq-job-tag">${slideJob}</span>` : ''}</h3>`];
   if (format) parts.push(`<p class="sq-format"><b>פורמט:</b> ${format}</p>`);
   if (asset) parts.push(`<p class="sq-asset">🖼️ ${asset}</p>`);
   if (speech) parts.push(`<div class="sq-speech"><b>מה להגיד:</b><div class="sq-body">${linesHtml(speech)}</div></div>`);
@@ -87,33 +88,39 @@ export function storyHtml(story, index, brand) {
   </article>`;
 }
 
-export function angleHtml(angle) {
-  if (!angle || !angle.risk) return '';
+export function directionHtml(result) {
+  const r = result || {};
+  if (!r.goal && !r.a && !r.b) return '';
+  const row = (label, value) => (value ? `<p class="sq-dir-row"><b>${escapeHtml(label)}</b> ${escapeHtml(value)}</p>` : '');
   return `
-    <div class="sq-angle">
-      <p class="sq-angle-head">לפני שמתחילים, חידוד הזווית</p>
-      <p class="sq-angle-risk">לא: ${escapeHtml(angle.risk)}</p>
-      <p class="sq-angle-bridge">כן: ${escapeHtml(angle.bridge || '')}</p>
+    <div class="sq-dir">
+      ${r.goal ? `<p class="sq-dir-goal">${escapeHtml(r.goal)}</p>` : ''}
+      ${row('היום הם חושבים:', r.a)}
+      ${row('ואחרי זה:', r.b)}
+      ${row('המחיר או הטוויסט:', r.why)}
     </div>`;
 }
 
 export function sequenceHtml(result, brand) {
   const stories = Array.isArray(result && result.stories) ? result.stories : [];
   if (!stories.length) return '<p class="sq-empty">לא התקבל רצף. אפשר לנסות שוב.</p>';
-  /* 02/10/2026: שני מבנים שונים, ולכן כתוב איזה נבחר. כשהיא נתנה לכלי
-     לבחור, היא צריכה לדעת מה הוא בחר כדי לדעת אם זה מה שהתכוונה. */
-  const kind = result && result.job === 'stance' ? 'עמדה' : 'שיקוף';
-  return `<p class="sq-kind">רצף מסוג ${kind}</p>` + angleHtml(result.angle) + stories.map((s, i) => storyHtml(s, i, brand)).join('');
+  /* 02/10/2026: הכיוון האסטרטגי קודם לרצף, כמו בתבנית הפלט שלה. בלי לדעת
+     מה A ומה B אי אפשר לשפוט אם הרצף עושה את העבודה. */
+  return directionHtml(result) + stories.map((s, i) => storyHtml(s, i, brand)).join('');
 }
 
 /** טקסט להעתקה, כדי שתוכל לשלוח את זה לעצמה לוואטסאפ לפני צילום */
 export function sequenceText(result) {
   const out = [];
-  if (result && result.angle && result.angle.risk) {
-    out.push('חידוד הזווית', `לא: ${result.angle.risk}`, `כן: ${result.angle.bridge || ''}`, '');
+  if (result && (result.goal || result.a)) {
+    if (result.goal) out.push(`מטרה: ${result.goal}`);
+    if (result.a) out.push(`היום: ${result.a}`);
+    if (result.b) out.push(`אחרי: ${result.b}`);
+    if (result.why) out.push(`המחיר: ${result.why}`);
+    out.push('');
   }
   (result.stories || []).forEach((s, i) => {
-    out.push(`סטורי ${s.n || i + 1} - ${s.role || ''}`);
+    out.push(`סטורי ${s.n || i + 1} - ${s.role || ''}${s.job ? ` (${s.job})` : ''}`);
     if (s.format) out.push(`פורמט: ${s.format}`);
     if (s.asset) out.push(`תמונה: ${s.asset}`);
     if (s.speech) out.push('מה להגיד:', s.speech);
@@ -134,7 +141,10 @@ async function saveSequence(topic, result) {
   const ref = await addDoc(collection(db, 'storySequences'), {
     ownerUid: user.uid,
     topic: String(topic || '').slice(0, 300),
-    job: result.job || 'mirror',
+    goal: result.goal || '',
+    a: result.a || '',
+    b: result.b || '',
+    why: result.why || '',
     stories: result.stories || [],
     createdAt: serverTimestamp(),
   });
@@ -157,12 +167,12 @@ async function listSequences() {
 
 /* ---------------- הקריאה לשרת ---------------- */
 
-async function callBreakdown({ topic, context, cta, assets, job, signal }) {
+async function callBreakdown({ topic, context, cta, assets, goal, signal }) {
   const idToken = await auth.currentUser.getIdToken();
   const response = await fetch(URL_ENDPOINT, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
-    body: JSON.stringify({ topic, context, cta, assets, job }),
+    body: JSON.stringify({ topic, context, cta, assets, goal }),
     signal,
   });
   if (!response.ok) {
@@ -224,12 +234,21 @@ export async function wireStorySequence() {
         <p class="sq-brand-note">נשמר אוטומטית, וחל על כל הרצפים מכאן והלאה.</p>
       </details>
 
-      <div class="sq-job" id="sq-job">
-        <button type="button" class="sq-job-btn is-on" data-job="auto">שתבחרי בשבילי</button>
-        <button type="button" class="sq-job-btn" data-job="mirror">שיקוף</button>
-        <button type="button" class="sq-job-btn" data-job="stance">עמדה</button>
-      </div>
-      <p class="sq-job-note">שיקוף מתאר להם רגע שקורה להם. עמדה היא דעה שלך על משהו שקורה בשוק.</p>
+      <label class="sq-goal-label" for="sq-goal">מטרת הרצף</label>
+      <select id="sq-goal" class="sq-goal">
+        <option value="auto">שתבחרי לפי הנושא</option>
+        <option value="חוק השתקפות">חוק השתקפות</option>
+        <option value="מודעות לבעיה">מודעות לבעיה</option>
+        <option value="מודעות לפתרון">מודעות לפתרון</option>
+        <option value="שבירת אמונה">שבירת אמונה</option>
+        <option value="שריפת גשר">שריפת גשר</option>
+        <option value="ביקורת מקצועית">ביקורת מקצועית</option>
+        <option value="סמכות">סמכות</option>
+        <option value="בידול">בידול</option>
+        <option value="חיבור אישי">חיבור אישי</option>
+        <option value="הוכחה">הוכחה</option>
+        <option value="מכירה">מכירה</option>
+      </select>
       <textarea id="sq-topic" rows="2" placeholder="הנושא, במשפט אחד"></textarea>
       <textarea id="sq-context" rows="2" placeholder="משהו שחייב להיכנס? סיפור, דוגמה, צילום מסך (לא חובה)"></textarea>
       <input id="sq-cta" type="text" placeholder="הנעה לפעולה, אם יש (לא חובה)">
@@ -244,7 +263,7 @@ export async function wireStorySequence() {
   host.insertBefore(box, anchor);
 
   let last = null;
-  let job = 'auto';
+  let goal = 'auto';
   let brand = { ...DEFAULT_BRAND };
 
   /* ---- צבעי המותג ---- */
@@ -298,18 +317,13 @@ export async function wireStorySequence() {
     const rows = el('sq-saved')._rows || [];
     const row = rows.find((r) => r.id === chip.dataset.id);
     if (!row) return;
-    last = { job: row.job, stories: row.stories };
+    last = { goal: row.goal, a: row.a, b: row.b, why: row.why, stories: row.stories };
     el('sq-topic').value = row.topic || '';
     el('sq-out').innerHTML = sequenceHtml(last, brand);
     el('sq-copy').hidden = false;
   });
 
-  el('sq-job').addEventListener('click', (e) => {
-    const btn = e.target.closest('.sq-job-btn');
-    if (!btn) return;
-    job = btn.dataset.job;
-    [...el('sq-job').querySelectorAll('.sq-job-btn')].forEach((b) => b.classList.toggle('is-on', b === btn));
-  });
+  el('sq-goal').addEventListener('change', () => { goal = el('sq-goal').value; });
 
   el('sq-toggle').addEventListener('click', async () => {
     const body = el('sq-body');
@@ -355,7 +369,7 @@ export async function wireStorySequence() {
         context: el('sq-context').value.trim(),
         cta: el('sq-cta').value.trim(),
         assets,
-        job,
+        goal,
         signal: budget.signal,
       });
       last = result;

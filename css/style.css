@@ -5623,26 +5623,54 @@ textarea:focus-visible,
   cursor: pointer;
 }
 
-/* 02/10/2026: שני טיפוסי רצף, שיקוף ועמדה. היא בוחרת, או נותנת לכלי לבחור. */
-.sq-job { display: flex; gap: 0.3rem; margin-bottom: 0.3rem; flex-wrap: wrap; }
-.sq-job-btn {
-  flex: 1;
-  min-width: 90px;
-  min-height: 38px;
+/* 02/10/2026: המטרה השיווקית בוחרת את המבנה, אחת מ-11. ומעל הרצף מוצג
+   הכיוון האסטרטגי, כי בלי לדעת מה A ומה B אי אפשר לשפוט אם הוא עובד. */
+.sq-goal-label {
+  display: block;
+  margin-bottom: 0.2rem;
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: #5a61a0;
+}
+.sq-goal {
+  width: 100%;
+  min-height: 40px;
+  margin-bottom: 0.5rem;
+  padding: 0 0.5rem;
   border: 1px solid #c9cfee;
   border-radius: 9px;
   background: #fff;
   font: inherit;
+  font-size: 0.8rem;
+  color: #23264d;
+}
+.sq-dir {
+  margin-bottom: 0.7rem;
+  padding: 0.7rem 0.8rem;
+  border-radius: 10px;
+  background: #fff6e0;
+  border: 1px solid #f0d79a;
+}
+.sq-dir-goal {
+  margin: 0 0 0.4rem;
   font-size: 0.74rem;
   font-weight: 800;
-  color: #3a4288;
-  cursor: pointer;
+  color: #8a6d1f;
 }
-.sq-job-btn.is-on { background: #3a4288; color: #fff; border-color: #3a4288; }
-.sq-job-note { margin: 0 0 0.5rem; font-size: 0.66rem; line-height: 1.5; color: #8186b0; }
-.sq-kind {
-  margin: 0 0 0.5rem;
-  font-size: 0.7rem;
+.sq-dir-row {
+  margin: 0.2rem 0;
+  font-size: 0.78rem;
+  line-height: 1.55;
+  color: #5a4a1a;
+}
+.sq-dir-row b { color: #8a6d1f; }
+.sq-job-tag {
+  margin-inline-start: auto;
+  padding: 0.1rem 0.4rem;
+  border-radius: 5px;
+  background: #eef0fc;
+  font-size: 0.58rem;
   font-weight: 800;
   color: #5a61a0;
+  letter-spacing: 0.04em;
 }

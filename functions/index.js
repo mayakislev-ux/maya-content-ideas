@@ -20,7 +20,7 @@ const webpush = {
 const { buildSystemPrompt } = require('./system-prompt');
 const { buildOngoingWarmingPrompt, buildPresaleWarmingPrompt } = require('./warming-system-prompt');
 const { buildContentPlanPrompt } = require('./content-plan-system-prompt');
-const { buildStorySequencePrompt, stripFraming, checkSequence } = require('./story-sequence-prompt');
+const { buildStorySequencePrompt, checkSequence } = require('./story-sequence-prompt');
 const { parseSequence } = require('./story-sequence-parse');
 const { fetchExtraContentLinks, sheetsServiceAccountKey } = require('./sheets-content');
 const { CATEGORIES, PERSUASION_STAGES, CATEGORY_DEFINITIONS, PERSUASION_STAGE_DEFINITIONS } = require('./ideas-constants');
@@ -1307,8 +1307,9 @@ exports.breakdownStorySequence = onRequest(
     const assets = Array.isArray(req.body && req.body.assets) ? req.body.assets : [];
     /* 02/10/2026: שיקוף או עמדה. 'auto' נותן למודל להחליט לפי הנושא, וזה
        ברירת המחדל כי רוב הזמן הנושא עצמו אומר את זה. */
-    const rawJob = String((req.body && req.body.job) || 'auto');
-    const job = ['mirror', 'stance', 'auto'].includes(rawJob) ? rawJob : 'auto';
+    /* 02/10/2026: המטרה היא אחת מ-11 שמאיה מגדירה, או auto והמודל בוחר
+       לפי עץ ההחלטה. */
+    const goal = String((req.body && req.body.goal) || 'auto').slice(0, 40);
 
     if (!topic) {
       res.status(400).json({ error: 'צריך נושא כדי לפרק אותו לסטוריז' });
@@ -1337,7 +1338,7 @@ exports.breakdownStorySequence = onRequest(
     const heartbeat = setInterval(() => res.write(': heartbeat\n\n'), 15000);
 
     try {
-      const promptArgs = { topic, context, cta, assets, job };
+      const promptArgs = { topic, context, cta, assets, goal };
 
       /* 02/10/2026 (מאיה): "לקח יותר מדי זמן ונעצר". קריאה אחת לוקחת 80 עד 95
          שניות. כשהבדיקה מצאה הפרה יצאה קריאה שנייה שלמה, ואם גם היא נחתכה
@@ -1407,7 +1408,7 @@ exports.breakdownStorySequence = onRequest(
          משהו הופר מבקשים פעם אחת נוספת עם התיקון המדויק. פעם אחת ולא יותר,
          כי עדיף רצף עם פגם אחד מאשר המתנה של דקה נוספת. */
       if (stories.length) {
-        const problems = checkSequence(stories, parsed.job);
+        const problems = checkSequence(stories, parsed);
         if (problems.length && timeLeft() > 100000) {
           console.warn('breakdownStorySequence rule violations:', problems.join(' | '));
           const retryText = problems.map((t, i) => `${i + 1}. ${t}`).join(String.fromCharCode(10));
@@ -1415,7 +1416,7 @@ exports.breakdownStorySequence = onRequest(
             const second = await callAndParse(1, '', retryText);
             const secondStories = Array.isArray(second.stories) ? second.stories : [];
             // לוקחים את השנייה רק אם היא באמת טובה יותר
-            if (secondStories.length && checkSequence(secondStories, second.job).length < problems.length) {
+            if (secondStories.length && checkSequence(secondStories, second).length < problems.length) {
               parsed = second;
               stories = secondStories;
             }
@@ -1438,7 +1439,10 @@ exports.breakdownStorySequence = onRequest(
       res.write(
         `data: ${JSON.stringify({
           done: true,
-          job: parsed.job || 'mirror',
+          goal: parsed.goal || '',
+          a: parsed.a || '',
+          b: parsed.b || '',
+          why: parsed.why || '',
           stories,
         })}\n\n`
       );
