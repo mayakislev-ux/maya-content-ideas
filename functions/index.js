@@ -1268,7 +1268,7 @@ exports.generateWarmingPlan = onRequest(
    השכבה שמעל תוכנית החימום: התוכנית אומרת מה השבוע, וזה אומר מה לצלם עכשיו.
    כרגע אצל מאיה בלבד, ולכן יש כאן בדיקת מייל מפורשת ולא רק allowlist. */
 exports.breakdownStorySequence = onRequest(
-  { secrets: [anthropicApiKey], region: 'us-central1', cors: ALLOWED_STREAM_ORIGINS, timeoutSeconds: 180 },
+  { secrets: [anthropicApiKey], region: 'us-central1', cors: ALLOWED_STREAM_ORIGINS, timeoutSeconds: 300 },
   async (req, res) => {
     if (req.method !== 'POST') {
       res.status(405).json({ error: 'Method not allowed' });
@@ -1334,6 +1334,14 @@ exports.breakdownStorySequence = onRequest(
     try {
       const promptArgs = { topic, context, cta, assets };
 
+      /* 02/10/2026 (מאיה): "לקח יותר מדי זמן ונעצר". קריאה אחת לוקחת 80 עד 95
+         שניות. כשהבדיקה מצאה הפרה יצאה קריאה שנייה שלמה, ואם גם היא נחתכה
+         יצאה שלישית, וסך הכל עבר את הזמן שהדפדפן מחכה. מעכשיו יש תקציב אחד
+         משותף: ניסיון נוסף יוצא רק אם נשאר לו באמת זמן לסיים. */
+      const startedAt = Date.now();
+      const BUDGET_MS = 230000;
+      const timeLeft = () => BUDGET_MS - (Date.now() - startedAt);
+
       /* 02/10/2026 (מאיה): "לא הצלחתי לפרק את הנושא, נסו שוב. מילאתי וזה
          פשוט לא עבד". הלוג הראה שהתשובה נחתכה באמצע משפט, בתוך שדה של סקר.
          הגבול היה 4000 טוקנים, וזה פשוט לא מספיק לרצף של חמישה סטוריז
@@ -1368,7 +1376,7 @@ exports.breakdownStorySequence = onRequest(
             `breakdownStorySequence parse failed (attempt ${attempt}, stop_reason=${data.stop_reason}, chars=${text.length}):`,
             text.slice(0, 300)
           );
-          if (attempt < 2) {
+          if (attempt < 2 && timeLeft() > 95000) {
             const shorter = truncated
               ? '\n\nחשוב: התשובה הקודמת נחתכה באמצע. תן/תני בדיוק את אותו מבנה, אבל קצר יותר: עד 5 סטוריז, וכל תסריט דיבור עד 60 מילים.'
               : '';
@@ -1391,7 +1399,7 @@ exports.breakdownStorySequence = onRequest(
          כי עדיף רצף עם פגם אחד מאשר המתנה של דקה נוספת. */
       if (stories.length) {
         const problems = checkSequence(stories);
-        if (problems.length) {
+        if (problems.length && timeLeft() > 100000) {
           console.warn('breakdownStorySequence rule violations:', problems.join(' | '));
           const retryText = problems.map((t, i) => `${i + 1}. ${t}`).join(String.fromCharCode(10));
           try {
@@ -1415,6 +1423,7 @@ exports.breakdownStorySequence = onRequest(
         return;
       }
 
+      console.log('breakdownStorySequence done in', Math.round((Date.now() - startedAt) / 1000), 'sec,', stories.length, 'stories');
       await incrementRateLimit(uid, 'breakdownStorySequence');
 
       res.write(

@@ -277,3 +277,38 @@ test('יש גבול זמן לפירוק', () => {
   assert.match(src, /AbortError/);
   assert.match(src, /BUDGET_MS/);
 });
+
+/* 02/10/2026 (מאיה): "לקח יותר מדי זמן ונעצר". קריאה אחת לוקחת 80 עד 95
+   שניות. הבדיקה שלי ירתה אזעקת שווא על הצירוף "איך לעשות את זה", זה גרר
+   קריאה שנייה שלמה, וזאת נחתכה, והדפדפן ויתר באמצע בזמן שהשרת עוד עבד. */
+
+test('ניסיון נוסף יוצא רק אם נשאר לו זמן לסיים', () => {
+  const fn = server.slice(server.indexOf('exports.breakdownStorySequence'));
+  const body = fn.slice(0, fn.indexOf('\n);'));
+  assert.match(body, /const timeLeft = \(\)/);
+  assert.match(body, /attempt < 2 && timeLeft\(\) > \d+/, 'ניסיון אחרי חיתוך');
+  assert.match(body, /problems\.length && timeLeft\(\) > \d+/, 'ניסיון אחרי הפרת כלל');
+  assert.match(body, /timeoutSeconds: 300/, 'ולשרת יש מספיק זמן');
+});
+
+test('הדפדפן מחכה יותר מהשרת, ולא פחות', () => {
+  const clientBudget = Number((src.match(/const BUDGET_MS = (\d+);/) || [])[1]);
+  const fn = server.slice(server.indexOf('exports.breakdownStorySequence'));
+  const serverBudget = Number((fn.match(/const BUDGET_MS = (\d+);/) || [])[1]);
+  assert.ok(clientBudget > serverBudget, `הדפדפן ${clientBudget} חייב להיות גדול מהשרת ${serverBudget}`);
+});
+
+test('הצירופים היומיומיים לא נחשבים עצה', () => {
+  const base = [
+    { n: 1, text: 'אתם יודעים מה צריך, אתם פשוט לא יודעים איך לעשות את זה נכון.' },
+    { n: 2, text: 'אולי ההוק?' },
+    { n: 3, speech: 'וזה נשמע קטן אבל תחשבו מה זה אומר בפועל.' },
+    { n: 4, text: 'כנראה שאני לא עקבי' },
+    { n: 5, speech: 'זה לא נכון.' },
+    { n: 6, text: 'מסר', small: 'א\nב' },
+  ];
+  assert.ok(!checkSequence(base).some((t) => /נותן עצה/.test(t)), 'אזעקת שווא');
+  const real = [...base];
+  real[0] = { n: 1, text: 'הנה 3 דברים שתתחילו לעשות היום.' };
+  assert.ok(checkSequence(real).some((t) => /נותן עצה/.test(t)), 'עצה אמיתית עדיין נתפסת');
+});

@@ -26,7 +26,10 @@ import { loadBrand, saveBrand, previewHtml, normalizeBrand, DEFAULT_BRAND } from
 
 const OWNER_EMAIL = 'mayakislev@gmail.com';
 const URL_ENDPOINT = 'https://us-central1-content-ideas-becd7.cloudfunctions.net/breakdownStorySequence';
-const BUDGET_MS = 170000;
+/* 02/10/2026 (מאיה): "לקח יותר מדי זמן ונעצר". הדפדפן ויתר אחרי 170 שניות
+   בזמן שהשרת עוד עבד. קריאה אחת לוקחת 80 עד 95 שניות, ולשרת יש תקציב של
+   230 שניות לכל הניסיונות יחד, אז כאן מחכים קצת יותר ממנו. */
+const BUDGET_MS = 250000;
 const KEEP_SEQUENCES = 20;
 
 const el = (id) => document.getElementById(id);
@@ -315,7 +318,11 @@ export async function wireStorySequence() {
     const timer = setTimeout(() => budget.abort(), BUDGET_MS);
     const started = Date.now();
     const tick = setInterval(() => {
-      status.textContent = `מפרקת... ${Math.round((Date.now() - started) / 1000)} שניות`;
+      const sec = Math.round((Date.now() - started) / 1000);
+      // אחרי דקה וחצי זה כבר מרגיש תקוע, ולכן אומרים לה שזה תקין
+      status.textContent = sec > 90
+        ? `מפרקת... ${sec} שניות. רצף שלם לוקח בערך שתי דקות`
+        : `מפרקת... ${sec} שניות`;
     }, 1000);
 
     try {
