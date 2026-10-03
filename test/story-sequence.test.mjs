@@ -776,3 +776,98 @@ test('השורה האחרונה בתצוגת המותג לא נעלמת, גם ע
   const brand = readFileSync(new URL('../js/story-brand.js', import.meta.url), 'utf8');
   assert.ok(!/lastIndexOf\(all\.filter/.test(brand), 'ההשוואה השבורה הוסרה');
 });
+
+/* ========== 03/10/2026, השאריות ========== */
+
+/* הסוגר של ההערה שלפני callAndParse אבד בשכתוב, ובלוק התיעוד שמתחת נבלע
+   לתוכה. התחביר עבר ושום קוד לא אבד, אבל מחיקה או הזזה של בלוק התיעוד
+   הייתה משאירה סימן פתיחה תלוי ומעלימה בשקט את כל שאר ה-handler. */
+
+test('כל הערה בקובץ השרת נסגרת בעצמה', () => {
+  let depth = 0;
+  let i = 0;
+  let line = 1;
+  while (i < server.length) {
+    if (server[i] === '\n') line += 1;
+    if (server.startsWith('/*', i)) {
+      assert.equal(depth, 0, `הערה נפתחת בתוך הערה, שורה ${line}`);
+      depth = 1;
+      i += 2;
+      continue;
+    }
+    if (server.startsWith('*/', i)) { depth = 0; i += 2; continue; }
+    i += 1;
+  }
+  assert.equal(depth, 0, 'יש הערה שלא נסגרה');
+  assert.match(server, /להתקצר\./, 'המשפט שנקטע הושלם');
+});
+
+test('השרת מפסיק לעבוד כשהלקוחה סגרה את הקריאה', () => {
+  const fn = server.slice(server.indexOf('exports.breakdownStorySequence'));
+  assert.match(fn, /req\.on\('close', \(\) => \{ clientGone = true; \}\);/);
+  assert.match(fn, /if \(clientGone\) throw new Error/);
+});
+
+test('אירוע זרימה שנופל לא נעלם בשקט, בשני הצדדים', () => {
+  for (const [name, code] of [['שרת', server], ['לקוחה', src]]) {
+    assert.ok(!/catch \{ continue; \}/.test(code), `${name}: אין בליעה שקטה`);
+    assert.match(code, /bad SSE event/, name);
+  }
+});
+
+/* רצף שנשמר בדיוק עכשיו, שהחותמת שלו עוד לא חזרה מהשרת, קיבל 0 וצנח
+   לתחתית הרשימה. זה הפוך מ"האחרון תמיד למעלה", כי הוא החדש מכולם. */
+
+/** מועתק מהמקור, שמייבא SDK מהרשת */
+function newestFirstCopy(rows) {
+  const at = (r) => {
+    const c = r && r.createdAt;
+    if (!c) return Number.MAX_SAFE_INTEGER;
+    if (typeof c.toDate === 'function') return c.toDate().getTime();
+    if (c.seconds) return c.seconds * 1000;
+    return new Date(c).getTime() || 0;
+  };
+  return [...(rows || [])].sort((a2, b2) => at(b2) - at(a2));
+}
+
+test('רצף שהחותמת שלו עוד לא חזרה נמצא למעלה, לא למטה', () => {
+  const rows = [
+    { id: 'old', createdAt: { seconds: 1000 } },
+    { id: 'new', createdAt: { seconds: 9000 } },
+    { id: 'justnow', createdAt: null },
+  ];
+  assert.deepEqual(newestFirstCopy(rows).map((r) => r.id), ['justnow', 'new', 'old']);
+  assert.match(src, /if \(!c\) return Number\.MAX_SAFE_INTEGER;/, 'והמקור מתנהג כך');
+});
+
+test('שם שמגיע מאסימון ההתחברות לא שובר את רשימת הלקוחות', () => {
+  const table = readFileSync(new URL('../js/story-table.js', import.meta.url), 'utf8');
+  assert.match(table, /escapeHtml\(r\.name\)/);
+  assert.match(table, /escapeHtml\(r\.uid\)/);
+  assert.match(table, /import \{ wireStorySequence, escapeHtml \}/);
+});
+
+test('ה-bucket שרשום כברירת מחדל הוא זה שקיים בפרויקט', () => {
+  const init = readFileSync(new URL('../js/firebase-init.js', import.meta.url), 'utf8');
+  const assets = readFileSync(new URL('../js/story-assets.js', import.meta.url), 'utf8');
+  assert.match(init, /storageBucket: 'content-ideas-becd7-story-assets'/);
+  assert.ok(!init.includes('content-ideas-becd7.firebasestorage.app'), 'ה-bucket הזה לא קיים בפרויקט');
+  assert.match(assets, /gs:\/\/content-ideas-becd7-story-assets/, 'והתיקייה ממשיכה לציין אותו במפורש');
+});
+
+test('המטמון לא שומר תשובה שגויה, וכתיבה שנכשלת לא נעלמת', () => {
+  const sw = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
+  assert.match(sw, /if \(!response \|\| !response\.ok\) return;/, 'תשובה שגויה לא נשמרת');
+  assert.match(sw, /event\.waitUntil\(/);
+  assert.match(sw, /cache put failed/);
+  assert.ok(!/caches\.open\(CACHE_NAME\)\.then\(\(cache\) => cache\.put\(event\.request, copy\)\);/.test(sw),
+    'אין יותר כתיבה בלי catch');
+});
+
+test('ההבטחות ב-app.js מוגנות', () => {
+  const app = readFileSync(new URL('../js/app.js', import.meta.url), 'utf8');
+  assert.match(app, /loadAdminModules\(\)[\s\S]{0,2000}?\}\)\.catch\(/);
+  assert.match(app, /adminModulesWired = false;/, 'כישלון מאפשר ניסיון נוסף');
+  assert.match(app, /tourDone = await hasCompletedTour\(\);/);
+  assert.match(app, /console\.error\('hasCompletedTour failed:'/);
+});

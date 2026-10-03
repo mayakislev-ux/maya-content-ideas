@@ -180,9 +180,12 @@ export function whenText(value) {
 
 /** האחרון למעלה תמיד, גם אם השרת החזיר בסדר אחר */
 export function newestFirst(rows) {
+  /* 03/10/2026 (בדיקה): רצף שנשמר בדיוק עכשיו, שהחותמת שלו עוד לא חזרה
+     מהשרת, קיבל 0 וצנח לתחתית הרשימה. זה הפוך מהכלל, כי הוא החדש מכולם.
+     חסרה חותמת פירושו עכשיו. */
   const at = (r) => {
     const c = r && r.createdAt;
-    if (!c) return 0;
+    if (!c) return Number.MAX_SAFE_INTEGER;
     if (typeof c.toDate === 'function') return c.toDate().getTime();
     if (c.seconds) return c.seconds * 1000;
     return new Date(c).getTime() || 0;
@@ -231,7 +234,13 @@ async function callBreakdown({ topic, context, cta, assets, goal, signal, onPart
       const line = chunk.split('\n').find((l) => l.startsWith('data: '));
       if (!line) continue;
       let event;
-      try { event = JSON.parse(line.slice(6)); } catch { continue; }
+      try {
+        event = JSON.parse(line.slice(6));
+      } catch {
+        // 03/10/2026 (בדיקה): אירוע שנופל בשקט מוריד טקסט מתוך סטורי
+        console.error('breakdownStorySequence: bad SSE event:', line.slice(0, 120));
+        continue;
+      }
       if (event.error) throw new Error(event.error);
       /* 02/10/2026: הרצף זורם, כדי שלא תחכי מול מסך ריק שתי דקות. הכיוון
          האסטרטגי מגיע אחרי כמה שניות, וכל סטורי ברגע שהוא נגמר. */

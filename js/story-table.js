@@ -28,7 +28,7 @@ import { showToast } from './toast.js';
 import { auth } from './firebase-init.js';
 import { onAuthChange } from './auth.js';
 import { wireStoryAssets } from './story-assets.js';
-import { wireStorySequence } from './story-sequence.js';
+import { wireStorySequence, escapeHtml } from './story-sequence.js';
 
 const OWNER_EMAIL = 'mayakislev@gmail.com';
 
@@ -246,7 +246,8 @@ async function wireOwnerBar() {
 
   pick.innerHTML =
     '<option value="">הטבלה שלי</option>' +
-    rows.map((r) => `<option value="${r.uid}">${r.name} (${r.count} קהלים)</option>`).join('');
+    // 03/10/2026 (בדיקה): השם מגיע מאסימון ההתחברות, וגרש בתוכו שבר את הרשימה
+    rows.map((r) => `<option value="${escapeHtml(r.uid)}">${escapeHtml(r.name)} (${r.count} קהלים)</option>`).join('');
   bar.hidden = false;
 
   pick.addEventListener('change', async () => {

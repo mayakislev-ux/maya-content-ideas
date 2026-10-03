@@ -7,7 +7,10 @@ const firebaseConfig = {
   apiKey: 'AIzaSyC7ctB2m4vRcf4BkVwCtp2s-KXcnPyrK4U',
   authDomain: 'content-ideas-becd7.firebaseapp.com',
   projectId: 'content-ideas-becd7',
-  storageBucket: 'content-ideas-becd7.firebasestorage.app',
+  /* 03/10/2026 (בדיקה): כאן היה רשום bucket שלא קיים בכלל בפרויקט. שום
+     דבר לא קרא אותו, כי תיקיית התמונות מציינת את ה-bucket שלה במפורש,
+     אבל כל קריאה עתידית ל-getStorage בלי פרמטר הייתה פונה לכלום. */
+  storageBucket: 'content-ideas-becd7-story-assets',
   messagingSenderId: '48872680367',
   appId: '1:48872680367:web:2fc7ca716707f459525d5a',
 };
