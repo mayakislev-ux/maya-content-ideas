@@ -1397,6 +1397,7 @@ exports.breakdownStorySequence = onRequest(
         let text = '';
         let sentHead = false;
         let sentStories = 0;
+        let sentThinking = false;
         let stopReason = '';
 
         /* שולחים סטורי רק כשהוא באמת נגמר, כלומר כשהתחיל הבא או הגיע הסוף.
@@ -1430,7 +1431,17 @@ exports.breakdownStorySequence = onRequest(
             if (!line) continue;
             let event;
             try { event = JSON.parse(line.slice(6)); } catch { continue; }
-            if (event.type === 'content_block_delta' && event.delta && event.delta.text) {
+            if (event.type === 'content_block_delta' && event.delta && event.delta.thinking) {
+              /* 02/10/2026: נמדד מול המנוע, 58 שניות מתוך 70 הן חשיבה לפני
+                 המילה הראשונה. בלי הסימן הזה המסך ריק דקה שלמה ונראה תקוע,
+                 והחשיבה היא בדיוק מה שמשפר את האיכות ולכן לא מבטלים אותה. */
+              if (live && !sentThinking) {
+                sentThinking = true;
+                res.write(`data: ${JSON.stringify({ thinking: true })}
+
+`);
+              }
+            } else if (event.type === 'content_block_delta' && event.delta && event.delta.text) {
               text += event.delta.text;
               flush();
             } else if (event.type === 'message_delta' && event.delta && event.delta.stop_reason) {

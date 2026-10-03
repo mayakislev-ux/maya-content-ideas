@@ -321,3 +321,18 @@ test('המסך מצייר תוך כדי, ומחליף בתוצאה המלאה ב
   const go = src.slice(src.indexOf("el('sq-go').addEventListener"));
   assert.ok(go.indexOf('onPartial') < go.indexOf('sequenceHtml(result, brand)'), 'הציור המלא בא אחרי');
 });
+
+/* 02/10/2026, נמדד מול המנוע: 58 שניות מתוך 70 הן חשיבה לפני המילה
+   הראשונה, והכתיבה עצמה 11 שניות. ביטול החשיבה מוריד ל-21 שניות אבל פוגע
+   באיכות, ולכן החשיבה נשארת ורק מוצגת. */
+
+test('שלב החשיבה מוצג ולא נראה כמסך תקוע', () => {
+  const fn = server.slice(server.indexOf('exports.breakdownStorySequence'));
+  const body = fn.slice(0, fn.indexOf('\n);'));
+  assert.match(body, /event\.delta\.thinking/);
+  assert.match(body, /thinking: true/);
+  assert.match(body, /58 שניות מתוך 70 הן חשיבה/, 'המדידה תועדה');
+
+  assert.match(src, /חושבת על הכיוון השיווקי/);
+  assert.match(src, /חושבת\|מתקנת/, 'מונה השניות לא דורס הודעת מצב אמיתית');
+});

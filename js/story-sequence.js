@@ -200,7 +200,7 @@ async function callBreakdown({ topic, context, cta, assets, goal, signal, onPart
       if (event.error) throw new Error(event.error);
       /* 02/10/2026: הרצף זורם, כדי שלא תחכי מול מסך ריק שתי דקות. הכיוון
          האסטרטגי מגיע אחרי כמה שניות, וכל סטורי ברגע שהוא נגמר. */
-      if (onPartial && (event.direction || event.story || event.revising)) {
+      if (onPartial && (event.direction || event.story || event.revising || event.thinking)) {
         onPartial(event);
         continue;
       }
@@ -356,7 +356,8 @@ export async function wireStorySequence() {
     const started = Date.now();
     const tick = setInterval(() => {
       const sec = Math.round((Date.now() - started) / 1000);
-      // אחרי דקה וחצי זה כבר מרגיש תקוע, ולכן אומרים לה שזה תקין
+      /* לא דורסים הודעת מצב אמיתית שהגיעה מהשרת, כמו "חושבת על הכיוון" */
+      if (/חושבת|מתקנת/.test(status.textContent)) return;
       status.textContent = sec > 90
         ? `מפרקת... ${sec} שניות. רצף שלם לוקח בערך שתי דקות`
         : `מפרקת... ${sec} שניות`;
@@ -382,6 +383,7 @@ export async function wireStorySequence() {
         goal,
         signal: budget.signal,
         onPartial: (event) => {
+          if (event.thinking) { status.textContent = 'חושבת על הכיוון השיווקי...'; return; }
           if (event.revising) { status.textContent = 'מתקנת את הרצף...'; return; }
           if (event.direction) {
             Object.assign(partial, event.direction);
