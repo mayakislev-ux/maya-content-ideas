@@ -228,7 +228,7 @@ test('השרת מעביר מטרה, בודק מול הכיוון, ומכבד ת�
   const fn = server.slice(server.indexOf('exports.breakdownStorySequence'));
   const body = fn.slice(0, fn.indexOf('\n);'));
   assert.match(body, /const goal = String\(/);
-  assert.match(body, /checkSequence\(stories, parsed\)/);
+  assert.match(body, /checkSequence\(stories, \{ \.\.\.parsed/);
   assert.match(body, /problems\.length && timeLeft\(\) > \d+/);
   assert.match(body, /timeoutSeconds: 300/);
 });
@@ -363,4 +363,69 @@ test('בחירת רצף סוגרת את הרשימה', () => {
   const handler = src.slice(src.indexOf("el('sq-saved-list').addEventListener('click'"));
   assert.match(handler.slice(0, 900), /sq-saved-list'\)\.hidden = true/);
   assert.match(handler.slice(0, 900), /הרשימה דוחפת את הרצף למטה/);
+});
+
+/* 02/10/2026 (מאיה): "למדת את התחביר של השיטה, אבל עוד לא את החשיבה שלה".
+   הפידבק חולק לשלושה רבדים: אסטרטגיה, פורמט, כתיבה. */
+
+test('המסגרת היא כלי עזר ולא טופס למלא', () => {
+  assert.match(prompt, /המסגרת היא כלי עזר, לא טופס/);
+  assert.match(prompt, /הסלמה לוגית שבה בכל סטורי הקורא מבין משהו/);
+  assert.match(prompt, /מה הצופה יודע עכשיו שהוא לא ידע לפני עשר שניות/);
+  assert.match(prompt, /בלי פשוט להגיד לו אותה/);
+});
+
+test('ארבע הטעויות שהיא מנתה', () => {
+  assert.match(prompt, /אל תמציא ספציפיות/);
+  assert.match(prompt, /19:42/, 'הדוגמה שלה');
+  assert.match(prompt, /אל תקבע סיבתיות שאי אפשר לדעת/);
+  assert.match(prompt, /להפעיל "אז מה\?" לפחות פעמיים או/);
+  assert.match(prompt, /ROOT צריך להיות רחב ומדויק/);
+});
+
+test('בלוק הכתיבה, כולל המבנים שהיא סימנה כ-AI', () => {
+  assert.match(prompt, /WRITING STYLE, קריטי/);
+  assert.match(prompt, /תפסיק לנסות לייצר punchline בכל שקופית/);
+  for (const shape of ['X הוא לא Y, הוא Z', 'הבעיה היא לא X, הבעיה היא Y', 'בלי לשים לב', 'נכנס קול נוסף']) {
+    assert.ok(prompt.includes(shape), shape);
+  }
+  assert.match(prompt, /הודעה קולית לחברה חכמה/);
+  assert.match(prompt, /שהצופה יגיע לתובנה במקום שיכריזו עליה/);
+  assert.match(prompt, /וזה הקטע/, 'המעברים הטבעיים שהיא נתנה');
+});
+
+test('בלוק הפורמט, כולל האיסור על עיצוב ועל תמונה שרירותית', () => {
+  assert.match(prompt, /FORMAT SELECTION, קריטי/);
+  assert.match(prompt, /אל תחליף פורמטים מכנית רק כדי לייצר גיוון/);
+  assert.match(prompt, /למה הדרך הזאת טובה יותר/);
+  assert.match(prompt, /רק בגלל שהיא קיימת/);
+  assert.match(prompt, /פשוט עדיף על מעוצב/);
+  assert.match(prompt, /רקע כהה דרמטי עם טקסט לבן במרכז/, 'הדוגמה השלילית שלה');
+});
+
+test('תבנית ה-punchline נתפסת כשהיא חוזרת', () => {
+  const rows = [
+    { n: 1, job: 'MIRROR', text: 'אתם שולחים מחיר ונעלם.' },
+    { n: 2, job: 'ROOT', text: 'ליד בלי הקשר הוא לא ליד חם, הוא ניחוש.' },
+    { n: 3, job: 'LANDING', text: 'הבעיה היא לא המחיר. הבעיה היא ההקשר.', small: 'א\nב' },
+  ];
+  const head = { goal: 'מודעות לבעיה', a: 'x', b: 'y' };
+  assert.ok(checkSequence(rows, head).some((t) => /נשמע מיוצר/.test(t)));
+});
+
+test('ספציפיות מומצאת נתפסת, אבל לא כשהיא ניתנה', () => {
+  const rows = [
+    { n: 1, job: 'MIRROR', text: '19:42 מגיעה הודעה.' },
+    { n: 2, job: 'TENSION', text: 'ואחרי יומיים V אפור.' },
+    { n: 3, job: 'LANDING', text: 'מסר', small: 'א\nב' },
+  ];
+  const head = { goal: 'מודעות לבעיה', a: 'x', b: 'y' };
+  assert.ok(checkSequence(rows, head).some((t) => /ספציפיות שלא ניתנה/.test(t)));
+  assert.ok(!checkSequence(rows, { ...head, topic: 'הודעה ב-19:42 ואז V אפור' }).some((t) => /ספציפיות שלא ניתנה/.test(t)));
+});
+
+test('השרת מעביר לבדיקה את מה שהיא באמת נתנה', () => {
+  const fn = server.slice(server.indexOf('exports.breakdownStorySequence'));
+  const body = fn.slice(0, fn.indexOf('\n);'));
+  assert.match(body, /checkSequence\(stories, \{ \.\.\.parsed, topic, context \}\)/);
 });

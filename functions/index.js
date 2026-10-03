@@ -1484,7 +1484,7 @@ exports.breakdownStorySequence = onRequest(
          משהו הופר מבקשים פעם אחת נוספת עם התיקון המדויק. פעם אחת ולא יותר,
          כי עדיף רצף עם פגם אחד מאשר המתנה של דקה נוספת. */
       if (stories.length) {
-        const problems = checkSequence(stories, parsed);
+        const problems = checkSequence(stories, { ...parsed, topic, context });
         if (problems.length && timeLeft() > 100000) {
           console.warn('breakdownStorySequence rule violations:', problems.join(' | '));
           /* הרצף כבר על המסך שלה, והקריאה המתקנת לוקחת עוד דקה וחצי. בלי
@@ -1497,7 +1497,7 @@ exports.breakdownStorySequence = onRequest(
             const second = await callAndParse(1, '', retryText);
             const secondStories = Array.isArray(second.stories) ? second.stories : [];
             // לוקחים את השנייה רק אם היא באמת טובה יותר
-            if (secondStories.length && checkSequence(secondStories, second).length < problems.length) {
+            if (secondStories.length && checkSequence(secondStories, { ...second, topic, context }).length < problems.length) {
               parsed = second;
               stories = secondStories;
             }
