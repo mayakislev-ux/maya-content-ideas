@@ -72,7 +72,7 @@ test('ההגדרות נשמרות בשרת ולא רק בדפדפן', () => {
 test('הרצפים נשמרים, ואפשר לפתוח רצף קודם', () => {
   assert.match(seq, /async function saveSequence/);
   assert.match(seq, /async function listSequences/);
-  assert.match(seq, /sq-chip/, 'יש רשימה של רצפים קודמים');
+  assert.match(seq, /sq-saved-row/, 'יש רשימה של רצפים קודמים');
 });
 
 test('שינוי צבע מרענן את מה שכבר על המסך', () => {

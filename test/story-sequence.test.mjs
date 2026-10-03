@@ -336,3 +336,31 @@ test('שלב החשיבה מוצג ולא נראה כמסך תקוע', () => {
   assert.match(src, /חושבת על הכיוון השיווקי/);
   assert.match(src, /חושבת\|מתקנת/, 'מונה השניות לא דורס הודעת מצב אמיתית');
 });
+
+/* 02/10/2026 (מאיה): "אם יהיו מלא רצפים זה ייראה עמוס לעין, צריך כמו כפתור
+   נפתח עם תאריך, ושתמיד האחרון יהיה למעלה". */
+
+test('הרשימה היא כפתור נפתח, וסגורה כברירת מחדל', () => {
+  assert.match(src, /id="sq-saved-toggle"/);
+  assert.match(src, /id="sq-saved-list" hidden/);
+  assert.match(src, /aria-expanded="false"/);
+  assert.match(src, /sq-saved-count/, 'כתוב כמה יש בלי לפתוח');
+});
+
+test('בכל שורה נושא, מטרה ותאריך', () => {
+  assert.match(src, /export function savedRowHtml/);
+  assert.match(src, /sq-saved-topic/);
+  assert.match(src, /sq-saved-meta/);
+  assert.match(src, /export function whenText/);
+});
+
+test('האחרון תמיד למעלה, גם אם השרת החזיר אחרת', () => {
+  assert.match(src, /export function newestFirst/);
+  assert.match(src, /newestFirst\(await listSequences\(\)\)/);
+});
+
+test('בחירת רצף סוגרת את הרשימה', () => {
+  const handler = src.slice(src.indexOf("el('sq-saved-list').addEventListener('click'"));
+  assert.match(handler.slice(0, 900), /sq-saved-list'\)\.hidden = true/);
+  assert.match(handler.slice(0, 900), /הרשימה דוחפת את הרצף למטה/);
+});

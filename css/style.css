@@ -5537,24 +5537,69 @@ textarea:focus-visible,
 .sq-brand input[type="text"] { margin-bottom: 0.3rem; }
 .sq-brand-note { margin: 0; font-size: 0.66rem; color: #8186b0; }
 
-.sq-saved { margin: 0.6rem 0 0; }
-.sq-saved-head { margin: 0 0 0.3rem; font-size: 0.68rem; font-weight: 800; color: #5a61a0; }
-.sq-chip {
-  max-width: 100%;
-  margin: 0 0 0.3rem 0.3rem;
-  padding: 0.35rem 0.6rem;
+/* 02/10/2026 (מאיה): "אם יהיו מלא רצפים זה ייראה עמוס לעין, צריך כמו כפתור
+   נפתח עם תאריך, ושתמיד האחרון יהיה למעלה". */
+.sq-saved {
+  margin: 0.6rem 0 0;
   border: 1px solid #c9cfee;
-  border-radius: 999px;
+  border-radius: 10px;
+  overflow: hidden;
   background: #fff;
+}
+.sq-saved[hidden] { display: none; }
+.sq-saved-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  padding: 0 0.7rem;
+  border: 0;
+  background: transparent;
   font: inherit;
-  font-size: 0.68rem;
-  font-weight: 700;
+  font-size: 0.74rem;
+  font-weight: 800;
   color: #3a4288;
+  text-align: start;
+  cursor: pointer;
+}
+.sq-saved-head > span:first-child { flex-grow: 1; }
+.sq-saved-count {
+  min-width: 1.3rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  background: #eef0fc;
+  font-size: 0.66rem;
+  text-align: center;
+}
+.sq-saved-sign { font-size: 0.95rem; }
+.sq-saved-list { border-top: 1px solid #eef0fc; }
+.sq-saved-list[hidden] { display: none; }
+.sq-saved-row {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.55rem 0.7rem;
+  border: 0;
+  border-bottom: 1px solid #f2f3fb;
+  background: transparent;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+.sq-saved-row:last-child { border-bottom: 0; }
+.sq-saved-row:hover { background: #f7f8ff; }
+/* הנושא בשורה אחת, אחרת רשימה ארוכה הופכת לקיר טקסט */
+.sq-saved-topic {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #23264d;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  cursor: pointer;
 }
+.sq-saved-meta { font-size: 0.64rem; color: #8186b0; }
 
 /* ההוראות והתצוגה זו לצד זו כשיש מקום, וזו מעל זו בטלפון */
 .sq-card { display: grid; grid-template-columns: 1fr; gap: 0.6rem; }

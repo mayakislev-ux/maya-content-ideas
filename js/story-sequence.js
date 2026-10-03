@@ -165,6 +165,41 @@ async function listSequences() {
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
+/**
+ * 02/10/2026 (מאיה): "אם יהיו מלא רצפים זה ייראה עמוס לעין, צריך כמו כפתור
+ * נפתח עם תאריך, ושתמיד האחרון יהיה למעלה".
+ */
+export function whenText(value) {
+  const d = value && typeof value.toDate === 'function' ? value.toDate()
+    : value instanceof Date ? value
+      : value && value.seconds ? new Date(value.seconds * 1000) : null;
+  if (!d || Number.isNaN(d.getTime())) return '';
+  const p = (n) => String(n).padStart(2, '0');
+  return `${p(d.getDate())}.${p(d.getMonth() + 1)} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+/** האחרון למעלה תמיד, גם אם השרת החזיר בסדר אחר */
+export function newestFirst(rows) {
+  const at = (r) => {
+    const c = r && r.createdAt;
+    if (!c) return 0;
+    if (typeof c.toDate === 'function') return c.toDate().getTime();
+    if (c.seconds) return c.seconds * 1000;
+    return new Date(c).getTime() || 0;
+  };
+  return [...(rows || [])].sort((a2, b2) => at(b2) - at(a2));
+}
+
+export function savedRowHtml(row) {
+  const when = whenText(row && row.createdAt);
+  const goal = (row && row.goal) || '';
+  return `
+    <button type="button" class="sq-saved-row" data-id="${escapeHtml((row && row.id) || '')}">
+      <span class="sq-saved-topic">${escapeHtml((row && row.topic) || 'בלי נושא')}</span>
+      <span class="sq-saved-meta">${escapeHtml(goal)}${goal && when ? ' · ' : ''}${escapeHtml(when)}</span>
+    </button>`;
+}
+
 /* ---------------- הקריאה לשרת ---------------- */
 
 async function callBreakdown({ topic, context, cta, assets, goal, signal, onPartial }) {
@@ -263,7 +298,14 @@ export async function wireStorySequence() {
         <button type="button" class="sq-copy" id="sq-copy" hidden>להעתיק הכל</button>
         <span class="sq-status" id="sq-status"></span>
       </div>
-      <div class="sq-saved" id="sq-saved"></div>
+      <div class="sq-saved" id="sq-saved" hidden>
+        <button type="button" class="sq-saved-head" id="sq-saved-toggle" aria-expanded="false">
+          <span>רצפים שבנית</span>
+          <span class="sq-saved-count" id="sq-saved-count"></span>
+          <span class="sq-saved-sign" aria-hidden="true">+</span>
+        </button>
+        <div class="sq-saved-list" id="sq-saved-list" hidden></div>
+      </div>
       <div class="sq-out" id="sq-out"></div>
     </div>`;
   host.insertBefore(box, anchor);
@@ -303,33 +345,46 @@ export async function wireStorySequence() {
 
   /* ---- רצפים שנשמרו ---- */
   async function refreshSaved() {
-    const holder = el('sq-saved');
+    const box = el('sq-saved');
+    const list = el('sq-saved-list');
     try {
-      const rows = await listSequences();
-      if (!rows.length) { holder.innerHTML = ''; return; }
-      holder.innerHTML =
-        '<p class="sq-saved-head">רצפים שבנית</p>' +
-        rows.map((r) => `<button type="button" class="sq-chip" data-id="${r.id}">${escapeHtml(r.topic || 'בלי נושא')}</button>`).join('');
-      holder._rows = rows;
+      const rows = newestFirst(await listSequences());
+      if (!rows.length) { box.hidden = true; list.innerHTML = ''; return; }
+      box.hidden = false;
+      el('sq-saved-count').textContent = String(rows.length);
+      list.innerHTML = rows.map(savedRowHtml).join('');
+      list._rows = rows;
     } catch (err) {
       console.error('listSequences failed:', err);
-      holder.innerHTML = '';
+      box.hidden = true;
     }
   }
 
-  el('sq-saved').addEventListener('click', (e) => {
-    const chip = e.target.closest('.sq-chip');
-    if (!chip) return;
-    const rows = el('sq-saved')._rows || [];
-    const row = rows.find((r) => r.id === chip.dataset.id);
-    if (!row) return;
-    last = { goal: row.goal, a: row.a, b: row.b, why: row.why, stories: row.stories };
-    el('sq-topic').value = row.topic || '';
-    el('sq-out').innerHTML = sequenceHtml(last, brand);
-    el('sq-copy').hidden = false;
+  el('sq-saved-toggle').addEventListener('click', () => {
+    const list = el('sq-saved-list');
+    const open = list.hidden;
+    list.hidden = !open;
+    el('sq-saved-toggle').setAttribute('aria-expanded', String(open));
+    el('sq-saved').querySelector('.sq-saved-sign').textContent = open ? '−' : '+';
   });
 
-  el('sq-goal').addEventListener('change', () => { goal = el('sq-goal').value; });
+  el('sq-saved-list').addEventListener('click', (e) => {
+    const row = e.target.closest('.sq-saved-row');
+    if (!row) return;
+    const rows = el('sq-saved-list')._rows || [];
+    const found = rows.find((r) => r.id === row.dataset.id);
+    if (!found) return;
+    last = {
+      goal: found.goal, a: found.a, b: found.b, why: found.why, stories: found.stories,
+    };
+    el('sq-topic').value = found.topic || '';
+    el('sq-out').innerHTML = sequenceHtml(last, brand);
+    el('sq-copy').hidden = false;
+    // נסגרת אחרי בחירה, אחרת הרשימה דוחפת את הרצף למטה
+    el('sq-saved-list').hidden = true;
+    el('sq-saved-toggle').setAttribute('aria-expanded', 'false');
+    el('sq-saved').querySelector('.sq-saved-sign').textContent = '+';
+  });
 
   el('sq-toggle').addEventListener('click', async () => {
     const body = el('sq-body');
@@ -337,7 +392,7 @@ export async function wireStorySequence() {
     body.hidden = !open;
     el('sq-toggle').setAttribute('aria-expanded', String(open));
     box.querySelector('.sq-sign').textContent = open ? '−' : '+';
-    if (open && !el('sq-saved').innerHTML) await refreshSaved();
+    if (open && !el('sq-saved-list').innerHTML) await refreshSaved();
   });
 
   el('sq-go').addEventListener('click', async () => {
