@@ -579,6 +579,11 @@ onAuthChange(async (user) => {
         clientUsageModule.loadClientUsage();
       });
       document.getElementById('client-usage-back-btn').addEventListener('click', () => showView('home'));
+    }).catch((err) => {
+      /* 03/10/2026 (בדיקה): בלי זה, ייבוא שנכשל הפך ל-unhandled rejection
+         בלי שום סימן, והדגל שנקבע למעלה מנע ניסיון נוסף. */
+      adminModulesWired = false;
+      console.error('loadAdminModules failed:', err);
     });
   }
 
@@ -614,7 +619,15 @@ onAuthChange(async (user) => {
 
   unsubscribeIdeas = subscribeToIdeas(onIdeasChanged);
 
-  const tourDone = await hasCompletedTour();
+  /* 03/10/2026 (בדיקה): קריאה שנכשלת כאן דחתה את כל ה-callback של
+     ההתחברות, ואז סיור הפתיחה ושלוש התזכורות שאחריו לא נורים אף פעם.
+     עדיף להניח שהסיור לא נעשה מאשר לשתוק. */
+  let tourDone = false;
+  try {
+    tourDone = await hasCompletedTour();
+  } catch (err) {
+    console.error('hasCompletedTour failed:', err);
+  }
   // Nudge to install to the home screen right at login, then again at 2
   // and 5 minutes in case she dismissed or missed it the first time.
   // showIosInstallOverlayIfNeeded already no-ops if she dismissed it

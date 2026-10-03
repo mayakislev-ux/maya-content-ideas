@@ -45,7 +45,11 @@ exports.portalSso = onCall({ region: 'us-central1', invoker: 'public' }, async (
   }
   const email = String(decoded.email || '').toLowerCase();
   const role = decoded.role;
-  if (!email || decoded.email_verified === false) {
+  /* 03/10/2026 (בדיקה): ההשוואה הייתה ל-false, ולכן אסימון שבו התביעה
+     חסרה לגמרי עבר את הבדיקה. בפרודקשן כל הלקוחות נכנסות לפורטל עם
+     גוגל, שמסמן את המייל כמאומת, ונתיב הסיסמה בפורטל חסום לאמולטור
+     בלבד, ולכן ההקשחה הזאת לא נועלת אף אחת בחוץ. */
+  if (!email || decoded.email_verified !== true) {
     throw new HttpsError('permission-denied', 'לא נמצא מייל מאומת בחשבון הפורטל');
   }
   if (email !== ADMIN_EMAIL && !PORTAL_ROLES.has(role)) {

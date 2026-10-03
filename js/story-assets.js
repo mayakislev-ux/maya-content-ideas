@@ -183,11 +183,22 @@ async function shrink(file, width, height) {
   }
 }
 
+function escapeHtml(value) {
+  return String(value == null ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 export function assetCardHtml(asset) {
   const next = asset.kind === 'bg' ? 'portrait' : asset.kind === 'portrait' ? 'both' : 'bg';
+  /* 03/10/2026 (בדיקה): הכותרת היא שם הקובץ שהועלה, והנתיב מגיע מ-Storage.
+     גרש אחד בשם הקובץ סגר את התכונה באמצע ושבר את הכרטיס. */
   return `
-    <figure class="sa-card" data-path="${asset.path}">
-      <img src="${asset.url}" alt="${asset.title || 'תמונה לסטורי'}" loading="lazy">
+    <figure class="sa-card" data-path="${escapeHtml(asset.path)}">
+      <img src="${escapeHtml(asset.url)}" alt="${escapeHtml(asset.title || 'תמונה לסטורי')}" loading="lazy">
       <figcaption>
         <button type="button" class="sa-kind" data-next="${next}">${KINDS[asset.kind]}</button>
         <button type="button" class="sa-del" aria-label="מחיקה">✕</button>

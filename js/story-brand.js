@@ -137,9 +137,17 @@ export function previewHtml(story, brand) {
   let body = text;
   let punch = '';
   if (all.length > 1) {
-    const lastIdx = all.map((l) => l.trim()).lastIndexOf(all.filter((l) => l.trim()).pop());
-    punch = all[lastIdx] || '';
-    body = all.slice(0, lastIdx).join('\n');
+    /* 03/10/2026 (בדיקה): כאן הושווה מערך מקוצץ מול שורה לא מקוצצת, ולכן
+       שורה אחרונה עם רווח בהתחלה החזירה -1: השורה החזקה נעלמה מהתצוגה
+       לגמרי, ונראה שהתצוגה שבורה. עכשיו מחפשים את המקום עצמו. */
+    let lastIdx = -1;
+    for (let i = all.length - 1; i >= 0; i--) {
+      if (all[i].trim()) { lastIdx = i; break; }
+    }
+    if (lastIdx > 0) {
+      punch = all[lastIdx];
+      body = all.slice(0, lastIdx).join('\n');
+    }
   }
 
   return `

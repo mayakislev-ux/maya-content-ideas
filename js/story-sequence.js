@@ -311,7 +311,6 @@ export async function wireStorySequence() {
   host.insertBefore(box, anchor);
 
   let last = null;
-  let goal = 'auto';
   let brand = { ...DEFAULT_BRAND };
 
   /* ---- צבעי המותג ---- */
@@ -355,8 +354,16 @@ export async function wireStorySequence() {
       list.innerHTML = rows.map(savedRowHtml).join('');
       list._rows = rows;
     } catch (err) {
+      /* 03/10/2026 (בדיקה): הרשימה הוסתרה לגמרי, בלי שום הודעה, ואז נראה
+         שאין רצפים שמורים בכלל. כלל קבוע: מסך שלא הצליח אומר למה. */
       console.error('listSequences failed:', err);
-      box.hidden = true;
+      box.hidden = false;
+      el('sq-saved-count').textContent = '';
+      list.hidden = false;
+      list.innerHTML = '<p class="sq-empty">לא הצלחנו לטעון את הרצפים השמורים. הם לא נמחקו, רק לא נטענו כרגע.</p>';
+      el('sq-saved-toggle').setAttribute('aria-expanded', 'true');
+      const sign = box.querySelector('.sq-saved-sign');
+      if (sign) sign.textContent = '−';
     }
   }
 
@@ -409,14 +416,19 @@ export async function wireStorySequence() {
     const budget = new AbortController();
     const timer = setTimeout(() => budget.abort(), BUDGET_MS);
     const started = Date.now();
-    const tick = setInterval(() => {
+    /* 03/10/2026 (בדיקה): הטיימר דילג על כל פעימה שבה שורת המצב הכילה
+       "חושבת" או "מתקנת", וההודעה הזאת מגיעה מהשרת בשניות הראשונות ואף
+       פעם לא נמחקת. בפועל הטיימר קפא בשנייה השנייה ונשאר קפוא 95 שניות,
+       וההודעה המרגיעה של "לוקח בערך שתי דקות" לא יכלה להופיע אף פעם.
+       עכשיו השלב והשניות הם שני דברים נפרדים, והשניות תמיד זזות. */
+    let phase = 'מפרקת';
+    const paintStatus = () => {
       const sec = Math.round((Date.now() - started) / 1000);
-      /* לא דורסים הודעת מצב אמיתית שהגיעה מהשרת, כמו "חושבת על הכיוון" */
-      if (/חושבת|מתקנת/.test(status.textContent)) return;
       status.textContent = sec > 90
-        ? `מפרקת... ${sec} שניות. רצף שלם לוקח בערך שתי דקות`
-        : `מפרקת... ${sec} שניות`;
-    }, 1000);
+        ? `${phase}... ${sec} שניות. רצף שלם לוקח בערך שתי דקות`
+        : `${phase}... ${sec} שניות`;
+    };
+    const tick = setInterval(paintStatus, 1000);
 
     try {
       let assets = [];
@@ -435,11 +447,11 @@ export async function wireStorySequence() {
         context: el('sq-context').value.trim(),
         cta: el('sq-cta').value.trim(),
         assets,
-        goal,
+        goal: el('sq-goal').value || 'auto',
         signal: budget.signal,
         onPartial: (event) => {
-          if (event.thinking) { status.textContent = 'חושבת על הכיוון השיווקי...'; return; }
-          if (event.revising) { status.textContent = 'מתקנת את הרצף...'; return; }
+          if (event.thinking) { phase = 'חושבת על הכיוון השיווקי'; paintStatus(); return; }
+          if (event.revising) { phase = 'מתקנת את הרצף'; paintStatus(); return; }
           if (event.direction) {
             Object.assign(partial, event.direction);
             out.innerHTML = directionHtml(partial);
@@ -453,8 +465,14 @@ export async function wireStorySequence() {
       });
       last = result;
       el('sq-out').innerHTML = sequenceHtml(result, brand);
-      el('sq-copy').hidden = false;
       status.textContent = '';
+      /* 03/10/2026 (בדיקה): תשובה בלי סטוריז נשמרה בכל זאת, ויצרה שורה
+         ברשימה עם נושא ותאריך שנפתחת לכלום, וכפתור העתקה שמחזיר כלום. */
+      if (!(result && Array.isArray(result.stories) && result.stories.length)) {
+        showToast('לא התקבל רצף. אפשר לנסות שוב');
+        return;
+      }
+      el('sq-copy').hidden = false;
       try {
         await saveSequence(topic, result);
         await refreshSaved();
@@ -467,7 +485,26 @@ export async function wireStorySequence() {
       console.error('breakdownStorySequence failed:', err);
       status.textContent = '';
       const aborted = err && err.name === 'AbortError';
-      el('sq-out').innerHTML = `<p class="sq-empty">${escapeHtml(aborted ? 'לקח יותר מדי זמן ונעצר. אפשר לנסות שוב.' : err.message)}</p>`;
+      /* 03/10/2026 (בדיקה): כל ההודעות שאנחנו כותבים הן בעברית, ולכן הודעה
+         בלי עברית היא הודעה של הדפדפן ("Failed to fetch") שאין לה מה
+         לעשות על המסך שלה. */
+      const raw = String((err && err.message) || '');
+      const ours = /[\u0590-\u05FF]/.test(raw);
+      const msg = aborted
+        ? 'לקח יותר מדי זמן ונעצר. אפשר לנסות שוב.'
+        : (ours ? raw : 'משהו השתבש, נסו שוב בבקשה.');
+      const out = el('sq-out');
+      /* 03/10/2026 (בדיקה): אם כבר הופיעו סטוריז על המסך, אסור למחוק אותם.
+         הם נבנו, שולם עליהם, ולראות אותם נעלמים אחרי שתי דקות המתנה גרוע
+         יותר מהשגיאה עצמה. ההודעה נכנסת מעליהם, והם נשארים. */
+      if (out.querySelector('.sq-card')) {
+        out.insertAdjacentHTML(
+          'afterbegin',
+          `<p class="sq-empty">${escapeHtml(msg)} מה שנבנה עד כאן נשאר למטה, אבל לא נשמר.</p>`
+        );
+      } else {
+        out.innerHTML = `<p class="sq-empty">${escapeHtml(msg)}</p>`;
+      }
     } finally {
       clearTimeout(timer);
       clearInterval(tick);

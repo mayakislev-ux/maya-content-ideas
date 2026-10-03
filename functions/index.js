@@ -1411,7 +1411,17 @@ exports.breakdownStorySequence = onRequest(
               direction: { goal: parsed.goal, a: parsed.a, b: parsed.b, why: parsed.why },
             })}\n\n`);
           }
-          const closed = /@@\s*(STORY|END)/i.test(text.slice(text.lastIndexOf('@@STORY') + 1))
+          /* 03/10/2026 (בדיקה): המפרק מקבל גם סמן עם רווח, "@@ STORY", אבל
+             החיפוש כאן היה על מחרוזת מדויקת. סמן עם רווח החזיר -1, הסטורי
+             שנכתב באותו רגע נשלח כאילו נגמר, והיא ראתה אותו חתוך באמצע. */
+          let lastAt = -1;
+          let lastLen = 0;
+          const markerRe = /@@\s*STORY/gi;
+          for (let m = markerRe.exec(text); m; m = markerRe.exec(text)) {
+            lastAt = m.index;
+            lastLen = m[0].length;
+          }
+          const closed = lastAt > -1 && /@@\s*END/i.test(text.slice(lastAt + lastLen))
             ? parsed.stories.length
             : Math.max(0, parsed.stories.length - 1);
           while (sentStories < closed) {
@@ -1420,17 +1430,27 @@ exports.breakdownStorySequence = onRequest(
           }
         };
 
-        while (true) {
+        /* 03/10/2026 (בדיקה): בסוף הזרימה סוגרים את המפענח ומפענחים את
+           השארית. בלי זה, זרימה שנגמרת בלי שורה ריקה מאבדת את האירוע
+           האחרון, ואיתו את סיבת העצירה, ואז רצף שנחתך נראה שלם. */
+        let streamDone = false;
+        while (!streamDone) {
           const { done, value } = await reader.read();
-          if (done) break;
-          sse += decoder.decode(value, { stream: true });
+          streamDone = done;
+          sse += done ? decoder.decode() : decoder.decode(value, { stream: true });
           const chunks = sse.split('\n\n');
-          sse = chunks.pop() || '';
+          sse = streamDone ? '' : (chunks.pop() || '');
           for (const chunk of chunks) {
             const line = chunk.split('\n').find((l) => l.startsWith('data: '));
             if (!line) continue;
             let event;
-            try { event = JSON.parse(line.slice(6)); } catch { continue; }
+            try {
+              event = JSON.parse(line.slice(6));
+            } catch {
+              // 03/10/2026 (בדיקה): אירוע שנופל בשקט מוריד טקסט מתוך סטורי
+              console.error('breakdownStorySequence: bad SSE event:', line.slice(0, 120));
+              continue;
+            }
             if (event.type === 'content_block_delta' && event.delta && event.delta.thinking) {
               /* 02/10/2026: נמדד מול המנוע, 58 שניות מתוך 70 הן חשיבה לפני
                  המילה הראשונה. בלי הסימן הזה המסך ריק דקה שלמה ונראה תקוע,
@@ -1515,8 +1535,11 @@ exports.breakdownStorySequence = onRequest(
       }
 
       console.log('breakdownStorySequence done in', Math.round((Date.now() - startedAt) / 1000), 'sec,', stories.length, 'stories');
-      await incrementRateLimit(uid, 'breakdownStorySequence');
 
+      /* 03/10/2026 (בדיקה): התוצאה יוצאת ראשונה, ורק אחריה הרישום הפנימי.
+         ספירת השימוש היא טרנזקציה שיכולה להיכשל, וכשהיא הייתה לפני כאן,
+         כישלון שלה זרק לבלוק ה-catch ושלח שגיאה במקום רצף שכבר נבנה
+         במשך שתי דקות ושולם עליו. */
       res.write(
         `data: ${JSON.stringify({
           done: true,
@@ -1528,6 +1551,11 @@ exports.breakdownStorySequence = onRequest(
         })}\n\n`
       );
       res.end();
+      try {
+        await incrementRateLimit(uid, 'breakdownStorySequence');
+      } catch (err) {
+        console.error('breakdownStorySequence: rate limit write failed after the result was sent:', err.message);
+      }
     } catch (err) {
       console.error('breakdownStorySequence: unexpected error:', err);
       res.write(`data: ${JSON.stringify({ error: err.message || 'משהו השתבש, נסו שוב' })}\n\n`);

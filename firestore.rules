@@ -42,11 +42,11 @@ service cloud.firestore {
        בנפרד. כרגע זה של מאיה בלבד, אבל הכלל כבר לפי uid כדי שלא
        יהיה צורך לשנות את המבנה כשזה ייפתח. */
     match /storySettings/{uid} {
-      allow read, write: if isAllowed() && request.auth.uid == uid;
+      allow read, write: if isAdmin() && request.auth.uid == uid;
     }
     match /storySequences/{seqId} {
-      allow read, update, delete: if isAllowed() && request.auth.uid == resource.data.ownerUid;
-      allow create: if isAllowed() && request.auth.uid == request.resource.data.ownerUid;
+      allow read, update, delete: if isAdmin() && request.auth.uid == resource.data.ownerUid;
+      allow create: if isAdmin() && request.auth.uid == request.resource.data.ownerUid;
     }
     match /contentPlans/{planId} {
       allow read, update, delete: if isAllowed() && request.auth.uid == resource.data.ownerUid;

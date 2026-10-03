@@ -170,7 +170,12 @@ async function runSync(quiet = false) {
     if (!res.ready) {
       // 01/10/2026, ביקורת 10 סוכנים: כשלון רענון החליף טבלה אמיתית בטבלת
       // נושאים ריקה. טבלה שכבר על המסך לא נמחקת בגלל קריאה שנכשלה.
-      showStatus("");
+      /* 03/10/2026 (בדיקה): השרת מחזיר סיבה בעברית לכל מצב "לא מוכן", קובץ
+         שלא מקושר, קובץ שלא שותף, לשוניות חסרות, ואף אחת מהן לא הגיעה
+         למסך. לקוחה לחצה "לרענן את הקובץ", שורת המצב התרוקנה, ולא קרה
+         כלום, בדיוק כמו כפתור שבור. כלל קבוע: לחיצה שלא עבדה אומרת למה. */
+      if (res.message) showStatus(res.message, true);
+      else showStatus('');
       if (!state.table) showTable(defaultTable());
       return;
     }
@@ -375,8 +380,7 @@ async function loadInitial() {
     if (saved && saved.audiences.length) {
       showTable(saved);
       wireOwnerBar();
-      wireStoryAssets();
-      wireStorySequence();
+      wireOwnerPanels();
       // 01/10/2026 (מאיה: "אם מישהי מעדכנת בטבלת הפרסונה או קהל יעד, זה
       // מסונכרן?"): עד כאן הסנכרון רץ רק כשלא הייתה טבלה בכלל, או בלחיצה
       // על הכפתור. מי שעדכנה את הגיליון לא ראתה את זה אף פעם. עכשיו הקובץ
@@ -392,6 +396,13 @@ async function loadInitial() {
   showTable(defaultTable());
   runSync();
   wireOwnerBar();
-  wireStoryAssets();
-  wireStorySequence();
+  wireOwnerPanels();
+}
+
+/* 03/10/2026 (בדיקה): שתי הפונקציות האלה הן async, ונקראו בלי await ובלי
+   catch. כל שגיאה בתוכן הפכה ל-unhandled rejection בלי שום שורה בקונסולה
+   שמזכירה אותן, ושני הפאנלים של מאיה פשוט לא הופיעו בלי הסבר. */
+function wireOwnerPanels() {
+  wireStoryAssets().catch((err) => console.error('wireStoryAssets failed:', err));
+  wireStorySequence().catch((err) => console.error('wireStorySequence failed:', err));
 }

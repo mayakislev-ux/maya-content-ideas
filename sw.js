@@ -1,5 +1,5 @@
 // שינוי כאן גורם לכל מי שפתוחה על גרסה ישנה לקבל את הודעת "גרסה חדשה מוכנה" (18/09: הכנסת update-check.js)
-const CACHE_NAME = 'moach-hashiveki-v32';
+const CACHE_NAME = 'moach-hashiveki-v33';
 const APP_SHELL = ['./', './index.html', './css/style.css', './js/app.js', './manifest.json', './assets/favicon.png'];
 
 self.addEventListener('install', (event) => {
@@ -57,13 +57,27 @@ self.addEventListener('fetch', (event) => {
   const sameOrigin = new URL(event.request.url).origin === self.location.origin;
   if (!sameOrigin && !isImmutableAsset(event.request.url)) return;
 
+  /* 03/10/2026 (בדיקה): שתי הכתיבות למטמון היו fire and forget, ולכן
+     מכסת אחסון שנגמרה הפכה ל-unhandled rejection בלי שום שורה בקונסולה,
+     וקובץ שלא נכתב פשוט חסר כשצריך אותו במצב לא מקוון. ובנוסף נשמרה כל
+     תשובה, כולל 404 או 500 שחוזרים בדיוק בזמן פריסה, ואז הם אלה שמוגשים
+     אחר כך כגיבוי. */
+  const keep = (response) => {
+    if (!response || !response.ok) return;
+    const copy = response.clone();
+    event.waitUntil(
+      caches.open(CACHE_NAME)
+        .then((cache) => cache.put(event.request, copy))
+        .catch((err) => console.warn('sw: cache put failed', err && err.name))
+    );
+  };
+
   if (isImmutableAsset(event.request.url)) {
     event.respondWith(
       caches.match(event.request).then((cached) => {
         if (cached) return cached;
         return fetch(event.request).then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+          keep(response);
           return response;
         });
       })
@@ -74,8 +88,7 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     fetch(event.request.url, { cache: 'no-store' })
       .then((response) => {
-        const copy = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+        keep(response);
         return response;
       })
       .catch(() => caches.match(event.request))
