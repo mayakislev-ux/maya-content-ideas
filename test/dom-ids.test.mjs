@@ -11,8 +11,11 @@ import { readFileSync, readdirSync } from 'node:fs';
  * נפלה, כל הקובץ מת, ו-onAuthChange אף פעם לא נרשם. מסך הפתיחה מוסתר בשורה
  * הראשונה שלו, ולכן הוא נשאר על המסך לנצח בלי שום הודעת שגיאה.
  *
- * הבדיקה מכסה רק פנייה ישירה: getElementById('x').something. כשהקוד שומר
- * את התוצאה במשתנה ובודק אותה, זה דפוס לגיטימי ולא נבדק כאן.
+ * 03/10/2026 (בדיקה): הבדיקה כיסתה רק פנייה ישירה,
+ * getElementById('x').something, ולכן הדפוס שבו הקוד שומר את התוצאה
+ * במשתנה ואז משתמש בה לא נבדק בכלל, בדיוק הדפוס של חמישה מזהים באפליקציה.
+ * עכשיו נבדק **כל** מזהה שהקוד פונה אליו: אם הוא לא ב-index.html וגם לא
+ * נוצר בקוד, אין לו על מה לעבוד, גם אם יש בדיקת null.
  */
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
@@ -20,25 +23,35 @@ const ids = new Set([...html.matchAll(/id="([^"]+)"/g)].map((m) => m[1]));
 
 const files = readdirSync(new URL('../js/', import.meta.url)).filter((f) => f.endsWith('.js'));
 
-/* מזהה שהקוד עצמו יוצר (innerHTML עם id="...") לגיטימי ואינו חסר. */
+/* מזהה שהקוד עצמו יוצר לגיטימי ואינו חסר, בשתי הדרכים: innerHTML עם
+   id="..." וגם השמה ישירה, element.id = '...'. */
 const createdInJs = new Set();
 for (const file of files) {
   const src = readFileSync(new URL(`../js/${file}`, import.meta.url), 'utf8');
   for (const m of src.matchAll(/id="([^"${}]+)"/g)) createdInJs.add(m[1]);
+  for (const m of src.matchAll(/\.id\s*=\s*'([^']+)'/g)) createdInJs.add(m[1]);
 }
 
-test('כל מזהה שניגשים אליו ישירות קיים ב-index.html', () => {
+test('כל מזהה שהקוד פונה אליו קיים ב-index.html או נוצר בקוד', () => {
   const missing = [];
   for (const file of files) {
     const src = readFileSync(new URL(`../js/${file}`, import.meta.url), 'utf8');
-    // getElementById('x') ואחריו מיד נקודה, כלומר שימוש בלי בדיקה
-    for (const m of src.matchAll(/getElementById\('([^']+)'\)\s*\./g)) {
+    for (const m of src.matchAll(/getElementById\('([^']+)'\)/g)) {
       const id = m[1];
       if (id.includes('$')) continue;           // מזהה מורכב, נבדק בזמן ריצה
       if (!ids.has(id) && !createdInJs.has(id)) missing.push(`${id}  (js/${file})`);
     }
   }
   assert.deepEqual(missing, [], `מזהים שלא קיימים ב-index.html:\n${missing.join('\n')}`);
+});
+
+/* חמישה מזהים באפליקציה נכתבים בדפוס שהבדיקה הקודמת לא כיסתה, ולכן
+   נבדקים כאן במפורש, כדי שהכיסוי לא ייעלם בשקט אם מישהו ישנה את הבדיקה. */
+
+test('המזהים שנשמרים במשתנה לפני השימוש מכוסים גם הם', () => {
+  for (const id of ['offline-banner', 'policy-modal', 'view-tabs', 'menu-overlay', 'scroll-top-btn']) {
+    assert.ok(ids.has(id) || createdInJs.has(id), id);
+  }
 });
 
 test('מסך התסריטים הוסר לגמרי, בלי שאריות', () => {
