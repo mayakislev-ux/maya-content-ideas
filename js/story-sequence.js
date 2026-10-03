@@ -167,7 +167,7 @@ async function listSequences() {
 
 /* ---------------- הקריאה לשרת ---------------- */
 
-async function callBreakdown({ topic, context, cta, assets, goal, signal }) {
+async function callBreakdown({ topic, context, cta, assets, goal, signal, onPartial }) {
   const idToken = await auth.currentUser.getIdToken();
   const response = await fetch(URL_ENDPOINT, {
     method: 'POST',
@@ -198,6 +198,12 @@ async function callBreakdown({ topic, context, cta, assets, goal, signal }) {
       let event;
       try { event = JSON.parse(line.slice(6)); } catch { continue; }
       if (event.error) throw new Error(event.error);
+      /* 02/10/2026: הרצף זורם, כדי שלא תחכי מול מסך ריק שתי דקות. הכיוון
+         האסטרטגי מגיע אחרי כמה שניות, וכל סטורי ברגע שהוא נגמר. */
+      if (onPartial && (event.direction || event.story || event.revising)) {
+        onPartial(event);
+        continue;
+      }
       if (event.done) return event;
     }
   }
@@ -364,6 +370,10 @@ export async function wireStorySequence() {
         // בלי תמונות עדיין אפשר לפרק, רק בלי להפנות לתמונה ספציפית
         console.error('listAssets for sequence failed:', err);
       }
+      /* מציירים תוך כדי: קודם הכיוון האסטרטגי, ואז סטורי אחרי סטורי.
+         בסוף מחליפים בתוצאה המלאה, כי ייתכן שהייתה קריאה מתקנת. */
+      const out = el('sq-out');
+      const partial = { stories: [] };
       const result = await callBreakdown({
         topic,
         context: el('sq-context').value.trim(),
@@ -371,6 +381,18 @@ export async function wireStorySequence() {
         assets,
         goal,
         signal: budget.signal,
+        onPartial: (event) => {
+          if (event.revising) { status.textContent = 'מתקנת את הרצף...'; return; }
+          if (event.direction) {
+            Object.assign(partial, event.direction);
+            out.innerHTML = directionHtml(partial);
+            return;
+          }
+          if (event.story) {
+            partial.stories.push(event.story);
+            out.insertAdjacentHTML('beforeend', storyHtml(event.story, partial.stories.length - 1, brand));
+          }
+        },
       });
       last = result;
       el('sq-out').innerHTML = sequenceHtml(result, brand);

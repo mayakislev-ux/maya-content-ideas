@@ -377,8 +377,14 @@ function checkSequence(stories, meta) {
   if (/מישהי ש|מישהו ש|ראיתי את זה|אני רואה את זה/.test(firstText)) {
     problems.push('סטורי 1 מסופר על מישהו אחר או מכיסא המאבחנת. לתאר את הסצנה שלהם בהווה.');
   }
-  if (firstText.trim() && !addressesPlural(firstText)) {
-    problems.push('סטורי 1 אינו פונה ב"אתם". הפנייה תמיד ברבים.');
+  /* 02/10/2026: הכלל הזה שייך למטרות שבהן סטורי 1 הוא הסצנה שלהם. בביקורת
+     מקצועית, שריפת גשר או סמכות, סטורי 1 הוא ההצהרה או הסיפור שלה, ואז
+     הדרישה לפנייה ברבים היא אזעקת שווא שגררה קריאה שנייה שלמה ל-AI ועוד
+     תשעים שניות המתנה. */
+  const SCENE_GOALS = ['חוק השתקפות', 'מודעות לבעיה'];
+  if (SCENE_GOALS.includes(String(info.goal || '').trim())
+    && firstText.trim() && !addressesPlural(firstText)) {
+    problems.push('סטורי 1 אינו פונה ב"אתם". בשיקוף הפנייה תמיד ברבים.');
   }
 
   const whole = list.map(body).join(' ');

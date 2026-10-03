@@ -268,3 +268,56 @@ test('יש גבול זמן לפירוק', () => {
   assert.match(src, /AbortError/);
   assert.match(src, /BUDGET_MS/);
 });
+
+/* 02/10/2026 (מאיה): הרצף לקח 175 שניות והיא חיכתה מול מסך ריק. בלוג התברר
+   שהקריאה עצמה לקחה 84 שניות, ואז אזעקת שווא שלי גררה קריאה שנייה שלמה:
+   הבדיקה דרשה פנייה ב"אתם" בסטורי 1, אבל בביקורת מקצועית סטורי 1 הוא
+   ההצהרה שלה ולא הסצנה שלהם. */
+
+test('הדרישה לפנייה ברבים חלה רק על המטרות שבהן סטורי 1 הוא הסצנה שלהם', () => {
+  const stance = [
+    { n: 1, job: 'HOOK', text: 'אולי זו דעה לא פופולרית: זו טעות מקצועית.' },
+    { n: 2, job: 'LANDING', text: 'מסר', small: 'א\nב' },
+  ];
+  for (const goal of ['ביקורת מקצועית', 'שריפת גשר', 'סמכות', 'מכירה']) {
+    assert.deepEqual(checkSequence(stance, { goal, a: 'x', b: 'y' }), [], goal);
+  }
+  const singular = [
+    { n: 1, job: 'MIRROR', text: 'הסברת את התהליך. ענית על כל שאלה.' },
+    { n: 2, job: 'LANDING', text: 'מסר', small: 'א\nב' },
+  ];
+  for (const goal of ['חוק השתקפות', 'מודעות לבעיה']) {
+    assert.ok(checkSequence(singular, { goal, a: 'x', b: 'y' }).some((t) => /אינו פונה ב"אתם"/.test(t)), goal);
+  }
+});
+
+test('השרת מזרים: כיוון אסטרטגי, ואז סטורי אחרי סטורי', () => {
+  const fn = server.slice(server.indexOf('exports.breakdownStorySequence'));
+  const body = fn.slice(0, fn.indexOf('\n);'));
+  assert.match(body, /stream: true/);
+  assert.match(body, /direction: \{ goal/, 'הכיוון יוצא ראשון');
+  assert.match(body, /\{ story: parsed\.stories\[sentStories\] \}/, 'וכל סטורי בנפרד');
+  assert.match(body, /revising: true/, 'וגם כשיש קריאה מתקנת');
+});
+
+test('סטורי נשלח רק כשהוא נגמר, ולא חצי סטורי על המסך', () => {
+  const fn = server.slice(server.indexOf('exports.breakdownStorySequence'));
+  const body = fn.slice(0, fn.indexOf('\n);'));
+  assert.match(body, /parsed\.stories\.length - 1/, 'האחרון מוחזק עד שהבא מתחיל');
+  assert.match(body, /חצי סטורי על המסך גרוע יותר ממסך ריק/);
+});
+
+test('הקריאה המתקנת אינה זורמת, כדי לא לצייר רצף פעמיים', () => {
+  const fn = server.slice(server.indexOf('exports.breakdownStorySequence'));
+  const body = fn.slice(0, fn.indexOf('\n);'));
+  assert.match(body, /callAndParse\(1, '', '', true\)/, 'הראשונה זורמת');
+  assert.match(body, /callAndParse\(1, '', retryText\)/, 'והמתקנת לא');
+});
+
+test('המסך מצייר תוך כדי, ומחליף בתוצאה המלאה בסוף', () => {
+  assert.match(src, /onPartial/);
+  assert.match(src, /out\.insertAdjacentHTML\('beforeend'/);
+  assert.match(src, /מתקנת את הרצף/);
+  const go = src.slice(src.indexOf("el('sq-go').addEventListener"));
+  assert.ok(go.indexOf('onPartial') < go.indexOf('sequenceHtml(result, brand)'), 'הציור המלא בא אחרי');
+});

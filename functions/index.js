@@ -1356,41 +1356,106 @@ exports.breakdownStorySequence = onRequest(
 
          ולמה הניסיון החוזר לא עזר: הוא שלח בדיוק את אותה בקשה, אז הוא נחתך
          שוב באותו מקום. מעכשיו מזהים חיתוך במפורש, ומבקשים בניסיון השני
-         להתקצר. */
-      async function callAndParse(attempt = 1, extraInstruction = '', corrections = '') {
-        const data = await callAnthropic(
-          anthropicApiKey.value(),
-          {
+      /**
+       * קריאה זורמת.
+       *
+       * 02/10/2026 (מאיה): הרצף לקח 175 שניות והיא חיכתה מול מסך ריק. הזמן
+       * הכולל נשאר דומה, אבל הכיוון האסטרטגי מופיע אחרי כמה שניות וכל סטורי
+       * מופיע ברגע שהוא נגמר, במקום הכל בבת אחת בסוף.
+       *
+       * הזרימה מועברת ללקוחה כאירועים, ולא כטקסט גולמי, כי היא לא צריכה
+       * לראות @@STORY ושדות.
+       */
+      async function callAndParse(attempt = 1, extraInstruction = '', corrections = '', live = false) {
+        const response = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'x-api-key': anthropicApiKey.value(),
+            'anthropic-version': '2023-06-01',
+            'content-type': 'application/json',
+          },
+          body: JSON.stringify({
             model: 'claude-sonnet-5',
             max_tokens: 8000,
+            stream: true,
             messages: [{
               role: 'user',
               content: buildStorySequencePrompt({ ...promptArgs, corrections }) + extraInstruction,
             }],
-          },
-          'breakdownStorySequence'
-        );
-        const text = (data.content || []).map((b) => b.text || '').join('');
-        const truncated = data.stop_reason === 'max_tokens';
+          }),
+        });
 
+        if (!response.ok) {
+          const body = await response.text();
+          console.error('breakdownStorySequence: Anthropic error', response.status, body.slice(0, 300));
+          throw new Error('משהו השתבש מול המנוע, נסו שוב');
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let sse = '';
+        let text = '';
+        let sentHead = false;
+        let sentStories = 0;
+        let stopReason = '';
+
+        /* שולחים סטורי רק כשהוא באמת נגמר, כלומר כשהתחיל הבא או הגיע הסוף.
+           חצי סטורי על המסך גרוע יותר ממסך ריק. */
+        const flush = () => {
+          if (!live) return;
+          const parsed = parseSequence(text);
+          if (!sentHead && parsed.goal && parsed.a && parsed.b) {
+            sentHead = true;
+            res.write(`data: ${JSON.stringify({
+              direction: { goal: parsed.goal, a: parsed.a, b: parsed.b, why: parsed.why },
+            })}\n\n`);
+          }
+          const closed = /@@\s*(STORY|END)/i.test(text.slice(text.lastIndexOf('@@STORY') + 1))
+            ? parsed.stories.length
+            : Math.max(0, parsed.stories.length - 1);
+          while (sentStories < closed) {
+            res.write(`data: ${JSON.stringify({ story: parsed.stories[sentStories] })}\n\n`);
+            sentStories += 1;
+          }
+        };
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          sse += decoder.decode(value, { stream: true });
+          const chunks = sse.split('\n\n');
+          sse = chunks.pop() || '';
+          for (const chunk of chunks) {
+            const line = chunk.split('\n').find((l) => l.startsWith('data: '));
+            if (!line) continue;
+            let event;
+            try { event = JSON.parse(line.slice(6)); } catch { continue; }
+            if (event.type === 'content_block_delta' && event.delta && event.delta.text) {
+              text += event.delta.text;
+              flush();
+            } else if (event.type === 'message_delta' && event.delta && event.delta.stop_reason) {
+              stopReason = event.delta.stop_reason;
+            }
+          }
+        }
+        flush();
+
+        const truncated = stopReason === 'max_tokens';
         try {
-          /* 02/10/2026: הפורמט אינו JSON יותר, כי מרכאות בעברית שברו אותו
-             והפילו את הקריאה הראשונה בכל פעם. תשובה שנחתכה עדיין מכילה
-             סטוריז שלמים לפני החיתוך, ולכן היא מתקבלת כשיש בה מספיק. */
           const parsed = parseSequence(text);
           if (!parsed.stories.length) throw new Error('empty');
           if (truncated && parsed.stories.length < 5) throw new Error('truncated');
           return parsed;
         } catch (err) {
           console.error(
-            `breakdownStorySequence parse failed (attempt ${attempt}, stop_reason=${data.stop_reason}, chars=${text.length}):`,
+            `breakdownStorySequence parse failed (attempt ${attempt}, stop_reason=${stopReason}, chars=${text.length}):`,
             text.slice(0, 300)
           );
           if (attempt < 2 && timeLeft() > 95000) {
             const shorter = truncated
-              ? '\n\nחשוב: התשובה הקודמת נחתכה באמצע. תן/תני בדיוק את אותו מבנה, אבל קצר יותר: עד 5 סטוריז, וכל תסריט דיבור עד 60 מילים.'
+              ? '\n\nחשוב: התשובה הקודמת נחתכה באמצע. אותו מבנה בדיוק, אבל קצר יותר: עד 5 סטוריז, וכל תסריט דיבור עד 60 מילים.'
               : '';
-            return callAndParse(attempt + 1, shorter);
+            return callAndParse(attempt + 1, shorter, corrections, false);
           }
           throw new Error(
             truncated
@@ -1400,7 +1465,7 @@ exports.breakdownStorySequence = onRequest(
         }
       }
 
-      let parsed = await callAndParse();
+      let parsed = await callAndParse(1, '', '', true);
       let stories = Array.isArray(parsed.stories) ? parsed.stories : [];
 
       /* 02/10/2026: הפרומפט לבדו לא החזיק. הרצף שמאיה כינתה "מזעזע" הפר
@@ -1411,6 +1476,11 @@ exports.breakdownStorySequence = onRequest(
         const problems = checkSequence(stories, parsed);
         if (problems.length && timeLeft() > 100000) {
           console.warn('breakdownStorySequence rule violations:', problems.join(' | '));
+          /* הרצף כבר על המסך שלה, והקריאה המתקנת לוקחת עוד דקה וחצי. בלי
+             ההודעה הזאת זה נראה כאילו נתקע אחרי שכבר הופיע משהו. */
+          res.write(`data: ${JSON.stringify({ revising: true })}
+
+`);
           const retryText = problems.map((t, i) => `${i + 1}. ${t}`).join(String.fromCharCode(10));
           try {
             const second = await callAndParse(1, '', retryText);
