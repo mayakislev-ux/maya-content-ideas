@@ -17,6 +17,11 @@ const { buildTicketPdf } = require('./ticket-pdf');
 
 const webhookSecret = defineSecret('GROW_WEBHOOK_SECRET');
 const fireberryApiKey = defineSecret('FIREBERRY_API_KEY');
+// 02/10/2026: כל רכישה נרשמה עד היום בפייברי בלבד, ופייברי עומד להתבטל (1,000 ₪
+// לחודש). מעכשיו הרכישה נכתבת קודם לפורטל, ורק אחר כך לפייברי. זה אותו ערך
+// שמוגדר כ-EXTERNAL_SALE_SECRET בפרויקט הפורטל.
+const externalSaleSecret = defineSecret('EXTERNAL_SALE_SECRET');
+const PORTAL_SALE_URL = 'https://us-central1-maya-client-portal.cloudfunctions.net/recordExternalSale';
 const gmailAppPassword = defineSecret('GMAIL_APP_PASSWORD');
 const metaCapiAccessToken = defineSecret('META_CAPI_ACCESS_TOKEN');
 
@@ -59,6 +64,30 @@ function extractFields(body) {
     ticketType,
     isCouple,
   };
+}
+
+/**
+ * רישום הרכישה בפורטל, לפני פייברי. הפורטל הוא מערכת האמת מרגע שפייברי מתבטל.
+ * כישלון כאן לא עוצר את הכרטיס ללקוחה, אבל כן צועק ללוג, כי מכירה שלא נרשמה
+ * בשום מקום היא בדיוק מה שהמעבר הזה בא למנוע.
+ */
+async function recordSaleInPortal({ fullName, phone, email, amount, ticketType, orderId }) {
+  const res = await fetch(PORTAL_SALE_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-sale-secret': externalSaleSecret.value() },
+    body: JSON.stringify({
+      source: 'grow',
+      externalId: orderId || '',
+      clientName: fullName || '',
+      phone: phone || '',
+      email: email || '',
+      amount: amount || '',
+      product: ticketType || '',
+    }),
+  });
+  const text = await res.text();
+  if (!res.ok) throw new Error(`portal sale write failed (${res.status}): ${text}`);
+  console.log('recordSaleInPortal: ok', text);
 }
 
 async function createFireberryTransaction({ fullName, phone, email, amount, isCouple }) {
@@ -215,7 +244,7 @@ async function sendTicketEmail({ email, fullName, ticketType, orderId, isCouple,
 // hits this webhook - it just stops it from blocking unrelated deploys until
 // the real token is set. Restore metaCapiAccessToken to this array once it is.
 exports.growPaymentWebhook = onRequest(
-  { region: 'us-central1', secrets: [webhookSecret, fireberryApiKey, gmailAppPassword] },
+  { region: 'us-central1', secrets: [webhookSecret, fireberryApiKey, externalSaleSecret, gmailAppPassword] },
   async (req, res) => {
     console.log('Grow webhook raw payload:', JSON.stringify(req.body));
 
@@ -232,6 +261,14 @@ exports.growPaymentWebhook = onRequest(
       console.error('Grow webhook: no email found in payload, cannot send ticket. Raw payload logged above for manual follow-up.');
       res.status(200).send('received, no email found');
       return;
+    }
+
+    // הפורטל ראשון. פייברי אחריו, כל עוד הוא קיים.
+    try {
+      await recordSaleInPortal(fields);
+    } catch (err) {
+      console.error('PORTAL SALE WRITE FAILED - הרכישה לא נרשמה בפורטל:', err);
+      // continue anyway - the customer must still get her ticket
     }
 
     let fireberryRecordId = null;

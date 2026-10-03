@@ -3,6 +3,9 @@ const { defineSecret } = require('firebase-functions/params');
 
 const quickDealSecret = defineSecret('QUICK_DEAL_SECRET');
 const fireberryApiKey = defineSecret('FIREBERRY_API_KEY');
+// 02/10/2026: גם "עסקה מהירה" נרשמה רק בפייברי. הפורטל ראשון מעכשיו.
+const externalSaleSecret = defineSecret('EXTERNAL_SALE_SECRET');
+const PORTAL_SALE_URL = 'https://us-central1-maya-client-portal.cloudfunctions.net/recordExternalSale';
 
 const FIREBERRY_TRANSACTION_OBJECT = '1001'; // custom object "עסקה"
 
@@ -94,6 +97,27 @@ const PAGE_HTML = `<!doctype html>
 </script>
 </body></html>`;
 
+async function recordSaleInPortal({ name, phone, email, product }) {
+  const res = await fetch(PORTAL_SALE_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-sale-secret': externalSaleSecret.value() },
+    body: JSON.stringify({
+      source: 'quick-deal',
+      // אין אסמכתת תשלום בכלי הזה, ולכן המזהה נבנה מהטלפון, המוצר והיום. לחיצה
+      // כפולה על אותו כפתור באותו יום תעדכן שורה אחת במקום לפתוח שתי מכירות.
+      externalId: `${String(phone || '').replace(/\D/g, '')}_${product.id}_${new Date().toISOString().slice(0, 10)}`,
+      clientName: name || '',
+      phone: phone || '',
+      email: email || '',
+      amount: product.price || '',
+      product: product.name || '',
+    }),
+  });
+  const text = await res.text();
+  if (!res.ok) throw new Error(`portal sale write failed (${res.status}): ${text}`);
+  console.log('recordSaleInPortal: ok', text);
+}
+
 async function createFireberryTransaction({ name, phone, email, product }) {
   const today = new Date().toISOString().slice(0, 10);
   const record = {
@@ -123,7 +147,7 @@ async function createFireberryTransaction({ name, phone, email, product }) {
  * for. Bookmark the URL with the secret already in it.
  */
 exports.quickDeal = onRequest(
-  { region: 'us-central1', secrets: [quickDealSecret, fireberryApiKey] },
+  { region: 'us-central1', secrets: [quickDealSecret, fireberryApiKey, externalSaleSecret] },
   async (req, res) => {
     if (req.query.secret !== quickDealSecret.value()) {
       res.status(401).send('unauthorized');
@@ -136,6 +160,15 @@ exports.quickDeal = onRequest(
       const product = PRODUCTS.find((p) => p.id === productId);
       if (!product || !name) {
         res.status(400).send('missing product or name');
+        return;
+      }
+      try {
+        await recordSaleInPortal({ name, phone, email, product });
+      } catch (err) {
+        // המכירה חייבת להירשם איפשהו, ולכן כאן כן מחזירים שגיאה למסך: מאיה
+        // עומדת מול הכפתור ויכולה לנסות שוב, בניגוד לוובהוק של גרו שרץ לבד.
+        console.error('PORTAL SALE WRITE FAILED:', err);
+        res.status(500).send('הרכישה לא נרשמה בפורטל: ' + String(err.message || err));
         return;
       }
       try {
