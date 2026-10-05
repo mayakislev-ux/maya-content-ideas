@@ -1,5 +1,6 @@
 import { db, functions } from './firebase-init.js';
 import { openVideoPopup } from './inspiration-popup.js';
+import { readabilityOf, languageName, passesReadability } from './inspiration-readability.js';
 import { collection, getDocs } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
 
@@ -113,6 +114,75 @@ function interleaveByDomain(videos) {
   return result;
 }
 
+// 05/10/2026 (מאיה: "לא כולן מבינות שפות אחרות, וגם לא כל הסרטונים הם
+// דיבור"): התגית אומרת לה מראש אם היא תוכל להבין את הסרטון, לפני שהיא
+// מבזבזת לחיצה. מדידה: רק 59 מתוך 453 בעברית.
+// 05/10/2026: הזווית הפעילה. null = לא מסננים לפי זווית
+let activeAngle = null;
+
+function pickAngle(angle) {
+  activeAngle = activeAngle === angle ? null : angle;
+  const select = document.getElementById('inspiration-domain-filter');
+  const subSelect = document.getElementById('inspiration-subcategory-filter');
+  renderForDomain(select.value, subSelect.value);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// שורת הזוויות נבנית מהנתונים עצמם, עם המספר האמיתי לכל זווית, כדי שלא
+// תוצע זווית שאין מאחוריה כלום
+function rebuildAngleRow(videos) {
+  const row = document.getElementById('inspiration-angles');
+  if (!row) return;
+  const counts = new Map();
+  for (const v of videos) {
+    for (const t of (v.angleTags || [])) counts.set(t, (counts.get(t) || 0) + 1);
+  }
+  const ordered = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+  row.innerHTML = '';
+  if (!ordered.length) { row.hidden = true; return; }
+  row.hidden = false;
+
+  const label = document.createElement('span');
+  label.className = 'inspiration-angles__label';
+  label.textContent = 'לפי זווית:';
+  row.appendChild(label);
+
+  for (const [angle, n] of ordered) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = `inspiration-angle${activeAngle === angle ? ' is-on' : ''}`;
+    b.setAttribute('aria-pressed', String(activeAngle === angle));
+    b.innerHTML = `${angle} <span class="inspiration-angle__n">${n}</span>`;
+    b.addEventListener('click', () => pickAngle(angle));
+    row.appendChild(b);
+  }
+}
+
+function readabilityChip(video) {
+  const r = readabilityOf(video);
+  const chip = document.createElement('span');
+  chip.className = `inspiration-card-read inspiration-card-read--${r.id}`;
+  const lang = languageName(video);
+  chip.textContent = r.id === 'translated' && lang ? `${r.chip} מ${lang}` : r.chip;
+  chip.title = r.label;
+  return chip;
+}
+
+// הזווית השיווקית, כפי שסווגה. לחיצה מסננת אליה
+function angleChips(video, onPick) {
+  const wrap = document.createElement('span');
+  wrap.className = 'inspiration-card-angles';
+  for (const t of (video.angleTags || []).slice(0, 2)) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'inspiration-card-angle';
+    b.textContent = t;
+    b.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); onPick(t); });
+    wrap.appendChild(b);
+  }
+  return wrap;
+}
+
 function renderCards(videos) {
   const grid = document.getElementById('inspiration-grid');
   const empty = document.getElementById('inspiration-empty');
@@ -168,7 +238,9 @@ function renderCards(videos) {
     cta.className = 'inspiration-card-cta';
     cta.textContent = 'פתחו לצפייה ←';
 
-    info.append(badge, domainTag, cta);
+    info.append(badge, domainTag, readabilityChip(video));
+    if ((video.angleTags || []).length) info.appendChild(angleChips(video, pickAngle));
+    info.appendChild(cta);
 
     // Readable text for the "שכפול" workflow - clients read the exact wording
     // instead of watching. Two sources, both pre-computed in advance (never
@@ -254,8 +326,16 @@ async function renderForDomain(domain, subCategory) {
   const videos = await loadVideos();
   rebuildDomainFilterOptions(videos);
   rebuildSubcategoryFilterOptions(videos, domain);
-  let filtered = domain ? videos.filter((v) => v.domain === domain) : interleaveByDomain(videos);
+  // 05/10/2026: מסנן ההבנה חל לפני הכל, כי אין טעם להציע ללקוחה סרטון
+  // שהיא לא תוכל לקרוא. ברירת המחדל היא "מה שאני יכולה להבין"
+  const readEl = document.getElementById('inspiration-readability-filter');
+  const readValue = readEl ? readEl.value : '';
+  const readable = videos.filter((v) => passesReadability(v, readValue));
+
+  rebuildAngleRow(readable);
+  let filtered = domain ? readable.filter((v) => v.domain === domain) : interleaveByDomain(readable);
   if (domain && subCategory) filtered = filtered.filter((v) => v.subCategory === subCategory);
+  if (activeAngle) filtered = filtered.filter((v) => (v.angleTags || []).includes(activeAngle));
   renderCards(filtered);
 }
 
@@ -313,6 +393,27 @@ export function wireInspirationView() {
   select.addEventListener('change', () => renderForDomain(select.value, ''));
   subSelect.addEventListener('change', () => renderForDomain(select.value, subSelect.value));
 
+  // 05/10/2026: מסנן ההבנה. שינוי שלו מאפס גם את הזווית, אחרת היא יכולה
+  // להישאר פעילה על קבוצה שכבר לא מכילה אותה והמסך נראה ריק בלי סיבה
+  const readEl = document.getElementById('inspiration-readability-filter');
+  if (readEl) {
+    readEl.addEventListener('change', () => {
+      activeAngle = null;
+      renderForDomain(select.value, subSelect.value);
+    });
+  }
+
+  // דוגמאות החיפוש: לחיצה ממלאת ומריצה, כדי שלקוחה תראה מיד מה זה עושה
+  const examples = document.getElementById('inspiration-examples');
+  if (examples) {
+    examples.addEventListener('click', (e) => {
+      const btn = e.target.closest('.inspiration-example');
+      if (!btn) return;
+      const q = btn.dataset.q || btn.textContent.trim();
+      document.getElementById('inspiration-search-input').value = q;
+      runSearch(q);
+    });
+  }
   const form = document.getElementById('inspiration-search-form');
   const input = document.getElementById('inspiration-search-input');
   form.addEventListener('submit', (e) => {
@@ -322,6 +423,7 @@ export function wireInspirationView() {
   });
 
   document.getElementById('inspiration-search-clear-btn').addEventListener('click', () => {
+    activeAngle = null;
     input.value = '';
     renderForDomain(select.value, subSelect.value);
   });

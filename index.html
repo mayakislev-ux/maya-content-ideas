@@ -488,6 +488,18 @@
   </main>
 
   <main id="inspiration-view" class="view inspiration-view" hidden>
+    <!-- 05/10/2026 (מאיה: "אני רוצה לייעל ללקוחות שלי... לא מרגישה שזה נוח
+         או קל לשימוש או לחיפוש"): תיבת חיפוש ריקה מול 453 סרטונים היא בקשה
+         להמציא שאילתה יש מאין. שלוש דוגמאות לחיצות מראות מה בכלל אפשר. -->
+    <p class="inspiration-intro">
+      מחפשות רפרנס לסרטון שאתן רוצות לצלם? כתבו על מה הסרטון, או בחרו זווית מהרשימה.
+    </p>
+    <div class="inspiration-examples" id="inspiration-examples">
+      <span class="inspiration-examples__label">לדוגמה:</span>
+      <button type="button" class="inspiration-example" data-q="ניפוץ אמונה מגבילה">ניפוץ אמונה מגבילה</button>
+      <button type="button" class="inspiration-example" data-q="סיפור הצלחה של לקוח">סיפור הצלחה של לקוח</button>
+      <button type="button" class="inspiration-example" data-q="טעות נפוצה בתחום">טעות נפוצה בתחום</button>
+    </div>
     <form id="inspiration-search-form" class="inspiration-search-form">
       <input
         id="inspiration-search-input"
@@ -511,7 +523,19 @@
         <option value="אחר">אחר</option>
       </select>
       <select id="inspiration-subcategory-filter" aria-label="סינון לפי תת-קטגוריה" hidden></select>
+      <!-- 05/10/2026: רק 59 מתוך 453 הסרטונים בעברית. בלי המסנן הזה לקוחה
+           שלא קוראת רוסית נוחתת על מאגר שרובו זר לה, בלי לדעת את זה מראש. -->
+      <select id="inspiration-readability-filter" aria-label="סינון לפי שפה והבנה">
+        <option value="understandable">מה שאני יכולה להבין</option>
+        <option value="">הכל</option>
+        <option value="hebrew">בעברית בלבד</option>
+        <option value="translated">מתורגם לעברית</option>
+        <option value="visual">ויזואלי, בלי דיבור</option>
+      </select>
     </div>
+    <!-- 05/10/2026: סיווג הזוויות נבנה היום על 367 סרטונים, אבל בלי השורה
+         הזאת הוא נגיש רק למי שמקלידה בדיוק את המילה הנכונה. -->
+    <div class="inspiration-angles" id="inspiration-angles" hidden></div>
     <div id="inspiration-grid" class="inspiration-grid"></div>
     <p id="inspiration-empty" class="inspiration-empty" hidden>אין עדיין סרטונים בתחום הזה - נסו תחום אחר.</p>
   </main>

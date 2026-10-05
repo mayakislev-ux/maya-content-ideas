@@ -5789,3 +5789,99 @@ body.ip-open { overflow: hidden; }
   .ip { padding: 8px; }
   .ip-box { max-height: calc(100vh - 16px); }
 }
+
+/* 05/10/2026 (מאיה: "אני רוצה לייעל ללקוחות שלי... לא כולן מבינות שפות
+   אחרות, וגם לא כל הסרטונים הם דיבור"). מדידה: 209 ברוסית, 129 באנגלית,
+   59 בעברית. 119 כמעט בלי דיבור. */
+.inspiration-intro {
+  margin: 0 0 6px;
+  font-size: 15px;
+  color: var(--muted, #6b6478);
+}
+.inspiration-examples {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.inspiration-examples__label { font-size: 13px; color: var(--muted, #6b6478); }
+.inspiration-example {
+  border: 1px solid #ddd0f3;
+  background: #faf7ff;
+  color: #3a1a5c;
+  border-radius: 999px;
+  padding: 6px 13px;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.inspiration-example:hover { background: #f1e9fd; }
+
+/* שורת הזוויות. גלילה אופקית בנייד ולא שבירה לשש שורות */
+.inspiration-angles {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 10px 0 16px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: thin;
+}
+/* כלל display גובר על התכונה hidden, ולכן שורת הזוויות הייתה
+   מופיעה גם כשאין מה להציג. נתפס בבדיקה הקיימת. */
+.inspiration-angles[hidden] { display: none; }
+
+.inspiration-angles__label {
+  font-size: 13px;
+  color: var(--muted, #6b6478);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.inspiration-angle {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #e4dcf0;
+  background: #fff;
+  border-radius: 999px;
+  padding: 7px 13px;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.inspiration-angle:hover { border-color: #c9b3ea; }
+.inspiration-angle.is-on { background: #3a1a5c; color: #fff; border-color: #3a1a5c; }
+.inspiration-angle__n { font-size: 11.5px; opacity: 0.65; }
+.inspiration-angle.is-on .inspiration-angle__n { opacity: 0.8; }
+
+/* תגית ההבנה על הכרטיס. ארבעה מצבים, וצבע שאומר את האמת בלי לקרוא */
+.inspiration-card-read {
+  display: inline-block;
+  font-size: 11.5px;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 3px 9px;
+  margin-top: 4px;
+  width: fit-content;
+}
+.inspiration-card-read--hebrew { background: #e4f6ea; color: #1d6b39; }
+.inspiration-card-read--translated { background: #eef1fb; color: #2f4287; }
+.inspiration-card-read--visual { background: #fdf2e4; color: #8a5a13; }
+.inspiration-card-read--untranslated { background: #f3f1f4; color: #6b6478; }
+
+.inspiration-card-angles { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px; }
+.inspiration-card-angle {
+  border: 1px solid #e4dcf0;
+  background: #fbf9ff;
+  color: #4a2d75;
+  border-radius: 6px;
+  padding: 3px 8px;
+  font: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+  text-align: start;
+}
+.inspiration-card-angle:hover { background: #f1e9fd; }
