@@ -140,6 +140,24 @@ const SUBCATEGORIES_BY_DOMAIN = {
 // ובלי AI: "ביקורת" חייבת תמיד להתפרש כדעה ואג'נדה, ולא כביקורת על מוצר,
 // וזאת בדיוק השגיאה שהיא ראתה במסך. מודל שמנחש כל פעם מחדש לא יכול להבטיח
 // את זה. מילה שלא ברשימה פשוט לא מזהה זווית, והחיפוש חוזר להתנהגות הישנה.
+// 05/10/2026, מתוך הריצה האמיתית: 13 סרטונים נכשלו שוב ושוב ב"זווית לא
+// חוקית". הסיבה היא תווי גרש: המודל מחזיר "אג'נדה" עם גרש טיפוגרפי או עם
+// גרש עברי, וההשוואה המדויקת נכשלה. ההתאמה סלחנית לפיסוק ולרווחים בלבד,
+// לא למילים עצמן, כדי שזווית מומצאת עדיין תיזרק.
+function normalizeAngle(value) {
+  return String(value || '')
+    .replace(/['’׳`´]/g, '')
+    .replace(/[",.׳״]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/** ממיר שם זווית שהמודל החזיר לשם הקנוני, או null אם אין כזה. */
+function canonicalAngle(value) {
+  const n = normalizeAngle(value);
+  return ANGLE_TAGS.find((t) => normalizeAngle(t) === n) || null;
+}
+
 const ANGLE_QUERY_WORDS = {
   'הייפ על סלב': ['סלב', 'סלבס', 'סלבריטא', 'מפורסמ', 'כוכב', 'ריאליט', 'הייפ', 'ויראלי על'],
   'בעיה או תסכול ספציפיים של הקהל': ['תסכול', 'בעיה ספציפית', 'כאב של הקהל', 'בעיה של הקהל', 'תסכול ספציפי', 'כאב'],
@@ -170,6 +188,6 @@ function anglesFromQuery(query) {
 
 module.exports = {
   FORMAT_TAGS, FORMAT_TAG_DEFINITIONS,
-  ANGLE_TAGS, ANGLE_TAG_DEFINITIONS, ANGLE_QUERY_WORDS, anglesFromQuery,
+  ANGLE_TAGS, ANGLE_TAG_DEFINITIONS, ANGLE_QUERY_WORDS, anglesFromQuery, canonicalAngle,
   SUBCATEGORIES_BY_DOMAIN,
 };

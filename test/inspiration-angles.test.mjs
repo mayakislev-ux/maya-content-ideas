@@ -70,3 +70,20 @@ test('"חינוך והסבר מקצועי" הוא ברירת מחדל ולא נ�
   assert.ok(ANGLE_TAGS.includes('חינוך והסבר מקצועי'));
   assert.deepEqual(anglesFromQuery('חינוך'), []);
 });
+
+// 05/10/2026, מתוך הריצה האמיתית על 453 הסרטונים: 13 סרטונים נכשלו שוב
+// ושוב כי המודל החזיר "אג'נדה" עם תו גרש אחר מזה שברשימה.
+test('גרש בכל צורה מתקבל, זווית מומצאת נזרקת', () => {
+  const { canonicalAngle } = pkg;
+  const want = "אג'נדה, ביקורת או דעה";
+  for (const variant of ["אג'נדה, ביקורת או דעה", 'אג׳נדה, ביקורת או דעה', 'אג’נדה, ביקורת או דעה', 'אגנדה, ביקורת או דעה']) {
+    assert.equal(canonicalAngle(variant), want, `הגרסה ${JSON.stringify(variant)} לא זוהתה`);
+  }
+  assert.equal(canonicalAngle('זווית שהמצאתי'), null);
+  assert.equal(canonicalAngle('ביקורת'), null, 'שם חלקי אינו זווית חוקית');
+  assert.equal(canonicalAngle(''), null);
+});
+
+test('רווחים מיותרים לא שוברים התאמה', () => {
+  assert.equal(pkg.canonicalAngle('  הייפ   על  סלב '), 'הייפ על סלב');
+});

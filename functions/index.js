@@ -26,7 +26,7 @@ const { fetchExtraContentLinks, sheetsServiceAccountKey } = require('./sheets-co
 const { CATEGORIES, PERSUASION_STAGES, CATEGORY_DEFINITIONS, PERSUASION_STAGE_DEFINITIONS } = require('./ideas-constants');
 const {
   FORMAT_TAGS, FORMAT_TAG_DEFINITIONS,
-  ANGLE_TAGS, ANGLE_TAG_DEFINITIONS, anglesFromQuery,
+  ANGLE_TAGS, ANGLE_TAG_DEFINITIONS, anglesFromQuery, canonicalAngle,
   SUBCATEGORIES_BY_DOMAIN,
 } = require('./inspiration-constants');
 
@@ -1132,8 +1132,11 @@ ${list}
         const match = raw.match(/\{[\s\S]*\}/);
         const parsed = JSON.parse(match ? match[0] : raw);
         // תווית שאינה ברשימה נזרקת. מודל שממציא זווית לא מרעיל את המאגר
-        const angles = (parsed.angles || []).filter((t) => ANGLE_TAGS.includes(t)).slice(0, 3);
-        if (!angles.length) throw new Error('no valid angle returned');
+        const angles = (parsed.angles || []).map(canonicalAngle).filter(Boolean).slice(0, 3);
+        // 05/10/2026, מתוך הריצה: המודל מחזיר angles ריק בכוונה לסרטונים
+        // שהטקסט שלהם דליל מדי מכדי לזהות זווית. זאת תשובה כנה ולא תקלה,
+        // ולכן הם מסומנים כ"ללא זווית" במקום להיכשל שוב ושוב לנצח.
+        if (!angles.length) { await doc.ref.update({ angleTagsSkipped: true }); continue; }
 
         await doc.ref.update({ angleTags: angles });
         done++;
@@ -1972,3 +1975,4 @@ Object.assign(exports, require('./marathon-launch'));
 // כדי לא לשכפל את בדיקת ההרשאה, שהיא אותה בדיקה בכל שאר הפונקציות.
 const { makeSyncStoryTable } = require('./story-table');
 exports.syncStoryTable = makeSyncStoryTable({ enforceAllowlist });
+
