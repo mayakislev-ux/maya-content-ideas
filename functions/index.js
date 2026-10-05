@@ -1094,8 +1094,13 @@ exports.classifyInspirationAngles = onCall(
     const targets = snap.docs
       .filter((d) => {
         const v = d.data();
-        if (!redo && (v.angleTags || v.angleTagsSkipped)) return false;
-        return Boolean(v.contentSummary || v.translationHe || v.transcriptHe || v.transcript);
+        if (!redo && v.angleTags) return false;
+        // 05/10/2026 (מאיה: "לא כל הסרטונים הם דיבור, אז לפעמים זה בעיה"):
+        // 119 סרטונים כמעט בלי טקסט מדובר - הדגמות, לפני-ואחרי, טרנדים עם
+        // מוזיקה. קודם הם דולגו, ולכן נעלמו מהחיפוש לגמרי. עכשיו סרטון עם
+        // תמונה ממוזערת נכנס גם בלי טקסט, ומסווג ממנה.
+        if (!redo && v.angleTagsSkipped && !v.thumbnailUrl) return false;
+        return Boolean(v.contentSummary || v.translationHe || v.transcriptHe || v.transcript || v.thumbnailUrl);
       })
       .slice(0, limit);
 
@@ -1107,21 +1112,35 @@ exports.classifyInspirationAngles = onCall(
       const video = doc.data();
       try {
         const text = video.contentSummary || video.translationHe || video.transcriptHe || video.transcript || '';
-        if (!text || text.trim().length < 10) {
+        const thin = text.trim().length < 120;
+        if (thin && !video.thumbnailUrl) {
           await doc.ref.update({ angleTagsSkipped: true });
           continue;
         }
 
-        const prompt = `הטקסט הבא הוא תמלול או תקציר של סרטון רפרנס בתחום "${video.domain}":
+        // כשיש מספיק דיבור, הטקסט הוא האות החזק. כשאין, התמונה היא הכל
+        const head = thin
+          ? `זו תמונת תצוגה מקדימה מסרטון רפרנס בתחום "${video.domain}". לסרטון אין כמעט טקסט מדובר, אז קבע/י את הזווית מהתמונה עצמה: מה רואים, מה כתוב על המסך, ומה זה משדר.${text.trim() ? ` הטקסט המועט שיש: "${text.trim().slice(0, 300)}"` : ''}`
+          : `הטקסט הבא הוא תמלול או תקציר של סרטון רפרנס בתחום "${video.domain}":
 
-"""${String(text).slice(0, 2500)}"""
+"""${String(text).slice(0, 2500)}"""`;
+
+        const prompt = `${head}
 
 אלה הזוויות השיווקיות האפשריות:
 ${list}
 
 בחר/י את כל הזוויות שהסרטון הזה באמת משרת, לרוב אחת או שתיים, לכל היותר שלוש. אל תבחר/י זווית רק כי היא נשמעת קרובה: אם הסרטון רק מלמד משהו מקצועי בלי זווית חדה, בחר/י "חינוך והסבר מקצועי" לבד. השב/י אך ורק ב-JSON תקין בלי שום טקסט נוסף: {"angles": ["<זווית>"]}`;
 
-        const content = [{ type: 'text', text: prompt }];
+        const content = [];
+        if (thin && video.thumbnailUrl) {
+          const imgRes = await fetch(video.thumbnailUrl);
+          if (!imgRes.ok) throw new Error(`thumbnail fetch HTTP ${imgRes.status}`);
+          const imageBase64 = Buffer.from(await imgRes.arrayBuffer()).toString('base64');
+          content.push({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: imageBase64 } });
+        }
+        content.push({ type: 'text', text: prompt });
+
         const data = await callAnthropic(
           anthropicApiKey.value(),
           { model: 'claude-haiku-4-5-20251001', max_tokens: 200, messages: [{ role: 'user', content }] },
@@ -1975,4 +1994,5 @@ Object.assign(exports, require('./marathon-launch'));
 // כדי לא לשכפל את בדיקת ההרשאה, שהיא אותה בדיקה בכל שאר הפונקציות.
 const { makeSyncStoryTable } = require('./story-table');
 exports.syncStoryTable = makeSyncStoryTable({ enforceAllowlist });
+
 
