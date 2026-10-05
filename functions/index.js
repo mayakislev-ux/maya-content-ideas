@@ -24,7 +24,11 @@ const { buildStorySequencePrompt, checkSequence } = require('./story-sequence-pr
 const { parseSequence } = require('./story-sequence-parse');
 const { fetchExtraContentLinks, sheetsServiceAccountKey } = require('./sheets-content');
 const { CATEGORIES, PERSUASION_STAGES, CATEGORY_DEFINITIONS, PERSUASION_STAGE_DEFINITIONS } = require('./ideas-constants');
-const { FORMAT_TAGS, FORMAT_TAG_DEFINITIONS, SUBCATEGORIES_BY_DOMAIN } = require('./inspiration-constants');
+const {
+  FORMAT_TAGS, FORMAT_TAG_DEFINITIONS,
+  ANGLE_TAGS, ANGLE_TAG_DEFINITIONS, anglesFromQuery,
+  SUBCATEGORIES_BY_DOMAIN,
+} = require('./inspiration-constants');
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -1064,6 +1068,84 @@ ${optionsBlock}
 // unrelated - real per-video content is what actually disambiguates this).
 // Returns only video IDs, never video data - the client already has the
 // full list cached and just re-orders/filters it by the returned IDs.
+
+// 05/10/2026 (מאיה: "כרגע זה לא עושה את זה מדויק... אולי בשלב הראשוני
+// תנתחי לעומק את הטעויות שיש בפונקציה כזאת ורק אז נעבוד על דיוק").
+//
+// הניתוח על כל 453 הסרטונים מצא את השורש: הזווית השיווקית מעולם לא נשמרה
+// כנתון. 71% מהמאגר לא מכיל אף אחת מהזוויות בטקסט, והתקציר הוא 57 תווים
+// חציוניים שנאסר עליו במפורש להזכיר זווית. החיפוש חיפש משהו שלא קיים.
+//
+// הפונקציה הזאת ממלאת את החסר: לכל סרטון, אילו מ-12 הזוויות שמאיה מלמדת
+// הוא באמת משרת. רב-תווית, כי סרטון אחד יכול להיות גם דעה וגם ניפוץ מיתוס.
+//
+// מולטימודלי כמו classifyInspirationSubcategories, ומאותה סיבה: בהרבה
+// קליפים הטקסט המדובר כללי והתמונה היא זאת שמסגירה את הזווית.
+exports.classifyInspirationAngles = onCall(
+  { secrets: [anthropicApiKey], region: 'us-central1', timeoutSeconds: 540 },
+  async (request) => {
+    if (!request.auth || request.auth.token.email !== ADMIN_EMAIL) {
+      throw new HttpsError('permission-denied', 'רק מאיה יכולה להריץ את זה');
+    }
+    const limit = Math.min(Number((request.data && request.data.limit) || 40), 80);
+    const redo = Boolean(request.data && request.data.redo);
+
+    const snap = await db.collection('inspirationBank').get();
+    const targets = snap.docs
+      .filter((d) => {
+        const v = d.data();
+        if (!redo && (v.angleTags || v.angleTagsSkipped)) return false;
+        return Boolean(v.contentSummary || v.translationHe || v.transcriptHe || v.transcript);
+      })
+      .slice(0, limit);
+
+    const list = ANGLE_TAGS.map((t) => `- ${t}: ${ANGLE_TAG_DEFINITIONS[t]}`).join('\n');
+    let done = 0;
+    const failed = [];
+
+    for (const doc of targets) {
+      const video = doc.data();
+      try {
+        const text = video.contentSummary || video.translationHe || video.transcriptHe || video.transcript || '';
+        if (!text || text.trim().length < 10) {
+          await doc.ref.update({ angleTagsSkipped: true });
+          continue;
+        }
+
+        const prompt = `הטקסט הבא הוא תמלול או תקציר של סרטון רפרנס בתחום "${video.domain}":
+
+"""${String(text).slice(0, 2500)}"""
+
+אלה הזוויות השיווקיות האפשריות:
+${list}
+
+בחר/י את כל הזוויות שהסרטון הזה באמת משרת, לרוב אחת או שתיים, לכל היותר שלוש. אל תבחר/י זווית רק כי היא נשמעת קרובה: אם הסרטון רק מלמד משהו מקצועי בלי זווית חדה, בחר/י "חינוך והסבר מקצועי" לבד. השב/י אך ורק ב-JSON תקין בלי שום טקסט נוסף: {"angles": ["<זווית>"]}`;
+
+        const content = [{ type: 'text', text: prompt }];
+        const data = await callAnthropic(
+          anthropicApiKey.value(),
+          { model: 'claude-haiku-4-5-20251001', max_tokens: 200, messages: [{ role: 'user', content }] },
+          'classifyInspirationAngles'
+        );
+
+        const raw = getResponseText(data) || '{}';
+        const match = raw.match(/\{[\s\S]*\}/);
+        const parsed = JSON.parse(match ? match[0] : raw);
+        // תווית שאינה ברשימה נזרקת. מודל שממציא זווית לא מרעיל את המאגר
+        const angles = (parsed.angles || []).filter((t) => ANGLE_TAGS.includes(t)).slice(0, 3);
+        if (!angles.length) throw new Error('no valid angle returned');
+
+        await doc.ref.update({ angleTags: angles });
+        done++;
+      } catch (err) {
+        failed.push({ id: doc.id, url: video.url, error: err.message });
+      }
+    }
+
+    return { done, hasMore: targets.length === limit, failed };
+  }
+);
+
 exports.matchInspirationQuery = onCall({ secrets: [anthropicApiKey], region: 'us-central1', timeoutSeconds: 60 }, async (request) => {
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'יש להתחבר כדי להשתמש בתכונה הזו');
@@ -1080,7 +1162,21 @@ exports.matchInspirationQuery = onCall({ secrets: [anthropicApiKey], region: 'us
 
   const snap = await db.collection('inspirationBank').get();
   const allDocs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-  const summarized = allDocs.filter((v) => v.contentSummary);
+
+  // 05/10/2026: שלב ראשון, חיתוך ודאי. אם השאילתה מבקשת זווית שאנחנו
+  // מכירים, רק סרטונים שסווגו לזווית הזאת נכנסים לקטלוג. זה מה שהופך
+  // "ביקורת" מניחוש של מודל על 340 שורות לחיתוך חד.
+  //
+  // אם אין התאמת זווית, או שהחיתוך מחזיר פחות מדי כדי לדרג, חוזרים לקטלוג
+  // המלא. עדיף חיפוש רחב מתוצאה ריקה.
+  const wanted = anglesFromQuery(query);
+  const tagged = wanted.length
+    ? allDocs.filter((v) => (v.angleTags || []).some((t) => wanted.includes(t)))
+    : [];
+  const pool = tagged.length >= 3 ? tagged : allDocs;
+  const narrowed = pool !== allDocs;
+
+  const summarized = pool.filter((v) => v.contentSummary);
   const catalog = summarized
     .map((v) => `${v.id}|${v.domain}|${(v.formatTags || []).join('/')}|${v.contentSummary}`)
     .join('\n');
@@ -1114,7 +1210,7 @@ ${catalog}
     console.error('matchInspirationQuery returned no valid ids:', text);
     throw new HttpsError('internal', 'לא נמצאו סרטונים מתאימים, נסו לנסח אחרת');
   }
-  return { ids };
+  return { ids, angles: wanted, narrowed };
 });
 
 // היה onCall - בקשה חוסמת יחידה. מדידה אמיתית (2026-08-11) הראתה 41 שניות
