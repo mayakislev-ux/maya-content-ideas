@@ -18,7 +18,7 @@ import { wireStoryTableView } from './story-table.js';
 import { wireInspirationView, openInspirationView } from './inspiration-view.js';
 import { showView, getLastView } from './view-router.js';
 import { showToast } from './toast.js';
-import { startUpdateCheck } from './update-check.js';
+import { startUpdateCheck, showAppVersion } from './update-check.js';
 import { hasCompletedTour, showWelcomeTour } from './welcome-tour.js';
 import {
   enableNotifications,
@@ -135,6 +135,7 @@ if (window.visualViewport) {
 
 // חלון "יש גרסה חדשה" שחוזר עד שמעדכנים - לא תלוי בשינוי של sw.js
 startUpdateCheck();
+showAppVersion();
 
 if ('serviceWorker' in navigator) {
   // A new service worker taking control (self.skipWaiting() in sw.js makes

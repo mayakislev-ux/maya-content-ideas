@@ -59,3 +59,32 @@ test('הבדיקה באמת קוראת את הקובץ הנכון', () => {
   assert.ok(CSS.length > 50000, 'גיליון הסגנונות קצר מדי, כנראה נקרא קובץ אחר');
   assert.ok(CSS.includes('.inspiration-card'), 'לא נמצאו כללי המאגר');
 });
+
+// 05/10/2026 (מאיה: "במובייל שום דבר לא התעדכן, לא יודעת"): השרת היה
+// תקין והקוד היה באוויר. מה שנכשל היה הדרך פנימה - המנגנון רק הציע
+// לעדכן בחלון קופץ, ובאפליקציה מותקנת בטלפון אין כפתור רענון.
+import { readFileSync as read2 } from 'node:fs';
+const UPDATE = read2(new URL('../js/update-check.js', import.meta.url), 'utf8');
+const HTML = read2(new URL('../index.html', import.meta.url), 'utf8');
+
+test('גרסה חדשה מתעדכנת לבד, ולא רק מציעה', () => {
+  assert.ok(/safeToReload\(\)\s*&&\s*!autoUpdatedRecently\(\)/.test(UPDATE), 'אין עדכון אוטומטי');
+  assert.ok(UPDATE.includes('updateNow(null)'), 'העדכון האוטומטי לא קורא ל-updateNow');
+});
+
+test('לא מעדכנים מתחת לידיים של מי שכותבת', () => {
+  const i = UPDATE.indexOf('function safeToReload');
+  const block = UPDATE.slice(i, i + 700);
+  assert.ok(/TEXTAREA/.test(block), 'לא נבדק שדה פעיל');
+  assert.ok(/field\.value/.test(block), 'לא נבדק טקסט שלא נשמר');
+});
+
+test('יש הגנה מלולאת רענון', () => {
+  assert.ok(/AUTO_COOLDOWN_MS/.test(UPDATE), 'אין זמן צינון');
+  assert.ok(/sessionStorage/.test(UPDATE), 'אין סימון בזיכרון הלשונית');
+});
+
+test('חותמת הגרסה קיימת גם ב-HTML וגם בקוד', () => {
+  assert.ok(HTML.includes('id="app-version"'), 'אין מקום לחותמת ב-HTML');
+  assert.ok(UPDATE.includes('export function showAppVersion'), 'אין פונקציה שמציגה אותה');
+});

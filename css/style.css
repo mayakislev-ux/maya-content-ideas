@@ -5940,3 +5940,14 @@ body.ip-open { overflow: hidden; }
   .ip-close { width: 40px; height: 40px; }
   .ip-out { font-size: 14px; }
 }
+
+/* 05/10/2026: חותמת הגרסה. שקטה, אבל קיימת - כדי שתמיד אפשר לדעת מה
+   באמת פתוח במכשיר בלי לנחש. */
+.app-version {
+  margin: 10px 0 0;
+  font-size: 11px;
+  opacity: 0.55;
+  text-align: center;
+  width: 100%;
+}
+.app-version[hidden] { display: none; }

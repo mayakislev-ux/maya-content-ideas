@@ -44,6 +44,46 @@ async function updateNow(button) {
   window.location.replace(url.toString());
 }
 
+// 05/10/2026 (מאיה: "במובייל שום דבר לא התעדכן, לא יודעת"):
+//
+// השרת היה תקין לגמרי והקוד החדש היה באוויר. מה שלא עבד זה הדרך פנימה:
+// המנגנון רק הציע לעדכן בחלון קופץ, ובאפליקציה מותקנת בטלפון אין כפתור
+// רענון. חלון שלא נראה לה פירושו גרסה שלא מתעדכנת לעולם.
+//
+// אותו פתרון שכבר הופעל בפורטל: מתעדכנים לבד, בשקט, ולא מבקשים ממנה
+// ללחוץ. החלון נשאר רק למקרה שאי אפשר לעדכן בבטחה.
+const AUTO_KEY = 'moach.autoUpdatedAt';
+const AUTO_COOLDOWN_MS = 2 * 60 * 1000;
+
+// לא לעדכן מתחת לידיים: באמצע הקלדה, או כשיש טקסט שלא נשמר בשום שדה
+function safeToReload() {
+  const el = document.activeElement;
+  if (el && (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT' || el.isContentEditable)) return false;
+  for (const field of document.querySelectorAll('textarea, input[type="text"]')) {
+    if (field.value && field.value.trim().length > 2) return false;
+  }
+  return true;
+}
+
+// שתי רשתות ביטחון מפני לולאת רענון: סימון בזיכרון הלשונית, וזמן צינון.
+// בלעדיהן, שעון שרת שמקדים בשנייה היה מרענן אותה בלי סוף
+function autoUpdatedRecently() {
+  try {
+    const at = Number(sessionStorage.getItem(AUTO_KEY) || 0);
+    return Number.isFinite(at) && Date.now() - at < AUTO_COOLDOWN_MS;
+  } catch {
+    return false;
+  }
+}
+
+function markAutoUpdated() {
+  try {
+    sessionStorage.setItem(AUTO_KEY, String(Date.now()));
+  } catch {
+    // בלי אחסון עדיין נעדכן, רק בלי הגנת הלולאה
+  }
+}
+
 function buildDialog() {
   const wrap = document.createElement('div');
   wrap.id = 'update-dialog';
@@ -74,6 +114,12 @@ function buildDialog() {
 
 function showUpdateDialog() {
   if (dialogOpen || Date.now() < snoozedUntil) return;
+  // 05/10/2026: קודם מנסים לעדכן לבד. חלון קופץ הוא מה שנכשל בטלפון
+  if (safeToReload() && !autoUpdatedRecently()) {
+    markAutoUpdated();
+    updateNow(null);
+    return;
+  }
   // 19/09/2026 (פיילוט): לא באמצע כתיבה של רעיון או צ'אט - יופיע בבדיקה הבאה
   const el = document.activeElement;
   if (el && (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT' || el.isContentEditable)) return;
@@ -120,4 +166,18 @@ export function startUpdateCheck() {
   });
   window.addEventListener('focus', check);
   window.addEventListener('online', check);
+}
+
+// 05/10/2026: חותמת הגרסה שמוצגת בתחתית המסך. document.lastModified הוא
+// זמן הפרסום של הקבצים שהדפדפן באמת מחזיק, ולכן הוא אומר את האמת על מה
+// שפתוח במכשיר הזה - לא על מה שקיים בשרת.
+export function showAppVersion() {
+  const el = document.getElementById('app-version');
+  if (!el) return;
+  const t = Date.parse(document.lastModified);
+  if (!Number.isFinite(t)) return;
+  const d = new Date(t);
+  const two = (n) => String(n).padStart(2, '0');
+  el.textContent = `גרסה ${two(d.getDate())}/${two(d.getMonth() + 1)} ${two(d.getHours())}:${two(d.getMinutes())}`;
+  el.hidden = false;
 }
