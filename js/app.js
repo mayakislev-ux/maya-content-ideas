@@ -350,7 +350,37 @@ document.getElementById('hub-link-content-plan').addEventListener('click', () =>
 const viewTabsNav = document.getElementById('view-tabs');
 const menuOverlay = document.getElementById('menu-overlay');
 
+// 05/10/2026, ממצא מהביקורת: אף חלון באפליקציה לא נעל את גלילת הדף. בטלפון
+// זה אומר שהדף זז מאחורי החלון הפתוח, והמסך "נראה מוזר" בדיוק כמו שמאיה
+// תיארה. מונה ולא דגל, כי יכולים להיות שני חלונות פתוחים זה מעל זה.
+let scrollLocks = 0;
+let lockedAt = 0;
+
+function lockScroll() {
+  scrollLocks += 1;
+  if (scrollLocks > 1) return;
+  lockedAt = window.scrollY || 0;
+  document.body.style.position = 'fixed';
+  document.body.style.insetInlineStart = '0';
+  document.body.style.insetInlineEnd = '0';
+  document.body.style.top = `-${lockedAt}px`;
+  document.body.style.width = '100%';
+}
+
+function unlockScroll() {
+  if (scrollLocks === 0) return;
+  scrollLocks -= 1;
+  if (scrollLocks > 0) return;
+  document.body.style.position = '';
+  document.body.style.insetInlineStart = '';
+  document.body.style.insetInlineEnd = '';
+  document.body.style.top = '';
+  document.body.style.width = '';
+  window.scrollTo(0, lockedAt);
+}
+
 function closeMobileMenu() {
+  if (viewTabsNav.classList.contains('open')) unlockScroll();
   viewTabsNav.classList.remove('open');
   menuOverlay.hidden = true;
 }
@@ -358,6 +388,7 @@ function closeMobileMenu() {
 document.getElementById('mobile-menu-btn').addEventListener('click', () => {
   const isOpen = viewTabsNav.classList.toggle('open');
   menuOverlay.hidden = !isOpen;
+  if (isOpen) lockScroll(); else unlockScroll();
 });
 document.getElementById('close-menu-btn').addEventListener('click', closeMobileMenu);
 menuOverlay.addEventListener('click', closeMobileMenu);
@@ -372,6 +403,7 @@ document.getElementById('bottomnav-chat').addEventListener('click', () => {
 document.getElementById('bottomnav-more').addEventListener('click', () => {
   const isOpen = viewTabsNav.classList.toggle('open');
   menuOverlay.hidden = !isOpen;
+  if (isOpen) lockScroll(); else unlockScroll();
 });
 
 // Keyboard accessibility: Escape closes whatever overlay is currently open,
@@ -692,8 +724,10 @@ document.querySelectorAll('.modal').forEach((modal) => {
   const observer = new MutationObserver(() => {
     if (modal.hidden) {
       releaseFocusTrap(modal);
+      unlockScroll();
     } else {
       trapFocus(modal);
+      lockScroll();
     }
   });
   observer.observe(modal, { attributes: true, attributeFilter: ['hidden'] });

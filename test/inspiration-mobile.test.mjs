@@ -88,3 +88,106 @@ test('חותמת הגרסה קיימת גם ב-HTML וגם בקוד', () => {
   assert.ok(HTML.includes('id="app-version"'), 'אין מקום לחותמת ב-HTML');
   assert.ok(UPDATE.includes('export function showAppVersion'), 'אין פונקציה שמציגה אותה');
 });
+
+// 05/10/2026 (מאיה: "הפופאפ של העדכון גרסה מאוד קטן ונבלע וקל לפספס ולא
+// כמו בפורטל, תשני אצל כולן"). קודם הוא נשען על .modal הכללי, שמצמיד
+// לראש המסך בקופסה צרה, ועל שני כפתורים קטנים זה לצד זה.
+const CSS2 = read2(new URL('../css/style.css', import.meta.url), 'utf8');
+
+test('חלון העדכון ממורכז ומעל הכל, לא נצמד לראש', () => {
+  const i = CSS2.indexOf('.up2-backdrop {');
+  assert.ok(i > -1, 'אין מחלקה ייעודית לחלון העדכון');
+  const block = CSS2.slice(i, CSS2.indexOf('}', i));
+  assert.ok(/align-items:\s*center/.test(block), 'החלון לא ממורכז אנכית');
+  assert.ok(/z-index:\s*10000/.test(block), 'z-index נמוך מדי, אלמנטים אחרים יכסו אותו');
+  assert.ok(/position:\s*fixed/.test(block));
+});
+
+test('הכפתור תופס את כל הרוחב ובגובה אצבע', () => {
+  const i = CSS2.indexOf('.up2-btn {');
+  const block = CSS2.slice(i, CSS2.indexOf('}', i));
+  assert.ok(/width:\s*100%/.test(block), 'הכפתור לא מלא');
+  assert.ok(/min-height:\s*5\dpx/.test(block), 'הכפתור נמוך מ-50 פיקסל');
+});
+
+test('החלון לא נשען יותר על המחלקות הכלליות', () => {
+  assert.ok(!UPDATE.includes("'modal confirm-dialog-modal'"), 'עדיין משתמש ב-.modal הכללי');
+  assert.ok(UPDATE.includes("'up2-backdrop'"), 'לא עבר למחלקה הייעודית');
+});
+
+test('הכרטיס לא גולש ממסך נמוך', () => {
+  const i = CSS2.indexOf('.up2-card {');
+  const block = CSS2.slice(i, CSS2.indexOf('}', i));
+  assert.ok(/max-height/.test(block), 'אין הגבלת גובה, בטלפון נמוך הכפתור ייצא מהמסך');
+  assert.ok(/overflow-y:\s*auto/.test(block), 'אין גלילה בתוך הכרטיס');
+  assert.ok(/min\(380px,\s*100%\)/.test(block), 'הרוחב לא מוגבל נכון');
+});
+
+// 05/10/2026, מתוך ביקורת 10 הממדים (85 סוכנים). שלושת הממצאים החוסמים
+// ומה שנוגע ישירות למה שמאיה תיארה: "הפופאפ לא עובד", "כל המסך נראה מוזר".
+const APPJS = read2(new URL('../js/app.js', import.meta.url), 'utf8');
+const POPJS = read2(new URL('../js/inspiration-popup.js', import.meta.url), 'utf8');
+const VIEWJS = read2(new URL('../js/inspiration-view.js', import.meta.url), 'utf8');
+
+test('חוסם: שכבת הסרטון נעלמת באמת, ולא נשארת פרושה על המסך', () => {
+  // display:flex גובר על התכונה hidden. בלי הכלל הזה שכבה שקופה נשארה
+  // על כל המסך אחרי סגירת סרטון ובלעה כל נגיעה, עד רענון
+  assert.ok(/\.ip\[hidden\]\s*\{[^}]*display:\s*none/.test(CSS2), 'חסר .ip[hidden]');
+  assert.ok(POPJS.includes('host.remove()'), 'ה-JS לא מסיר את השכבה מה-DOM');
+  assert.ok(POPJS.includes('host = null'), 'ההפניה לא מתאפסת');
+});
+
+test('חוסם: מסכים שהיו מתחת לסרגל התחתון קיבלו מרווח', () => {
+  for (const sel of ['.feedback-view', '.inspiration-view', '.client-usage-view']) {
+    const i = CSS2.lastIndexOf(sel + ' {');
+    assert.ok(i > -1, `אין כלל מובייל ל-${sel}`);
+    const block = CSS2.slice(i, CSS2.indexOf('}', i));
+    assert.ok(/bottom-nav-h/.test(block), `${sel} עדיין בלי מרווח מהסרגל`);
+  }
+});
+
+test('חוסם: כפתור הסגירה של הסרטון לא יושב מתחת למגרעת', () => {
+  const i = CSS2.lastIndexOf('.ip-bar {');
+  const block = CSS2.slice(i, CSS2.indexOf('}', i));
+  assert.ok(/safe-area-inset-top/.test(block), 'אין מרווח בטוח מלמעלה');
+});
+
+test('כפתור שמוסתר ב-JS באמת נעלם', () => {
+  // display:inline-flex גבר על hidden, ולכן "העתקת הטקסט" הופיע בכל כרטיס
+  assert.ok(/\.inspiration-card-copy-btn\[hidden\]/.test(CSS2), 'חסר כלל לכפתור ההעתקה');
+  assert.ok(/\.inspiration-card-accuracy-warning\[hidden\]/.test(CSS2), 'חסר כלל לאזהרה');
+});
+
+test('נגיעה בטקסט שנפתח לא זורקת לאינסטגרם', () => {
+  const i = VIEWJS.indexOf("closest('button, .inspiration-card-translation')");
+  assert.ok(i > -1);
+  assert.ok(VIEWJS.slice(i, i + 90).includes('preventDefault'), 'הנגיעה עדיין נופלת לקישור');
+});
+
+test('האזהרה על דיוק התרגום נפתחת עם הטקסט ולא לפניו', () => {
+  assert.ok(VIEWJS.includes('accuracyWarning.hidden = true'), 'האזהרה עדיין קבועה על הכרטיס');
+  assert.ok(VIEWJS.includes('accuracyWarning.hidden = textBox.hidden'), 'היא לא נפתחת יחד עם הטקסט');
+});
+
+test('שורת הזוויות שומרת מיקום ומביאה את הפעילה לתצוגה', () => {
+  assert.ok(VIEWJS.includes('const prevLeft = row.scrollLeft'), 'מיקום הגלילה לא נשמר');
+  assert.ok(VIEWJS.includes('scrollIntoView'), 'הזווית הפעילה לא מובאת לתצוגה');
+});
+
+test('חלון פתוח נועל את גלילת הדף', () => {
+  assert.ok(APPJS.includes('function lockScroll'), 'אין נעילת גלילה');
+  assert.ok(/scrollLocks\s*\+=\s*1/.test(APPJS), 'הנעילה אינה מונה, שני חלונות ישברו אותה');
+  assert.ok(APPJS.includes('window.scrollTo(0, lockedAt)'), 'מיקום הגלילה לא משוחזר');
+  const i = APPJS.indexOf('observer.observe(modal');
+  assert.ok(APPJS.slice(Math.max(0, i - 400), i).includes('lockScroll()'), 'החלונות לא נועלים');
+});
+
+test('שדות קלט לא גורמים לאייפון להגדיל את הדף', () => {
+  assert.ok(/font-size:\s*max\(16px/.test(CSS2), 'אין רצפת 16 פיקסל לשדות במובייל');
+});
+
+test('מטרות נגיעה סבירות', () => {
+  const i = CSS2.lastIndexOf('.btn-text {');
+  const block = CSS2.slice(i, CSS2.indexOf('}', i));
+  assert.ok(/min-height:\s*44px/.test(block), 'כפתור משני עדיין קטן מדי לאצבע');
+});

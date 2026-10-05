@@ -125,7 +125,7 @@ function pickAngle(angle) {
   const select = document.getElementById('inspiration-domain-filter');
   const subSelect = document.getElementById('inspiration-subcategory-filter');
   renderForDomain(select.value, subSelect.value);
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  if (activeAngle) window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 // שורת הזוויות נבנית מהנתונים עצמם, עם המספר האמיתי לכל זווית, כדי שלא
@@ -138,6 +138,10 @@ function rebuildAngleRow(videos) {
     for (const t of (v.angleTags || [])) counts.set(t, (counts.get(t) || 0) + 1);
   }
   const ordered = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+  // 05/10/2026, ממצא מהביקורת: הרשימה נבנית מחדש בכל סינון, ומיקום הגלילה
+  // התאפס. הצ'יפ שהרגע נגעו בו קפץ מחוץ לתצוגה בטלפון.
+  const prevLeft = row.scrollLeft;
+  let activeBtn = null;
   row.innerHTML = '';
   if (!ordered.length) { row.hidden = true; return; }
   row.hidden = false;
@@ -154,7 +158,12 @@ function rebuildAngleRow(videos) {
     b.setAttribute('aria-pressed', String(activeAngle === angle));
     b.innerHTML = `${angle} <span class="inspiration-angle__n">${n}</span>`;
     b.addEventListener('click', () => pickAngle(angle));
+    if (activeAngle === angle) activeBtn = b;
     row.appendChild(b);
+  }
+  row.scrollLeft = prevLeft;
+  if (activeBtn && activeBtn.scrollIntoView) {
+    activeBtn.scrollIntoView({ inline: 'center', block: 'nearest' });
   }
 }
 
@@ -203,7 +212,9 @@ function renderCards(videos) {
     // והוא עובד גם בלי JS. לחיצה רגילה נתפסת ומנגנת בתוך המסך.
     card.addEventListener('click', (e) => {
       if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
-      if (e.target.closest('button, .inspiration-card-translation')) return;
+      // 05/10/2026, ממצא מהביקורת: הנגיעה בטקסט שנפתח נפלה דרך הכרטיס
+      // והקישור, וזרקה את הלקוחה לאינסטגרם באמצע קריאה
+      if (e.target.closest('button, .inspiration-card-translation')) { e.preventDefault(); return; }
       if (openVideoPopup(video)) e.preventDefault();
     });
 
@@ -268,7 +279,9 @@ function renderCards(videos) {
       accuracyWarning.textContent = isForeign
         ? '⚠️ התרגום כאן לא תמיד מדויק במאה אחוז. לדיוק מלא: הורידו את הסרטון והעלו אותו ל-Gemini לתרגום מדויק יותר.'
         : '⚠️ התמלול כאן לא תמיד מדויק במאה אחוז. לדיוק מלא: הורידו את הסרטון והעלו אותו ל-Gemini לתמלול מדויק יותר.';
-      info.appendChild(accuracyWarning);
+      // 05/10/2026, ממצא מהביקורת: האזהרה הקבועה הוסיפה כ-95 פיקסל לכל
+      // כרטיס, וכרטיס הגיע ל-680 פיקסל בטלפון. היא נפתחת יחד עם הטקסט.
+      accuracyWarning.hidden = true;
 
       const readBtn = document.createElement('button');
       readBtn.type = 'button';
@@ -294,6 +307,7 @@ function renderCards(videos) {
         e.stopPropagation();
         textBox.hidden = !textBox.hidden;
         copyBtn.hidden = textBox.hidden;
+        accuracyWarning.hidden = textBox.hidden;
         readBtn.textContent = textBox.hidden ? label : hideLabel;
       });
 
@@ -310,7 +324,7 @@ function renderCards(videos) {
         setTimeout(() => { copyBtn.textContent = 'העתקת הטקסט 📋'; }, 1800);
       });
 
-      info.append(readBtn, textBox, copyBtn);
+      info.append(readBtn, accuracyWarning, textBox, copyBtn);
     }
 
     card.append(thumbWrap, info);

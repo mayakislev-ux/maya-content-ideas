@@ -56,9 +56,11 @@ function fakeDom() {
         add(...c) { c.forEach((x) => this._s.add(x)); }, remove(...c) { c.forEach((x) => this._s.delete(x)); },
         contains(c) { return this._s.has(c); } },
       setAttribute() {}, focus() { el._focused = true; },
+      // close() מסיר עכשיו את האלמנט מה-DOM ולא רק מסתיר אותו
+      remove() { const p = el._parent; if (p) p.children = p.children.filter((c) => c !== el); },
       addEventListener(ev, fn) { (el._h ||= {})[ev] = fn; },
       append(...kids) { el.children.push(...kids); },
-      appendChild(k) { el.children.push(k); return k; },
+      appendChild(k) { k._parent = el; el.children.push(k); return k; },
       set innerHTML(v) { el._html = v; if (v === '') el.children = []; },
       get innerHTML() { return el._html || ''; },
       closest() { return null; },

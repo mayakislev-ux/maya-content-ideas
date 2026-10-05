@@ -87,19 +87,21 @@ function markAutoUpdated() {
 function buildDialog() {
   const wrap = document.createElement('div');
   wrap.id = 'update-dialog';
-  wrap.className = 'modal confirm-dialog-modal';
+  wrap.className = 'up2-backdrop';
   wrap.setAttribute('role', 'alertdialog');
   wrap.setAttribute('aria-modal', 'true');
   wrap.setAttribute('aria-labelledby', 'update-dialog-title');
+  // 05/10/2026 (מאיה: "הפופאפ של העדכון גרסה מאוד קטן ונבלע וקל לפספס
+  // ולא כמו בפורטל"). המחלקות הכלליות הצמידו אותו לראש המסך בקופסה צרה
+  // עם שני כפתורים קטנים זה לצד זה. עכשיו מחלקות משלו, באותו טיפול שכבר
+  // אושר בפורטל: רקע מלא, כרטיס ממורכז, וכפתור שתופס את כל הרוחב.
   wrap.innerHTML = `
-    <div class="modal-content confirm-dialog-content">
-      <p style="font-size:2rem;margin:0 0 .3rem" aria-hidden="true">✨</p>
-      <h2 id="update-dialog-title" style="margin:0 0 .5rem;font-size:1.2rem">יש גרסה חדשה של האפליקציה</h2>
-      <p class="confirm-dialog-message" id="update-dialog-text">כדי שהכול יעבוד כמו שצריך (כולל בדיקת הרעיונות), צריך לעדכן. זה לוקח שנייה, ושום דבר לא נמחק.</p>
-      <div class="confirm-dialog-actions">
-        <button type="button" class="btn-text" id="update-dialog-later">עוד 10 דקות</button>
-        <button type="button" class="btn-primary" id="update-dialog-now">לעדכן עכשיו</button>
-      </div>
+    <div class="up2-card" role="alertdialog" aria-modal="true" aria-labelledby="update-dialog-title" dir="rtl">
+      <div class="up2-icon" aria-hidden="true">✨</div>
+      <h2 id="update-dialog-title" class="up2-title">יש גרסה חדשה</h2>
+      <p class="up2-text" id="update-dialog-text">כדי שהכול יעבוד כמו שצריך צריך לעדכן. זה לוקח שנייה, ושום דבר לא נמחק.</p>
+      <button type="button" class="up2-btn" id="update-dialog-now">לעדכן עכשיו</button>
+      <button type="button" class="up2-later" id="update-dialog-later">עוד 10 דקות</button>
     </div>`;
   document.body.appendChild(wrap);
   wrap.querySelector('#update-dialog-now').addEventListener('click', (e) => updateNow(e.currentTarget));

@@ -9,12 +9,17 @@ import { embedUrlFor, embedShape } from './video-preview.js';
 
 let host = null;
 let lastFocus = null;
+let keyBound = false;
 
 function close() {
   if (!host) return;
-  // מנקים את ה-iframe ולא רק מסתירים אותו, אחרת הסרטון ממשיך לנגן ברקע
+  // 05/10/2026, ממצא חוסם: הסתרה עם hidden לבדה נשענת על כלל CSS שאפשר
+  // לדרוס בטעות, וזה בדיוק מה שקרה. מסירים את האלמנט מה-DOM, וככה גם אם
+  // כלל סגנון ישתנה שוב, שום שכבה לא יכולה להישאר ולחסום את המסך.
   host.innerHTML = '';
   host.hidden = true;
+  host.remove();
+  host = null;
   document.body.classList.remove('ip-open');
   if (lastFocus && lastFocus.focus) lastFocus.focus();
   lastFocus = null;
@@ -34,7 +39,12 @@ function ensureHost() {
     // לחיצה על הרקע סוגרת, לחיצה על הסרטון עצמו לא
     if (e.target === host) close();
   });
-  document.addEventListener('keydown', onKey);
+  // המאזין נרשם פעם אחת בלבד. ensureHost נקראת בכל פתיחה מחדש אחרי
+  // שהאלמנט הוסר, ובלי הדגל היו נערמים מאזינים עם כל סרטון שנצפה.
+  if (!keyBound) {
+    document.addEventListener('keydown', onKey);
+    keyBound = true;
+  }
   document.body.appendChild(host);
   return host;
 }

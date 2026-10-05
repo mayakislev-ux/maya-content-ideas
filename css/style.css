@@ -3723,6 +3723,21 @@ textarea:focus-visible,
     padding: 1.2rem 1rem calc(6rem + var(--bottom-nav-h, 70px));
   }
 
+  /* 05/10/2026, ממצאים חוסמים מהביקורת: שני מסכים נוספים נשארו בלי
+     המרווח הזה. ב"פידבק" זה הסתיר את כפתור השליחה עצמו, כלומר אי אפשר
+     היה לשלוח כלל מהטלפון. במאגר ההשראה זה הסתיר את השורה האחרונה. */
+  .feedback-view {
+    padding: 1.2rem 1rem calc(6rem + var(--bottom-nav-h, 70px));
+  }
+
+  .inspiration-view {
+    padding-bottom: calc(6rem + var(--bottom-nav-h, 70px));
+  }
+
+  .client-usage-view {
+    padding: 1.2rem 1rem calc(6rem + var(--bottom-nav-h, 70px));
+  }
+
   .home-capture-card {
     padding: 1.4rem 1.1rem;
   }
@@ -5741,6 +5756,12 @@ textarea:focus-visible,
 }
 body.ip-open { overflow: hidden; }
 
+/* 05/10/2026, ממצא חוסם מהביקורת: ל-.ip היה display:flex בלי כלל
+   [hidden], וכלל display גובר על התכונה. כלומר אחרי סגירת סרטון
+   נשארה שכבה שקופה על כל המסך שבלעה כל נגיעה, עד רענון. זה בדיוק
+   "הפופאפ לא עובד" ו"כל המסך נראה מוזר". */
+.ip[hidden] { display: none !important; }
+
 .ip-box {
   width: 100%;
   display: flex;
@@ -5934,9 +5955,11 @@ body.ip-open { overflow: hidden; }
     height: 100%;
     max-height: 100%;
     border-radius: 0;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
   }
   .ip-frame { flex-grow: 1; aspect-ratio: auto !important; }
-  .ip-bar { padding: 12px 14px; }
+  /* כפתור הסגירה הוא הדרך היחידה החוצה בטלפון, והוא ישב מתחת למגרעת */
+  .ip-bar { padding: calc(12px + env(safe-area-inset-top, 0px)) 14px 12px; }
   .ip-close { width: 40px; height: 40px; }
   .ip-out { font-size: 14px; }
 }
@@ -5951,3 +5974,137 @@ body.ip-open { overflow: hidden; }
   width: 100%;
 }
 .app-version[hidden] { display: none; }
+
+/* 05/10/2026 (מאיה: "הפופאפ של העדכון גרסה מאוד קטן ונבלע וקל לפספס ולא
+   כמו בפורטל, תשני אצל כולן").
+
+   קודם הוא נשען על .modal הכללי, שמצמיד לראש המסך בקופסה צרה, ועל
+   .confirm-dialog-actions ששם שני כפתורים קטנים זה לצד זה. בטלפון זה
+   נבלע לגמרי. אלה מחלקות משלו, באותו טיפול שכבר אושר בפורטל. */
+.up2-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  background: rgba(20, 12, 30, 0.6);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}
+.up2-backdrop[hidden] { display: none; }
+
+.up2-card {
+  width: min(380px, 100%);
+  max-height: calc(100% - 32px);
+  overflow-y: auto;
+  background: #fff;
+  color: #1f1530;
+  border-radius: 20px;
+  padding: 28px 22px 18px;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: up2-in 0.25s ease-out;
+}
+.up2-icon { font-size: 2.4rem; line-height: 1; margin-bottom: 10px; }
+.up2-title { margin: 0 0 10px; font-size: 1.4rem; font-weight: 800; }
+.up2-text { margin: 0 0 22px; font-size: 1rem; line-height: 1.55; opacity: 0.82; }
+
+/* כפתור שתופס את כל הרוחב ובגובה אצבע. שני כפתורים קטנים בשורה אחת היו
+   חצי מהסיבה שזה נראה קטן ונבלע */
+.up2-btn {
+  display: block;
+  width: 100%;
+  min-height: 50px;
+  border: 0;
+  border-radius: 12px;
+  background: #6134a8;
+  color: #fff;
+  font-family: inherit;
+  font-size: 1.05rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+.up2-btn:hover { background: #4f2a8c; }
+.up2-btn[disabled] { opacity: 0.7; cursor: default; }
+
+.up2-later {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  min-height: 44px;
+  border: 0;
+  background: none;
+  font-family: inherit;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: #6f6580;
+  cursor: pointer;
+}
+.up2-later[hidden] { display: none; }
+
+@keyframes up2-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.97); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) { .up2-card { animation: none; } }
+
+/* ===== 05/10/2026, תיקוני מובייל מתוך ביקורת 10 הממדים ===== */
+
+/* כפתורים שמוסתרים ב-JS: display גובר על hidden, ולכן "העתקת הטקסט" הופיע
+   בכל כרטיס עוד לפני שנפתח משהו. אותו סוג באג כמו ב-.ip. */
+.inspiration-card-translate-btn[hidden],
+.inspiration-card-copy-btn[hidden],
+.inspiration-card-accuracy-warning[hidden] { display: none; }
+
+/* הטקסט שנפתח ניתן לסימון, אחרת לחיצה ארוכה פותחת את תפריט הקישור */
+.inspiration-card-translation { user-select: text; -webkit-user-select: text; }
+
+/* שורת הזוויות: עשר מתוך שתים-עשרה היו מחוץ למסך בלי שום רמז שיש עוד */
+.inspiration-angles {
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 640px) {
+  /* השוליים השליליים מבטלים את מרווח המסך, כך שצ'יפ חתוך למחצה נראה בקצה
+     ואומר "יש עוד". ההדרגה מחזקת את זה בלי פס גלילה. */
+  .inspiration-angles {
+    margin-inline: -1rem;
+    padding-inline: 1rem;
+    scroll-padding-inline: 1rem;
+    mask-image: linear-gradient(to left, #000 calc(100% - 28px), transparent);
+    -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 28px), transparent);
+  }
+  /* מטרות נגיעה: צ'יפ של 32 פיקסל בשורה שנגללת הוא המטרה הקשה ביותר */
+  .inspiration-angle { min-height: 40px; }
+  .inspiration-example { min-height: 38px; }
+}
+
+/* כפתור משני בגובה 22 פיקסל הוא מטרה בלתי אפשרית באצבע, והוא מופיע
+   כמעט בכל מסך באפליקציה */
+.btn-text { min-height: 44px; padding: 10px 8px; }
+
+/* 05/10/2026, ממצא מהביקורת: כל שדה קלט מתחת ל-16 פיקסל גורם לאייפון
+   להגדיל את כל הדף ברגע שנוגעים בו, והדף נשאר מוגדל אחר כך. זה אחד
+   ההסברים ל"הכל סופר ענק". הכלל חל על כל שדה באפליקציה בבת אחת. */
+@media (max-width: 720px) {
+  input,
+  textarea,
+  select,
+  .table-cell-select,
+  .st-input,
+  .sq-body-wrap textarea,
+  .sq-body-wrap input {
+    font-size: max(16px, 1rem);
+  }
+  .table-cell-select { min-height: 44px; }
+}
+
+/* חלון פתוח: הגלילה בפנים לא נמשכת לדף שמאחור */
+.modal,
+.ip,
+.up2-backdrop { overscroll-behavior: contain; }
