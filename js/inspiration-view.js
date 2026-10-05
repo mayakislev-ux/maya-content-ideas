@@ -1,4 +1,5 @@
 import { db, functions } from './firebase-init.js';
+import { openVideoPopup } from './inspiration-popup.js';
 import { collection, getDocs } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
 
@@ -127,6 +128,14 @@ function renderCards(videos) {
     card.href = video.url;
     card.target = '_blank';
     card.rel = 'noopener noreferrer';
+    // 05/10/2026 (מאיה: "יש אפשרות שהסרטונים ייפתחו בפופאפ נוח?"): הכרטיס
+    // נשאר קישור אמיתי - אפשר להעתיק אותו, לפתוח בלשונית חדשה עם Ctrl,
+    // והוא עובד גם בלי JS. לחיצה רגילה נתפסת ומנגנת בתוך המסך.
+    card.addEventListener('click', (e) => {
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+      if (e.target.closest('button, .inspiration-card-translation')) return;
+      if (openVideoPopup(video)) e.preventDefault();
+    });
 
     const thumbWrap = document.createElement('div');
     thumbWrap.className = 'inspiration-card-thumb';

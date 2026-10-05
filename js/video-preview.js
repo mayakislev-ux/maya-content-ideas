@@ -50,3 +50,42 @@ export async function fetchThumbnail(url) {
   }
   return null;
 }
+
+// 05/10/2026 (מאיה: "הפלטפורמה ממש לא נוחה... יש אפשרות שהסרטונים של
+// האינסטגרם ייפתחו בפופאפ נוח?").
+//
+// עד היום כל כרטיס היה <a target="_blank">: לחיצה זורקת אותה מהאפליקציה
+// לאינסטגרם, ואז היא צריכה לחזור. כשמדפדפים בעשרות רפרנסים זה הורג את
+// הזרימה.
+//
+// לשתי הפלטפורמות יש כתובת הטמעה רשמית שמותר להציג בתוך מסגרת. זאת לא
+// עקיפה: אינסטגרם וטיקטוק מפרסמות את הכתובות האלה בדיוק בשביל זה.
+const IG_CODE = /instagram\.com\/(?:reel|reels|p|tv)\/([A-Za-z0-9_-]+)/;
+const TT_ID = /tiktok\.com\/.*\/video\/(\d+)/;
+
+/**
+ * כתובת ההטמעה של סרטון, או null כשאין כזאת ואפשר רק לפתוח בחוץ.
+ * מיוצא לבדיקות.
+ */
+export function embedUrlFor(url) {
+  const raw = String(url || '');
+  const ig = raw.match(IG_CODE);
+  if (ig) return `https://www.instagram.com/p/${ig[1]}/embed/`;
+
+  const tt = raw.match(TT_ID);
+  if (tt) return `https://www.tiktok.com/embed/v2/${tt[1]}`;
+
+  const yt = extractYouTubeId(raw);
+  if (yt) return `https://www.youtube.com/embed/${yt}`;
+
+  // קישור קצר של טיקטוק (vm.tiktok.com) לא מכיל את המזהה, ואי אפשר
+  // לפתור אותו בלי בקשת רשת. נפתח בחוץ, כמו קודם
+  return null;
+}
+
+/** יחס הגובה-רוחב של חלון ההטמעה. אינסטגרם וטיקטוק אנכיים. */
+export function embedShape(url) {
+  if (TT_ID.test(String(url || ''))) return { w: 325, h: 760 };
+  if (IG_CODE.test(String(url || ''))) return { w: 400, h: 700 };
+  return { w: 560, h: 315 };
+}
