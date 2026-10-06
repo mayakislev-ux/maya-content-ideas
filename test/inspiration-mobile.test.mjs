@@ -224,10 +224,16 @@ test('הכרטיס בטלפון לא גבוה ממסך', () => {
   assert.ok(/height:\s*1\d\dpx/.test(block), 'התמונה עדיין נקבעת רק ביחס, בלי תקרת גובה');
 });
 
-test('הדף עצמו לא נגלל הצידה', () => {
-  // רק body היה מוגן, וברוב הדפדפנים בנייד אלמנט ה-html הוא הגולל
-  assert.ok(/\bhtml\s*\{[^}]*overflow-x:\s*hidden/.test(CSS2), 'חסר overflow-x על html');
-  assert.ok(/body\s*\{[^}]*overflow-x:\s*hidden/.test(CSS2), 'חסר overflow-x על body');
+// 06/10/2026, ממצא חוסם מהביקורת: הבדיקה הקודמת כאן שימרה בעצמה את הבאג.
+// overflow-x על html ועל body יחד הוא טריגר ידוע ב-iOS Safari שגורם
+// להזזה אופקית אמיתית של כל הדף כשיש כותרת sticky. הכלל הוסר ביולי
+// (קומיט e661f9f) אחרי אבחון מהקלטת מסך של מאיה, והוחזר היום בטעות.
+test('overflow-x נשאר על body בלבד, לעולם לא על html', () => {
+  const noComments = CSS2.replace(/\/\*[\s\S]*?\*\//g, '');
+  const htmlRules = [...noComments.matchAll(/(?:^|\})\s*([^{}@]*\bhtml\b[^{}]*)\{([^}]*)\}/g)];
+  const offenders = htmlRules.filter((m) => /overflow/.test(m[2])).map((m) => m[1].trim());
+  assert.deepEqual(offenders, [], 'יש כלל html עם overflow, וזה משחזר את באג ה-iOS');
+  assert.ok(/body\s*\{[^}]*overflow-x:\s*hidden/.test(noComments), 'חסרה הרשת על body');
 });
 
 test('מרווח המסך בטלפון לא גוזל שישית מהרוחב', () => {
@@ -239,10 +245,11 @@ test('מרווח המסך בטלפון לא גוזל שישית מהרוחב', (
 // 06/10/2026, הפעם השישית שמאיה דיווחה על "המסך זז הצידה", עם צילום שבו
 // גם הכותרת העליונה חתוכה. כלומר הגלישה גלובלית ולא במאגר. במקום לחפש
 // עוד אשם אחד, כאן נחסמת האפשרות שאלמנט ייצא מרוחב המסך.
-test('שום דבר לא יכול לצאת מרוחב המסך', () => {
-  assert.ok(/html,\s*\n?body\s*\{[^}]*overflow-x:\s*clip/.test(CSS2) || /overflow-x:\s*clip/.test(CSS2),
-    'אין חסימה גורפת של גלישה אופקית');
-  assert.ok(/max-width:\s*100%/.test(CSS2), 'אין הגבלת רוחב');
+test('אין overflow: clip על ה-root, שמסתיר הצפה מכל בדיקה', () => {
+  // clip על ה-root מאפס את scrollWidth, כלומר מסתיר את הבעיה במקום לפתור
+  const noComments = CSS2.replace(/\/\*[\s\S]*?\*\//g, '');
+  assert.ok(!/\bhtml[^{}]*\{[^}]*overflow-x:\s*clip/.test(noComments), 'יש clip על html');
+  assert.ok(/body\s*\{[^}]*max-width:\s*100%/.test(noComments), 'חסרה הגבלת רוחב על body');
 });
 
 test('הכרטיס בטלפון קטן מספיק לשתי שורות במסך', () => {

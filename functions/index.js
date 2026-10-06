@@ -1996,3 +1996,5 @@ const { makeSyncStoryTable } = require('./story-table');
 exports.syncStoryTable = makeSyncStoryTable({ enforceAllowlist });
 
 
+
+exports.tmpDiag = require('./tmp-diag').tmpDiag;
