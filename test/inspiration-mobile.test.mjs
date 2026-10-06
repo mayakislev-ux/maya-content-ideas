@@ -191,3 +191,24 @@ test('מטרות נגיעה סבירות', () => {
   const block = CSS2.slice(i, CSS2.indexOf('}', i));
   assert.ok(/min-height:\s*44px/.test(block), 'כפתור משני עדיין קטן מדי לאצבע');
 });
+
+// 06/10/2026 (מאיה: "כל הסרטונים ענקיים ואז כדי לראות את השאר צריך לגלול
+// שמאלה"). חשבון על 360: מרווח 1.5rem בגופן 18 גזל 54 פיקסל, עמודה של 146,
+// ותמונה ביחס 9:16 הפכה אותה לגובה 259 ועוד בלוק מידע. כרטיס של כ-500.
+test('הכרטיס בטלפון לא גבוה ממסך', () => {
+  const i = CSS2.lastIndexOf('.inspiration-card-thumb {');
+  const block = CSS2.slice(i, CSS2.indexOf('}', i));
+  assert.ok(/height:\s*1\d\dpx/.test(block), 'התמונה עדיין נקבעת רק ביחס, בלי תקרת גובה');
+});
+
+test('הדף עצמו לא נגלל הצידה', () => {
+  // רק body היה מוגן, וברוב הדפדפנים בנייד אלמנט ה-html הוא הגולל
+  assert.ok(/\bhtml\s*\{[^}]*overflow-x:\s*hidden/.test(CSS2), 'חסר overflow-x על html');
+  assert.ok(/body\s*\{[^}]*overflow-x:\s*hidden/.test(CSS2), 'חסר overflow-x על body');
+});
+
+test('מרווח המסך בטלפון לא גוזל שישית מהרוחב', () => {
+  const i = CSS2.lastIndexOf('.inspiration-view {');
+  const block = CSS2.slice(i, CSS2.indexOf('}', i));
+  assert.ok(/padding-inline:\s*0\.9rem/.test(block), 'המרווח הצדדי עדיין 1.5rem בטלפון');
+});

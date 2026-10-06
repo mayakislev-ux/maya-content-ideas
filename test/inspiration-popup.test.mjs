@@ -107,3 +107,44 @@ test('קישור בלי הטמעה לא פותח פופאפ ריק', async () =>
   const { openVideoPopup } = await import('../js/inspiration-popup.js');
   assert.equal(openVideoPopup({ url: 'https://vm.tiktok.com/ZSabc123/' }), false);
 });
+
+// 06/10/2026 (מאיה: "סרטון ראשון שמופיע במובייל לא נפתח בכלל").
+//
+// מדידה על כל 453 הסרטונים: כל 175 סרטוני הטיקטוק שמורים ככתובת מקוצרת
+// vt.tiktok.com שאין בה מזהה. כלומר אף טיקטוק לא נפתח בחלון, 39% מהמאגר,
+// בעוד שכל 278 סרטוני האינסטגרם עבדו. 174 מהם פוענחו דרך ה-oEmbed הרשמי
+// ונשמרו, ואחד מחזיר שגיאה מטיקטוק, כנראה סרטון שנמחק.
+test('טיקטוק מקוצר נפתח כשיש מזהה שמור', () => {
+  assert.equal(
+    embedUrlFor('https://vt.tiktok.com/ZSqhxjNJ7/', { tiktokVideoId: '7238688201412578565' }),
+    'https://www.tiktok.com/embed/v2/7238688201412578565'
+  );
+});
+
+test('בלי מזהה שמור הוא עדיין נפתח בחוץ ולא בחלון ריק', () => {
+  assert.equal(embedUrlFor('https://vt.tiktok.com/ZSqhxjNJ7/', {}), null);
+  assert.equal(embedUrlFor('https://vt.tiktok.com/ZSqhxjNJ7/'), null);
+});
+
+test('מזהה פגום לא מיוצר לכתובת שבורה', () => {
+  // מזהה שאינו ספרות בלבד היה מייצר כתובת הטמעה שלא קיימת
+  assert.equal(embedUrlFor('https://vt.tiktok.com/ZS/', { tiktokVideoId: 'abc' }), null);
+  assert.equal(embedUrlFor('https://vt.tiktok.com/ZS/', { tiktokVideoId: '' }), null);
+});
+
+test('המזהה השמור גובר, גם על כתובת מלאה', () => {
+  assert.equal(
+    embedUrlFor('https://www.tiktok.com/@u/video/111', { tiktokVideoId: '222' }),
+    'https://www.tiktok.com/embed/v2/222'
+  );
+});
+
+test('טיקטוק עם מזהה שמור מקבל חלון אנכי', () => {
+  const sh = embedShape('https://vt.tiktok.com/ZS/', { tiktokVideoId: '1' });
+  assert.ok(sh.h > sh.w, 'טיקטוק צריך להיות אנכי');
+});
+
+test('אינסטגרם לא נפגע מהשינוי', () => {
+  assert.equal(embedUrlFor('https://www.instagram.com/reel/C8xYzAbCdEf/'),
+    'https://www.instagram.com/p/C8xYzAbCdEf/embed/');
+});

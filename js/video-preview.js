@@ -67,7 +67,16 @@ const TT_ID = /tiktok\.com\/.*\/video\/(\d+)/;
  * כתובת ההטמעה של סרטון, או null כשאין כזאת ואפשר רק לפתוח בחוץ.
  * מיוצא לבדיקות.
  */
-export function embedUrlFor(url) {
+export function embedUrlFor(url, video) {
+  // 06/10/2026 (מאיה: "סרטון ראשון שמופיע במובייל לא נפתח בכלל"). מדידה על
+  // כל 453 הסרטונים: כל 175 סרטוני הטיקטוק שמורים ככתובת מקוצרת
+  // vt.tiktok.com שאין בה מזהה, ולכן אף טיקטוק לא נפתח בחלון. 39% מהמאגר.
+  //
+  // המזהה פוענח פעם אחת דרך ה-oEmbed הרשמי ונשמר על הסרטון, כדי שהפתיחה
+  // תהיה מיידית ולא תלויה בקריאת רשת מול הלקוחה.
+  const saved = video && video.tiktokVideoId;
+  if (saved && /^\d+$/.test(String(saved))) return `https://www.tiktok.com/embed/v2/${saved}`;
+
   const raw = String(url || '');
   const ig = raw.match(IG_CODE);
   if (ig) return `https://www.instagram.com/p/${ig[1]}/embed/`;
@@ -84,8 +93,8 @@ export function embedUrlFor(url) {
 }
 
 /** יחס הגובה-רוחב של חלון ההטמעה. אינסטגרם וטיקטוק אנכיים. */
-export function embedShape(url) {
-  if (TT_ID.test(String(url || ''))) return { w: 325, h: 760 };
+export function embedShape(url, video) {
+  if ((video && video.tiktokVideoId) || /tiktok\.com/.test(String(url || ''))) return { w: 325, h: 760 };
   if (IG_CODE.test(String(url || ''))) return { w: 400, h: 700 };
   return { w: 560, h: 315 };
 }

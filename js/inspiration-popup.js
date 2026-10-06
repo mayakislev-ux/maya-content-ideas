@@ -54,12 +54,12 @@ function ensureHost() {
  * מחזיר false כשאין הטמעה אפשרית, ואז המתקשר נותן לדפדפן לפתוח בחוץ.
  */
 export function openVideoPopup(video) {
-  const embed = embedUrlFor(video.url);
+  const embed = embedUrlFor(video.url, video);
   if (!embed) return false;
 
   lastFocus = document.activeElement;
   const el = ensureHost();
-  const shape = embedShape(video.url);
+  const shape = embedShape(video.url, video);
 
   el.innerHTML = '';
   const box = document.createElement('div');
