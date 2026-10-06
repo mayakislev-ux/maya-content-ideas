@@ -67,9 +67,29 @@ import { readFileSync as read2 } from 'node:fs';
 const UPDATE = read2(new URL('../js/update-check.js', import.meta.url), 'utf8');
 const HTML = read2(new URL('../index.html', import.meta.url), 'utf8');
 
-test('גרסה חדשה מתעדכנת לבד, ולא רק מציעה', () => {
-  assert.ok(/safeToReload\(\)\s*&&\s*!autoUpdatedRecently\(\)/.test(UPDATE), 'אין עדכון אוטומטי');
-  assert.ok(UPDATE.includes('updateNow(null)'), 'העדכון האוטומטי לא קורא ל-updateNow');
+// 06/10/2026 (מאיה: "ביקשתי שהפופאפ יהיה באמצע המסך שלא יהיה אפשר להתעלם,
+// כמו בפורטל"). ב-05/10 הפכתי את העדכון לשקט לגמרי אחרי שהתלוננה שבמובייל
+// שום דבר לא התעדכן, וזה ביטל בדיוק את החלון שהיא ביקשה שישתפר.
+test('החלון מוצג תמיד, ולא נבלע בעדכון שקט', () => {
+  const i = UPDATE.indexOf('function showUpdateDialog');
+  const block = UPDATE.slice(i, i + 1600);
+  assert.ok(!/updateNow\(null\)[\s\S]{0,40}return;/.test(block), 'העדכון השקט עדיין רץ לפני החלון');
+  assert.ok(block.includes('dialog.hidden = false'), 'החלון לא מוצג');
+});
+
+test('העדכון האוטומטי נשאר רשת ביטחון, אחרי שהחלון לא נגע', () => {
+  assert.ok(UPDATE.includes('AUTO_AFTER_MS'), 'אין השהיה לרשת הביטחון');
+  assert.ok(UPDATE.includes('updateNow(null)'), 'אין עדכון אוטומטי בכלל');
+  const i = UPDATE.indexOf('AUTO_AFTER_MS =');
+  assert.ok(/9\d \* 1000|\d{2,} \* 1000/.test(UPDATE.slice(i, i + 60)), 'ההשהיה לא סבירה');
+});
+
+test('דחייה מבטלת את רשת הביטחון, אחרת מרעננים אחרי שבחרה לדחות', () => {
+  assert.ok((UPDATE.match(/clearTimeout\(autoTimer\)/g) || []).length >= 2, 'הטיימר לא מבוטל בדחייה');
+});
+
+test('לחיצה על הרקע סוגרת, חלון בלי דרך החוצה הוא מלכודת', () => {
+  assert.ok(/e\.target === wrap/.test(UPDATE), 'אין סגירה בלחיצה על הרקע');
 });
 
 test('לא מעדכנים מתחת לידיים של מי שכותבת', () => {

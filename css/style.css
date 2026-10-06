@@ -6072,14 +6072,14 @@ body.ip-open { overflow: hidden; }
 }
 
 @media (max-width: 640px) {
-  /* השוליים השליליים מבטלים את מרווח המסך, כך שצ'יפ חתוך למחצה נראה בקצה
-     ואומר "יש עוד". ההדרגה מחזקת את זה בלי פס גלילה. */
+  /* 06/10/2026: כאן הייתי השוליים השליליים (-1rem) מול מרווח מסך של
+     0.9rem, כלומר השורה הייתה רחבה מההורה שלה וכל הדף גלש מרוחב המסך.
+     זה מה שגרם ל"כל המסך זז שמאלה", והוא חזר ארבע פעמים. השורה נשארת
+     נגללת, בלי לחרוג מהמכולה. */
   .inspiration-angles {
-    margin-inline: -1rem;
-    padding-inline: 1rem;
-    scroll-padding-inline: 1rem;
-    mask-image: linear-gradient(to left, #000 calc(100% - 28px), transparent);
-    -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 28px), transparent);
+    scroll-padding-inline: 0.5rem;
+    mask-image: linear-gradient(to left, #000 calc(100% - 24px), transparent);
+    -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 24px), transparent);
   }
   /* מטרות נגיעה: צ'יפ של 32 פיקסל בשורה שנגללת הוא המטרה הקשה ביותר */
   .inspiration-angle { min-height: 40px; }
@@ -6133,3 +6133,7 @@ body.ip-open { overflow: hidden; }
    כי אלמנט ה-html נשאר הגולל, וכל גלישה אופקית מזיזה את כל הדף.
    זה מה שגרם ל"צריך לגלול שמאלה". */
 html { overflow-x: hidden; }
+
+/* 06/10/2026: נקודת העוגן שמסמנת מתי לטעון עוד כרטיסים. היא תופסת את כל
+   רוחב הרשת כדי שלא תיצור עמודה שלישית ריקה. */
+.inspiration-sentinel { grid-column: 1 / -1; height: 1px; }

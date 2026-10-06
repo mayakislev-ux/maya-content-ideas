@@ -53,6 +53,8 @@ async function updateNow(button) {
 // אותו פתרון שכבר הופעל בפורטל: מתעדכנים לבד, בשקט, ולא מבקשים ממנה
 // ללחוץ. החלון נשאר רק למקרה שאי אפשר לעדכן בבטחה.
 const AUTO_KEY = 'moach.autoUpdatedAt';
+const AUTO_AFTER_MS = 90 * 1000;
+let autoTimer = null;
 const AUTO_COOLDOWN_MS = 2 * 60 * 1000;
 
 // לא לעדכן מתחת לידיים: באמצע הקלדה, או כשיש טקסט שלא נשמר בשום שדה
@@ -105,23 +107,32 @@ function buildDialog() {
     </div>`;
   document.body.appendChild(wrap);
   wrap.querySelector('#update-dialog-now').addEventListener('click', (e) => updateNow(e.currentTarget));
+  // 06/10/2026, ממצא מהביקורת: לחלון לא הייתה שום דרך החוצה חוץ מהכפתור.
+  // לחיצה על הרקע מתנהגת כמו "עוד 10 דקות", וזה בדיוק מה שהפורטל עושה.
+  wrap.addEventListener('click', (e) => {
+    const later = wrap.querySelector('#update-dialog-later');
+    if (e.target === wrap && later && !later.hidden) later.click();
+  });
   wrap.querySelector('#update-dialog-later').addEventListener('click', () => {
     snoozes += 1;
     snoozedUntil = Date.now() + SNOOZE_MS;
     wrap.hidden = true;
     dialogOpen = false;
+    // דחייה מבטלת גם את רשת הביטחון. בלי זה היינו מרעננים אותה 90 שניות
+    // אחרי שבחרה במפורש להמשיך לעבוד
+    clearTimeout(autoTimer);
   });
   return wrap;
 }
 
 function showUpdateDialog() {
   if (dialogOpen || Date.now() < snoozedUntil) return;
-  // 05/10/2026: קודם מנסים לעדכן לבד. חלון קופץ הוא מה שנכשל בטלפון
-  if (safeToReload() && !autoUpdatedRecently()) {
-    markAutoUpdated();
-    updateNow(null);
-    return;
-  }
+  // 06/10/2026 (מאיה: "ביקשתי שהפופאפ יהיה באמצע המסך שלא יהיה אפשר
+  // להתעלם, כמו בפורטל"). ב-05/10 הפכתי את העדכון לשקט לגמרי, אחרי
+  // שהתלוננה שבמובייל שום דבר לא התעדכן - וזה ביטל בדיוק את החלון שהיא
+  // ביקשה שישתפר. שתי הבקשות מתקיימות ככה: החלון מוצג תמיד, ממורכז
+  // ובלתי אפשרי לפספס, והעדכון האוטומטי הוא רק רשת ביטחון למי שלא
+  // נוגעת בו - כך שאף אחת לא נתקעת על גרסה ישנה, ואף אחת לא מופתעת.
   // 19/09/2026 (פיילוט): לא באמצע כתיבה של רעיון או צ'אט - יופיע בבדיקה הבאה
   const el = document.activeElement;
   if (el && (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT' || el.isContentEditable)) return;
@@ -135,6 +146,16 @@ function showUpdateDialog() {
   dialog.hidden = false;
   dialogOpen = true;
   dialog.querySelector('#update-dialog-now').focus();
+
+  // רשת הביטחון: אם החלון נשאר פתוח 90 שניות בלי שנגעו בו, מתעדכנים לבד.
+  // זה מה שמונע את המצב הקודם, שבו גרסה ישנה נשארה לנצח כי החלון לא נראה.
+  clearTimeout(autoTimer);
+  autoTimer = setTimeout(() => {
+    if (dialogOpen && safeToReload() && !autoUpdatedRecently()) {
+      markAutoUpdated();
+      updateNow(null);
+    }
+  }, AUTO_AFTER_MS);
 }
 
 // הגרסה של הדף שפתוח עכשיו: document.lastModified מגיע מאותה חותמת של הפרסום.

@@ -1,6 +1,6 @@
 import { db, functions } from './firebase-init.js';
 import { openVideoPopup } from './inspiration-popup.js';
-import { readabilityOf, languageName, passesReadability } from './inspiration-readability.js';
+import { readabilityOf, languageName } from './inspiration-readability.js';
 import { collection, getDocs } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
 
@@ -192,16 +192,60 @@ function angleChips(video, onPick) {
   return wrap;
 }
 
+// 06/10/2026 (מאיה: "כתוב טוען השראה ושעה עד שהכל נטען, המסך מאוד איטי").
+// הרשת ציירה את כל 453 הכרטיסים בפעימה סינכרונית אחת, כל אחד עם תמונה
+// ובלוק מידע שלם. בטלפון זה חוסם את הממשק לשניות ארוכות.
+// מנה ראשונה נצבעת מיד, והשאר נטענות כשמתקרבים לסוף.
+const PAGE = 24;
+let pending = [];
+let sentinel = null;
+let io = null;
+
+function renderBatch(grid) {
+  const batch = pending.splice(0, PAGE);
+  const frag = document.createDocumentFragment();
+  for (const video of batch) frag.appendChild(buildCard(video));
+  grid.insertBefore(frag, sentinel);
+  if (!pending.length && sentinel) {
+    sentinel.remove();
+    sentinel = null;
+  }
+}
+
 function renderCards(videos) {
   const grid = document.getElementById('inspiration-grid');
   const empty = document.getElementById('inspiration-empty');
+  if (io) { io.disconnect(); io = null; }
   grid.innerHTML = '';
+  sentinel = null;
+  pending = [];
   if (!videos.length) {
     empty.hidden = false;
     return;
   }
   empty.hidden = true;
-  for (const video of videos) {
+  pending = videos.slice();
+
+  sentinel = document.createElement('div');
+  sentinel.className = 'inspiration-sentinel';
+  sentinel.setAttribute('aria-hidden', 'true');
+  grid.appendChild(sentinel);
+
+  renderBatch(grid);
+
+  if (pending.length && 'IntersectionObserver' in window) {
+    io = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting) && pending.length) renderBatch(grid);
+    }, { rootMargin: '600px' });
+    if (sentinel) io.observe(sentinel);
+  } else {
+    // בלי התמיכה הזאת מציירים הכל, כמו קודם
+    while (pending.length) renderBatch(grid);
+  }
+}
+
+function buildCard(video) {
+  {
     const card = document.createElement('a');
     card.className = `inspiration-card inspiration-card--${video.platform}`;
     card.href = video.url;
@@ -328,7 +372,7 @@ function renderCards(videos) {
     }
 
     card.append(thumbWrap, info);
-    grid.appendChild(card);
+    return card;
   }
 }
 
@@ -340,11 +384,10 @@ async function renderForDomain(domain, subCategory) {
   const videos = await loadVideos();
   rebuildDomainFilterOptions(videos);
   rebuildSubcategoryFilterOptions(videos, domain);
-  // 05/10/2026: מסנן ההבנה חל לפני הכל, כי אין טעם להציע ללקוחה סרטון
-  // שהיא לא תוכל לקרוא. ברירת המחדל היא "מה שאני יכולה להבין"
-  const readEl = document.getElementById('inspiration-readability-filter');
-  const readValue = readEl ? readEl.value : '';
-  const readable = videos.filter((v) => passesReadability(v, readValue));
+  // 06/10/2026 (מאיה: "תעיפי את הכפתור 'מה שאני יכולה להבין', זה לא ברור").
+  // המסנן ירד. התגית על הכרטיס נשארת, כי היא אומרת את אותו דבר בלי לדרוש
+  // החלטה לפני שרואים משהו.
+  const readable = videos;
 
   rebuildAngleRow(readable);
   let filtered = domain ? readable.filter((v) => v.domain === domain) : interleaveByDomain(readable);
@@ -406,16 +449,6 @@ export function wireInspirationView() {
   // תחום חדש נבחר - תת-הקטגוריה של התחום הקודם לא רלוונטית יותר, מתאפסת.
   select.addEventListener('change', () => renderForDomain(select.value, ''));
   subSelect.addEventListener('change', () => renderForDomain(select.value, subSelect.value));
-
-  // 05/10/2026: מסנן ההבנה. שינוי שלו מאפס גם את הזווית, אחרת היא יכולה
-  // להישאר פעילה על קבוצה שכבר לא מכילה אותה והמסך נראה ריק בלי סיבה
-  const readEl = document.getElementById('inspiration-readability-filter');
-  if (readEl) {
-    readEl.addEventListener('change', () => {
-      activeAngle = null;
-      renderForDomain(select.value, subSelect.value);
-    });
-  }
 
   // דוגמאות החיפוש: לחיצה ממלאת ומריצה, כדי שלקוחה תראה מיד מה זה עושה
   const examples = document.getElementById('inspiration-examples');
