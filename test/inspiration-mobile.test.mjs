@@ -197,7 +197,10 @@ test('שורת הזוויות שומרת מיקום ומביאה את הפעיל
 test('חלון פתוח נועל את גלילת הדף', () => {
   assert.ok(APPJS.includes('function lockScroll'), 'אין נעילת גלילה');
   assert.ok(/scrollLocks\s*\+=\s*1/.test(APPJS), 'הנעילה אינה מונה, שני חלונות ישברו אותה');
-  assert.ok(APPJS.includes('window.scrollTo(0, lockedAt)'), 'מיקום הגלילה לא משוחזר');
+  // 06/10/2026: הגרסה הקודמת שמרה מיקום והפכה את ה-body ל-position:fixed,
+  // וזה מה שהזיז את כל הדף הצידה ב-RTL. נעילה אסור לה להזיז שום דבר.
+  assert.ok(!APPJS.includes("position = 'fixed'"), 'הנעילה עדיין מזיזה את הדף');
+  assert.ok(/document\.body\.style\.overflow = 'hidden'/.test(APPJS), 'אין נעילה בכלל');
   const i = APPJS.indexOf('observer.observe(modal');
   assert.ok(APPJS.slice(Math.max(0, i - 400), i).includes('lockScroll()'), 'החלונות לא נועלים');
 });
@@ -231,4 +234,26 @@ test('מרווח המסך בטלפון לא גוזל שישית מהרוחב', (
   const i = CSS2.lastIndexOf('.inspiration-view {');
   const block = CSS2.slice(i, CSS2.indexOf('}', i));
   assert.ok(/padding-inline:\s*0\.9rem/.test(block), 'המרווח הצדדי עדיין 1.5rem בטלפון');
+});
+
+// 06/10/2026, הפעם השישית שמאיה דיווחה על "המסך זז הצידה", עם צילום שבו
+// גם הכותרת העליונה חתוכה. כלומר הגלישה גלובלית ולא במאגר. במקום לחפש
+// עוד אשם אחד, כאן נחסמת האפשרות שאלמנט ייצא מרוחב המסך.
+test('שום דבר לא יכול לצאת מרוחב המסך', () => {
+  assert.ok(/html,\s*\n?body\s*\{[^}]*overflow-x:\s*clip/.test(CSS2) || /overflow-x:\s*clip/.test(CSS2),
+    'אין חסימה גורפת של גלישה אופקית');
+  assert.ok(/max-width:\s*100%/.test(CSS2), 'אין הגבלת רוחב');
+});
+
+test('הכרטיס בטלפון קטן מספיק לשתי שורות במסך', () => {
+  const i = CSS2.lastIndexOf('.inspiration-card-thumb {');
+  const block = CSS2.slice(i, CSS2.indexOf('}', i));
+  const m = block.match(/height:\s*(\d+)px/);
+  assert.ok(m, 'אין תקרת גובה לתמונה');
+  assert.ok(Number(m[1]) <= 160, `התמונה ${m[1]}px, גבוה מדי לשתי שורות`);
+});
+
+test('תיבת החיפוש לא קובעת רוחב מינימלי', () => {
+  assert.ok(/\.inspiration-search-form input \{[^}]*min-width:\s*0/.test(CSS2),
+    'ה-input עדיין יכול לדחוף את הטופס מעבר לרוחב המסך');
 });

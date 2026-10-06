@@ -6160,3 +6160,37 @@ html { overflow-x: hidden; }
   font-weight: 800;
   text-decoration: none;
 }
+
+/* ===== 06/10/2026, הגלישה האופקית, בפעם השישית ===== */
+
+/* מאיה, עם צילום שבו גם הכותרת העליונה חתוכה: "המסך זז הצידה מוזר כזה".
+   כלומר הגלישה גלובלית. במקום לחפש עוד אשם אחד, כאן נחסמת האפשרות
+   שאלמנט כלשהו ייצא מרוחב המסך, בכל המסכים. */
+html,
+body {
+  overflow-x: clip;
+  max-width: 100%;
+}
+
+@media (max-width: 720px) {
+  /* שום דבר במאגר לא רשאי לחרוג, גם אם ייווסף רכיב חדש בעתיד */
+  .inspiration-view,
+  .inspiration-grid,
+  .inspiration-search-form,
+  .inspiration-examples,
+  .archive-controls {
+    max-width: 100%;
+    min-width: 0;
+  }
+  .inspiration-search-form { flex-wrap: wrap; }
+  .inspiration-search-form input { min-width: 0; flex: 1 1 100%; }
+
+  /* מאיה: "תקטיני את הסרטון במובייל, שתיים ייכנסו ביחד באותה שורה".
+     תמונה של 150 פיקסל במקום 190, ובלוק מידע צפוף יותר - כרטיס של כ-260
+     במקום כ-500, כך ששתי שורות שלמות נראות במסך אחד. */
+  .inspiration-card-thumb { height: 150px; }
+  .inspiration-card-info { padding: 0.5rem; gap: 0.3rem; font-size: 0.85rem; }
+  .inspiration-card-cta { font-size: 0.85rem; }
+  .inspiration-card-translate-btn,
+  .inspiration-card-copy-btn { min-height: 36px; font-size: 0.8rem; padding: 6px 10px; }
+}

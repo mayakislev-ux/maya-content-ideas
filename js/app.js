@@ -354,29 +354,23 @@ const menuOverlay = document.getElementById('menu-overlay');
 // זה אומר שהדף זז מאחורי החלון הפתוח, והמסך "נראה מוזר" בדיוק כמו שמאיה
 // תיארה. מונה ולא דגל, כי יכולים להיות שני חלונות פתוחים זה מעל זה.
 let scrollLocks = 0;
-let lockedAt = 0;
 
+// 06/10/2026, בפעם השישית שמאיה דיווחה ש"כל המסך זז הצידה", עם צילום
+// שבו גם הכותרת העליונה חתוכה - כלומר הגלישה גלובלית ולא במאגר:
+// הגרסה הקודמת כאן הפכה את ה-body ל-position:fixed עם inset-inline-start,
+// inset-inline-end ו-width יחד. זאת הגדרה סותרת, וב-RTL הדפדפן מתעלם
+// מאחד מהם ומזיז את כל הדף הצידה. נעילה אסור לה להזיז שום דבר.
 function lockScroll() {
   scrollLocks += 1;
   if (scrollLocks > 1) return;
-  lockedAt = window.scrollY || 0;
-  document.body.style.position = 'fixed';
-  document.body.style.insetInlineStart = '0';
-  document.body.style.insetInlineEnd = '0';
-  document.body.style.top = `-${lockedAt}px`;
-  document.body.style.width = '100%';
+  document.body.style.overflow = 'hidden';
 }
 
 function unlockScroll() {
   if (scrollLocks === 0) return;
   scrollLocks -= 1;
   if (scrollLocks > 0) return;
-  document.body.style.position = '';
-  document.body.style.insetInlineStart = '';
-  document.body.style.insetInlineEnd = '';
-  document.body.style.top = '';
-  document.body.style.width = '';
-  window.scrollTo(0, lockedAt);
+  document.body.style.overflow = '';
 }
 
 function closeMobileMenu() {
