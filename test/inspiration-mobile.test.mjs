@@ -264,3 +264,28 @@ test('תיבת החיפוש לא קובעת רוחב מינימלי', () => {
   assert.ok(/\.inspiration-search-form input \{[^}]*min-width:\s*0/.test(CSS2),
     'ה-input עדיין יכול לדחוף את הטופס מעבר לרוחב המסך');
 });
+
+// 06/10/2026 (מאיה: "הכפתור לפתוח אותם במסך המקורי לא עבד בכלל").
+test('הקישור לפתיחה במקור הוא מטרת נגיעה אמיתית', () => {
+  const i = CSS2.indexOf('.ip-out {');
+  assert.ok(i > -1, 'אין כלל ל-.ip-out');
+  const block = CSS2.slice(i, CSS2.indexOf('}', i));
+  assert.ok(/flex-shrink:\s*0/.test(block), 'הקישור עדיין נדחס לאפס רוחב ליד הכותרת');
+  assert.ok(/min-height:\s*44px/.test(block), 'אזור הנגיעה קטן מדי');
+});
+
+test('הכותרת בחלון נחתכת במקום לדחוף את הקישור', () => {
+  const i = CSS2.indexOf('.ip-title {');
+  const block = CSS2.slice(i, CSS2.indexOf('}', i));
+  assert.ok(/text-overflow:\s*ellipsis/.test(block), 'כותרת ארוכה עדיין דוחפת');
+});
+
+// 06/10/2026 (מאיה: "בחלוקה לזוויות חסר מלא סרטונים"). המספר על הצ'יפ חושב
+// מכל המאגר בעוד שהתוצאה היא החיתוך עם התחום, אז הוא הבטיח יותר ממה שהופיע.
+test('מספר הזווית נבנה מהקבוצה שתוצג בפועל', () => {
+  const i = VIEWJS.indexOf('  rebuildAngleRow(');
+  const call = VIEWJS.slice(i, i + 40);
+  assert.ok(call.includes('filtered'), 'המספר עדיין מחושב לפני סינון התחום');
+  const iFilter = VIEWJS.indexOf('(v.angleTags || []).includes(activeAngle)');
+  assert.ok(i < iFilter, 'השורה נבנית אחרי סינון הזווית, ואז תמיד תישאר זווית אחת');
+});

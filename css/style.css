@@ -5787,14 +5787,30 @@ body.ip-open { overflow: hidden; }
 }
 .ip-title {
   flex-grow: 1;
+  flex-shrink: 1;
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-weight: 700;
   font-size: 14px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.ip-out { font-size: 13px; white-space: nowrap; }
+/* 06/10/2026 (מאיה: "הכפתור לפתוח אותם במסך המקורי לא עבד בכלל"):
+   לכותרת יש flex-grow והקישור נשאר עם flex-shrink ברירת המחדל, כלומר
+   הוא נדחס כמעט לאפס רוחב בטלפון. עם white-space: nowrap הטקסט גולש
+   החוצה ונראה שלם, אבל אזור הנגיעה האמיתי הוא רצועה דקה, ולכן כמעט
+   כל נגיעה מחטיאה. */
+.ip-out {
+  flex-shrink: 0;
+  white-space: nowrap;
+  font-size: 13px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 10px;
+}
 .ip-close {
   flex-shrink: 0;
   width: 34px;

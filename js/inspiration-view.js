@@ -389,9 +389,14 @@ async function renderForDomain(domain, subCategory) {
   // החלטה לפני שרואים משהו.
   const readable = videos;
 
-  rebuildAngleRow(readable);
   let filtered = domain ? readable.filter((v) => v.domain === domain) : interleaveByDomain(readable);
   if (domain && subCategory) filtered = filtered.filter((v) => v.subCategory === subCategory);
+
+  // 06/10/2026 (מאיה: "בחלוקה לזוויות חסר מלא סרטונים"): המספר על כל זווית
+  // חושב מכל המאגר, אבל התוצאה בפועל היא החיתוך עם התחום שנבחר. כלומר
+  // הצ'יפ הבטיח 143 והופיעו ארבעים, וזה נראה כאילו סרטונים נעלמו.
+  // המספר נבנה עכשיו מהקבוצה שבאמת תוצג.
+  rebuildAngleRow(filtered);
   if (activeAngle) filtered = filtered.filter((v) => (v.angleTags || []).includes(activeAngle));
   renderCards(filtered);
 }
