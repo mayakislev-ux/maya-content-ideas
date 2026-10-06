@@ -70,9 +70,19 @@ const HTML = read2(new URL('../index.html', import.meta.url), 'utf8');
 // 06/10/2026 (מאיה: "ביקשתי שהפופאפ יהיה באמצע המסך שלא יהיה אפשר להתעלם,
 // כמו בפורטל"). ב-05/10 הפכתי את העדכון לשקט לגמרי אחרי שהתלוננה שבמובייל
 // שום דבר לא התעדכן, וזה ביטל בדיוק את החלון שהיא ביקשה שישתפר.
-test('החלון מוצג תמיד, ולא נבלע בעדכון שקט', () => {
+function showDialogBlock() {
   const i = UPDATE.indexOf('function showUpdateDialog');
-  const block = UPDATE.slice(i, i + 1600);
+  assert.ok(i > 0, 'showUpdateDialog לא נמצאה');
+  const end = UPDATE.indexOf('\nfunction ', i + 10);
+  // ההערות מוסרות: הן מתארות את התקלה ומזכירות את שם הפונקציה, ובלי ההסרה
+  // הבדיקה הייתה מתאימה לטקסט ההסבר במקום לקוד עצמו
+  return UPDATE.slice(i, end === -1 ? UPDATE.length : end)
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .replace(/\/\/[^\n]*/g, ' ');
+}
+
+test('החלון מוצג תמיד, ולא נבלע בעדכון שקט', () => {
+  const block = showDialogBlock();
   assert.ok(!/updateNow\(null\)[\s\S]{0,40}return;/.test(block), 'העדכון השקט עדיין רץ לפני החלון');
   assert.ok(block.includes('dialog.hidden = false'), 'החלון לא מוצג');
 });
@@ -88,8 +98,30 @@ test('דחייה מבטלת את רשת הביטחון, אחרת מרעננים 
   assert.ok((UPDATE.match(/clearTimeout\(autoTimer\)/g) || []).length >= 2, 'הטיימר לא מבוטל בדחייה');
 });
 
-test('לחיצה על הרקע סוגרת, חלון בלי דרך החוצה הוא מלכודת', () => {
-  assert.ok(/e\.target === wrap/.test(UPDATE), 'אין סגירה בלחיצה על הרקע');
+/* 06/10/2026: הבדיקה הקודמת כאן דרשה סגירה בלחיצה על הרקע, אבל MAX_SNOOZES=0
+   מסתיר את "אחר כך" תמיד ולכן המטפל ההוא לא יכול היה לרוץ אף פעם - היא שמרה
+   על קוד מת. מאיה ביקשה במפורש חלון שאי אפשר להתעלם ממנו.
+
+   ובאותו יום ניסיתי "לשפר" ולחסום את החלון ב-safeToReload(), שבודק כל שדה
+   טקסט בדף. שלושה שדות נטענים מ-localStorage בלי שאף אחת נגעה בהם, ושדות
+   החיפוש לא מתנקים - כלומר לקוחה שהתחילה פעם אחת לכתוב רעיון לא הייתה
+   רואה את החלון שוב לעולם, וגם רשת הביטחון לא הייתה נוצרת. באפליקציה
+   מותקנת אין כפתור רענון, ולכן זאת גרסה ישנה לנצח.
+
+   ההפרדה שהבדיקה הזאת שומרת עליה: כפתור שמופיע אינו מסוכן, ולכן החלון
+   נחסם רק באמצע הקלדה ממש. מה שמוחק עבודה הוא הרענון האוטומטי, והוא
+   חייב לבדוק את כל השדות. */
+test('החלון לא נחסם על ידי טקסט שמור, רק הרענון האוטומטי כן', () => {
+  const block = showDialogBlock();
+  const gate = block.slice(0, block.indexOf('dialog.hidden = false'));
+  assert.ok(
+    !/safeToReload\(\)/.test(gate),
+    'החלון נחסם לפי כל השדות - טיוטה שמורה תשתיק אותו לנצח',
+  );
+  assert.ok(/activeElement/.test(gate), 'אין חסימה אפילו באמצע הקלדה');
+  const auto = block.slice(block.indexOf('autoTimer = setTimeout'));
+  assert.ok(/safeToReload\(\)/.test(auto), 'הרענון האוטומטי לא בודק טקסט שלא נשמר');
+  assert.ok(!/e\.target === wrap/.test(UPDATE), 'נשאר מטפל רקע שלא יכול לרוץ');
 });
 
 test('לא מעדכנים מתחת לידיים של מי שכותבת', () => {
@@ -283,9 +315,42 @@ test('הכותרת בחלון נחתכת במקום לדחוף את הקישור
 // 06/10/2026 (מאיה: "בחלוקה לזוויות חסר מלא סרטונים"). המספר על הצ'יפ חושב
 // מכל המאגר בעוד שהתוצאה היא החיתוך עם התחום, אז הוא הבטיח יותר ממה שהופיע.
 test('מספר הזווית נבנה מהקבוצה שתוצג בפועל', () => {
-  const i = VIEWJS.indexOf('  rebuildAngleRow(');
-  const call = VIEWJS.slice(i, i + 40);
-  assert.ok(call.includes('filtered'), 'המספר עדיין מחושב לפני סינון התחום');
-  const iFilter = VIEWJS.indexOf('(v.angleTags || []).includes(activeAngle)');
-  assert.ok(i < iFilter, 'השורה נבנית אחרי סינון הזווית, ואז תמיד תישאר זווית אחת');
+  const i = VIEWJS.indexOf('rebuildAngleRow(filtered)');
+  assert.ok(i > 0, 'המספר עדיין מחושב לפני סינון התחום');
+  const iFilter = VIEWJS.indexOf('filtered.filter((v) => (v.angleTags || []).includes(activeAngle))');
+  assert.ok(iFilter > 0 && i < iFilter, 'השורה נבנית אחרי סינון הזווית, ואז תמיד תישאר זווית אחת');
+});
+
+// 06/10/2026, מהביקורת: זווית שנבחרה בתחום אחד ואין לה סרטונים בתחום החדש
+// השאירה מסך ריק, בלי צ'יפ ללחוץ עליו כדי לבטל אותה.
+test('זווית שאין לה סרטונים בקבוצה המוצגת נושרת מעצמה', () => {
+  const i = VIEWJS.indexOf('function renderForDomain');
+  const block = VIEWJS.slice(i, VIEWJS.indexOf('async function runSearch'));
+  assert.ok(
+    /if \(activeAngle && !filtered\.some\(/.test(block),
+    'זווית תקועה עדיין יכולה להשאיר מסך ריק',
+  );
+  assert.ok(
+    /select\.addEventListener\('change', \(\) => \{ activeAngle = null;/.test(VIEWJS),
+    'החלפת תחום לא מאפסת את הזווית',
+  );
+});
+
+// 06/10/2026, מהביקורת: אחרי חיפוש חופשי שורת הזוויות עוד תיארה את הדפדוף
+// הקודם, כלומר המספרים ליד כל זווית שיקרו לגבי מה שעל המסך.
+test('חיפוש בונה מחדש את שורת הזוויות מהתוצאות שלו', () => {
+  const i = VIEWJS.indexOf('async function runSearch');
+  const block = VIEWJS.slice(i, VIEWJS.indexOf('export function wireInspirationView'));
+  assert.ok(/rebuildAngleRow\(ranked\)/.test(block), 'השורה נשארה של התחום הקודם');
+  assert.ok(/searchResults = ranked/.test(block), 'לחיצה על זווית תזרוק את תוצאות החיפוש');
+});
+
+// 06/10/2026 (מאיה: "בחלוקה לזוויות עדיין יש חוסר דיוק"): הכרטיס הראה תגית
+// אחת מתוך שלוש שנשמרו, כי כלל CSS הסתיר את השאר בטלפון.
+test('כל התגיות שנשמרו נראות על הכרטיס', () => {
+  assert.ok(
+    !/\.inspiration-card-angles \.inspiration-card-angle:nth-child\(n \+ 2\)/.test(CSS),
+    'עוד מסתירים תגיות זווית בטלפון',
+  );
+  assert.ok(/angleTags \|\| \[\]\)\.slice\(0, 3\)/.test(VIEWJS), 'הכרטיס עוד חותך לשתי תגיות');
 });

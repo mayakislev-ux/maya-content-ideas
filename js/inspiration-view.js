@@ -119,9 +119,28 @@ function interleaveByDomain(videos) {
 // מבזבזת לחיצה. מדידה: רק 59 מתוך 453 בעברית.
 // 05/10/2026: הזווית הפעילה. null = לא מסננים לפי זווית
 let activeAngle = null;
+// 06/10/2026: תוצאות החיפוש האחרון. כל עוד הן על המסך, לחיצה על זווית
+// מסננת בתוכן ולא זורקת אותן וחוזרת לדפדוף לפי תחום.
+let searchResults = null;
 
 function pickAngle(angle) {
   activeAngle = activeAngle === angle ? null : angle;
+  if (searchResults) {
+    const shown = activeAngle
+      ? searchResults.filter((v) => (v.angleTags || []).includes(activeAngle))
+      : searchResults;
+    rebuildAngleRow(searchResults);
+    renderCards(shown);
+    const status = document.getElementById('inspiration-search-status');
+    if (status) {
+      status.hidden = false;
+      status.textContent = activeAngle
+        ? `${shown.length} מתוך ${searchResults.length} התוצאות, בזווית "${activeAngle}"`
+        : `נמצאו ${searchResults.length} סרטונים מתאימים לרעיון שלכם - מכל התחומים`;
+    }
+    if (activeAngle) window.scrollTo({ top: 0, behavior: 'smooth' });
+    return;
+  }
   const select = document.getElementById('inspiration-domain-filter');
   const subSelect = document.getElementById('inspiration-subcategory-filter');
   renderForDomain(select.value, subSelect.value);
@@ -181,7 +200,7 @@ function readabilityChip(video) {
 function angleChips(video, onPick) {
   const wrap = document.createElement('span');
   wrap.className = 'inspiration-card-angles';
-  for (const t of (video.angleTags || []).slice(0, 2)) {
+  for (const t of (video.angleTags || []).slice(0, 3)) {
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'inspiration-card-angle';
@@ -220,6 +239,11 @@ function renderCards(videos) {
   sentinel = null;
   pending = [];
   if (!videos.length) {
+    // 06/10/2026, מהביקורת: החיפוש החופשי עובר על כל התחומים, ולכן "נסו
+    // תחום אחר" אחרי חיפוש בלי תוצאות הצביע על הסיבה הלא נכונה.
+    empty.textContent = searchResults
+      ? 'אין סרטון שמתאים לחיפוש הזה - נסו לנסח אחרת.'
+      : 'אין עדיין סרטונים בתחום הזה - נסו תחום אחר.';
     empty.hidden = false;
     return;
   }
@@ -381,6 +405,7 @@ async function renderForDomain(domain, subCategory) {
   const status = document.getElementById('inspiration-search-status');
   status.hidden = true;
   grid.innerHTML = '<p class="inspiration-loading">טוען השראה…</p>';
+  searchResults = null;
   const videos = await loadVideos();
   rebuildDomainFilterOptions(videos);
   rebuildSubcategoryFilterOptions(videos, domain);
@@ -396,6 +421,12 @@ async function renderForDomain(domain, subCategory) {
   // חושב מכל המאגר, אבל התוצאה בפועל היא החיתוך עם התחום שנבחר. כלומר
   // הצ'יפ הבטיח 143 והופיעו ארבעים, וזה נראה כאילו סרטונים נעלמו.
   // המספר נבנה עכשיו מהקבוצה שבאמת תוצג.
+  // 06/10/2026: זווית שנבחרה בתחום אחד ואין לה אף סרטון בתחום החדש השאירה
+  // מסך ריק עם ההודעה "אין עדיין סרטונים בתחום הזה" - והצ'יפ שלה כבר לא
+  // הופיע, כלומר לא היה שום דבר ללחוץ עליו כדי לבטל. היא נושרת מעצמה.
+  if (activeAngle && !filtered.some((v) => (v.angleTags || []).includes(activeAngle))) {
+    activeAngle = null;
+  }
   rebuildAngleRow(filtered);
   if (activeAngle) filtered = filtered.filter((v) => (v.angleTags || []).includes(activeAngle));
   renderCards(filtered);
@@ -424,7 +455,14 @@ async function runSearch(query) {
     ids = result.data.ids;
   } catch (err) {
     console.error('matchInspirationQuery failed:', err);
+    // 06/10/2026, מהביקורת: היציאה הזאת השאירה את שורת הזוויות ואת תוצאות
+    // החיפוש הקודם בחיים. כלומר המספרים ליד כל זווית תיארו חיפוש אחר, ולחיצה
+    // על צ'יפ הייתה מוחקת את הודעת השגיאה ומציגה תוצאות של שאילתה שנזנחה.
+    searchResults = null;
+    activeAngle = null;
+    rebuildAngleRow([]);
     grid.innerHTML = '';
+    document.getElementById('inspiration-empty').hidden = true;
     status.hidden = false;
     status.textContent = 'לא הצלחנו להבין את החיפוש - נסו לנסח אחרת.';
     return;
@@ -440,6 +478,12 @@ async function runSearch(query) {
   status.textContent = ranked.length
     ? `נמצאו ${ranked.length} סרטונים מתאימים לרעיון שלכם - מכל התחומים`
     : 'לא נמצאו סרטונים דומים - נסו לנסח אחרת או דפדפו לפי תחום.';
+  // 06/10/2026: שורת הזוויות נשארה של הדפדוף הקודם, כלומר המספרים שליד כל
+  // זווית תיארו משהו אחר ממה שעל המסך, וזווית שנבחרה קודם נראתה דלוקה בלי
+  // לסנן כלום. עכשיו היא נבנית מתוצאות החיפוש עצמן.
+  searchResults = ranked;
+  activeAngle = null;
+  rebuildAngleRow(ranked);
   renderCards(ranked);
 }
 
@@ -452,8 +496,8 @@ export function wireInspirationView() {
   const select = document.getElementById('inspiration-domain-filter');
   const subSelect = document.getElementById('inspiration-subcategory-filter');
   // תחום חדש נבחר - תת-הקטגוריה של התחום הקודם לא רלוונטית יותר, מתאפסת.
-  select.addEventListener('change', () => renderForDomain(select.value, ''));
-  subSelect.addEventListener('change', () => renderForDomain(select.value, subSelect.value));
+  select.addEventListener('change', () => { activeAngle = null; renderForDomain(select.value, ''); });
+  subSelect.addEventListener('change', () => { activeAngle = null; renderForDomain(select.value, subSelect.value); });
 
   // דוגמאות החיפוש: לחיצה ממלאת ומריצה, כדי שלקוחה תראה מיד מה זה עושה
   const examples = document.getElementById('inspiration-examples');

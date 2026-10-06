@@ -176,12 +176,44 @@ const ANGLE_QUERY_WORDS = {
  * אילו זוויות השאילתה מבקשת. מחזיר מערך, כי "ביקורת או מיתוס" לגיטימי.
  * מיוצא לבדיקות - זה הלב של הדיוק.
  */
+// 06/10/2026, שלושה ממצאים מהביקורת על אותה פונקציה:
+// 1. ההשוואה הייתה includes על מחרוזת, ולכן 'דעה' נמצאה גם בתוך "מודעה"
+//    ו"הודעה" - כל שאילתה על מודעות נדחפה לדלי של דעה ואג'נדה.
+// 2. השאילתה לא עברה נרמול, ולכן הגרש שאייפון מקליד הפך את "אג'נדה"
+//    לבלתי מזוהה.
+// 3. התיקון הראשון דרש תחילת מילה עם אות יחס אחת לכל היותר, וזה איבד
+//    צירופים נפוצים לגמרי: "שהמיתוס", "מהביקורת", "שהבעיה", "מההייפ".
+//    לכן זאת רשימה מפורשת של צירופים אמיתיים ולא [אות]{0,2} - 'מו' ו-'הו'
+//    הם שני תווים מאותה קבוצה, וכל הרחבה גורפת הייתה מחזירה את "מודעה".
+const WORD_PREFIXES = [
+  'וה', 'שה', 'מה', 'כש', 'וב', 'ול', 'לה', 'שב', 'שמ', 'ומ', 'וש', 'כה', 'מש', 'של',
+  'ה', 'ב', 'ל', 'כ', 'מ', 'ש', 'ו',
+];
+
+function wordEscape(w) {
+  return w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 function anglesFromQuery(query) {
-  const q = String(query || '').toLowerCase();
-  if (!q.trim()) return [];
+  // שתי צורות של אותה שאילתה: אחת שהפיסוק נמחק ממנה (כדי ש"אג'נדה" יתאים
+  // ל-'אגנדה' שברשימה), ואחת שהפיסוק הוחלף ברווח (כדי ש"שיווק,מיתוס" לא
+  // יידבק למילה אחת). התאמה באחת מהן מספיקה.
+  const raw = String(query || '');
+  const forms = [
+    normalizeAngle(raw).toLowerCase(),
+    raw.replace(/['’׳`´",.״]/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase(),
+  ].filter(Boolean);
+  if (!forms.length) return [];
+  const prefix = `(?:${WORD_PREFIXES.join('|')})?`;
   const hits = [];
   for (const [angle, words] of Object.entries(ANGLE_QUERY_WORDS)) {
-    if (words.some((w) => q.includes(w))) hits.push(angle);
+    const match = words.some((w) => {
+      const n = normalizeAngle(w).toLowerCase();
+      if (!n) return false;
+      const re = new RegExp(`(?:^|[^\\p{L}\\p{N}])${prefix}${wordEscape(n)}`, 'u');
+      return forms.some((f) => re.test(f));
+    });
+    if (match) hits.push(angle);
   }
   return hits;
 }

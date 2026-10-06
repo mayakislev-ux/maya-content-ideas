@@ -24,6 +24,18 @@ async function deployStamp() {
   return res.headers.get('last-modified') || res.headers.get('etag');
 }
 
+// אותה רשימה כמו ב-sw.js: קבצים שכתובתם משתנה כשהתוכן משתנה, ולכן אין שום
+// סיכון שגרסה ישנה שלהם תישאר.
+function isImmutableAsset(url) {
+  return (
+    /\/assets\/fonts\//.test(url) ||
+    /\/assets\/favicon\.png(?:\?|$)/.test(url) ||
+    /\/assets\/inspiration-thumbnails\//.test(url) ||
+    /\/assets\/(app|header)-background\.jpg(?:\?|$)/.test(url) ||
+    url.includes('gstatic.com/firebasejs/')
+  );
+}
+
 async function updateNow(button) {
   if (button) {
     button.disabled = true;
@@ -33,8 +45,15 @@ async function updateNow(button) {
     const reg = await navigator.serviceWorker?.getRegistration();
     await reg?.update();
     if (window.caches) {
-      const keys = await caches.keys();
-      await Promise.all(keys.map((k) => caches.delete(k)));
+      // 06/10/2026, מהביקורת: עדכון מחק את כל המטמון, כלומר כל עדכון זרק
+      // ~11MB של תמונות thumbnail והן ירדו מחדש על חבילת הגלישה. הקבצים
+      // שה-URL שלהם לא משתנה בין גרסאות (פונטים, תמונות המאגר) נשארים -
+      // בדיוק אותה רשימה כמו ב-sw.js.
+      await Promise.all((await caches.keys()).map(async (key) => {
+        const cache = await caches.open(key);
+        const reqs = await cache.keys();
+        await Promise.all(reqs.map((req) => (isImmutableAsset(req.url) ? null : cache.delete(req))));
+      }));
     }
   } catch (err) {
     console.warn('update cleanup failed (reloading anyway):', err);
@@ -107,12 +126,10 @@ function buildDialog() {
     </div>`;
   document.body.appendChild(wrap);
   wrap.querySelector('#update-dialog-now').addEventListener('click', (e) => updateNow(e.currentTarget));
-  // 06/10/2026, ממצא מהביקורת: לחלון לא הייתה שום דרך החוצה חוץ מהכפתור.
-  // לחיצה על הרקע מתנהגת כמו "עוד 10 דקות", וזה בדיוק מה שהפורטל עושה.
-  wrap.addEventListener('click', (e) => {
-    const later = wrap.querySelector('#update-dialog-later');
-    if (e.target === wrap && later && !later.hidden) later.click();
-  });
+  // 06/10/2026: הייתה כאן לחיצה על הרקע כ"עוד 10 דקות", אבל MAX_SNOOZES=0
+  // מסתיר את "אחר כך" תמיד, ולכן הקוד הזה לא יכול היה לרוץ אף פעם. מאיה
+  // ביקשה במפורש חלון שאי אפשר להתעלם ממנו, אז הדרך החוצה לא חוזרת - רק
+  // הקוד המת יורד, ובמקומו החלון לא מופיע כשיש טקסט שלא נשמר (showUpdateDialog).
   wrap.querySelector('#update-dialog-later').addEventListener('click', () => {
     snoozes += 1;
     snoozedUntil = Date.now() + SNOOZE_MS;
@@ -134,6 +151,18 @@ function showUpdateDialog() {
   // ובלתי אפשרי לפספס, והעדכון האוטומטי הוא רק רשת ביטחון למי שלא
   // נוגעת בו - כך שאף אחת לא נתקעת על גרסה ישנה, ואף אחת לא מופתעת.
   // 19/09/2026 (פיילוט): לא באמצע כתיבה של רעיון או צ'אט - יופיע בבדיקה הבאה
+  //
+  // 06/10/2026: כאן הוחלפה הבדיקה ב-safeToReload(), שבודק *כל* שדה טקסט
+  // בדף. זאת הייתה טעות חמורה, והיא בוטלה: שלושה שדות נטענים מ-localStorage
+  // בלי שאף אחת נגעה בהם בסשן הזה (טיוטת "הוספה מהירה", ושני שדות החימום),
+  // ושדות החיפוש לא מתנקים. כלומר לקוחה שהתחילה לכתוב רעיון פעם אחת ולא
+  // שלחה אותו - החלון לא היה קופץ אצלה שוב לעולם, וגם רשת הביטחון של
+  // 90 השניות לא הייתה נוצרת, כי היא נבנית רק אחרי השורה הזאת. באפליקציה
+  // מותקנת אין כפתור רענון, ולכן זאת גרסה ישנה לנצח - בדיוק התקלה שהמודול
+  // הזה קיים בשבילה.
+  // ההפרדה הנכונה: *כפתור* שמופיע הוא לא מסוכן, היא לוחצת עליו כשמתאים לה.
+  // מה שמוחק עבודה הוא הרענון האוטומטי, והוא בודק safeToReload() בעצמו
+  // (למטה). אז החלון נחסם רק באמצע הקלדה ממש.
   const el = document.activeElement;
   if (el && (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT' || el.isContentEditable)) return;
   const dialog = document.getElementById('update-dialog') || buildDialog();

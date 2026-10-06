@@ -709,6 +709,32 @@ h1, h2, h3 {
   transition: opacity 150ms ease;
 }
 
+/* 06/10/2026, מהביקורת: חמש עמודות שוות ב-360px קיצרו "בעל ערך" ל"בעל ע…".
+   שורה גוללת, בדיוק כמו שורת הזוויות במאגר ההשראה. */
+@media (max-width: 420px) {
+  .category-tabs {
+    overflow-x: auto;
+    /* overflow-y חייב להיות מפורש: כשציר אחד גולל, visible הופך ל-auto
+       לבד, והשורה מקבלת פס גלילה אנכי מיותר */
+    overflow-y: hidden;
+    scrollbar-width: none;
+    /* בלי הרמז הזה "מכירתי" יוצא מהמסך ואין שום סימן שיש עוד. אותה דעיכה
+       בדיוק כמו בשורת הזוויות של מאגר ההשראה, שנוספה לה מאותה סיבה. */
+    mask-image: linear-gradient(to left, #000 calc(100% - 24px), transparent);
+    -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 24px), transparent);
+  }
+  .category-tabs::-webkit-scrollbar { display: none; }
+  .category-tabs .quick-chip {
+    flex: 0 0 auto;
+    padding-inline: 0.7rem;
+  }
+  /* הצל של הלשונית הפעילה מגיע 18px מתחת לצ'יפ, והגלילה חותכת אותו.
+     צל צמוד שנכנס בתוך הריפוד של השורה, כדי שההדגשה לא תיעלם. */
+  .category-tabs .quick-chip.active {
+    box-shadow: 0 1px 2px rgba(29, 19, 48, 0.25);
+  }
+}
+
 .category-tabs .quick-chip.active {
   color: var(--text);
   box-shadow: var(--card-shadow);
@@ -1583,6 +1609,11 @@ h1, h2, h3 {
   .archive-controls select {
     font-size: 1.05rem;
     padding: 0.7rem;
+  }
+  /* 06/10/2026, מהביקורת: הקיצור padding למעלה מחק את הרווח שנשמר לחץ של
+     הרשימה הנפתחת (padding-left: 1.8rem), והחץ ישב על הטקסט עצמו. */
+  .archive-controls select {
+    padding-left: 1.8rem;
   }
 }
 
@@ -3678,6 +3709,13 @@ textarea:focus-visible,
   color: var(--muted);
   text-align: center;
   padding: 2rem 0;
+}
+/* 06/10/2026 (מאיה: "כתוב טוען השראה ושעה עד שהכל נטען"): ההודעה נכתבת
+   לתוך הרשת, ולכן היא נדחסה לעמודה אחת מתוך שתיים ונראתה כמו תקלה.
+   .inspiration-empty הוא אח של הרשת ולא ילד שלה, ולכן אין לו מה לעשות עם
+   grid-column - הכלל נפרד כדי שלא יטען שהוא מתקן משהו שהוא לא. */
+.inspiration-loading {
+  grid-column: 1 / -1;
 }
 
 /* "שכפול הפוך" - חיפוש רפרנס לפי מה שהלקוחה כבר מתכננת ליצור */
@@ -5947,10 +5985,12 @@ body.ip-open { overflow: hidden; }
 .inspiration-card-badge { min-width: 0; overflow-wrap: anywhere; }
 
 @media (max-width: 640px) {
-  /* בשתי עמודות על טלפון אין מקום לשתי תגיות זווית. הראשונה היא
-     החזקה ביותר, והשנייה רק מאריכה את הכרטיס */
-  .inspiration-card-angles .inspiration-card-angle:nth-child(n + 2) { display: none; }
-  .inspiration-card-angle { font-size: 11px; padding: 2px 6px; }
+  /* 06/10/2026 (מאיה: "בחלוקה לזוויות עדיין יש חוסר דיוק"): הכלל הקודם
+     הסתיר כאן כל תגית מהשנייה והלאה, כלומר סרטון שסווג לשתיים או שלוש
+     זוויות הראה אחת בלבד - והחלוקה נראתה חלקית בדיוק מפני שהיא הוסתרה.
+     התגיות נשארות, רק מתכווצות ונשברות לשורה. */
+  .inspiration-card-angles { flex-wrap: wrap; row-gap: 4px; }
+  .inspiration-card-angle { font-size: 10.5px; padding: 2px 6px; }
   .inspiration-card-read { font-size: 11px; padding: 2px 7px; }
   .inspiration-card-info { padding: 0.6rem; gap: 0.35rem; }
 
@@ -6205,6 +6245,9 @@ body { max-width: 100%; }
   .inspiration-card-thumb { height: 150px; }
   .inspiration-card-info { padding: 0.5rem; gap: 0.3rem; font-size: 0.85rem; }
   .inspiration-card-cta { font-size: 0.85rem; }
+  /* 06/10/2026, מהביקורת: min-height: 36px כאן ביטל את 44 הפיקסלים שהכלל
+     הקודם בקובץ קיים בשביל להבטיח - והכלל הזה הוא האחרון, אז הוא ניצח.
+     הכפתור נשאר קטן בטיפוגרפיה, לא באזור הנגיעה. */
   .inspiration-card-translate-btn,
-  .inspiration-card-copy-btn { min-height: 36px; font-size: 0.8rem; padding: 6px 10px; }
+  .inspiration-card-copy-btn { font-size: 0.8rem; padding: 6px 10px; }
 }
