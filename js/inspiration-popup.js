@@ -101,6 +101,35 @@ export function openVideoPopup(video) {
   frame.allowFullscreen = true;
   frameWrap.appendChild(frame);
 
+  // 06/10/2026 (מאיה: "הפופאפ פשוט לא עובד ולא פותח אף סרטון"). הקוד תקין,
+  // אבל ההטמעה עצמה יכולה להיחסם: מאיה נכנסת למוח השיווקי מתוך הפורטל,
+  // כלומר בתוך חלון של אפליקציה מותקנת, ושם דפדפנים חוסמים הטמעות של
+  // אינסטגרם וטיקטוק. התוצאה היא חלון שנפתח וריק, וזה נראה בדיוק כמו
+  // "לא עובד".
+  //
+  // אי אפשר לדעת מבחוץ אם המסגרת נטענה, כי היא ממקור אחר. לכן מודדים זמן:
+  // אם אחרי ארבע שניות אירוע הטעינה לא הגיע, מחליפים את המסגרת במסך ברור
+  // עם כפתור גדול שפותח במקור. עדיף זה מאשר ריבוע שחור בלי הסבר.
+  let loaded = false;
+  frame.addEventListener('load', () => { loaded = true; });
+  const fallbackTimer = setTimeout(() => {
+    if (loaded) return;
+    frameWrap.innerHTML = '';
+    frameWrap.classList.add('ip-frame--blocked');
+    const msg = document.createElement('p');
+    msg.className = 'ip-blocked__text';
+    msg.textContent = 'הסרטון הזה לא מוכן להצגה כאן, וזאת הגבלה של אינסטגרם וטיקטוק ולא תקלה אצלנו.';
+    const go = document.createElement('a');
+    go.className = 'ip-blocked__btn';
+    go.href = video.url;
+    go.target = '_blank';
+    go.rel = 'noopener noreferrer';
+    go.textContent = 'לצפות בסרטון ↗';
+    frameWrap.append(msg, go);
+  }, 4000);
+  // סגירה מבטלת את ההמתנה, אחרת היא תרוץ על חלון שכבר לא קיים
+  x.addEventListener('click', () => clearTimeout(fallbackTimer));
+
   box.append(bar, frameWrap);
   el.appendChild(box);
   el.hidden = false;

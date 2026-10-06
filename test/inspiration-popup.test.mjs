@@ -148,3 +148,24 @@ test('אינסטגרם לא נפגע מהשינוי', () => {
   assert.equal(embedUrlFor('https://www.instagram.com/reel/C8xYzAbCdEf/'),
     'https://www.instagram.com/p/C8xYzAbCdEf/embed/');
 });
+
+// 06/10/2026 (מאיה: "הפופאפ פשוט לא עובד ולא פותח אף סרטון"). הקוד תקין,
+// אבל ההטמעה עצמה יכולה להיחסם: היא נכנסת למוח השיווקי מתוך הפורטל, כלומר
+// בתוך חלון של אפליקציה מותקנת, ושם דפדפנים חוסמים הטמעות של אינסטגרם
+// וטיקטוק. התוצאה היא חלון שנפתח וריק, וזה נראה בדיוק כמו "לא עובד".
+import { readFileSync as readPop } from 'node:fs';
+const POPSRC = readPop(new URL('../js/inspiration-popup.js', import.meta.url), 'utf8');
+
+test('יש רשת ביטחון כשההטמעה נחסמת', () => {
+  assert.ok(POPSRC.includes("addEventListener('load'"), 'לא נמדד אם המסגרת נטענה');
+  assert.ok(/setTimeout\([\s\S]{0,400}?ip-frame--blocked/.test(POPSRC), 'אין מסך חלופי');
+  assert.ok(POPSRC.includes('ip-blocked__btn'), 'אין כפתור לפתיחה במקור');
+});
+
+test('ההמתנה מבוטלת בסגירה, אחרת היא רצה על חלון שנסגר', () => {
+  assert.ok(POPSRC.includes('clearTimeout(fallbackTimer)'), 'הטיימר לא מבוטל');
+});
+
+test('ההודעה אומרת שזאת הגבלה של הפלטפורמה ולא תקלה אצלנו', () => {
+  assert.ok(/הגבלה של אינסטגרם וטיקטוק/.test(POPSRC), 'הניסוח מאשים את המערכת במקום להסביר');
+});

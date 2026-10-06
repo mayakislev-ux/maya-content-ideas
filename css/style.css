@@ -6137,3 +6137,26 @@ html { overflow-x: hidden; }
 /* 06/10/2026: נקודת העוגן שמסמנת מתי לטעון עוד כרטיסים. היא תופסת את כל
    רוחב הרשת כדי שלא תיצור עמודה שלישית ריקה. */
 .inspiration-sentinel { grid-column: 1 / -1; height: 1px; }
+
+/* 06/10/2026: כשההטמעה נחסמת, במקום ריבוע שחור בלי הסבר */
+.ip-frame--blocked {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 24px;
+  background: #fff;
+  text-align: center;
+}
+.ip-blocked__text { margin: 0; font-size: 15px; line-height: 1.5; color: #4a4458; }
+.ip-blocked__btn {
+  display: inline-block;
+  min-height: 48px;
+  padding: 13px 26px;
+  border-radius: 12px;
+  background: #6134a8;
+  color: #fff;
+  font-weight: 800;
+  text-decoration: none;
+}
