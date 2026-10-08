@@ -7,10 +7,19 @@ service cloud.firestore {
     function isAllowed() {
       return isAdmin() || (request.auth != null && exists(/databases/$(database)/documents/allowlist/$(request.auth.token.email)));
     }
+    /* 08/10/2026: מנוי "רפרנסים בלבד", 79 ש"ח לחודש. הלקוחה רשומה
+       ב-allowlist כמו כולן, אבל עם plan:'refs', ולכן isAllowed() לבדו
+       כבר לא מספיק כדי לגשת לתוכן. isFull() הוא מה שמגן על כל השאר. */
+    function planOf() {
+      return get(/databases/$(database)/documents/allowlist/$(request.auth.token.email)).data.plan;
+    }
+    function isFull() {
+      return isAdmin() || (isAllowed() && planOf() != 'refs');
+    }
 
     match /ideas/{ideaId} {
-      allow read, update, delete: if isAllowed() && request.auth.uid == resource.data.ownerUid;
-      allow create: if isAllowed() && request.auth.uid == request.resource.data.ownerUid;
+      allow read, update, delete: if isFull() && request.auth.uid == resource.data.ownerUid;
+      allow create: if isFull() && request.auth.uid == request.resource.data.ownerUid;
     }
     match /profiles/{uid} {
       allow read, write: if isAllowed() && request.auth.uid == uid;
@@ -24,13 +33,13 @@ service cloud.firestore {
       allow read, update, delete: if false;
     }
     match /warmingPlans/{planId} {
-      allow read, update, delete: if isAllowed() && request.auth.uid == resource.data.ownerUid;
-      allow create: if isAllowed() && request.auth.uid == request.resource.data.ownerUid;
+      allow read, update, delete: if isFull() && request.auth.uid == resource.data.ownerUid;
+      allow create: if isFull() && request.auth.uid == request.resource.data.ownerUid;
     }
     // 30/09/2026: טבלת החימום. מסמך אחד לכל לקוחה, לפי ה-uid שלה, ולכן
     // אין צורך ב-ownerUid בתוך המסמך כמו באוספים שהמזהה שלהם אקראי.
     match /storyTables/{uid} {
-      allow read, write: if isAllowed() && request.auth.uid == uid;
+      allow read, write: if isFull() && request.auth.uid == uid;
       // 30/09/2026 (מאיה: "אבל למה לא מפורט?"): היא הסתכלה על החשבון שלה,
       // שהקובץ שלו ריק, וחשבה שהמסך שבור. מאיה קוראת כל טבלה כדי לראות מה
       // לקוחה רואה. קריאה בלבד, בלי כתיבה.
@@ -49,8 +58,8 @@ service cloud.firestore {
       allow create: if isAdmin() && request.auth.uid == request.resource.data.ownerUid;
     }
     match /contentPlans/{planId} {
-      allow read, update, delete: if isAllowed() && request.auth.uid == resource.data.ownerUid;
-      allow create: if isAllowed() && request.auth.uid == request.resource.data.ownerUid;
+      allow read, update, delete: if isFull() && request.auth.uid == resource.data.ownerUid;
+      allow create: if isFull() && request.auth.uid == request.resource.data.ownerUid;
     }
     match /pushSubscriptions/{uid} {
       allow read, write: if isAllowed() && request.auth.uid == uid;

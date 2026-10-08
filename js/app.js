@@ -210,10 +210,23 @@ function onIdeasChanged(ideas) {
   refreshContentPlanGate();
 }
 
-async function isEmailAllowed(email) {
-  if (email === ADMIN_EMAIL) return true;
+/* 08/10/2026: עד היום הגישה הייתה כן או לא. נוסף מנוי "רפרנסים בלבד"
+   (79 ש"ח לחודש, מאגר ההשראה בלבד), ולכן צריך לדעת גם איזה מנוי יש
+   ומתי הוא נגמר. paidUntil הוא תאריך ולא מתג: חיוב שנכשל סוגר את
+   הגישה מעצמו, בלי שמישהו יצטרך לזכור לכבות אותה.
+   ההסתרה בממשק היא נוחות בלבד. האכיפה האמיתית היא ב-firestore.rules
+   וב-enforceAllowlist בשרת. */
+async function loadAccess(email) {
+  if (email === ADMIN_EMAIL) return { allowed: true, refsOnly: false, expired: false };
   const snap = await getDoc(doc(db, 'allowlist', email));
-  return snap.exists();
+  if (!snap.exists()) return { allowed: false, refsOnly: false, expired: false };
+  const data = snap.data() || {};
+  const until = data.paidUntil?.toDate ? data.paidUntil.toDate() : null;
+  return {
+    allowed: true,
+    refsOnly: data.plan === 'refs',
+    expired: !!until && until.getTime() < Date.now(),
+  };
 }
 
 const IGNORABLE_LOGIN_ERROR_CODES = new Set(['auth/popup-closed-by-user', 'auth/cancelled-popup-request']);
@@ -537,11 +550,11 @@ onAuthChange(async (user) => {
     return;
   }
 
-  let allowed;
+  let access;
   try {
-    allowed = await isEmailAllowed(user.email);
+    access = await loadAccess(user.email);
   } catch (err) {
-    console.error('isEmailAllowed check failed:', err);
+    console.error('loadAccess check failed:', err);
     document.getElementById('login-screen').hidden = false;
     document.getElementById('app-screen').hidden = true;
     const errorEl = document.getElementById('login-error');
@@ -550,13 +563,22 @@ onAuthChange(async (user) => {
     await signOutUser();
     return;
   }
-  if (!allowed) {
+  if (!access.allowed) {
     const errorEl = document.getElementById('login-error');
     errorEl.textContent = 'מייל לא קיים במערכת, אנא פני/פנה למאיה';
     errorEl.hidden = false;
     await signOutUser();
     return;
   }
+  if (access.expired) {
+    const errorEl = document.getElementById('login-error');
+    errorEl.textContent = 'המנוי הסתיים. אנא פני למאיה כדי לחדש';
+    errorEl.hidden = false;
+    await signOutUser();
+    return;
+  }
+  /* מנוי רפרנסים: הגוף מסומן, וה-CSS מסתיר את כל מה שלא מאגר ההשראה */
+  document.body.dataset.plan = access.refsOnly ? 'refs' : 'full';
 
   document.getElementById('login-screen').hidden = true;
   document.getElementById('app-screen').hidden = false;
@@ -636,7 +658,11 @@ onAuthChange(async (user) => {
   } else {
     const restorableViews = ['guide', 'inspiration', 'feedback', 'roadmap', 'content-plan', 'archive'];
     const lastView = getLastView();
-    const viewToShow = restorableViews.includes(lastView) ? lastView : 'home';
+    /* מנוי רפרנסים נוחת תמיד על מאגר ההשראה, גם אם המסך האחרון שנשמר
+       אצלו בדפדפן הוא מסך אחר מלפני שהמנוי השתנה. */
+    const viewToShow = access.refsOnly
+      ? 'inspiration'
+      : (restorableViews.includes(lastView) ? lastView : 'home');
     showView(viewToShow);
     if (viewToShow === 'inspiration') openInspirationView();
   }

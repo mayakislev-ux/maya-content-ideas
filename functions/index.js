@@ -72,6 +72,17 @@ async function enforceAllowlist(email) {
   if (!snap.exists) {
     throw new HttpsError('permission-denied', 'המייל הזה לא רשום במערכת, אנא פנו למאיה');
   }
+  /* 08/10/2026: מנוי "רפרנסים בלבד". הסתרה בממשק אינה הגבלה, אפשר
+     לקרוא לפונקציה ישירות, ולכן הסירוב חייב להיות כאן. */
+  const data = snap.data() || {};
+  if (data.plan === 'refs') {
+    throw new HttpsError('permission-denied', 'המנוי שלך כולל את מאגר ההשראה בלבד');
+  }
+  /* התאריך, ולא מתג. חיוב חודשי שנכשל סוגר את הגישה מעצמו. */
+  const until = data.paidUntil && data.paidUntil.toDate ? data.paidUntil.toDate() : null;
+  if (until && until.getTime() < Date.now()) {
+    throw new HttpsError('permission-denied', 'המנוי הסתיים. אנא פנו למאיה');
+  }
 }
 
 // שני עוזרי אימות אורך - אותה בעיה כמו שכבר תוקנה היום ל-pieceCount

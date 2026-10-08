@@ -6251,3 +6251,30 @@ body { max-width: 100%; }
   .inspiration-card-translate-btn,
   .inspiration-card-copy-btn { font-size: 0.8rem; padding: 6px 10px; }
 }
+
+/* ===================================================================
+   מנוי "רפרנסים בלבד" (08/10/2026, 79 ש"ח לחודש)
+   -------------------------------------------------------------------
+   הלקוחה רואה את מאגר ההשראה ותו לא. ההסתרה כאן היא כדי שהמסך יהיה
+   נקי ולא יציג לה דברים שאין לה, ולא בתור הגנה: הגישה עצמה חסומה
+   ב-firestore.rules וב-enforceAllowlist בשרת.
+   =================================================================== */
+body[data-plan="refs"] #tab-home,
+body[data-plan="refs"] #tab-archive,
+body[data-plan="refs"] #tab-chat,
+body[data-plan="refs"] #tab-guide,
+body[data-plan="refs"] #tab-feedback,
+body[data-plan="refs"] #bottomnav-home,
+body[data-plan="refs"] #bottomnav-archive,
+body[data-plan="refs"] #bottomnav-chat,
+body[data-plan="refs"] #bottomnav-more,
+body[data-plan="refs"] #add-idea-fab,
+body[data-plan="refs"] #random-idea-btn,
+body[data-plan="refs"] #home-progress-widget,
+body[data-plan="refs"] #install-app-btn { display: none !important; }
+
+/* בלי הכפתורים התחתונים אין טעם בסרגל התחתון כולו */
+body[data-plan="refs"] .bottom-nav { display: none !important; }
+
+/* לשונית אחת לא צריכה גלילה אופקית ולא כפתור סגירה של תפריט */
+body[data-plan="refs"] .view-tabs-scroll { justify-content: center; }

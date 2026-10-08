@@ -25,7 +25,7 @@ test('לקוחה קוראת וכותבת רק את הטבלה של עצמה', ()
   const b = block('storyTables');
   assert.ok(b.length > 0, 'הכלל קיים');
   assert.ok(
-    b.includes('allow read, write: if isAllowed() && request.auth.uid == uid;'),
+    b.includes('allow read, write: if isFull() && request.auth.uid == uid;'),
     'הכלל שמגביל לקוחה למסמך שלה עצמה'
   );
 });
@@ -61,4 +61,37 @@ test('אף אוסף אינו פתוח לכל מי שמחוברת', () => {
   ];
   const unexpected = loose.filter((l) => !onPurpose.includes(l));
   assert.deepEqual(unexpected, [], 'כלל פתוח מדי: ' + unexpected.join(' | '));
+});
+
+
+/* 08/10/2026: מנוי "רפרנסים בלבד", 79 ש"ח לחודש. הלקוחה רשומה
+   ב-allowlist כמו כולן, ולכן isAllowed() מחזיר לה אמת. מה שמגן על שאר
+   התוכן הוא isFull(). הטסטים האלה נועלים את ההפרדה הזאת: אם מישהו יחזיר
+   אוסף תוכן ל-isAllowed(), הוא ייפתח בשקט למנוי שלא שילם עליו. */
+test('מנוי רפרנסים מזוהה לפי plan ולא לפי עצם הקיום ברשימה', () => {
+  assert.ok(RULES.includes("planOf()"), 'יש פונקציה שקוראת את סוג המנוי');
+  assert.ok(RULES.includes("planOf() != 'refs'"), 'isFull שולל במפורש את מנוי הרפרנסים');
+});
+
+test('מאגר ההשראה פתוח לכל מי שברשימה, כולל מנוי רפרנסים', () => {
+  assert.ok(block('inspirationBank').includes('allow read: if isAllowed();'));
+});
+
+test('אוספי התוכן דורשים מנוי מלא', () => {
+  for (const name of ['ideas', 'warmingPlans', 'contentPlans', 'storyTables']) {
+    const b = block(name);
+    assert.ok(b.length > 0, name + ' קיים');
+    assert.ok(b.includes('isFull()'), name + ' דורש מנוי מלא');
+    const allowLines = b.split(String.fromCharCode(10)).filter((l) => l.includes('allow '));
+    assert.ok(
+      allowLines.every((l) => !l.includes('isAllowed()')),
+      name + ' לא נשען על isAllowed לבדו'
+    );
+  }
+});
+
+test('מה שלא תוכן נשאר פתוח, אחרת האפליקציה לא תעבוד לה', () => {
+  for (const name of ['profiles', 'pushSubscriptions']) {
+    assert.ok(block(name).includes('isAllowed()'), name + ' פתוח לכל מי שברשימה');
+  }
 });
