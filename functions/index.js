@@ -2000,6 +2000,9 @@ Object.assign(exports, require('./daily-summary'));
 Object.assign(exports, require('./seminar-registration-count'));
 
 Object.assign(exports, require('./marathon-launch'));
+/* 08/10/2026: קליטת שאלון ההכנה לפגישת אסטרטגיה, כדי שהתשובות יגיעו
+   למאיה ולא יישארו בדפדפן של הלקוחה. */
+Object.assign(exports, require('./strategy-form'));
 
 // 30/09/2026: טבלת החימום בסטורי. הפונקציה מקבלת את enforceAllowlist מכאן
 // כדי לא לשכפל את בדיקת ההרשאה, שהיא אותה בדיקה בכל שאר הפונקציות.
