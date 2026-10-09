@@ -6278,3 +6278,16 @@ body[data-plan="refs"] .bottom-nav { display: none !important; }
 
 /* לשונית אחת לא צריכה גלילה אופקית ולא כפתור סגירה של תפריט */
 body[data-plan="refs"] .view-tabs-scroll { justify-content: center; }
+
+/* הכרזת תצוגת הלקוחה (08/10/2026). מופיעה רק למאיה, רק עם preview=refs,
+   כדי שלא תחשוב שהאפליקציה איבדה את הכפתורים שלה. */
+.preview-bar {
+  position: sticky; top: 0; z-index: 9999;
+  display: flex; align-items: center; justify-content: center; gap: 14px;
+  flex-wrap: wrap; padding: 9px 16px;
+  background: linear-gradient(135deg, #7b3799 0%, #531e62 100%);
+  color: #fff; font-size: 0.85rem; font-weight: 600; text-align: center;
+}
+.preview-bar a {
+  color: #f0d6a3; font-weight: 700; text-decoration: underline; white-space: nowrap;
+}

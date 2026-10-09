@@ -580,6 +580,21 @@ onAuthChange(async (user) => {
   /* מנוי רפרנסים: הגוף מסומן, וה-CSS מסתיר את כל מה שלא מאגר ההשראה */
   document.body.dataset.plan = access.refsOnly ? 'refs' : 'full';
 
+  /* 08/10/2026 (מאיה: "רוצה לראות פיילוט רגע איך הלקוחה רואה"): תצוגת
+     לקוחה למאיה בלבד, דרך ?preview=refs. זו תצוגה בלבד, היא לא נוגעת
+     במסד ולא משנה למי יש גישה למה. הכרזה למעלה קיימת כדי שלא תחשוב
+     לרגע שהאפליקציה שלה נשברה ואיבדה את כל הכפתורים. */
+  const previewRefs = new URLSearchParams(window.location.search).get('preview') === 'refs'
+    && user.email === ADMIN_EMAIL;
+  if (previewRefs) {
+    document.body.dataset.plan = 'refs';
+    const bar = document.createElement('div');
+    bar.className = 'preview-bar';
+    bar.innerHTML = '<span>תצוגת לקוחה · מנוי רפרנסים בלבד. רק אצלך על המסך, שום דבר לא השתנה במערכת.</span>'
+      + '<a href="' + window.location.pathname + '">חזרה לתצוגה שלי</a>';
+    document.body.prepend(bar);
+  }
+
   document.getElementById('login-screen').hidden = true;
   document.getElementById('app-screen').hidden = false;
   // Firebase Auth's lastSignInTime לא מתעדכן בפתיחה חוזרת של ה-PWA (הסשן
@@ -660,7 +675,7 @@ onAuthChange(async (user) => {
     const lastView = getLastView();
     /* מנוי רפרנסים נוחת תמיד על מאגר ההשראה, גם אם המסך האחרון שנשמר
        אצלו בדפדפן הוא מסך אחר מלפני שהמנוי השתנה. */
-    const viewToShow = access.refsOnly
+    const viewToShow = (access.refsOnly || previewRefs)
       ? 'inspiration'
       : (restorableViews.includes(lastView) ? lastView : 'home');
     showView(viewToShow);
