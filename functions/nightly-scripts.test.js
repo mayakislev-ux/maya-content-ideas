@@ -150,6 +150,42 @@ test('סכום כספי ליד שרה נפסל, גם בסימן שקל', () => {
   assert.strictEqual(r, 'סכום כספי ליד שרה');
 });
 
+/* 10/10/2026: שלושה תסריטים אמיתיים הבטיחו נכס שלא קיים. אם מאיה
+   מצלמת את זה היא נשארת עם הבטחה שאינה יכולה לקיים. */
+test('הבטחת שיעור חינמי נפסלת', () => {
+  const r = rejectReason({ ...good, script: HOOK + ' יש לי שיעור חינמי שבו אני מסבירה. ' + 'ש'.repeat(400) });
+  assert.strictEqual(r, 'מבטיח נכס שלא קיים');
+});
+
+test('"כתבי מילה בתגובות ואני אשלח לך את זה בחינם" נפסל', () => {
+  const r = rejectReason({ ...good, script: HOOK + ' כתבי בתגובות "לידים" ואני אשלח לך את זה בחינם. ' + 'ש'.repeat(400) });
+  assert.strictEqual(r, 'מבטיח נכס שלא קיים');
+});
+
+test('הבטחת מדריך חינמי נפסלת גם בלשון נקבה', () => {
+  const r = rejectReason({ ...good, script: HOOK + ' הכנתי סדנה חינמית בשבילך. ' + 'ש'.repeat(400) });
+  assert.strictEqual(r, 'מבטיח נכס שלא קיים');
+});
+
+test('הפניה לשאלון האבחון או לעקיבה עוברת', () => {
+  const ok1 = rejectReason({ ...good, script: HOOK + ' שאלון האבחון מחכה בפרופיל. ' + 'ש'.repeat(400) });
+  const ok2 = rejectReason({ ...good, script: HOOK + ' אם את רוצה עוד על תמחור, תעקבי אחריי. ' + 'ש'.repeat(400) });
+  assert.strictEqual(ok1, null);
+  assert.strictEqual(ok2, null);
+});
+
+/* 10/10/2026: תסריט אמיתי כתב "מ-15 אלף ל-45 אלף שקל בחודש", והביטוי
+   הראשון שלי דרש מספר צמוד למילה שקל, ולכן לא תפס את זה בכלל. */
+test('סכום בנוסח "45 אלף שקל" ליד שרה נפסל', () => {
+  const r = rejectReason({ ...good, script: HOOK + ' שרה עברה ל-45 אלף שקל בחודש. ' + 'ש'.repeat(400) });
+  assert.strictEqual(r, 'סכום כספי ליד שרה');
+});
+
+test('סכום בנוסח מיליון ליד סלבה נפסל', () => {
+  const r = rejectReason({ ...good, script: HOOK + ' סלבה הגיעה למיליון שקל. ' + 'ש'.repeat(400) });
+  assert.strictEqual(r, 'סכום כספי ליד סלבה');
+});
+
 test('סלבה בלי סכום עוברת', () => {
   const r = rejectReason({ ...good, script: HOOK + ' סלבה עלתה מ-2,830 עוקבים ל-4,593 עוקבים. ' + 'ש'.repeat(400) });
   assert.strictEqual(r, null);
