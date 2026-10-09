@@ -2218,6 +2218,7 @@ Object.assign(exports, require('./strategy-form'));
 /* 09/10/2026: מפעל התוכן הלילי. שלושה תסריטים מוכנים כל בוקר
    משיטת השכפול ומהמאגר, במקום שעתיים שבועיות של חיפוש רעיונות. */
 Object.assign(exports, require('./nightly-scripts'));
+Object.assign(exports, require('./backfill-marketing'));
 
 // 30/09/2026: טבלת החימום בסטורי. הפונקציה מקבלת את enforceAllowlist מכאן
 // כדי לא לשכפל את בדיקת ההרשאה, שהיא אותה בדיקה בכל שאר הפונקציות.
