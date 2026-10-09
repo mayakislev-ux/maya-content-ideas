@@ -127,7 +127,7 @@ async function askClaude(prompt, key) {
     method: 'POST',
     /* 10/10/2026, מהביקורת: לקריאה לא היה שום גבול זמן, ולכן שתי קריאות
        איטיות יכלו לחתוך את כל הריצה אחרי שכבר שילמנו עליהן. */
-    signal: AbortSignal.timeout(100000),
+    signal: AbortSignal.timeout(170000),
     headers: {
       'content-type': 'application/json',
       'x-api-key': key,
@@ -479,15 +479,15 @@ async function runFactory(options) {
   const startedAt = Date.now();
   /* 10/10/2026, נמדד: הרצה אחת ארכה 471 שניות מתוך 540 ונעצרה בשער.
      זה צמוד מדי, כי קריאה אחרונה שמתחילה על הגבול עוד מוסיפה דקה. */
-  const outOfTime = () => Date.now() - startedAt > 330000;
+  const outOfTime = () => Date.now() - startedAt > 300000;
 
-  for (const ref of refs) {
-    if (made.length >= HOW_MANY) break;
-    if (outOfTime()) {
-      console.log('nightlyScripts: stopped on time budget after', made.length);
-      rejected.push({ refId: ref.id, why: 'נעצר בגלל מגבלת זמן' });
-      break;
-    }
+  /* 10/10/2026, נמדד: תשע קריאות בטור ארכו 336 עד 471 שניות, ולפונקציה
+     מתוזמנת יש 540 ולא יותר. עם הזדמנות שנייה זה פשוט לא נכנס, והריצה
+     נחתכה אחרי שכבר שילמנו. הרפרנסים אינם תלויים זה בזה, ולכן הם רצים
+     בגלים של שלושה במקביל, וזמן הקיר יורד פי שלושה. */
+  const WAVE = 3;
+
+  async function handleRef(ref) {
     try {
       let raw = await askClaude(buildPrompt(ref), key);
       let parsed = parseScript(raw);
@@ -507,9 +507,8 @@ async function runFactory(options) {
 
       if (why) {
         rejected.push({ refId: ref.id, why, raw: why.startsWith('אין ') ? raw.slice(0, 400) : undefined });
-        /* רק חוסר התאמה אמיתית של המנגנון חוסמת את הרפרנס לעתיד. כשל
-           ניסוח חוזר מותיר אותו מועמד, אחרת שרפתי רפרנס טוב על ניסוח. */
         if (parsed.unfit) {
+          /* רק חוסר התאמה אמיתית של המנגנון חוסמת את הרפרנס לעתיד. */
           await db.collection('nightlyRejects').doc(ref.id).set({
             why,
             url: ref.url || null,
@@ -521,8 +520,7 @@ async function runFactory(options) {
             raw: raw.slice(0, 1500),
             at: FieldValue.serverTimestamp(),
           });
-        }
-        if (!parsed.unfit) {
+        } else {
           /* פסילת ניסוח: נספרת ולא חוסמת, עד שלוש פעמים. */
           await db.collection('nightlyRejects').doc(ref.id).set({
             why,
@@ -532,8 +530,9 @@ async function runFactory(options) {
           }, { merge: true });
         }
         console.log('nightlyScripts: rejected', ref.id, why);
-        continue;
+        return;
       }
+
       const doc = await db.collection('nightlyScripts').add({
         mechanism: parsed.mechanism,
         hook: parsed.hook,
@@ -573,6 +572,16 @@ async function runFactory(options) {
       console.error('nightlyScripts: failed on', ref.id, err?.message);
       rejected.push({ refId: ref.id, why: `תקלה: ${err?.message || 'לא ידוע'}` });
     }
+  }
+
+  for (let i = 0; i < refs.length; i += WAVE) {
+    if (made.length >= HOW_MANY) break;
+    if (outOfTime()) {
+      console.log('nightlyScripts: stopped on time budget after', made.length);
+      rejected.push({ refId: refs[i].id, why: 'נעצר בגלל מגבלת זמן' });
+      break;
+    }
+    await Promise.all(refs.slice(i, i + WAVE).map(handleRef));
   }
 
   if (!quiet) {
