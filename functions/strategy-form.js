@@ -18,6 +18,7 @@
 const { onRequest } = require('firebase-functions/v2/https');
 const { defineSecret } = require('firebase-functions/params');
 const { getFirestore, FieldValue } = require('firebase-admin/firestore');
+const crypto = require('node:crypto');
 
 // nodemailer נטען רק כשבאמת שולחים, כמו ב-grow-payment-webhook
 let mailer = null;
@@ -89,13 +90,39 @@ const strategyForm = onRequest(
 
     const db = getFirestore();
     const stamp = israelStamp();
-    const fileName = `${form} ${who} ${stamp.replace(/[/:]/g, '-')}.txt`;
+    const fileName = form + ' ' + who + ' ' + stamp.replace(/[/:]/g, '-') + '.txt';
+
+    /* 09/10/2026: שלוש הגשות זהות נקלטו בתוך שנייה וחצי, וכל אחת הקפיצה
+       למאיה וואטסאפ ומייל נפרדים. לקוחה שלוחצת פעמיים, או דף שמנסה שוב
+       אחרי רשת שנתקעה, היו עושים לה בדיוק את זה.
+
+       הנעילה היא create() על מסמך שהמזהה שלו הוא טביעת התוכן. create
+       נכשל אם המסמך כבר קיים, וזו פעולה אטומית בצד השרת, ולכן גם שתי
+       בקשות שמגיעות באותה מילישנייה לא יכולות שתיהן לעבור. ניסיון
+       ראשון עם שאילתה נכשל כאן כי הוא דרש אינדקס מורכב שלא היה קיים,
+       והבדיקה פשוט ויתרה בשקט. בשיטה הזאת אין שאילתה ואין אינדקס. */
+    const fingerprint = crypto.createHash('sha256').update(form + '|' + who + '|' + text).digest('hex');
+    const lockRef = db.collection('strategyFormLocks').doc(fingerprint);
+    const WINDOW_MS = 5 * 60 * 1000;
+    try {
+      await lockRef.create({ at: Date.now(), form, who });
+    } catch (err) {
+      /* הנעילה תפוסה. אם היא טרייה זו אותה הגשה, ואם היא ישנה זו הגשה
+         חדשה של אותו תוכן וצריך לקלוט אותה. */
+      let at = 0;
+      try { at = (await lockRef.get()).data()?.at ?? 0; } catch { at = 0; }
+      if (Date.now() - at < WINDOW_MS) {
+        console.log('strategyForm: duplicate ignored', JSON.stringify({ form, who }));
+        return res.status(200).json({ ok: true, duplicate: true });
+      }
+      try { await lockRef.set({ at: Date.now(), form, who }); } catch { /* לא חוסם */ }
+    }
 
     /* 1. שמירה קודם. מכאן והלאה התשובות לא הולכות לאיבוד. */
     let docId = null;
     try {
       const ref = await db.collection('strategyForms').add({
-        form, who, text, answered, total,
+        form, who, text, answered, total, fingerprint,
         receivedAt: FieldValue.serverTimestamp(),
         receivedAtLocal: stamp,
         userAgent: String(req.headers['user-agent'] || '').slice(0, 300),

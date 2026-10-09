@@ -58,3 +58,36 @@ test('הכתובות והיעדים הם של מאיה', () => {
   assert.ok(SRC.includes("MAYA_EMAIL = 'mayakislev@gmail.com'"));
   assert.ok(SRC.includes("MAYA_CHAT_ID = '972525533679@c.us'"), 'המספר האישי שלה, כמו בסיכום היומי');
 });
+
+/* 09/10/2026: שלוש הגשות זהות נקלטו בתוך שנייה וחצי בבדיקה של השאלון,
+   וכל אחת הקפיצה למאיה וואטסאפ ומייל נפרדים. הניסיון הראשון למנוע את
+   זה היה שאילתה, והיא נכשלה בשקט כי חסר אינדקס מורכב. */
+test('הגשה כפולה לא מודיעה למאיה פעמיים', () => {
+  assert.ok(SRC.includes("collection('strategyFormLocks')"), 'יש נעילה');
+  assert.ok(SRC.includes('lockRef.create('), 'והיא create, שהוא אטומי ולכן עמיד בשתי בקשות בו זמנית');
+  const dedupe = SRC.slice(SRC.indexOf('lockRef.create('), SRC.indexOf("collection('strategyForms').add"));
+  assert.ok(/duplicate: true/.test(dedupe), 'כפולה מסומנת ככפולה');
+  assert.ok(/return res\.status\(200\)/.test(dedupe), 'ומוחזרת לה הצלחה, לא שגיאה');
+  assert.ok(dedupe.indexOf('sendMail') === -1, 'ולא נשלח עליה מייל');
+});
+
+test('הדדופ לא נשען על שאילתה, שדורשת אינדקס', () => {
+  assert.ok(!SRC.includes("where('fingerprint'"), 'בלי שאילתה על טביעה');
+  assert.ok(SRC.includes('WINDOW_MS'), 'יש חלון זמן מוגדר');
+});
+
+test('נעילה ישנה לא חוסמת הגשה חדשה של אותו תוכן', () => {
+  assert.ok(SRC.includes('Date.now() - at < WINDOW_MS'), 'הכפילות נמדדת לפי זמן');
+  assert.ok(SRC.includes('lockRef.set('), 'ונעילה שפגה מתחדשת במקום לחסום');
+});
+
+/* 09/10/2026: עריכה שלי מחקה בטעות את ההגדרה של fileName, והמייל נפל
+   עם "fileName is not defined" בזמן שהוואטסאפ דווקא יצא. */
+test('כל מה שהמייל משתמש בו באמת מוגדר', () => {
+  for (const name of ['fileName', 'BOM', 'stamp']) {
+    assert.ok(
+      new RegExp('const ' + name + '\\s*=').test(SRC),
+      name + ' מוגדר'
+    );
+  }
+});
