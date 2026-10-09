@@ -215,11 +215,14 @@ function selectIdeasForRatio(readyIdeasSortedByRating, pieceCount, pinnedIds = n
   };
 }
 
+/* 09/10/2026 (מאיה: "בידורי להעיף מבחינתי"): השיטה החדשה לבניית תכנית
+   תוכן היא 50/30/20 בלי קטגוריה בידורית. התווית עצמה נשארת קיימת על
+   רעיונות שכבר מתויגים בה (ראו LEGACY_CATEGORIES), אבל התכנון לא מקצה
+   לה אחוז ולא דורש רעיונות בה. */
 const CATEGORY_TARGETS = {
-  'בעל ערך': 0.4,
+  'בעל ערך': 0.5,
   'אישי': 0.3,
-  'מכירתי': 0.15,
-  'בידורי': 0.15,
+  'מכירתי': 0.2,
 };
 
 const STAGE_SHORT_LABELS = {
@@ -319,20 +322,25 @@ function checkAudience(appItems) {
   return { label: `קהל משני: ${Math.round(secondaryShare * 100)}% (יעד עד כ-20%)`, ok: secondaryShare <= 0.2 };
 }
 
-function checkPersuasionStages(appItems) {
-  const total = appItems.length;
-  if (!total) return [];
-  const counts = {};
-  for (const item of appItems) counts[item.persuasionStage] = (counts[item.persuasionStage] || 0) + 1;
-  return PERSUASION_STAGES.map((stage, i) => {
-    const actual = pct(counts[stage] || 0, total);
-    return { label: `שלב שכנוע ${i + 1}: ${Math.round(actual * 100)}%`, ok: withinHalfDouble(actual, 1 / 3) };
-  });
-}
+/* 09/10/2026 (מאיה: "שלבי שכנוע מבחינתי לא רלוונטי כי הכנסתי את זה בעצם
+   ב[שבעת התכנים החשובים]... כל אלה שייכים ל-3 שלבי השכנוע אז זה עונה על
+   זה"): שלוש השורות האלה ירדו מכרטיס הבדיקה. הן גם הפכו להיות שגויות
+   בפועל: השדה הוא שדה רשות עכשיו, ולכן תכנית מרעיונות חדשים היתה מציגה
+   שלוש שורות אדומות של 0% בלי שיש בזה שום בעיה אמיתית.
+   כיסוי שבעת התכנים החשובים (checkMustIncludeCoverage) הוא מה שמודד את
+   אותו דבר עצמו. */
 
+/* 09/10/2026 (מאיה: "סדרה ופורמט תוכן חזור זה מבחינתי כן חייב שיהיה"):
+   התווית הקודמת אמרה "לא חובה אבל מומלץ", וזה בדיוק ההפך ממה שהיא
+   מתכוונת. */
 function checkSeries(plan) {
   const note = (plan.seriesNote || '').trim();
-  return { label: note ? `סדרה/פורמט חוזר: ${note}` : 'אין כרגע סדרה חוזרת - לא חובה אבל מומלץ לצמיחת עוקבים', ok: Boolean(note) };
+  return {
+    label: note
+      ? `סדרה/פורמט חוזר: ${note}`
+      : 'חסרה סדרה או פורמט תוכן חוזר - כדאי להחליף רעיון אחד כדי שיהיה',
+    ok: Boolean(note),
+  };
 }
 
 function checkBankGaps(readyIdeas) {
@@ -388,7 +396,6 @@ function renderScorecard(plan, readyIdeas) {
     checkMustIncludeCoverage(appItems),
     checkVirality(appItems),
     checkAudience(appItems),
-    ...checkPersuasionStages(appItems),
     checkSeries(plan),
     checkAngleCoverage(readyIdeas),
   ];
@@ -726,21 +733,13 @@ function getCategoryVolumeGaps(readyIdeas, pieceCount) {
   return gaps;
 }
 
-// אותו עיקרון בדיוק, לשלושת שלבי השכנוע - "יש לפחות רעיון אחד משלב 3"
-// לא מספיק כדי לבנות תכנית מאוזנת בין שלבי השכנוע, בדיוק כמו שקטגוריה
-// עם רעיון-שניים לא מספיקה לבניית יחס קטגוריות מאוזן.
-function getPersuasionStageVolumeGaps(readyIdeas, pieceCount) {
-  const counts = {};
-  for (const idea of readyIdeas) counts[idea.persuasionStage] = (counts[idea.persuasionStage] || 0) + 1;
-  const target = 1 / PERSUASION_STAGES.length;
-  const needed = Math.ceil((target * pieceCount) / 2);
-  const gaps = [];
-  PERSUASION_STAGES.forEach((stage, i) => {
-    const actual = counts[stage] || 0;
-    if (actual < needed) gaps.push({ stage: `שלב שכנוע ${i + 1}`, actual, needed });
-  });
-  return gaps;
-}
+/* 09/10/2026 (מאיה: "שלבי שכנוע מבחינתי לא רלוונטי כי הכנסתי את זה בעצם
+   ב[שבעת התכנים החשובים]"): השער לפי שלבי שכנוע הוסר.
+
+   הוא גם היה הופך לחסימה אמיתית: שלב שכנוע הוא שדה רשות עכשיו, ולכן
+   רעיונות חדשים נשמרים בלעדיו, והשער הזה היה מודד "0 מתוך 3 שלבים" ולא
+   נותן לאף אחת לבנות תכנית. מה שמודד את אותו דבר הוא כיסוי שבעת התכנים
+   החשובים, שנשאר. */
 
 // אותו עיקרון שוב, לוויראליות (VIRAL_SCOPE = "רחב"). אומת מול נתונים
 // אמיתיים: מתוך 59 רעיונות מוכנים היו רק 5 מתויגים "קהל רחב" (8%) - אין
@@ -852,9 +851,8 @@ export function refreshGate() {
   const pieceCount = Number(pieceCountInput && pieceCountInput.value) || MIN_PIECE_COUNT;
   const enoughVolume = readyCount >= MIN_READY_IDEAS;
   const categoryGaps = getCategoryVolumeGaps(readyIdeas, pieceCount);
-  const stageGaps = getPersuasionStageVolumeGaps(readyIdeas, pieceCount);
   const viralityGap = getViralityVolumeGap(readyIdeas, pieceCount);
-  const enough = enoughVolume && categoryGaps.length === 0 && stageGaps.length === 0 && !viralityGap;
+  const enough = enoughVolume && categoryGaps.length === 0 && !viralityGap;
   gateMsg.hidden = enough;
   form.hidden = !enough;
   if (enough) {
@@ -895,18 +893,13 @@ export function refreshGate() {
 
   const intro = document.createElement('p');
   intro.className = 'content-plan-gate-intro';
-  intro.textContent = 'כדי לבנות תכנית תוכן מאוזנת (יחס קטגוריות 40/30/15/15, איזון בין שלבי שכנוע, וכ-30% ויראליות) חסר לך מספיק רעיונות מסווגים:';
+  intro.textContent = 'כדי לבנות תכנית תוכן מאוזנת (יחס קטגוריות 50/30/20 וכ-30% ויראליות) חסר לך מספיק רעיונות מסווגים:';
   gateMsg.appendChild(intro);
 
   renderGateSection(
     gateMsg,
     'בקטגוריות:',
     categoryGaps.map((g) => `${g.category} - יש לך ${g.actual}, צריך לפחות ${g.needed}`)
-  );
-  renderGateSection(
-    gateMsg,
-    'בשלבי שכנוע:',
-    stageGaps.map((g) => `${g.stage} - יש לך ${g.actual}, צריך לפחות ${g.needed}`)
   );
   renderGateSection(
     gateMsg,
@@ -1237,13 +1230,9 @@ export function wireContentPlanView() {
     // בפועל יוצאת לא מאוזנת בלי שום התראה. בודקים את הבחירה הסופית עצמה
     // (לא את המאגר) ממש לפני השליחה ל-AI, ונותנים לה הזדמנות אמיתית
     // לחזור ולתקן את הסימון במקום לגלות רק אחרי כמה דקות של בנייה.
-    const finalStageGaps = getPersuasionStageVolumeGaps(cappedIdeas, pieceCount);
     const finalViralityGap = getViralityVolumeGap(cappedIdeas, pieceCount);
-    if (finalStageGaps.length || finalViralityGap) {
-      const lines = finalStageGaps.map((g) => `⚠️ ${g.stage}: ${g.actual} מתוך ${cappedIdeas.length} תכנים בלבד`);
-      if (finalViralityGap) {
-        lines.push(`⚠️ ויראליות (קהל רחב): ${finalViralityGap.actual} מתוך ${cappedIdeas.length} תכנים בלבד`);
-      }
+    if (finalViralityGap) {
+      const lines = [`⚠️ ויראליות (קהל רחב): ${finalViralityGap.actual} מתוך ${cappedIdeas.length} תכנים בלבד`];
       const reason = pinnedIdeaIds.size
         ? 'כנראה בגלל הבחירה הידנית של רעיונות ספציפיים.'
         : 'המאגר לא מספיק מגוון כרגע בשביל הכמות הזו.';

@@ -44,6 +44,7 @@ function loadAdminModules() {
     adminModulesPromise = Promise.all([
       import('./notification-admin.js'),
       import('./client-usage.js'),
+      import('./biduri-migration.js'),
     ]);
   }
   return adminModulesPromise;
@@ -626,6 +627,7 @@ onAuthChange(async (user) => {
   document.getElementById('token-usage-btn').hidden = !isAdmin;
   document.getElementById('view-feedback-btn').hidden = !isAdmin;
   document.getElementById('client-usage-btn').hidden = !isAdmin;
+  document.getElementById('biduri-migrate-btn').hidden = !isAdmin;
 
   // onAuthChange can in principle fire more than once for the same
   // signed-in session - the adminModulesWired guard keeps this a true
@@ -635,7 +637,7 @@ onAuthChange(async (user) => {
   // logic below, even for the admin's own account.
   if (isAdmin && !adminModulesWired) {
     adminModulesWired = true;
-    loadAdminModules().then(([notificationAdminModule, clientUsageModule]) => {
+    loadAdminModules().then(([notificationAdminModule, clientUsageModule, biduriModule]) => {
       notificationAdminModule.wireNotificationAdmin();
       clientUsageModule.wireClientUsageView();
       document.getElementById('client-usage-btn').addEventListener('click', () => {
@@ -643,6 +645,9 @@ onAuthChange(async (user) => {
         clientUsageModule.loadClientUsage();
       });
       document.getElementById('client-usage-back-btn').addEventListener('click', () => showView('home'));
+      /* אחרון בכוונה: מסך זמני. אם משהו בו ייפול, התכונות הקבועות של
+         המנהלת כבר חוברו ולא יאבדו את המאזינים שלהן. */
+      biduriModule.wireBiduriMigration();
     }).catch((err) => {
       /* 03/10/2026 (בדיקה): בלי זה, ייבוא שנכשל הפך ל-unhandled rejection
          בלי שום סימן, והדגל שנקבע למעלה מנע ניסיון נוסף. */

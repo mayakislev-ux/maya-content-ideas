@@ -2,6 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   CATEGORIES,
+  LEGACY_CATEGORIES,
+  ALL_CATEGORIES,
   PERSUASION_STAGES,
   RATINGS,
   STRONG_RATING,
@@ -17,8 +19,23 @@ import {
   findSimilarIdea,
 } from '../js/ideas-logic.js';
 
-test('CATEGORIES has the 4 expected values in order', () => {
-  assert.deepEqual(CATEGORIES, ['בעל ערך', 'אישי', 'מכירתי', 'בידורי']);
+/* 09/10/2026 (מאיה: "בידורי להעיף מבחינתי"): הקטגוריה ירדה מהשיטה לבניית
+   תכנית תוכן. הבדיקה הזאת דרשה אותה, ולכן היא מתארת עכשיו את המצב הנכון:
+   שלוש קטגוריות לבחירה, והתווית הישנה נשארת תקפה על רעיונות קיימים כדי
+   שלא ייעלמו מהמאגר. */
+test('CATEGORIES are the three the plan is built from', () => {
+  assert.deepEqual(CATEGORIES, ['בעל ערך', 'אישי', 'מכירתי']);
+  assert.ok(!CATEGORIES.includes('בידורי'), 'בידורי still selectable');
+});
+
+test('a legacy בידורי idea is still valid, so nothing disappears', () => {
+  assert.deepEqual(LEGACY_CATEGORIES, ['בידורי']);
+  assert.deepEqual(ALL_CATEGORIES, ['בעל ערך', 'אישי', 'מכירתי', 'בידורי']);
+  const errors = validateIdea({
+    title: 'רעיון ישן', category: 'בידורי',
+    rating: '🔥 חייב לצלם', audienceScope: 'עיקרי',
+  });
+  assert.deepEqual(errors, [], 'a saved בידורי idea can no longer be edited');
 });
 
 test('PERSUASION_STAGES has the 3 expected stages', () => {
@@ -96,9 +113,28 @@ test('filterIdeas filters by rating', () => {
   assert.equal(result[0].title, 'א');
 });
 
-test('validateIdea requires every field', () => {
+/* 09/10/2026 (מאיה: "שלבי שכנוע מבחינתי לא רלוונטי"): שבעת סוגי התוכן
+   בצ'קליסט מכסים את שלושת השלבים, ולכן זה לא שדה חובה. ערך לא תקין בו
+   עדיין נתפס, כדי שסינון לא יישבר. */
+test('validateIdea requires the four real fields, not the stage', () => {
   const errors = validateIdea({ title: '', category: '', persuasionStage: '', rating: '', audienceScope: '' });
-  assert.equal(errors.length, 5);
+  assert.equal(errors.length, 4);
+  assert.ok(!errors.some((e) => e.includes('שלב שכנוע')), errors.join(' | '));
+});
+
+test('an idea with no persuasion stage is valid', () => {
+  const errors = validateIdea({
+    title: 'רעיון', category: 'בעל ערך', rating: '🔥 חייב לצלם', audienceScope: 'עיקרי',
+  });
+  assert.deepEqual(errors, []);
+});
+
+test('a nonsense persuasion stage is still rejected', () => {
+  const errors = validateIdea({
+    title: 'רעיון', category: 'בעל ערך', persuasionStage: 'שלב 9',
+    rating: '🔥 חייב לצלם', audienceScope: 'עיקרי',
+  });
+  assert.equal(errors.length, 1);
 });
 
 test('validateIdea passes when every field is filled', () => {

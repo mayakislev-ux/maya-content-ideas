@@ -1,4 +1,11 @@
-export const CATEGORIES = ['בעל ערך', 'אישי', 'מכירתי', 'בידורי'];
+/* 09/10/2026 (מאיה: "בידורי להעיף... יש בידורי אישי יש בידורי ערך פשוט
+   להתאים"): CATEGORIES הן הקטגוריות שאפשר לבחור ברעיון חדש ושהתכנון
+   עובד לפיהן. "בידורי" ירדה מהן. היא נשארת ב-LEGACY_CATEGORIES כדי
+   שרעיונות שכבר מתויגים בה ימשיכו להיראות, להיספר ולהיות ניתנים לסינון
+   עד שיותאמו, ולא ייעלמו מהמאגר בשקט. */
+export const CATEGORIES = ['בעל ערך', 'אישי', 'מכירתי'];
+export const LEGACY_CATEGORIES = ['בידורי'];
+export const ALL_CATEGORIES = [...CATEGORIES, ...LEGACY_CATEGORIES];
 export const PERSUASION_STAGES = [
   'שלב שכנוע 1 - מודעות לבעיה / חומרת הבעיה',
   'שלב שכנוע 2 - מודעות לפתרון',
@@ -95,8 +102,12 @@ export function filterIdeas(ideas, { text = '', category = '', audienceScope = '
 export function validateIdea({ title, category, persuasionStage, rating, audienceScope }) {
   const errors = [];
   if (!title || !title.trim()) errors.push('שדה "הרעיון" חובה');
-  if (!category || !CATEGORIES.includes(category)) errors.push('קטגוריה לא תקינה');
-  if (!persuasionStage || !PERSUASION_STAGES.includes(persuasionStage)) errors.push('שדה "שלב שכנוע" חובה');
+  if (!category || !ALL_CATEGORIES.includes(category)) errors.push('קטגוריה לא תקינה');
+  /* 09/10/2026 (מאיה: "שלבי שכנוע מבחינתי לא רלוונטי כי הכנסתי את זה
+     בעצם ב[שבעת התכנים החשובים]"): הצ'קליסט של שבעת סוגי התוכן מכסה את
+     שלושת השלבים, ולכן זה לא שדה חובה יותר. הוא נשאר כשדה רשות, כי הוא
+     ממולא על רעיונות קיימים ומשמש לסינון. */
+  if (persuasionStage && !PERSUASION_STAGES.includes(persuasionStage)) errors.push('שלב שכנוע לא תקין');
   if (!rating) errors.push('שדה "דירוג" חובה');
   if (!audienceScope) errors.push('שדה "למי הסרטון מדבר" חובה');
   return errors;

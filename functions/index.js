@@ -410,6 +410,218 @@ async function listAllAuthUsers() {
   return users;
 }
 
+/* ============================================================================
+   הגירה חד-פעמית: "בידורי" יוצאת מהקטגוריות (09/10/2026).
+
+   מאיה: "בעצם לכל הלקוחות להעיף בריעונות סינון לפי בידורי ופשוט להתאים
+   לשאר סוגי התוכן". הקטגוריה ירדה מהשיטה לבניית תכנית תוכן, ולכן רעיונות
+   שכבר מתויגים בה צריכים להתאים לאחת משלוש הנותרות.
+
+   למה דרך פונקציה ולא מהמחשב: אין מפתח שירות לפרויקט הזה, והפונקציה רצה
+   בתוך הפרויקט עם ההרשאות שלו. היא גם משתמשת באותו מסווג של האפליקציה,
+   ו-CATEGORIES כבר צומצמה לשלוש, ולכן הוא יכול להחזיר רק אותן.
+
+   הפונקציה הזאת היא זו שמייצרת את הדוח, והיא **לא כותבת כלום**. הכתיבה
+   היא פונקציה נפרדת שמקבלת את ההחלטות מהדוח עצמו. למה לא דגל apply:
+   סיווג שני היה מריץ את המסווג מחדש, והתוצאה יכולה לצאת אחרת ממה שמאיה
+   אישרה בדוח. ככה אין בכלל מסלול שכותב משהו שהיא לא ראתה.
+
+   temperature אפס, כדי ששתי הרצות על אותו רעיון יתנו אותה תשובה.
+   ============================================================================ */
+const BIDURI_BATCH = 150;
+
+function biduriIdeaQuery() {
+  return db.collection('ideas').where('category', '==', 'בידורי');
+}
+
+exports.recategorizeBiduri = onCall(
+  { secrets: [anthropicApiKey], region: 'us-central1', timeoutSeconds: 1800 },
+  async (request) => {
+    if (!request.auth || request.auth.token.email !== ADMIN_EMAIL) {
+      throw new HttpsError('permission-denied', 'התכונה הזו זמינה למאיה בלבד');
+    }
+    const asked = Number((request.data && request.data.limit) || BIDURI_BATCH);
+    const limit = Number.isFinite(asked) ? Math.min(Math.max(Math.trunc(asked), 1), BIDURI_BATCH) : BIDURI_BATCH;
+
+    const snap = await biduriIdeaQuery().get();
+    /* מחיקה באפליקציה היא רכה (deletedAt), ורעיון מחוק לא מופיע לאף לקוחה.
+       בלי הסינון הזה הדוח היה סופר אשפה, המסווג היה נקרא עליה, וגרוע מזה
+       המחוקים היו תופסים חלק מהמנה ומסתירים רעיונות אמיתיים. */
+    const live = snap.docs.filter((doc) => !(doc.data() || {}).deletedAt);
+    const docs = live.slice(0, limit);
+    const report = [];
+    let failed = 0;
+
+    for (const doc of docs) {
+      const idea = doc.data() || {};
+      const title = String(idea.title || '').slice(0, 2000);
+      const hookText = String(idea.hookText || '').slice(0, 5000);
+      const base = { id: doc.id, ownerUid: idea.ownerUid || null, title: title || '(בלי כותרת)' };
+      if (!title.trim()) {
+        report.push({ ...base, to: null, note: 'אין כותרת לסווג לפיה' });
+        failed += 1;
+        continue;
+      }
+
+      let category = null;
+      try {
+        const options = CATEGORIES
+          .map((c, i) => `${i + 1}. ${c}: ${CATEGORY_DEFINITIONS[c]}`)
+          .join('\n');
+        const prompt = [
+          `הרעיון לתוכן: "${title}"`,
+          `פירוט נוסף: "${hookText}"`,
+          '',
+          'סווג/י את הרעיון הזה לסוג תוכן אחד בדיוק, לפי המספר שלו:',
+          options,
+          '',
+          'הרעיון הזה היה מתויג בעבר כ"בידורי", קטגוריה שבוטלה. גם תוכן קליל,',
+          'מצחיק, טרנדי או ממי צריך להיכנס לאחת משלוש הקטגוריות האלה: אם יש בו',
+          'תובנה, טכניקה, ביקורת או לקח מקצועי זה "בעל ערך"; אם הוא על החיים,',
+          'הערכים או האישיות של בעל/ת העסק זה "אישי"; אם הוא מציג מוצר, תוצאה',
+          'או עדות במטרה למכור זה "מכירתי".',
+          '',
+          `השב/י אך ורק ב-JSON תקין, עם מספר שלם ולא עם שם הקטגוריה: {"categoryIndex": <מספר בין 1 ל-${CATEGORIES.length}>}`,
+        ].join('\n');
+        const data = await callAnthropic(
+          anthropicApiKey.value(),
+          {
+            model: 'claude-haiku-4-5-20251001',
+            max_tokens: 100,
+            temperature: 0,
+            messages: [{ role: 'user', content: prompt }],
+          },
+          'recategorizeBiduri'
+        );
+        const text = getResponseText(data) || '{}';
+        const open = text.indexOf('{');
+        const close = text.lastIndexOf('}');
+        const raw = open >= 0 && close > open ? text.slice(open, close + 1) : text;
+        const parsed = JSON.parse(raw);
+        category = CATEGORIES[Number(parsed.categoryIndex) - 1] || null;
+      } catch (err) {
+        console.error('recategorizeBiduri: classify failed', doc.id, err && err.message);
+      }
+
+      if (!category) {
+        report.push({ ...base, to: null, note: 'הסיווג נכשל, נשאר בידורי' });
+        failed += 1;
+        continue;
+      }
+      report.push({ ...base, to: category, note: 'מוצע' });
+    }
+
+    const byTarget = {};
+    report.forEach((r) => { if (r.to) byTarget[r.to] = (byTarget[r.to] || 0) + 1; });
+    console.log('recategorizeBiduri report', JSON.stringify({ found: live.length, handled: docs.length, failed, byTarget }));
+    return { found: live.length, handled: docs.length, failed, byTarget, report };
+  }
+);
+
+/* הכתיבה. מקבלת בדיוק את ההחלטות מהדוח שמאיה אישרה, ולא מסווגת מחדש.
+
+   לפני כל כתיבה הרעיון נקרא שוב: אם בינתיים הוא כבר לא "בידורי" (למשל
+   הלקוחה עצמה שינתה אותו, או שההרצה הקודמת כבר טיפלה בו) הוא מדולג
+   ומדווח, ולא נדרס. */
+exports.applyRecategorizeBiduri = onCall(
+  { region: 'us-central1', timeoutSeconds: 540 },
+  async (request) => {
+    if (!request.auth || request.auth.token.email !== ADMIN_EMAIL) {
+      throw new HttpsError('permission-denied', 'התכונה הזו זמינה למאיה בלבד');
+    }
+    const decisions = (request.data && request.data.decisions) || [];
+    if (!Array.isArray(decisions) || decisions.length === 0) {
+      throw new HttpsError('invalid-argument', 'אין מה להחיל. צריך קודם להציג דוח ולאשר אותו.');
+    }
+    if (decisions.length > BIDURI_BATCH) {
+      throw new HttpsError('invalid-argument', `אפשר להחיל עד ${BIDURI_BATCH} רעיונות בפעם אחת.`);
+    }
+
+    const report = [];
+    let changed = 0;
+    let skipped = 0;
+
+    for (const decision of decisions) {
+      const id = decision && typeof decision.id === 'string' ? decision.id : null;
+      const to = decision && decision.to;
+      if (!id || !CATEGORIES.includes(to)) {
+        skipped += 1;
+        report.push({ id: id || '(בלי מזהה)', to: null, note: 'החלטה לא תקינה, דולגה' });
+        continue;
+      }
+      const ref = db.collection('ideas').doc(id);
+      try {
+        const doc = await ref.get();
+        const idea = doc.exists ? (doc.data() || {}) : null;
+        if (!idea) {
+          skipped += 1;
+          report.push({ id, to: null, note: 'הרעיון לא קיים יותר' });
+          continue;
+        }
+        if (idea.category !== 'בידורי') {
+          skipped += 1;
+          report.push({ id, to: null, note: `כבר לא "בידורי", לא נגענו` });
+          continue;
+        }
+        await ref.update({
+          category: to,
+          categoryBefore: 'בידורי',
+          /* categoryAfter הוא מה שמאפשר להחזיר אחורה בלי לדרוס בחירה
+             מאוחרת של הלקוחה: ההחזרה נוגעת רק ברעיון שעוד נמצא במצב
+             שההגירה השאירה אותו בו. */
+          categoryAfter: to,
+          recategorizedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        changed += 1;
+        report.push({ id, to, note: 'הועבר' });
+      } catch (err) {
+        console.error('applyRecategorizeBiduri: write failed', id, err && err.message);
+        skipped += 1;
+        report.push({ id, to: null, note: 'הכתיבה נכשלה' });
+      }
+    }
+
+    const remainingSnap = await biduriIdeaQuery().get();
+    const remaining = remainingSnap.docs.filter((doc) => !(doc.data() || {}).deletedAt).length;
+    const byTarget = {};
+    report.forEach((r) => { if (r.to) byTarget[r.to] = (byTarget[r.to] || 0) + 1; });
+    console.log('applyRecategorizeBiduri', JSON.stringify({ changed, skipped, remaining, byTarget }));
+    return { changed, skipped, remaining, byTarget, report };
+  }
+);
+
+/* חזרה אחורה, אם ההתאמה לא מצאה חן בעיניה.
+
+   רק רעיון שעוד נמצא בקטגוריה שההגירה נתנה לו מוחזר. אם הלקוחה שינתה
+   אותו בעצמה אחרי ההגירה, הבחירה שלה גוברת והרעיון מדולג. */
+exports.undoRecategorizeBiduri = onCall(
+  { region: 'us-central1', timeoutSeconds: 540 },
+  async (request) => {
+    if (!request.auth || request.auth.token.email !== ADMIN_EMAIL) {
+      throw new HttpsError('permission-denied', 'התכונה הזו זמינה למאיה בלבד');
+    }
+    const snap = await db.collection('ideas').where('categoryBefore', '==', 'בידורי').get();
+    let restored = 0;
+    let kept = 0;
+    for (const doc of snap.docs) {
+      const idea = doc.data() || {};
+      if (idea.categoryAfter && idea.category !== idea.categoryAfter) {
+        kept += 1;
+        continue;
+      }
+      await doc.ref.update({
+        category: 'בידורי',
+        categoryBefore: admin.firestore.FieldValue.delete(),
+        categoryAfter: admin.firestore.FieldValue.delete(),
+        recategorizedAt: admin.firestore.FieldValue.delete(),
+      });
+      restored += 1;
+    }
+    console.log('undoRecategorizeBiduri', JSON.stringify({ restored, kept }));
+    return { restored, kept };
+  }
+);
+
 exports.getClientUsageStats = onCall({ region: 'us-central1', timeoutSeconds: 60 }, async (request) => {
   if (!request.auth || request.auth.token.email !== ADMIN_EMAIL) {
     throw new HttpsError('permission-denied', 'התכונה הזו זמינה כרגע רק למנהלת');

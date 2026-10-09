@@ -191,7 +191,6 @@
         <button type="button" class="quick-chip active" data-category="">הכל</button>
         <button type="button" class="quick-chip quick-chip-category" data-category="בעל ערך" style="--chip-color: var(--cat-baal-erech)">בעל ערך</button>
         <button type="button" class="quick-chip quick-chip-category" data-category="אישי" style="--chip-color: var(--cat-ishi)">אישי</button>
-        <button type="button" class="quick-chip quick-chip-category" data-category="בידורי" style="--chip-color: var(--cat-biduri)">בידורי</button>
         <button type="button" class="quick-chip quick-chip-category" data-category="מכירתי" style="--chip-color: var(--cat-mechirti)">מכירתי</button>
       </div>
 
@@ -205,7 +204,6 @@
           <option value="בעל ערך">בעל ערך</option>
           <option value="אישי">אישי</option>
           <option value="מכירתי">מכירתי</option>
-          <option value="בידורי">בידורי</option>
           <option value="__none__">📝 ללא קטגוריה (טיוטות)</option>
         </select>
         <select id="filter-audience-scope" aria-label="סינון לפי קהל יעד">
@@ -639,6 +637,7 @@
     <button type="button" id="token-usage-btn" class="btn-text" hidden>שימוש ב-AI (מנהלת)</button>
     <button type="button" id="view-feedback-btn" class="btn-text" hidden>חוות דעת שהתקבלו (מנהלת)</button>
     <button type="button" id="client-usage-btn" class="btn-text" hidden>מעקב לקוחות (מנהלת)</button>
+    <button type="button" id="biduri-migrate-btn" class="btn-text" hidden>התאמת רעיונות "בידורי" (מנהלת)</button>
     <button type="button" id="open-policy-btn-app" class="btn-text policy-link">מדיניות פרטיות</button>
     <!-- 05/10/2026 (מאיה: "במובייל שום דבר לא התעדכן, לא יודעת"):
          בלי חותמת גלויה אי אפשר לדעת איזו גרסה פתוחה במכשיר, ושאלה
@@ -805,18 +804,22 @@
           <button type="button" class="category-chip" data-value="בעל ערך" style="--chip-color: var(--cat-baal-erech)" aria-pressed="false">בעל ערך</button>
           <button type="button" class="category-chip" data-value="אישי" style="--chip-color: var(--cat-ishi)" aria-pressed="false">אישי</button>
           <button type="button" class="category-chip" data-value="מכירתי" style="--chip-color: var(--cat-mechirti)" aria-pressed="false">מכירתי</button>
-          <button type="button" class="category-chip" data-value="בידורי" style="--chip-color: var(--cat-biduri)" aria-pressed="false">בידורי</button>
           <button type="button" class="category-chip category-chip-ai" data-value="__ai__" aria-pressed="false">שה-AI יזהה</button>
         </div>
         <input type="hidden" id="field-category">
       </div>
 
-      <div class="form-section">
-        <label class="field-label-row">שלב שכנוע *
+      <!-- 09/10/2026 (מאיה: "שלבי שכנוע מבחינתי לא רלוונטי כי הכנסתי את זה
+           בעצם ב[שבעת התכנים החשובים]... כל אלה שייכים ל-3 שלבי השכנוע אז
+           זה עונה על זה"): השדה היה חובה וחסם שמירה. הצ'קליסט של שבעת
+           התכנים החשובים מכסה את שלושת השלבים, ולכן הוא שדה רשות עכשיו.
+           הוא נשאר במסך כי הוא ממולא על רעיונות קיימים ומשמש לסינון. -->
+      <div class="form-section form-section-secondary">
+        <label class="field-label-row">שלב שכנוע (אופציונלי)
           <button type="button" id="persuasion-info-btn" class="info-btn" aria-label="מה זה אומר?">ⓘ</button>
         </label>
-        <select id="field-persuasion" required>
-          <option value="">בחרו שלב שכנוע</option>
+        <select id="field-persuasion">
+          <option value="">לא חייבים לבחור</option>
           <option value="שלב שכנוע 1 - מודעות לבעיה / חומרת הבעיה">שלב שכנוע 1 - מודעות לבעיה / חומרת הבעיה</option>
           <option value="שלב שכנוע 2 - מודעות לפתרון">שלב שכנוע 2 - מודעות לפתרון</option>
           <option value="שלב שכנוע 3 - למה דווקא אני">שלב שכנוע 3 - למה דווקא אני</option>
@@ -960,6 +963,31 @@
         <button type="submit" class="btn-primary" id="notification-send-btn">שליחה</button>
       </div>
     </form>
+  </div>
+</div>
+
+<!-- 09/10/2026 (מאיה: "בעצם לכל הלקוחות להעיף בריעונות סינון לפי בידורי
+     ופשוט להתאים לשאר סוגי התוכן"): הקטגוריה ירדה מהשיטה, והרעיונות שכבר
+     מתויגים בה נשארו בלי לשונית סינון. המסך מתאים אותם, קודם כדוח ואחר כך
+     בפועל. גלוי למאיה בלבד, כמו שאר כפתורי המנהלת. -->
+<div id="biduri-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="biduri-modal-title">
+  <div class="modal-content">
+    <h2 id="biduri-modal-title">🎭 התאמת רעיונות "בידורי"</h2>
+    <p class="field-subhint">הקטגוריה ירדה מהשיטה. כאן מתאימים את הרעיונות שכבר מתויגים בה לאחת משלוש הקטגוריות, דרך אותו מסווג שמסווג רעיון חדש.</p>
+    <div class="modal-actions biduri-actions">
+      <button type="button" id="biduri-report-btn" class="btn-primary">להציג דוח</button>
+      <button type="button" id="biduri-apply-btn" class="btn-primary" hidden>להחיל את ההתאמה</button>
+    </div>
+    <p id="biduri-status" class="field-subhint" role="status"></p>
+    <p id="biduri-summary" class="biduri-summary"></p>
+    <div id="biduri-list-wrap" hidden>
+      <ul id="biduri-list" class="biduri-list"></ul>
+    </div>
+    <p id="biduri-error" class="error-text" role="alert" hidden></p>
+    <div class="modal-actions">
+      <button type="button" id="biduri-undo-btn" class="btn-text">להחזיר אחורה</button>
+      <button type="button" id="biduri-close-btn" class="btn-text">סגירה</button>
+    </div>
   </div>
 </div>
 
