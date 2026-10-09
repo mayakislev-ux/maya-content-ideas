@@ -6271,7 +6271,13 @@ body[data-plan="refs"] #bottomnav-more,
 body[data-plan="refs"] #add-idea-fab,
 body[data-plan="refs"] #random-idea-btn,
 body[data-plan="refs"] #home-progress-widget,
-body[data-plan="refs"] #install-app-btn { display: none !important; }
+body[data-plan="refs"] #install-app-btn,
+/* 08/10/2026 (מאיה: "היא לא תראה את הכפתור הצהוב חזרה לפורטל נכון?"):
+   הכפתור מוצג היום רק למי שיש לה חשבון בפורטל, ולכן לקוחת רפרנסים
+   ממילא לא אמורה לראות אותו. זו הבטחה ולא הסתמכות: אם היא גם לקוחת
+   פורטל, או אם התנאי ישתנה מתישהו, הכפתור עדיין לא יופיע לה כאן. */
+body[data-plan="refs"] #portal-back-btn,
+body[data-plan="refs"] #login-portal-back { display: none !important; }
 
 /* בלי הכפתורים התחתונים אין טעם בסרגל התחתון כולו */
 body[data-plan="refs"] .bottom-nav { display: none !important; }
