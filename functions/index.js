@@ -2215,11 +2215,19 @@ Object.assign(exports, require('./marathon-launch'));
 /* 08/10/2026: קליטת שאלון ההכנה לפגישת אסטרטגיה, כדי שהתשובות יגיעו
    למאיה ולא יישארו בדפדפן של הלקוחה. */
 Object.assign(exports, require('./strategy-form'));
+/* 09/10/2026: מפעל התוכן הלילי. שלושה תסריטים מוכנים כל בוקר
+   משיטת השכפול ומהמאגר, במקום שעתיים שבועיות של חיפוש רעיונות. */
+Object.assign(exports, require('./nightly-scripts'));
 
 // 30/09/2026: טבלת החימום בסטורי. הפונקציה מקבלת את enforceAllowlist מכאן
 // כדי לא לשכפל את בדיקת ההרשאה, שהיא אותה בדיקה בכל שאר הפונקציות.
 const { makeSyncStoryTable } = require('./story-table');
 exports.syncStoryTable = makeSyncStoryTable({ enforceAllowlist });
+
+// 09/10/2026: קריאת נתוני Reel מצילום מסך של Insights, בשביל "רנטגן לעמוד"
+// בפורטל. הפונקציה חיה כאן כי מפתח ה-AI כאן, והפורטל קורא אליה עם אסימון
+// ההתחברות שלו, כמו ב-portalSso.
+exports.readInsights = require('./readInsights').readInsights;
 
 
 
