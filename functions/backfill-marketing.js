@@ -15,9 +15,12 @@ const portalSecret = defineSecret('EXTERNAL_SALE_SECRET');
 const PORTAL_SCRIPT_URL = 'https://us-central1-maya-client-portal.cloudfunctions.net/recordMarketingScript';
 
 exports.backfillMarketingScripts = onRequest(
-  { region: 'us-central1', timeoutSeconds: 300, secrets: [portalSecret] },
+  { region: 'us-central1', timeoutSeconds: 300, maxInstances: 1, secrets: [portalSecret] },
   async (req, res) => {
-    if (req.query.key !== 'maya') return res.status(403).json({ ok: false });
+    /* 10/10/2026, מהביקורת: המפתח "maya" על כתובת שאפשר לנחש. כאן אין
+       הוצאה על Anthropic, אבל יש קריאה של שלושה אוספים שלמים וגם
+       החזרת תוכן המאגר ב-stats, ולכן אותו מפתח ארוך. */
+    if (req.query.key !== '8cd9dd930910001365d33a48930453c8') return res.status(403).json({ ok: false });
     const db = getFirestore();
 
     /* 10/10/2026: המפעל פסל תשעה רפרנסים ברצף, כמעט כולם בנימוק שהמנגנון

@@ -42,6 +42,15 @@ const MAX_TRIES = 9;
 /* תמלול של 290 תווים הפיק תסריט של 269 תווים, כלומר כלום. */
 const MIN_REF_TEXT = 500;
 const MIN_SCRIPT = 300;
+/* 10/10/2026, מהביקורת: הטריגר הידני היה מוגן במילה "maya" על כתובת
+   שנגזרת משם הפרויקט ומשם הפונקציה, כלומר ניחוש של שתי מילים, בזמן שכל
+   קריאה יכולה להוציא עד שמונה עשרה קריאות ל-Anthropic וגם לשלוח לה
+   וואטסאפ. עכשיו יש מפתח ארוך, תקרה של שלוש הרצות ידניות ביום, ומופע
+   אחד בלבד במקביל. הדפוס הנכון לגמרי הוא onCall עם בדיקת מייל, כמו
+   classifyInspirationFormats, וזה שינוי שמחכה לאישור של מאיה כי הוא
+   מבטל את האפשרות להפעיל מכתובת בדפדפן. */
+const MANUAL_KEY = '8cd9dd930910001365d33a48930453c8';
+const MANUAL_RUNS_PER_DAY = 3;
 /* פסילה תלויה בפרומפט שבו היא נעשתה. כששער האיכות או בנק העובדות
    משתנים, פסילה ישנה היא מידע מיושן, ורפרנס שנפסל פעם חוזר להיות
    מועמד. בלי המספר הזה הייתי צריכה למחוק פסילות ביד בכל שיפור. */
@@ -116,6 +125,9 @@ const GUARD = `כללי פסילה. אם אחד מהם נשבר, התוצר לא
 async function askClaude(prompt, key) {
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
+    /* 10/10/2026, מהביקורת: לקריאה לא היה שום גבול זמן, ולכן שתי קריאות
+       איטיות יכלו לחתוך את כל הריצה אחרי שכבר שילמנו עליהן. */
+    signal: AbortSignal.timeout(100000),
     headers: {
       'content-type': 'application/json',
       'x-api-key': key,
@@ -140,14 +152,67 @@ async function askClaude(prompt, key) {
   return text;
 }
 
+/* 10/10/2026, מהביקורת: לקריאה לא היה try, והערך החוזר לא נקרא אף פעם.
+   תקלה רגעית ב-Green API הפכה ריצה שיצרה שלושה תסריטים לריצה שנרשמה
+   ככושלת, ומאיה לא קיבלה כלום. */
 async function notify(message) {
-  const url = `https://api.green-api.com/waInstance${greenApiIdInstance.value()}/SendMessage/${greenApiTokenInstance.value()}`;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chatId: MAYA_CHAT_ID, message }),
-  });
-  return (await res.text()).includes('"idMessage"');
+  try {
+    const url = `https://api.green-api.com/waInstance${greenApiIdInstance.value()}/SendMessage/${greenApiTokenInstance.value()}`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chatId: MAYA_CHAT_ID, message }),
+      signal: AbortSignal.timeout(20000),
+    });
+    const body = await res.text();
+    const ok = body.includes('"idMessage"');
+    if (!ok) console.error('nightlyScripts: whatsapp refused', body.slice(0, 200));
+    return ok;
+  } catch (err) {
+    console.error('nightlyScripts: whatsapp failed', err?.message);
+    return false;
+  }
+}
+
+/* תקרה להרצות ידניות, ביום לפי שעון ישראל. מונע מצב שבו מי שניחש את
+   הכתובת מריץ אותה שוב ושוב ושורף כסף על Anthropic. */
+async function takeManualRun(db) {
+  const day = new Date(Date.now() + 3 * 3600000).toISOString().slice(0, 10);
+  const ref = db.collection('nightlyRuns').doc(day);
+  const snap = await ref.get();
+  const used = Number(snap.exists ? snap.data().manual : 0) || 0;
+  if (used >= MANUAL_RUNS_PER_DAY) return false;
+  await ref.set({ manual: used + 1, at: FieldValue.serverTimestamp() }, { merge: true });
+  return true;
+}
+
+/* שליחה אחת לפורטל, במקום אחד, כדי שגם הדחיפה החוזרת תשתמש בה. */
+async function pushToPortal(script, ref) {
+  try {
+    const sent = await fetch(PORTAL_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-sale-secret': portalSecret.value() },
+      body: JSON.stringify({
+        mechanism: script.mechanism || '',
+        hook: script.hook || '',
+        script: script.script || '',
+        production: script.production || '',
+        refId: script.refId || '',
+        refUrl: script.refUrl || ref.url || '',
+        refDomain: script.refDomain || ref.domain || '',
+        refThumb: ref.thumbnailUrl || '',
+        refText: (ref.translationHe || ref.transcriptHe || '').slice(0, 7000),
+        source: 'nightly',
+      }),
+      signal: AbortSignal.timeout(30000),
+    });
+    if (sent.ok) return true;
+    console.error('nightlyScripts: portal refused', sent.status, (await sent.text()).slice(0, 200));
+    return false;
+  } catch (err) {
+    console.error('nightlyScripts: portal post failed', err?.message);
+    return false;
+  }
 }
 
 /* 10/10/2026: מדדתי את המאגר. 453 רפרנסים, 200 מהם עם תמלול של 500
@@ -164,17 +229,32 @@ const DOMAIN_RANK = {
   'בריאות נפשית, טיפול ורוח': 4,
 };
 
-function pickReferences(docs, used, howMany) {
+function pickReferences(docs, used, howMany, options) {
   const usable = docs
     .map((d) => ({ id: d.id, ...d.data() }))
     .filter((v) => {
       const text = v.translationHe || v.transcriptHe || '';
-      return text.trim().length >= MIN_REF_TEXT && !used.has(v.id);
+      /* 10/10/2026, מהביקורת: הפורטל דורש refUrl ודוחה בלעדיו, ולכן
+         רפרנס בלי כתובת שילם על קריאה ל-Anthropic ולא הגיע לשום מקום. */
+      return text.trim().length >= MIN_REF_TEXT && !used.has(v.id) && !!v.url;
     });
   /* ערבוב יציב לפי היום, כדי ששתי הרצות באותו יום ייתנו אותו דבר
-     ושימים שונים ייתנו רפרנסים שונים. */
-  const seed = new Date().toISOString().slice(0, 10);
-  usable.sort((a, b) => (a.id + seed < b.id + seed ? -1 : 1));
+     ושימים שונים ייתנו רפרנסים שונים.
+     10/10/2026, מהביקורת: קודם היה כאן (a.id + seed < b.id + seed), כלומר
+     שרשור אותה סיומת לשני הצדדים, שלא משנה את ההשוואה בכלל. זה היה מיון
+     אלפביתי טהור, ואותם רפרנסים חזרו לראש התור כל לילה. עכשיו זה חשיב
+     אמיתי של המזהה יחד עם התאריך. */
+  const seed = (options && options.seed) || new Date().toISOString().slice(0, 10);
+  const hash = (text) => {
+    let h = 2166136261;
+    for (let i = 0; i < text.length; i += 1) {
+      h ^= text.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return h >>> 0;
+  };
+  const order = new Map(usable.map((v) => [v.id, hash(v.id + seed)]));
+  usable.sort((a, b) => order.get(a.id) - order.get(b.id) || (a.id < b.id ? -1 : 1));
   const rank = (v) => (v.domain in DOMAIN_RANK ? DOMAIN_RANK[v.domain] : 2);
   usable.sort((a, b) => rank(a) - rank(b));
   return usable.slice(0, howMany);
@@ -193,7 +273,8 @@ ${GUARD}
 להלן תמלול של סרטון רפרנס שעבד. שכפלי אותו לעולם של מאיה.
 
 תחום הרפרנס: ${ref.domain || 'לא צוין'}
-פורמט: ${(ref.angleTags || []).join(', ') || 'לא צוין'}
+פורמט: ${(ref.formatTags || []).join(', ') || 'לא צוין'}
+זווית: ${(ref.angleTags || []).join(', ') || 'לא צוין'}
 
 --- התמלול ---
 ${text}
@@ -224,9 +305,6 @@ function parseScript(input) {
      אותן לפני שמחפשים תוויות. תסריט מדובר לא צריך כוכביות בכלל. */
   const raw = String(input || '').replace(/\*/g, '');
 
-  const unfit = raw.match(/^[ \t]*לא מתאים[ \t]*[:\-–—]?[ \t]*(.*)$/m);
-  if (unfit) return { unfit: unfit[1].trim() || 'המנגנון לא מתאים' };
-
   const found = [];
   for (const [key, label] of LABELS) {
     const re = new RegExp(`^[ \\t]*${label}[ \\t]*[:\\-\\u2013\\u2014][ \\t]*`, 'm');
@@ -234,6 +312,17 @@ function parseScript(input) {
     if (m) found.push({ key, start: m.index, after: m.index + m[0].length });
   }
   found.sort((a, b) => a.start - b.start);
+
+  /* 10/10/2026, מהביקורת: הזיהוי של "לא מתאים" רץ על כל הפלט עם דגל m,
+     ולכן שורה בתוך גוף התסריט, כמו "לא מתאים לך הפורמט הזה", נקראה
+     כפסק דין: התסריט המלא נזרק והרפרנס נחסם לצמיתות. בקול שלה זאת שורה
+     סבירה לגמרי. עכשיו זה נבדק רק כשלא נמצאו תוויות בכלל, או כשזאת
+     השורה הראשונה ממש. */
+  const first = raw.trim().match(/^לא מתאים[ \t]*[:\-–—]?[ \t]*(.*)$/m);
+  if (found.length === 0 || (first && first.index === 0)) {
+    const unfit = first || raw.match(/^[ \t]*לא מתאים[ \t]*[:\-–—]?[ \t]*(.*)$/m);
+    if (unfit) return { unfit: unfit[1].trim() || 'המנגנון לא מתאים' };
+  }
 
   const out = { mechanism: '', hook: '', script: '', production: '' };
   found.forEach((f, i) => {
@@ -243,6 +332,59 @@ function parseScript(input) {
   return out;
 }
 
+/* 10/10/2026, מהביקורת: סכום כספי לא תמיד נושא את המילה "שקל". בעברית
+   מדוברת המטבע משתמע, ותסריט כותב "45 אלף בחודש", "50K" או "הכנסה של
+   50,000". הביטוי הקודם דרש מטבע מפורש, וכל אלה חמקו ממנו.
+
+   מצד שני, מספר גדול לבדו הוא לא סכום. "4,593 עוקבים" ו"מאות אלפי
+   צפיות" הם בדיוק מה שמותר לספר על סלבה ועל שרה, ולכן מספר נחשב סכום
+   רק כשיש לו הקשר כספי: מטבע, סדר גודל בלי יחידה אחרת, מילת הכנסה,
+   או "בחודש". */
+const UNIT = '(?!\\s*(עוקבים|עוקבות|צפיות|לידים|פניות|לקוחות|לקוחה|אנשים|נשים|שעות|ימים))';
+const MONEY = [
+  /\d[\d,.]*\s*(אלפי|אלף|מיליון)?\s*(שקל|ש"ח|₪)/,
+  /₪\s*\d/,
+  /(מיליון|אלפי|אלף)\s*(שקל|ש"ח|₪)/,
+  new RegExp(`\\d[\\d,.]*\\s*(אלף|אלפי|מיליון)${UNIT}`),
+  /\d\s*[Kk](\s|$|[.,!?])/,
+  /(הכנסה|הכנסות|מכירות|מחזור|רווח)[^.!?]{0,60}\d/,
+  new RegExp(`\\d[\\d,.]*\\s*(אלף|אלפי|מיליון)?\\s*(בחודש|לחודש)${UNIT}`),
+];
+
+function hasMoney(text) {
+  return MONEY.some((re) => re.test(text));
+}
+
+/* גבול מילה בעברית. בלי זה indexOf('שרה') נתפס גם בתוך "התקשרה",
+   "אישרה", "הכשרה" ו"פשרה", וכל תסריט שמשלב סכום מותר עם אחת מהמילים
+   האלה נפסל בטעות ושרף קריאה. הסכומים האלה דווקא מופיעים בבנק העובדות. */
+const HEB_LETTER = /[֐-ת]/;
+
+function mentionsName(paragraph, name) {
+  let from = 0;
+  for (;;) {
+    const at = paragraph.indexOf(name, from);
+    if (at === -1) return false;
+    const before = at > 0 ? paragraph[at - 1] : '';
+    const after = paragraph[at + name.length] || '';
+    if (!HEB_LETTER.test(before) && !HEB_LETTER.test(after)) return true;
+    from = at + 1;
+  }
+}
+
+/* הכלל שנכתב בפרומפט הוא "לא באותה פסקה", ולכן הבדיקה היא לפי פסקה ולא
+   לפי מרחק תווים. הבדיקה הקודמת הסתכלה על 220 תווים סביב ההופעה
+   הראשונה בלבד, ולכן שם שמופיע פעמיים והסכום צמוד לשנייה פשוט עבר. */
+function moneyNearClient(text, names) {
+  const paragraphs = text.split('\n').filter((p) => p.trim());
+  for (const paragraph of paragraphs) {
+    for (const name of names) {
+      if (mentionsName(paragraph, name) && hasMoney(paragraph)) return name;
+    }
+  }
+  return null;
+}
+
 /* שער האיכות. מחזיר סיבת פסילה, או null אם התוצר עובר. */
 function rejectReason(parsed) {
   if (!parsed.hook) return 'אין הוק';
@@ -250,14 +392,15 @@ function rejectReason(parsed) {
   const all = `${parsed.hook}\n${parsed.script}\n${parsed.production || ''}\n${parsed.mechanism || ''}`;
   /* 09/10/2026: שני התוצרים הראשונים הכילו קו מפריד ארוך, שמאיה אסרה
      בכל טקסט יוצא. זה נבדק ולא רק מתבקש. */
-  if (/[—–]/.test(all)) return 'קו מפריד ארוך';
+  if (/[—–―]/.test(all)) return 'קו מפריד ארוך';
   if (parsed.script.length < MIN_SCRIPT) return `תסריט קצר מדי (${parsed.script.length} תווים)`;
-  /* סלבה ושרה ביקשו במפורש שלא יצוינו סכומים שלהן. זה לא העדפה
-     סגנונית אלא בקשה של לקוחה, ולכן זה נבדק ולא רק נאמר בפרומפט. */
   /* 10/10/2026: תסריט אחד נפתח ב"ורגע, תתכונני", כלומר באמצע מחשבה, בזמן
-     שההוק שלו נשאר רק בשדה שלו. בסרטון אמיתי השורה הראשונה היא ההוק. */
+     שההוק שלו נשאר רק בשדה שלו. בסרטון אמיתי השורה הראשונה היא ההוק.
+     מהביקורת: קידומת של שם דובר מותרת, כי ה-GUARD מתיר במפורש לשכפל
+     דיאלוג, ואז השורה הראשונה היא "מאיה: " ואחריה ההוק. */
   const bare = (t) => t.replace(/[^֐-תa-zA-Z0-9]/g, '').slice(0, 20);
-  if (bare(parsed.hook) && !bare(parsed.script).startsWith(bare(parsed.hook))) {
+  const opening = parsed.script.replace(/^\s*\S{1,20}:\s*/, '');
+  if (bare(parsed.hook) && !bare(opening).startsWith(bare(parsed.hook))) {
     return 'התסריט לא נפתח בהוק';
   }
   /* 10/10/2026: שלושה תסריטים הבטיחו נכס שלא קיים, "שיעור חינמי",
@@ -266,16 +409,11 @@ function rejectReason(parsed) {
   const promise = /(שיעור|מדריך|רשימה|קובץ|אוסף|וובינר|סדנה)\s+(חינמי|חינמית|בחינם)|(בחינם|חינמי)[^.!?]{0,40}(אשלח|אעביר|אשתף)|(אשלח|אעביר)[^.!?]{0,40}(בחינם|חינם)/;
   if (promise.test(parsed.script)) return 'מבטיח נכס שלא קיים';
 
-  for (const name of ['סלבה', 'ירוסלבה', 'שרה']) {
-    const at = all.indexOf(name);
-    if (at === -1) continue;
-    const around = all.slice(Math.max(0, at - 220), at + 220);
-    /* 10/10/2026: הביטוי הראשון דרש מספר צמוד למילה "שקל", ולכן
-       "45 אלף שקל", שזה בדיוק איך שהתסריטים כותבים סכומים, חמק ממנו.
-       אצל שרה וסלבה פספוס כזה הוא הפרה של בקשה מפורשת שלהן. */
-    const money = /\d[\d,.]*\s*(אלפי|אלף|מיליון)?\s*(שקל|ש"ח|₪)|₪\s*\d|(מיליון|אלפי|אלף)\s*(שקל|ש"ח|₪)/;
-    if (money.test(around)) return `סכום כספי ליד ${name}`;
-  }
+  /* סלבה ושרה ביקשו במפורש שלא יצוינו סכומים שלהן. זה לא העדפה
+     סגנונית אלא בקשה של לקוחה, ולכן זה נבדק ולא רק נאמר בפרומפט.
+     "ירוסלבה" מכיל את "סלבה", ולכן אין צורך בשניהם. */
+  const leaked = moneyNearClient(all, ['סלבה', 'שרה']);
+  if (leaked) return `סכום כספי ליד ${leaked}`;
   return null;
 }
 
@@ -284,17 +422,30 @@ async function runFactory(options) {
   const db = getFirestore();
   const key = anthropicApiKey.value();
 
+  /* 10/10/2026, מהביקורת: שתי הקריאות האחרונות נקראו במלואן רק כדי
+     לבנות קבוצת מזהים. nightlyScripts נושא תסריט מלא לכל רשומה, ובקצב
+     שלושה בלילה זה כמה מגהבייט בשנה, ו-nightlyRejects נושא raw של 1,500
+     תווים לכל פסילה. select מוריד את זה למה שבאמת נדרש. */
   const [bankSnap, doneSnap, rejectSnap] = await Promise.all([
     db.collection('inspirationBank').get(),
-    db.collection('nightlyScripts').get(),
-    db.collection('nightlyRejects').get(),
+    db.collection('nightlyScripts').select('refId', 'portalSynced').get(),
+    db.collection('nightlyRejects').select('promptVersion', 'formatFails').get(),
   ]);
 
   /* רפרנס ששוכפל, ורפרנס שנפסל, שניהם לא נבחרים שוב. בלי זה אותו
      מקור גרוע נשרף כל לילה מחדש ועולה כסף על כלום. */
   const used = new Set();
   doneSnap.forEach((d) => { if (d.data().refId) used.add(d.data().refId); });
-  rejectSnap.forEach((d) => { if (d.data().promptVersion === PROMPT_VERSION) used.add(d.id); });
+  /* 10/10/2026, מהביקורת: פסילת ניסוח לא נרשמה בכלל, ומכיוון שהסדר
+     היומי קבוע, אותו רפרנס חזר לאותו מקום בתור כל לילה ושרף שתי קריאות
+     לנצח. עכשיו יש מונה, והוא נחסם אחרי שלוש פעמים. */
+  const formatFails = new Map();
+  rejectSnap.forEach((d) => {
+    const v = d.data();
+    if (v.promptVersion === PROMPT_VERSION) used.add(d.id);
+    if (Number(v.formatFails) >= 3) used.add(d.id);
+    formatFails.set(d.id, Number(v.formatFails) || 0);
+  });
 
   const refs = pickReferences(bankSnap.docs, used, MAX_TRIES);
   if (!refs.length) {
@@ -305,6 +456,23 @@ async function runFactory(options) {
 
   const made = [];
   const rejected = [];
+  const notSynced = [];
+
+  /* תסריט שנכתב אצלנו ולא הגיע לפורטל נדחף שוב, אוטומטית. לפי הכלל
+     שלה, תקלת שליחה מקבלת ניסיון חוזר מובנה ולא בקשה לאישור. */
+  let resent = 0;
+  for (const d of doneSnap.docs) {
+    if (d.data().portalSynced !== false) continue;
+    const full = await d.ref.get();
+    const v = full.data() || {};
+    const ref = bankSnap.docs.find((b) => b.id === v.refId);
+    const extra = ref ? ref.data() : {};
+    if (await pushToPortal(v, extra)) {
+      await d.ref.set({ portalSynced: true }, { merge: true });
+      resent += 1;
+    }
+  }
+  if (resent) console.log('nightlyScripts: resent to portal', resent);
   /* 10/10/2026: הרצה אחת ארכה 366 שניות מתוך 540 שיש לפונקציה. עוד שני
      רפרנסים איטיים והריצה האוטומטית נחתכת באמצע, אחרי שכבר שילמנו על
      הקריאות. לכן יש דדליין שעוצר בנחת ומחזיר את מה שהספיק. */
@@ -328,7 +496,7 @@ async function runFactory(options) {
       /* פסילת ניסוח היא לא אשמת הרפרנס. פעמיים נפסל תסריט רק כי לא נפתח
          בהוק שלו, וזה בדיוק סוג הדבר שהמודל מתקן כשאומרים לו מה נשבר.
          ולכן: הזדמנות שנייה אחת, ורק אחר כך דילוג. */
-      if (why && !parsed.unfit) {
+      if (why && !parsed.unfit && !outOfTime()) {
         console.log('nightlyScripts: second try for', ref.id, why);
         raw = await askClaude(`${buildPrompt(ref)}
 
@@ -346,12 +514,22 @@ async function runFactory(options) {
             why,
             url: ref.url || null,
             promptVersion: PROMPT_VERSION,
+            formatFails: formatFails.get(ref.id) || 0,
             /* 09/10/2026: שלוש פסילות "אין הוק" לא אמרו לי אם התוצר היה
                גרוע או שהפרסור שלי פשוט פספס מבנה אחר. בלי התשובה הגולמית
                אני מנחשת, ולכן היא נשמרת כשנפסל. */
             raw: raw.slice(0, 1500),
             at: FieldValue.serverTimestamp(),
           });
+        }
+        if (!parsed.unfit) {
+          /* פסילת ניסוח: נספרת ולא חוסמת, עד שלוש פעמים. */
+          await db.collection('nightlyRejects').doc(ref.id).set({
+            why,
+            url: ref.url || null,
+            formatFails: (formatFails.get(ref.id) || 0) + 1,
+            at: FieldValue.serverTimestamp(),
+          }, { merge: true });
         }
         console.log('nightlyScripts: rejected', ref.id, why);
         continue;
@@ -370,29 +548,24 @@ async function runFactory(options) {
 
       /* הפורטל הוא המקום שבו מאיה עובדת. התסריט נשלח לשם עם הרפרנס
          שממנו הוא נבנה ועם המנגנון, כי תסריט בלי אלה הוא רעיון מרחף. */
-      try {
-        const sent = await fetch(PORTAL_SCRIPT_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-sale-secret': portalSecret.value() },
-          body: JSON.stringify({
-            mechanism: parsed.mechanism,
-            hook: parsed.hook,
-            script: parsed.script,
-            production: parsed.production,
-            refId: ref.id,
-            refUrl: ref.url || '',
-            refDomain: ref.domain || '',
-            refThumb: ref.thumbnailUrl || '',
-            refText: (ref.translationHe || ref.transcriptHe || '').slice(0, 7000),
-            source: 'nightly',
-          }),
-        });
-        if (!sent.ok) console.error('nightlyScripts: portal refused', sent.status, (await sent.text()).slice(0, 200));
-      } catch (err) {
-        console.error('nightlyScripts: portal post failed', err?.message);
-      }
+      const synced = await pushToPortal({
+        mechanism: parsed.mechanism,
+        hook: parsed.hook,
+        script: parsed.script,
+        production: parsed.production,
+        refId: ref.id,
+        refUrl: ref.url || '',
+        refDomain: ref.domain || '',
+      }, ref);
 
-      made.push({ id: doc.id, hook: parsed.hook });
+      /* 10/10/2026, מהביקורת: כשל בשליחה לפורטל נרשם ללוג בלבד, ומיד
+         אחר כך נשלחה לה הודעה שהתסריטים מחכים בפורטל, כשאולי אף אחד
+         מהם לא שם. עכשיו הכשל מסומן על הרשומה, ההרצה הבאה דוחפת אותו
+         שוב בלי שתצטרך לבקש, וההודעה אומרת את האמת. */
+      await doc.set({ portalSynced: synced }, { merge: true });
+      if (!synced) notSynced.push(ref.id);
+
+      made.push({ id: doc.id, hook: parsed.hook, synced });
     } catch (err) {
       /* תקלת קריאה היא לא פסילת תוכן, ולכן היא לא נרשמת ב-nightlyRejects
          ואינה חוסמת את הרפרנס מחר. היא כן מופיעה בתשובה, כדי שלא אחשוב
@@ -405,7 +578,13 @@ async function runFactory(options) {
   if (!quiet) {
     if (made.length) {
       const lines = made.map((m, i) => `${i + 1}. ${m.hook}`).join('\n\n');
-      await notify(`🌙 ${made.length} תסריטים מוכנים לבוקר:\n\n${lines}\n\nהתסריטים המלאים מחכים בפורטל, בלשונית שיווק.`);
+      /* 10/10/2026, מהביקורת: ההודעה אמרה "מחכים בפורטל" גם כשהשליחה
+         לשם נכשלה, כלומר היא הייתה מחפשת שם משהו שאינו קיים. */
+      const stuck = made.filter((m) => !m.synced).length;
+      const tail = stuck
+        ? `\n\n${made.length - stuck} מהם מחכים בפורטל בלשונית שיווק. ${stuck} לא הצליחו להגיע לשם, והם יישלחו שוב אוטומטית בהרצה הבאה.`
+        : '\n\nהתסריטים המלאים מחכים בפורטל, בלשונית שיווק.';
+      await notify(`🌙 ${made.length} תסריטים מוכנים לבוקר:\n\n${lines}${tail}`);
     } else {
       await notify('🌙 מפעל התוכן רץ אבל לא הצליח לייצר תסריטים. שווה להציץ בלוג.');
     }
@@ -422,6 +601,7 @@ exports.nightlyScripts = onSchedule(
     timeZone: 'Asia/Jerusalem',
     region: 'us-central1',
     timeoutSeconds: 540,
+    maxInstances: 1,
     secrets: [anthropicApiKey, greenApiIdInstance, greenApiTokenInstance, portalSecret],
     retryCount: 0,
   },
@@ -434,11 +614,14 @@ exports.nightlyScriptsNow = onRequest(
   {
     region: 'us-central1',
     timeoutSeconds: 540,
+    maxInstances: 1,
     secrets: [anthropicApiKey, greenApiIdInstance, greenApiTokenInstance, portalSecret],
   },
   async (req, res) => {
-    if (req.query.key !== 'maya') return res.status(403).json({ ok: false });
+    if (req.query.key !== MANUAL_KEY) return res.status(403).json({ ok: false });
     try {
+      const allowed = await takeManualRun(getFirestore());
+      if (!allowed) return res.status(429).json({ ok: false, error: 'נגמרו ההרצות הידניות להיום' });
       const out = await runFactory({ quiet: req.query.quiet === '1' });
       return res.json({ ok: true, ...out });
     } catch (err) {

@@ -196,13 +196,55 @@ test('סכום של רון עובר, כי אצלה זה מותר', () => {
   assert.strictEqual(r, null);
 });
 
-test('סכום רחוק מהשם לא נפסל בטעות', () => {
-  const far = HOOK + ' סלבה עלתה ל-4,593 עוקבים. ' + 'ש'.repeat(500) + ' ורון הגיעה ל-45,000 שקל.';
+/* 10/10/2026, מהביקורת: כאן הייתה בדיקה שקיבעה את פרצת 220 התווים
+   כהתנהגות רצויה. הכלל האמיתי הוא "לא באותה פסקה", ולכן זה נבדק לפי
+   פסקאות: סכום של רון בפסקה אחרת מותר, באותה פסקה כשסלבה מוזכרת לא. */
+test('סכום של לקוחה אחרת, בפסקה אחרת, מותר', () => {
+  const far = HOOK + ' סלבה עלתה ל-4,593 עוקבים.' + String.fromCharCode(10)
+    + 'ורון הגיעה ל-45,000 שקל. ' + 'ש'.repeat(400);
   assert.strictEqual(rejectReason({ ...good, script: far }), null);
 });
 
+test('סכום באותה פסקה שבה סלבה מוזכרת נפסל', () => {
+  const near = HOOK + ' סלבה עלתה, ורון הגיעה ל-45,000 שקל. ' + 'ש'.repeat(400);
+  assert.strictEqual(rejectReason({ ...good, script: near }), 'סכום כספי ליד סלבה');
+});
+
+/* חמש הדליפות שאומתו בביקורת, כל אחת בנוסח שבו תסריט אמיתי כותב סכום. */
+test('סכום צמוד להופעה השנייה של השם נפסל', () => {
+  const t = HOOK + ' שרה היא לקוחה שלי. ושרה עברה ל-50,000 שקל בחודש. ' + 'ש'.repeat(400);
+  assert.strictEqual(rejectReason({ ...good, script: t }), 'סכום כספי ליד שרה');
+});
+
+test('"45 אלף" בלי המילה שקל נפסל', () => {
+  const t = HOOK + ' שרה עברה מ-15 אלף ל-45 אלף בחודש. ' + 'ש'.repeat(400);
+  assert.strictEqual(rejectReason({ ...good, script: t }), 'סכום כספי ליד שרה');
+});
+
+test('"50K" נפסל', () => {
+  const t = HOOK + ' שרה הגיעה ל-50K בחודש. ' + 'ש'.repeat(400);
+  assert.strictEqual(rejectReason({ ...good, script: t }), 'סכום כספי ליד שרה');
+});
+
+test('המילה הכנסה עם מספר נפסלת, גם בלי מטבע', () => {
+  const t = HOOK + ' ההכנסה של שרה הוכפלה פי חמש ל-50,000 בחודש. ' + 'ש'.repeat(400);
+  assert.strictEqual(rejectReason({ ...good, script: t }), 'סכום כספי ליד שרה');
+});
+
+/* 10/10/2026, מהביקורת: indexOf תפס את "שרה" בתוך מילים עבריות תמימות,
+   ודווקא יחד עם הסכומים שמופיעים בבנק העובדות ומותרים במפורש. */
+test('מילים שמכילות את "שרה" לא פוסלות סכום מותר', () => {
+  for (const word of ['לקוחה התקשרה ואמרה שהוציאה 100,000 שקל על קורסים',
+    'היא אישרה לי לספר שעלתה ל-45,000 שקל',
+    'הכשרה שעלתה 30,000 שקל',
+    'זו פשרה של 2,000 שקל בחודש']) {
+    const t = HOOK + ' ' + word + '. ' + 'ש'.repeat(400);
+    assert.strictEqual(rejectReason({ ...good, script: t }), null, word);
+  }
+});
+
 /* הבחירה: מקור דל הפיק תסריט דל, ולכן יש רצפה לאורך התמלול. */
-const asDoc = (id, text, extra) => ({ id, data: () => ({ translationHe: text, ...extra }) });
+const asDoc = (id, text, extra) => ({ id, data: () => ({ translationHe: text, url: 'https://x.test/' + id, ...extra }) });
 
 test('רפרנס עם תמלול קצר לא נבחר בכלל', () => {
   const picked = pickReferences([asDoc('a', 'ש'.repeat(290))], new Set(), 5);
@@ -215,13 +257,71 @@ test('רפרנס ששוכפל או שנפסל לא נבחר שוב', () => {
   assert.deepStrictEqual(picked.map((p) => p.id), ['b']);
 });
 
-test('מקור עשיר נבחר לפני מקור על הגבול', () => {
-  const docs = [asDoc('thin', 'ש'.repeat(520)), asDoc('rich', 'ש'.repeat(3000))];
-  const picked = pickReferences(docs, new Set(), 2);
-  assert.strictEqual(picked[0].id, 'rich');
+test('תמלול בלי תרגום נחשב גם הוא', () => {
+  const docs = [{ id: 'x', data: () => ({ transcriptHe: 'ש'.repeat(700), url: 'https://x.test/x' }) }];
+  assert.strictEqual(pickReferences(docs, new Set(), 2).length, 1);
 });
 
-test('תמלול בלי תרגום נחשב גם הוא', () => {
-  const docs = [{ id: 'x', data: () => ({ transcriptHe: 'ש'.repeat(700) }) }];
-  assert.strictEqual(pickReferences(docs, new Set(), 2).length, 1);
+/* 10/10/2026, מהביקורת: הפורטל דורש refUrl ודוחה בלעדיו, ולכן רפרנס בלי
+   כתובת שילם על קריאה ל-Anthropic ולא הגיע לשום מקום. */
+test('רפרנס בלי כתובת לא נבחר בכלל', () => {
+  const docs = [{ id: 'x', data: () => ({ translationHe: 'ש'.repeat(900) }) }];
+  assert.strictEqual(pickReferences(docs, new Set(), 2).length, 0);
+});
+
+/* 10/10/2026, מהביקורת: הבדיקה הקודמת כאן ("מקור עשיר נבחר לפני מקור על
+   הגבול") עברה רק כי 'rich' קודם ל-'thin' אלפביתית, ותיעדה התנהגות שלא
+   קיימת. האורך הוא רצפה, והסדר נקבע לפי תחום. */
+test('תחום עסקי קודם לתחום של סיפור חיים', () => {
+  const docs = [
+    asDoc('a', 'ש'.repeat(900), { domain: 'בריאות נפשית, טיפול ורוח' }),
+    asDoc('b', 'ש'.repeat(900), { domain: 'עסקים ויזמות' }),
+  ];
+  assert.deepStrictEqual(pickReferences(docs, new Set(), 2).map((p) => p.id), ['b', 'a']);
+});
+
+/* 10/10/2026, מהביקורת: הערבוב היומי היה (a.id + seed < b.id + seed),
+   כלומר שרשור אותה סיומת לשני הצדדים, שלא משנה את ההשוואה בכלל. זה היה
+   מיון אלפביתי טהור, ואותם רפרנסים חזרו לראש התור כל לילה. */
+test('יום אחר נותן סדר אחר', () => {
+  const docs = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].map((id) => asDoc(id, 'ש'.repeat(900)));
+  const day1 = pickReferences(docs, new Set(), 8, { seed: '2026-10-10' }).map((p) => p.id);
+  const day2 = pickReferences(docs, new Set(), 8, { seed: '2027-03-14' }).map((p) => p.id);
+  assert.notDeepStrictEqual(day1, day2);
+  assert.deepStrictEqual([...day1].sort(), [...day2].sort());
+});
+
+test('אותו יום נותן אותו סדר בדיוק', () => {
+  const docs = ['a', 'b', 'c', 'd'].map((id) => asDoc(id, 'ש'.repeat(900)));
+  const once = pickReferences(docs, new Set(), 4, { seed: '2026-10-10' }).map((p) => p.id);
+  const twice = pickReferences(docs, new Set(), 4, { seed: '2026-10-10' }).map((p) => p.id);
+  assert.deepStrictEqual(once, twice);
+});
+
+/* 10/10/2026, מהביקורת: ה-GUARD מתיר במפורש לשכפל דיאלוג, ואז השורה
+   הראשונה היא "מאיה: " ואחריה ההוק. בלי זה כל רפרנס שהוא דיאלוג היה
+   נפסל פעמיים ומבזבז שתי קריאות. */
+test('קידומת של שם דובר לפני ההוק מותרת', () => {
+  const r = rejectReason({ ...good, script: 'מאיה: ' + HOOK + ' ' + 'ש'.repeat(400) });
+  assert.strictEqual(r, null);
+});
+
+/* 10/10/2026, מהביקורת: שורה כמו "לא מתאים לך הפורמט" בתוך גוף התסריט
+   נקראה כפסק דין, התסריט נזרק והרפרנס נחסם לצמיתות. */
+test('"לא מתאים" בתוך גוף התסריט אינו פסק דין', () => {
+  const raw = [
+    'מנגנון: שאלה שהצופה עונה עליה בראש',
+    'הוק: ' + HOOK,
+    'תסריט:',
+    HOOK,
+    'ואם לא מתאים לך הפורמט הזה, תעשי אותו אחרת.',
+    'הנגשה: טלפון ביד',
+  ].join(String.fromCharCode(10));
+  const p = parseScript(raw);
+  assert.strictEqual(p.unfit, undefined);
+  assert.ok(p.script.includes('לא מתאים לך הפורמט'));
+});
+
+test('"לא מתאים" כשורה ראשונה כן פוסל', () => {
+  assert.ok(parseScript('לא מתאים: המנגנון דורש סיפור אינטימי').unfit);
 });
