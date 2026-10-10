@@ -2219,6 +2219,7 @@ Object.assign(exports, require('./strategy-form'));
    משיטת השכפול ומהמאגר, במקום שעתיים שבועיות של חיפוש רעיונות. */
 Object.assign(exports, require('./nightly-scripts'));
 Object.assign(exports, require('./backfill-marketing'));
+Object.assign(exports, require('./ofek-reminder'));
 
 // 30/09/2026: טבלת החימום בסטורי. הפונקציה מקבלת את enforceAllowlist מכאן
 // כדי לא לשכפל את בדיקת ההרשאה, שהיא אותה בדיקה בכל שאר הפונקציות.
