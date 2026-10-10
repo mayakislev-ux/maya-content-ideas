@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { buildPrompt, _internal } = require('./draftScriptFeedback');
 
-const { METHOD, VOICE, ESCALATE } = _internal;
+const { METHOD, VOICE, ESCALATE, REVISION, REFERENCE_RULE } = _internal;
 
 /**
  * 10/10/2026 (מאיה): "שהכל בשפה שלי במילים שלי בשיטה שלי".
@@ -82,7 +82,8 @@ test('ופידבק קצר מדי אינו דוגמה', () => {
 
 test('ובלי היסטוריה הפרומפט עדיין תקין', () => {
   const p = buildPrompt({ block });
-  assert.ok(!p.includes('פידבק קודם'));
+  /* הכלל על הרפרנס מזכיר "פידבק קודם", ולכן הבדיקה היא על הבלוק עצמו */
+  assert.ok(!p.includes('פידבק קודם 1'));
   assert.ok(p.includes(block.body));
 });
 
@@ -97,4 +98,67 @@ test('ונאמר במפורש שהטיוטה לא נשלחת לאף אחת', () 
   const p = buildPrompt({ block, history: [] });
   assert.match(p, /לא נשלחת לאף אחת/);
   assert.match(p, /מאיה קוראת אותה, עורכת, ושולחת בעצמה/);
+});
+
+/* ---------------- סבבים ורפרנס ---------------- */
+/**
+ * מאיה (10/10/2026, תסריט 5 של לין): "הוא לא שם לב שאנחנו בסבב 2 ויש
+ * תיקון והוא לא קרא, והוא לא שם לב שיש רפרנס שהוסיפה". הטיוטה דרשה את
+ * התיקון שלין כבר ביצעה, כי הפרומפט נשא רק את גרסה 1.
+ */
+
+const rounds = [
+  { n: 1, text: 'בנות שמשלמות אלפי שקלים על קורס', feedback: 'הייתי לוקחת את ההוק לכיוון הקורסים'.repeat(4) },
+  { n: 2, text: 'מדריכות ציפורניים שמבטיחות שני מפגשים' },
+];
+
+test('כל הסבבים נכנסים לפרומפט, והאחרון מסומן כגרסה לבדיקה', () => {
+  const p = buildPrompt({ block, rounds });
+  assert.ok(p.includes(rounds[0].text), 'הגרסה הקודמת נעלמה, ואין מול מה להשוות');
+  assert.ok(p.includes(rounds[1].text), 'הגרסה החדשה לא נכנסה לפרומפט');
+  assert.match(p, /סבב 2: זאת הגרסה שצריך לפדבק עליה עכשיו/);
+  assert.match(p, /סבב 1: גרסה קודמת, רקע בלבד/);
+});
+
+test('והפידבק שמאיה כבר כתבה על הגרסה הקודמת נכנס איתם', () => {
+  const p = buildPrompt({ block, rounds });
+  assert.ok(p.includes(rounds[0].feedback), 'הפידבק מסבב 1 לא נשלח');
+  assert.match(p, /מה שמאיה כתבה על הגרסה הזאת/);
+});
+
+test('ונאמר במפורש שאסור לדרוש תיקון שכבר בוצע', () => {
+  assert.match(REVISION, /הסבב האחרון הוא הגרסה שמפדבקים עליה/);
+  assert.match(REVISION, /לא מבקשים אותו שוב/);
+  assert.match(REVISION, /עוברים על הפידבק של הסבב הקודם סעיף סעיף/);
+});
+
+test('מספר הסבב נאמר בפרומפט', () => {
+  assert.match(buildPrompt({ block, rounds }), /זה סבב 2/);
+  assert.match(buildPrompt({ block, history: [] }), /זה סבב 1/);
+});
+
+test('סבב בודד אינו ציר, והתסריט מוצג כרגיל', () => {
+  const p = buildPrompt({ block, rounds: [{ n: 1, text: 'א'.repeat(300) }] });
+  assert.ok(!p.includes('גרסה קודמת, רקע בלבד'));
+});
+
+test('הרפרנס שהלקוחה הוסיפה מופיע, ונאמר שאין גישה לצפות בו', () => {
+  const p = buildPrompt({ block, rounds, referenceUrl: 'https://vt.tiktok.com/ZSbpNHrut/' });
+  assert.ok(p.includes('https://vt.tiktok.com/ZSbpNHrut/'), 'הרפרנס לא נכנס לפרומפט');
+  assert.match(p, /אין גישה לצפות בו/);
+});
+
+test('ובלי קישור נאמר שלא הוגש, בלי להמציא שיש', () => {
+  assert.match(buildPrompt({ block, rounds }), /רפרנס: \(לא הוגש קישור\)/);
+});
+
+test('אסור לבקש רפרנס שקיים ואסור לשפוט רפרנס שלא נראה', () => {
+  assert.match(REFERENCE_RULE, /אסור לבקש רפרנס ואסור לכתוב שאין רפרנס/);
+  assert.match(REFERENCE_RULE, /אסור לקבוע שהרפרנס לא מתאים/);
+  assert.match(REFERENCE_RULE, /צריך אותך:/);
+});
+
+test('ובלי מקף ארוך גם בכללים החדשים', () => {
+  assert.ok(!REVISION.includes('—'), 'מקף ארוך בכלל הסבבים');
+  assert.ok(!REFERENCE_RULE.includes('—'), 'מקף ארוך בכלל הרפרנס');
 });

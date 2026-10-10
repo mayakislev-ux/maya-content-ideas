@@ -35,7 +35,8 @@ const anthropicApiKey = defineSecret('ANTHROPIC_API_KEY');
 
 const PORTAL_PROJECT = 'maya-client-portal';
 const OWNER_EMAIL = 'mayakislev@gmail.com';
-const MAX_CHARS = 20000;
+/* 10/10/2026: הפרומפט נושא עכשיו את כל הסבבים ולא רק את גרסה 1 */
+const MAX_CHARS = 32000;
 
 let portalApp = null;
 function portalAuth() {
@@ -84,12 +85,63 @@ const ESCALATE = `שני דברים שאסור להכריע בהם:
 const FUN_RULE = `אם סוג הסרטון הוא בידורי או שזה טרנד: מאיה לא מבקשת תסריט מראש על
 סרטונים כאלה. הטיוטה צריכה לאשר בקצרה ולהציע להעלות, בלי ביקורת מפורטת.`;
 
-function buildPrompt({ block, history }) {
+/**
+ * 10/10/2026, מאיה על תסריט 5 של לין: "הוא לא שם לב שאנחנו בסבב 2 ויש
+ * תיקון, והוא לא קרא". הטיוטה הראשונה פידבקה על גרסה 1 ודרשה בדיוק את
+ * התיקון שלין כבר ביצעה בגרסה 2. זה הכלל שמונע את זה.
+ */
+const REVISION = `כשיש יותר מסבב אחד:
+
+- הסבב האחרון הוא הגרסה שמפדבקים עליה. הגרסאות שלפניו הן רקע, ואסור לפדבק עליהן.
+- לפני שכותבים מילה, עוברים על הפידבק של הסבב הקודם סעיף סעיף ובודקים מה מהם מופיע בגרסה החדשה.
+- תיקון שבוצע: אומרים אותו בפה מלא ולא מבקשים אותו שוב. לדרוש תיקון שהלקוחה כבר עשתה זה הכשל החמור ביותר כאן.
+- תיקון שלא בוצע או בוצע חלקית: מצביעים עליו בדיוק ומצטטים את מה שנשאר.
+- ואז ממשיכים בשמונת השלבים, מהשלב הראשון שעדיין נכשל.`;
+
+/**
+ * אותה הודעה: "והוא לא שם לב שיש רפרנס שהוסיפה". הרפרנס יושב כקישור על
+ * ההגשה בפורטל, ואין שום דרך לצפות בו מכאן. אסור לבקש אותו ואסור לשפוט
+ * אותו.
+ */
+const REFERENCE_RULE = `על הרפרנס:
+
+- אם מופיע קישור לרפרנס, הרפרנס קיים. אסור לבקש רפרנס ואסור לכתוב שאין רפרנס.
+- אין שום גישה לצפות בו. מה שידוע עליו הוא רק מה שכתוב בפידבקים הקודמים ובתסריט עצמו.
+- לכן אסור לקבוע שהרפרנס לא מתאים אלא אם זה כבר נאמר בפידבק קודם. אם זה לא ברור, זאת שורת "צריך אותך:".
+- רק אם אין קישור ואין רפרנס בשום מקום, זה שלב 1 ומבקשים אותו.`;
+
+/**
+ * ציר הסבבים. בלעדיו הפרומפט נשא רק את גרסה 1, כי זה מה שיושב בעמודה
+ * הראשונה בגיליון.
+ */
+function renderRounds(rounds) {
+  const list = (rounds || []).filter((r) => r && String(r.text || '').trim());
+  if (list.length < 2) return '';
+  return list
+    .map((r, i) => {
+      const n = r.n || i + 1;
+      const head = i === list.length - 1
+        ? `--- סבב ${n}: זאת הגרסה שצריך לפדבק עליה עכשיו ---`
+        : `--- סבב ${n}: גרסה קודמת, רקע בלבד ---`;
+      const fb = String(r.feedback || '').trim();
+      return `${head}\n${String(r.text).trim()}\n${fb ? `\nמה שמאיה כתבה על הגרסה הזאת:\n${fb}\n` : ''}`;
+    })
+    .join('\n');
+}
+
+exports.renderRounds = renderRounds;
+
+function buildPrompt({ block, history, rounds, referenceUrl }) {
   const prior = (history || [])
     .filter((h) => h && h.feedback && h.feedback.length > 80)
     .slice(0, 4)
     .map((h, i) => `--- פידבק קודם ${i + 1} שמאיה כתבה לאותה לקוחה ---\n${h.feedback}`)
     .join('\n\n');
+
+  const timeline = renderRounds(rounds);
+  const roundN = timeline
+    ? (rounds[rounds.length - 1].n || rounds.length)
+    : 1;
 
   return `את כותבת טיוטת פידבק על תסריט, בשביל מאיה כסלב, מאמנת שיווק.
 הטיוטה הזאת לא נשלחת לאף אחת: מאיה קוראת אותה, עורכת, ושולחת בעצמה.
@@ -102,24 +154,30 @@ ${ESCALATE}
 
 ${FUN_RULE}
 
+${REVISION}
+
+${REFERENCE_RULE}
+
 ${prior ? `כך מאיה כתבה לאותה לקוחה בעבר. זה המקור הכי טוב לקול ולדפוסים שחוזרים אצלה:\n\n${prior}\n` : ''}
-התסריט שצריך לפדבק:
+התסריט שצריך לפדבק. זה סבב ${roundN}.
 
 כותרת: ${block.title || '(אין)'}
 רעיון התסריט: ${block.idea || '(לא מולא)'}
 סוג הסרטון: ${block.videoType || '(לא מולא)'}
 פורמט: ${block.format || '(לא מולא)'}
 הנעה לפעולה: ${block.cta || '(לא מולא)'}
+רפרנס: ${referenceUrl ? `${referenceUrl} (קיים. אין גישה לצפות בו)` : '(לא הוגש קישור)'}
 
-התסריט עצמו:
-${block.body || '(ריק)'}
+${timeline
+    ? `כל הסבבים, מהראשון לאחרון:\n\n${timeline}`
+    : `התסריט עצמו:\n${block.body || '(ריק)'}`}
 
 כתבי את הטיוטה בלבד, כאילו מאיה כותבת אותה ללקוחה. בלי כותרות, בלי
 הסברים עלייך, ובלי להזכיר שזאת טיוטה.`;
 }
 
 exports.buildPrompt = buildPrompt;
-exports._internal = { METHOD, VOICE, ESCALATE, FUN_RULE };
+exports._internal = { METHOD, VOICE, ESCALATE, FUN_RULE, REVISION, REFERENCE_RULE };
 
 exports.draftScriptFeedback = onCall(
   { secrets: [anthropicApiKey], region: 'us-central1', timeoutSeconds: 300, memory: '512MiB' },
@@ -143,7 +201,12 @@ exports.draftScriptFeedback = onCall(
     if (!block || typeof block !== 'object' || !String(block.body || '').trim()) {
       throw new HttpsError('invalid-argument', 'אין תסריט לבדוק');
     }
-    const prompt = buildPrompt({ block, history: request.data?.history });
+    const prompt = buildPrompt({
+      block,
+      history: request.data?.history,
+      rounds: request.data?.rounds,
+      referenceUrl: request.data?.referenceUrl,
+    });
     if (prompt.length > MAX_CHARS) {
       throw new HttpsError('invalid-argument', 'התסריט ארוך מדי לבדיקה אוטומטית');
     }
