@@ -122,7 +122,7 @@ exports.buildPrompt = buildPrompt;
 exports._internal = { METHOD, VOICE, ESCALATE, FUN_RULE };
 
 exports.draftScriptFeedback = onCall(
-  { secrets: [anthropicApiKey], region: 'us-central1', timeoutSeconds: 120, memory: '512MiB' },
+  { secrets: [anthropicApiKey], region: 'us-central1', timeoutSeconds: 300, memory: '512MiB' },
   async (request) => {
     const idToken = request.data?.idToken;
     if (typeof idToken !== 'string' || idToken.length < 100 || idToken.length > 5000) {
@@ -152,7 +152,7 @@ exports.draftScriptFeedback = onCall(
     try {
       const res = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
-        signal: AbortSignal.timeout(90000),
+        signal: AbortSignal.timeout(240000),
         headers: {
           'x-api-key': anthropicApiKey.value(),
           'anthropic-version': '2023-06-01',
@@ -160,7 +160,11 @@ exports.draftScriptFeedback = onCall(
         },
         body: JSON.stringify({
           model: 'claude-opus-5-5',
-          max_tokens: 1800,
+          /* 10/10/2026: עם 1800 המודל שרף את כל התקציב על חשיבה וחזר
+             בלי שום טקסט (stop_reason: max_tokens, types: ["thinking"]).
+             השיפוט כאן שווה את החשיבה, ולכן התקציב גדל במקום לכבות
+             אותה. */
+          max_tokens: 9000,
           messages: [{ role: 'user', content: prompt }],
         }),
       });
@@ -170,7 +174,20 @@ exports.draftScriptFeedback = onCall(
         throw new HttpsError('internal', 'לא הצלחנו להכין טיוטה. אפשר לנסות שוב');
       }
       const data = await res.json();
-      text = (data.content || []).map((c) => c.text || '').join('').trim();
+      /* תשובה יכולה להכיל בלוקים שאינם טקסט. סינון לפי סוג, אחרת
+         הכל מצטרף למחרוזת ריקה והשגיאה נראית כמו "חזר ריק". */
+      text = (data.content || [])
+        .filter((c) => c && c.type === 'text')
+        .map((c) => c.text || '')
+        .join('')
+        .trim();
+      if (!text) {
+        console.error('draftScriptFeedback: תשובה בלי טקסט', JSON.stringify({
+          stop: data.stop_reason,
+          types: (data.content || []).map((c) => c && c.type),
+          keys: Object.keys(data || {}),
+        }));
+      }
     } catch (err) {
       if (err instanceof HttpsError) throw err;
       console.error('draftScriptFeedback failed', err.message);
