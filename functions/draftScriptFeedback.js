@@ -145,9 +145,11 @@ function buildPrompt({ block, history, rounds, referenceUrl }) {
     .join('\n\n');
 
   const timeline = renderRounds(rounds);
-  const roundN = timeline
-    ? (rounds[rounds.length - 1].n || rounds.length)
-    : 1;
+  /* מספר הסבב נלקח מהסבב עצמו גם כשיש אחד בלבד. אחרת גרסה מתוקנת שהגרסה
+     הראשונה שלה חסרה בקובץ מוצגת למודל כ"סבב 1". */
+  const list = (rounds || []).filter((r) => r && String(r.text || '').trim());
+  const last = list[list.length - 1];
+  const roundN = last ? (last.n || list.length) : 1;
 
   return `את כותבת טיוטת פידבק על תסריט, בשביל מאיה כסלב, מאמנת שיווק.
 הטיוטה הזאת לא נשלחת לאף אחת: מאיה קוראת אותה, עורכת, ושולחת בעצמה.
