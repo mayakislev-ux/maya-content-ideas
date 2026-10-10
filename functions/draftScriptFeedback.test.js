@@ -4,6 +4,7 @@ const { buildPrompt, _internal } = require('./draftScriptFeedback');
 
 const {
   METHOD, VOICE, ESCALATE, REVISION, REFERENCE_RULE, ROLE, STAGE, ROUNDS_RULE,
+  CALIBRATION, NO_INVENTION,
 } = _internal;
 
 /**
@@ -324,4 +325,52 @@ test('הסדר בפרומפט: שיטה, תפקיד, שלב, קול', () => {
   assert.ok(at(METHOD) < at(ROLE), 'התפקיד לפני השיטה');
   assert.ok(at(ROLE) < at(STAGE), 'השלב לפני התפקיד');
   assert.ok(at(STAGE) < at(VOICE), 'הקול לפני השלב');
+});
+
+/* -------- כיול: מה שהמדידה מול 7 פידבקים אמיתיים חשפה -------- */
+/**
+ * הטיוטות היו ארוכות פי 3.6 ממאיה, וכשהיא כתבה 100 עד 316 תווים הן
+ * כתבו 1,982 עד 2,463. בנוסף: "זה כבר סבב 3" כשבנתונים היה סבב אחד,
+ * ציטוט הוק שלא קיים בתסריט, וקביעה שהרפרנס "הרבה יותר מתאים".
+ */
+
+test('הכיול נוקב באורך האמיתי ובאחוז האישורים', () => {
+  assert.match(CALIBRATION, /686 תווים/);
+  assert.match(CALIBRATION, /21% מהפידבקים שלה מאשרים/);
+  assert.ok(CALIBRATION.includes('אינה הקול שלה'));
+});
+
+test('ועוצרים בשלב הראשון שנכשל, בלי רשימת דיוקים מתחתיו', () => {
+  assert.match(CALIBRATION, /עוצרים בשלב הראשון שנכשל, וזאת לא המלצה/);
+  assert.match(CALIBRATION, /בלי רשימת דיוקי ניסוח מתחתיו/);
+  assert.match(CALIBRATION, /שלוש נקודות לכל היותר/);
+});
+
+test('והערות צילום רק לתסריט מאושר', () => {
+  assert.match(CALIBRATION, /רק לתסריט שמאושר/);
+});
+
+test('אסור להמציא ציטוט, סבב או ידיעה על הרפרנס', () => {
+  assert.match(NO_INVENTION, /מצטטים רק טקסט שמופיע מילה במילה/);
+  assert.match(NO_INVENTION, /אסור לכתוב מספר אחר/);
+  assert.match(NO_INVENTION, /אסור לכתוב שהוא מתאים, שהוא השתפר/);
+});
+
+test('והרפרנס מחופש בשלושה מקומות לפני שאומרים שהוא חסר', () => {
+  /* בביקורת הטיוטה אמרה "לא צירפת קישור" כשהתמלול היה מודבק בתסריט */
+  assert.match(NO_INVENTION, /התסריט המקורי/);
+  assert.match(NO_INVENTION, /בודקים את שלושתם/);
+});
+
+test('מספר הסבב חוזר כדירקטיבה בסוף הפרומפט', () => {
+  /* ההוראה בתחילת פרומפט ארוך לא החזיקה, ולכן היא חוזרת בסוף */
+  const p = buildPrompt({ block, rounds: [{ n: 2, text: 'א'.repeat(300) }] });
+  assert.match(p, /זה סבב 2\. זה המספר היחיד שמותר לכתוב/);
+  assert.ok(p.lastIndexOf('זה המספר היחיד') > p.length - 900, 'הדירקטיבה רחוקה מהסוף');
+});
+
+test('ושתי התזכורות האחרונות הן קיצור ועצירה', () => {
+  const p = buildPrompt({ block, history: [] });
+  assert.ok(p.includes('כותבים אותו'));
+  assert.match(p, /בשני המקרים הטיוטה קצרה/);
 });
