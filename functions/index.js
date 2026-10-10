@@ -2230,6 +2230,9 @@ exports.syncStoryTable = makeSyncStoryTable({ enforceAllowlist });
 // בפורטל. הפונקציה חיה כאן כי מפתח ה-AI כאן, והפורטל קורא אליה עם אסימון
 // ההתחברות שלו, כמו ב-portalSso.
 exports.readInsights = require('./readInsights').readInsights;
+// 10/10/2026: טיוטת פידבק לתסריט, בשיטה שחולצה מ-98 הפידבקים של מאיה.
+// הפורטל קורא לכאן כי המפתח יושב כאן, והוא שולח טקסט בלבד.
+exports.draftScriptFeedback = require('./draftScriptFeedback').draftScriptFeedback;
 
 
 
