@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { buildPrompt, _internal } = require('./draftScriptFeedback');
 
-const { METHOD, VOICE, ESCALATE, REVISION, REFERENCE_RULE } = _internal;
+const { METHOD, VOICE, ESCALATE, REVISION, REFERENCE_RULE, SHARPNESS } = _internal;
 
 /**
  * 10/10/2026 (מאיה): "שהכל בשפה שלי במילים שלי בשיטה שלי".
@@ -187,4 +187,54 @@ test('סבב בודד שאינו הראשון נאמר במספרו האמיתי
      כ"זה סבב 1" והוא פידבק עליה מאפס */
   const p = buildPrompt({ block, rounds: [{ n: 2, text: 'א'.repeat(300) }] });
   assert.match(p, /זה סבב 2/);
+});
+
+/* ---------------- חדות: מה שמאיה הפילה בטיוטה של לין ---------------- */
+/**
+ * 10/10/2026. הסוכן שיבח את ההוק, קרא להתפזרות "מסבירה במקום להראות",
+ * ולא אמר שהתסריט לא משכנע. מאיה: "התפזרות אחושרמוטה".
+ */
+
+test('איכות ההוק עצמה היא שלב, ולא רק הכיוון שלו', () => {
+  assert.match(SHARPNESS, /הוק ארוך,\s*\n?\s*מסורבל או מתיש הוא כשל/);
+  assert.match(SHARPNESS, /לא מדייקים שום דבר\s*\n?\s*מתחת להוק שלא עומד/);
+});
+
+test('וניסוח שמאיה הציעה הוא כיוון, לא טקסט להעתיק', () => {
+  assert.match(SHARPNESS, /כיוון, לא טקסט להעתיק/);
+  assert.match(SHARPNESS, /זה לא "בוצע"/);
+});
+
+test('התפזרות נקראת בשמה, והיא בעיית זווית ולא פורמט', () => {
+  assert.match(SHARPNESS, /זאת\s*\n?\s*התפזרות/);
+  assert.match(SHARPNESS, /אינה "מסבירה במקום להראות"/);
+  assert.match(SHARPNESS, /בעיית זווית/);
+});
+
+test('ותסריט שלא מוכיח למה זאת בעיה נופל על זה', () => {
+  assert.match(SHARPNESS, /חייב לשכנע למה זאת בעיה/);
+  assert.match(SHARPNESS, /התיקון המרכזי שלו, לא הערה בסוף/);
+});
+
+test('קהל אחד מההתחלה עד הסוף, לא רק בפתיחה', () => {
+  assert.match(SHARPNESS, /לא מספיק שהפתיחה פונה לקהל הנכון/);
+  assert.match(SHARPNESS, /מערבב למי הוא פונה/);
+});
+
+test('החדות נכנסת לפרומפט אחרי השיטה ולפני הקול', () => {
+  const p = buildPrompt({ block, history: [] });
+  const iM = p.indexOf('שמונת השלבים');
+  const iS = p.indexOf('חמש בדיקות שקודמות');
+  const iV = p.indexOf('הקול של מאיה');
+  assert.ok(iM > -1 && iS > -1 && iV > -1, 'חסר אחד הבלוקים בפרומפט');
+  assert.ok(iM < iS && iS < iV, 'הסדר בפרומפט אינו שיטה, חדות, קול');
+});
+
+test('והסוכן לא קובע כמה סבבים נשארו', () => {
+  /* הטיוטה כתבה ללין "זה הסבב האחרון של התסריט הזה", וזה נקבע במערכת */
+  assert.match(VOICE, /לא אומרת כמה סבבים נשארו/);
+});
+
+test('ובלי מקף ארוך גם בבדיקות החדות', () => {
+  assert.ok(!SHARPNESS.includes('\u2014'), 'מקף ארוך בבדיקות החדות');
 });
