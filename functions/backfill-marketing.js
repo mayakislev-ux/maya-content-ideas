@@ -26,6 +26,40 @@ exports.backfillMarketingScripts = onRequest(
     /* 10/10/2026: המפעל פסל תשעה רפרנסים ברצף, כמעט כולם בנימוק שהמנגנון
        דורש סיפור חיים אינטימי. לפני שאני משנה את כלל הבחירה אני רוצה
        לראות מה בכלל יש במאגר, במקום לנחש. */
+    /* 10/10/2026 (מאיה: "האם אופק מילאה את השאלון?"): אין מפתח אדמין
+       לפרויקט הזה, והשאלון נשמר כאן. במקום לנחש או לבקש ממנה לחפש
+       במייל, קריאה קטנה מאחורי אותו מפתח ארוך. בלי תוכן התשובות. */
+    if (req.query.forms === '1') {
+      const forms = await db.collection('strategyForms').get();
+      const rows = [];
+      forms.forEach((d) => {
+        const v = d.data();
+        rows.push({
+          who: v.who || '(בלי שם)',
+          form: v.form || '',
+          at: v.receivedAtLocal || v.receivedAt?.toDate?.()?.toISOString() || null,
+          answered: v.answered ?? null,
+          total: v.total ?? null,
+          chars: typeof v.text === 'string' ? v.text.length : 0,
+          emailSent: v.emailSent === undefined ? null : v.emailSent,
+          whatsappSent: v.whatsappSent === undefined ? null : v.whatsappSent,
+        });
+      });
+      /* text=1 מחזיר גם את התוכן של ההגשה האחרונה, כדי לדעת מה באמת
+         נענה ולא רק כמה. */
+      if (req.query.text === '1') {
+        let latest = null;
+        forms.forEach((d) => {
+          const v = d.data();
+          if (!/אופק/.test(v.who || '')) return;
+          const at = v.receivedAt?.toMillis?.() || 0;
+          if (!latest || at > latest.at) latest = { at, who: v.who, text: v.text || '' };
+        });
+        return res.json({ ok: true, count: forms.size, latest });
+      }
+      return res.json({ ok: true, count: forms.size, rows });
+    }
+
     if (req.query.stats === '1') {
       const [bankAll, rejects, scriptsAll] = await Promise.all([
         db.collection('inspirationBank').get(),
