@@ -28,6 +28,28 @@
 const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { defineSecret } = require('firebase-functions/params');
 
+/**
+ * כתובת הבסיס של גרין, נגזרת ממזהה המופע.
+ *
+ * 11/10/2026: הדומיין המשותף api.green-api.com יושב על ענן רוסי ונחסם
+ * מהרשת של מאיה, בלי פרוקסי ובלי חוק בחומת אש. הדומיין לכל מופע עובד,
+ * והוא גם מה שגרין ממליצים עליו.
+ */
+function greenBase(idInstance) {
+  const prefix = String(idInstance || '').slice(0, 4);
+  return prefix ? `https://${prefix}.api.greenapi.com` : 'https://api.greenapi.com';
+}
+
+/**
+ * כתובת המדיה של גרין, לשליחת קבצים. גם media.green-api.com חסום
+ * מהרשת של מאיה (TCP 443 נכשל), והדומיין לכל מופע עונה.
+ */
+function greenMediaBase(idInstance) {
+  const prefix = String(idInstance || '').slice(0, 4);
+  return prefix ? `https://${prefix}.media.greenapi.com` : 'https://media.greenapi.com';
+}
+
+
 const greenApiIdInstance = defineSecret('GREEN_API_ID_INSTANCE');
 const greenApiTokenInstance = defineSecret('GREEN_API_TOKEN_INSTANCE');
 
@@ -95,7 +117,7 @@ function extOf(name) {
 }
 
 async function sendGreenApiMessage(idInstance, token, chatId, message) {
-  const url = `https://api.green-api.com/waInstance${idInstance}/SendMessage/${token}`;
+  const url = `${greenBase(idInstance)}/waInstance${idInstance}/SendMessage/${token}`;
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -109,7 +131,7 @@ async function sendGreenApiFile(idInstance, token, chatId, mediaPath, caption) {
   const buf = await fetchRawBuffer(mediaPath);
   if (!buf) return { ok: false, raw: `media not found in repo: ${mediaPath}` };
   const mime = MIME_TYPES[extOf(mediaPath)] || 'application/octet-stream';
-  const url = `https://media.green-api.com/waInstance${idInstance}/SendFileByUpload/${token}`;
+  const url = `${greenMediaBase(idInstance)}/waInstance${idInstance}/SendFileByUpload/${token}`;
   const form = new FormData();
   form.append('chatId', chatId);
   form.append('file', new Blob([buf], { type: mime }), mediaPath.split('/').pop());
@@ -120,7 +142,7 @@ async function sendGreenApiFile(idInstance, token, chatId, mediaPath, caption) {
 }
 
 async function sendGreenApiPoll(idInstance, token, chatId, question, options) {
-  const url = `https://api.green-api.com/waInstance${idInstance}/SendPoll/${token}`;
+  const url = `${greenBase(idInstance)}/waInstance${idInstance}/SendPoll/${token}`;
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

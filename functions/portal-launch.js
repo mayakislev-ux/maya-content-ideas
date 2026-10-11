@@ -10,6 +10,18 @@ const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { defineSecret } = require('firebase-functions/params');
 const admin = require('firebase-admin');
 
+/**
+ * כתובת הבסיס של גרין, נגזרת ממזהה המופע.
+ *
+ * 11/10/2026: api.green-api.com יושב על ענן רוסי ונחסם מהרשת של מאיה.
+ * הדומיין לכל מופע עובד, והוא גם מה שגרין ממליצים עליו.
+ */
+function greenBase(idInstance) {
+  const prefix = String(idInstance || '').slice(0, 4);
+  return prefix ? `https://${prefix}.api.greenapi.com` : 'https://api.greenapi.com';
+}
+
+
 const greenApiIdInstance = defineSecret('GREEN_API_ID_INSTANCE');
 const greenApiTokenInstance = defineSecret('GREEN_API_TOKEN_INSTANCE');
 
@@ -62,7 +74,7 @@ exports.agentPortalLaunch0859 = onSchedule(
         continue;
       }
       try {
-        const res = await fetch(`https://api.green-api.com/waInstance${idInstance}/sendFileByUrl/${token}`, {
+        const res = await fetch(`${greenBase(idInstance)}/waInstance${idInstance}/sendFileByUrl/${token}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json; charset=utf-8' },
           body: JSON.stringify({ chatId: g.chatId, urlFile: VIDEO_URL, fileName: 'מדריך הפורטל.mp4', caption: CAPTION }),
@@ -122,7 +134,7 @@ exports.agentKippurReminder2000 = onSchedule(
       return;
     }
     try {
-      const res = await fetch(`https://api.green-api.com/waInstance${greenApiIdInstance.value()}/sendFileByUrl/${greenApiTokenInstance.value()}`, {
+      const res = await fetch(`${greenBase(greenApiIdInstance.value())}/waInstance${greenApiIdInstance.value()}/sendFileByUrl/${greenApiTokenInstance.value()}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json; charset=utf-8' },
         body: JSON.stringify({ chatId, urlFile: KIPPUR_BANNER, fileName: 'תזכורת.jpeg', caption: KIPPUR_CAPTION }),

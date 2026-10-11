@@ -1,6 +1,18 @@
 const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { defineSecret } = require('firebase-functions/params');
 
+/**
+ * כתובת הבסיס של גרין, נגזרת ממזהה המופע.
+ *
+ * 11/10/2026: api.green-api.com יושב על ענן רוסי ונחסם מהרשת של מאיה.
+ * הדומיין לכל מופע עובד, והוא גם מה שגרין ממליצים עליו.
+ */
+function greenBase(idInstance) {
+  const prefix = String(idInstance || '').slice(0, 4);
+  return prefix ? `https://${prefix}.api.greenapi.com` : 'https://api.greenapi.com';
+}
+
+
 const fireberryApiKey = defineSecret('FIREBERRY_API_KEY');
 const greenApiIdInstance = defineSecret('GREEN_API_ID_INSTANCE');
 const greenApiTokenInstance = defineSecret('GREEN_API_TOKEN_INSTANCE');
@@ -55,7 +67,7 @@ function buildSummaryMessage(records) {
 }
 
 async function sendGreenApiMessage(chatId, message) {
-  const url = `https://api.green-api.com/waInstance${greenApiIdInstance.value()}/SendMessage/${greenApiTokenInstance.value()}`;
+  const url = `${greenBase(greenApiIdInstance.value())}/waInstance${greenApiIdInstance.value()}/SendMessage/${greenApiTokenInstance.value()}`;
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

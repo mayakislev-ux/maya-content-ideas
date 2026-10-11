@@ -18,6 +18,19 @@ const { onRequest } = require('firebase-functions/v2/https');
 const { defineSecret } = require('firebase-functions/params');
 const admin = require('firebase-admin');
 
+/**
+ * כתובת הבסיס של גרין, נגזרת ממזהה המופע.
+ *
+ * 11/10/2026: הדומיין המשותף api.green-api.com יושב על ענן רוסי ונחסם
+ * מהרשת של מאיה, בלי פרוקסי ובלי חוק בחומת אש. הדומיין לכל מופע עובד,
+ * והוא גם מה שגרין ממליצים עליו.
+ */
+function greenBase(idInstance) {
+  const prefix = String(idInstance || '').slice(0, 4);
+  return prefix ? `https://${prefix}.api.greenapi.com` : 'https://api.greenapi.com';
+}
+
+
 const greenApiIdInstance = defineSecret('GREEN_API_ID_INSTANCE');
 const greenApiTokenInstance = defineSecret('GREEN_API_TOKEN_INSTANCE');
 
@@ -71,7 +84,7 @@ async function sendToGroups(tag) {
       continue;
     }
     try {
-      const res = await fetch(`https://api.green-api.com/waInstance${idInstance}/sendFileByUrl/${token}`, {
+      const res = await fetch(`${greenBase(idInstance)}/waInstance${idInstance}/sendFileByUrl/${token}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json; charset=utf-8' },
         body: JSON.stringify({

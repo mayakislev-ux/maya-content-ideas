@@ -20,6 +20,18 @@ const { defineSecret } = require('firebase-functions/params');
 const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 const crypto = require('node:crypto');
 
+/**
+ * כתובת הבסיס של גרין, נגזרת ממזהה המופע.
+ *
+ * 11/10/2026: api.green-api.com יושב על ענן רוסי ונחסם מהרשת של מאיה.
+ * הדומיין לכל מופע עובד, והוא גם מה שגרין ממליצים עליו.
+ */
+function greenBase(idInstance) {
+  const prefix = String(idInstance || '').slice(0, 4);
+  return prefix ? `https://${prefix}.api.greenapi.com` : 'https://api.greenapi.com';
+}
+
+
 // nodemailer נטען רק כשבאמת שולחים, כמו ב-grow-payment-webhook
 let mailer = null;
 function transport(pass) {
@@ -61,7 +73,7 @@ function cors(req, res) {
 const israelStamp = () => new Date().toLocaleString('he-IL', { timeZone: 'Asia/Jerusalem' });
 
 async function notifyWhatsApp(message) {
-  const url = `https://api.green-api.com/waInstance${greenApiIdInstance.value()}/SendMessage/${greenApiTokenInstance.value()}`;
+  const url = `${greenBase(greenApiIdInstance.value())}/waInstance${greenApiIdInstance.value()}/SendMessage/${greenApiTokenInstance.value()}`;
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

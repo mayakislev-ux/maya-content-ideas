@@ -24,6 +24,18 @@ const { onRequest } = require('firebase-functions/v2/https');
 const { defineSecret } = require('firebase-functions/params');
 const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 
+/**
+ * כתובת הבסיס של גרין, נגזרת ממזהה המופע.
+ *
+ * 11/10/2026: api.green-api.com יושב על ענן רוסי ונחסם מהרשת של מאיה.
+ * הדומיין לכל מופע עובד, והוא גם מה שגרין ממליצים עליו.
+ */
+function greenBase(idInstance) {
+  const prefix = String(idInstance || '').slice(0, 4);
+  return prefix ? `https://${prefix}.api.greenapi.com` : 'https://api.greenapi.com';
+}
+
+
 const anthropicApiKey = defineSecret('ANTHROPIC_API_KEY');
 const greenApiIdInstance = defineSecret('GREEN_API_ID_INSTANCE');
 const greenApiTokenInstance = defineSecret('GREEN_API_TOKEN_INSTANCE');
@@ -157,7 +169,7 @@ async function askClaude(prompt, key) {
    ככושלת, ומאיה לא קיבלה כלום. */
 async function notify(message) {
   try {
-    const url = `https://api.green-api.com/waInstance${greenApiIdInstance.value()}/SendMessage/${greenApiTokenInstance.value()}`;
+    const url = `${greenBase(greenApiIdInstance.value())}/waInstance${greenApiIdInstance.value()}/SendMessage/${greenApiTokenInstance.value()}`;
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
