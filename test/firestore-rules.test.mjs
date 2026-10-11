@@ -95,3 +95,38 @@ test('מה שלא תוכן נשאר פתוח, אחרת האפליקציה לא �
     assert.ok(block(name).includes('isAllowed()'), name + ' פתוח לכל מי שברשימה');
   }
 });
+
+/* 11/10/2026. לקוחות דיווחו ש"כל תוכניות הסטורי הקודמות נמחקו" ושאי
+   אפשר לבנות חדשה. שום דבר לא נמחק: ב-08/10 נכנס מנוי "רפרנסים בלבד",
+   ו-planOf() קרא `.data.plan` ישירות. השדה הזה נכתב רק ללקוחות המנוי
+   החדש, ומיגרציה לכל השאר לא נכתבה מעולם. שדה חסר בכללי Firestore הוא
+   שגיאת הערכה, ושגיאה היא חסימה, ולכן כל הלקוחות הוותיקות נחסמו משלושה
+   אוספים בבת אחת ולא ראו את התוכן של עצמן. */
+
+test('קריאת שדה מה-allowlist היא תמיד עם ברירת מחדל', () => {
+  const fn = RULES.slice(RULES.indexOf('function planOf()'));
+  const body = fn.slice(0, fn.indexOf('}'));
+  assert.ok(
+    body.includes(".data.get('plan'"),
+    'planOf קורא שדה ישירות. לקוחה בלי השדה תיחסם בשקט מכל מה שמוגן ב-isFull',
+  );
+  assert.ok(!/\.data\.plan\b/.test(body), 'נשארה קריאה ישירה ל-data.plan');
+});
+
+test('וברירת המחדל היא מנוי מלא, לא refs', () => {
+  /* ההפך היה נועל את כולן במקום לשחרר אותן */
+  const fn = RULES.slice(RULES.indexOf('function planOf()'));
+  const body = fn.slice(0, fn.indexOf('}'));
+  assert.match(body, /\.data\.get\('plan',\s*'full'\)/);
+});
+
+test('ו-refs עדיין חסום', () => {
+  const fn = RULES.slice(RULES.indexOf('function isFull()'));
+  assert.match(fn.slice(0, fn.indexOf('}')), /planOf\(\) != 'refs'/);
+});
+
+test('שלושת האוספים שנחסמו מוגנים ב-isFull ולא נפתחו בטעות', () => {
+  ['ideas', 'warmingPlans', 'storyTables'].forEach((name) => {
+    assert.match(block(name), /isFull\(\)/, `${name} כבר לא מוגן ב-isFull`);
+  });
+});
