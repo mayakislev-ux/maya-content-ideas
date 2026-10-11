@@ -242,8 +242,9 @@ const REVISION = `כשיש יותר מסבב אחד:
 const REFERENCE_RULE = `על הרפרנס:
 
 - אם מופיע קישור לרפרנס, הרפרנס קיים. אסור לבקש רפרנס ואסור לכתוב שאין רפרנס.
-- אין שום גישה לצפות בו. מה שידוע עליו הוא רק מה שכתוב בפידבקים הקודמים ובתסריט עצמו.
-- לכן אסור לקבוע שהרפרנס לא מתאים אלא אם זה כבר נאמר בפידבק קודם. אם זה לא ברור, זאת שורת "צריך אותך:".
+- אין גישה לצפות בו, אבל אם מופיע התמלול שלו, זה בדיוק מה שנאמר בו, מילה במילה.
+- כשיש תמלול, הוא הבסיס להשוואה, וזה החומר הכי חשוב בפידבק על שכפול: מה היא לקחה, מה שינתה ומה איבדה בדרך. בעיקר ההוק, המבנה והקצב.
+- כשאין תמלול, מה שידוע על הרפרנס הוא רק מה שכתוב בפידבקים הקודמים ובתסריט עצמו, ולכן אסור לקבוע שהרפרנס לא מתאים אלא אם זה כבר נאמר בפידבק קודם. אם זה לא ברור, זאת שורת "צריך אותך:".
 - רק אם אין קישור ואין רפרנס בשום מקום, זה שלב 1 ומבקשים אותו.`;
 
 /**
@@ -267,7 +268,7 @@ function renderRounds(rounds) {
 
 exports.renderRounds = renderRounds;
 
-function buildPrompt({ block, history, rounds, referenceUrl }) {
+function buildPrompt({ block, history, rounds, referenceUrl, referenceTranscript }) {
   const prior = (history || [])
     .filter((h) => h && h.feedback && h.feedback.length > 80)
     .slice(0, 4)
@@ -314,7 +315,10 @@ ${prior ? `כך מאיה כתבה לאותה לקוחה בעבר. זה המקו�
 סוג הסרטון: ${block.videoType || '(לא מולא)'}
 פורמט: ${block.format || '(לא מולא)'}
 הנעה לפעולה: ${block.cta || '(לא מולא)'}
-רפרנס: ${referenceUrl ? `${referenceUrl} (קיים. אין גישה לצפות בו)` : '(לא הוגש קישור)'}
+רפרנס: ${referenceUrl ? `${referenceUrl} (קיים)` : '(לא הוגש קישור)'}${referenceTranscript ? `
+
+התמלול של הרפרנס, מילה במילה:
+${referenceTranscript}` : (referenceUrl ? ' (אין תמלול, ואין גישה לצפות בו)' : '')}
 
 ${timeline
     ? `כל הסבבים, מהראשון לאחרון:\n\n${timeline}`
@@ -363,6 +367,7 @@ exports.draftScriptFeedback = onCall(
       history: request.data?.history,
       rounds: request.data?.rounds,
       referenceUrl: request.data?.referenceUrl,
+      referenceTranscript: String(request.data?.referenceTranscript || '').slice(0, 8000),
     });
     if (prompt.length > MAX_CHARS) {
       throw new HttpsError('invalid-argument', 'התסריט ארוך מדי לבדיקה אוטומטית');
