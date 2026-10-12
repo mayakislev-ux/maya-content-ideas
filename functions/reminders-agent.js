@@ -27,6 +27,7 @@
 
 const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { defineSecret } = require('firebase-functions/params');
+const quiet = require('./quietDays');
 
 /**
  * כתובת הבסיס של גרין, נגזרת ממזהה המופע.
@@ -224,8 +225,27 @@ function creds() {
   return { id: greenApiIdInstance.value(), token: greenApiTokenInstance.value() };
 }
 
+/**
+ * האם מותר לשלוח עכשיו: 9:00 עד 19:00, ולא בשישי, שבת, כיפור, פסח,
+ * יום הזיכרון וכו'.
+ *
+ * 12/10/2026 (מאיה: "7:07 זה לא שעות העבודה"): לסוכנים האלה לא הייתה
+ * שום בדיקה כזאת, בניגוד לכל שולח אחר במערכת. הם היו שולחים ללקוחות
+ * בשבת ובכיפור, ושניים מהם תוזמנו ל-07:07 ול-08:07, לפני תחילת
+ * שעות העבודה.
+ *
+ * השומר כאן הוא רשת ביטחון מעל התזמון עצמו: גם אם מישהו יזיז cron
+ * לשעה לא נכונה בעתיד, שום הודעה לא תצא ללקוחה מחוץ לחלון.
+ */
+function mayRunNow(logger, name) {
+  if (quiet.canRemindNow(new Date(), { from: 9, to: 19 })) return true;
+  logger.log(`⏸ ${name}: מחוץ לשעות השליחה או יום שקט, לא נשלח כלום`);
+  return false;
+}
+
 // ---- agentSessionReminders: reminder the day before each session (Saturday-aware) ----
 async function runSessionReminders(logger) {
+  if (!mayRunNow(logger, 'תזכורות מפגשים')) return;
   const today = israelToday();
   const rows = await loadScheduleRows();
   const { id, token } = creds();
@@ -254,6 +274,7 @@ async function runSessionReminders(logger) {
 
 // ---- agentTaskMessage: task/follow-up message on the day of the session itself ----
 async function runTaskMessage(logger) {
+  if (!mayRunNow(logger, 'משימות אחרי מפגש')) return;
   const today = israelToday();
   const rows = await loadScheduleRows();
   const { id, token } = creds();
@@ -281,6 +302,7 @@ async function runTaskMessage(logger) {
 
 // ---- agentPodcastFollowup: banner+caption then separate audio, one day after a frontal session ----
 async function runPodcastFollowup(logger) {
+  if (!mayRunNow(logger, 'פודקאסט')) return;
   const today = israelToday();
   const rows = await loadScheduleRows();
   const { id, token } = creds();
@@ -309,6 +331,7 @@ async function runPodcastFollowup(logger) {
 
 // ---- agentZoomLink: link reminder the morning of a zoom session, once link+code are filled in ----
 async function runZoomLink(logger) {
+  if (!mayRunNow(logger, 'קישור זום')) return;
   const today = israelToday();
   const rows = await loadScheduleRows();
   const { id, token } = creds();
@@ -333,6 +356,7 @@ async function runZoomLink(logger) {
 
 // ---- agentDateBasedNN: exact-date one-off messages, filtered to this routine's hour ----
 async function runDateBased(logger, hourFilter) {
+  if (!mayRunNow(logger, 'הודעות לפי תאריך')) return;
   const today = israelToday();
   const rows = await loadDateBasedRows();
   const { id, token } = creds();
@@ -375,13 +399,16 @@ const region = 'us-central1';
 // Schedule times are best-effort from documentation (memory + Python filenames), NOT
 // pulled from the live deployed config - verify against the real schedule before
 // ever deploying this file.
-exports.agentSessionReminders = onSchedule({ schedule: '7 7 * * *', timeZone: 'Asia/Jerusalem', region, secrets }, (event) => runSessionReminders(console));
+exports.agentSessionReminders = onSchedule({ schedule: '5 9 * * *', timeZone: 'Asia/Jerusalem', region, secrets }, (event) => runSessionReminders(console));
 exports.agentTaskMessage = onSchedule({ schedule: '7 16 * * *', timeZone: 'Asia/Jerusalem', region, secrets }, (event) => runTaskMessage(console));
 exports.agentPodcastFollowup = onSchedule({ schedule: '7 9 * * *', timeZone: 'Asia/Jerusalem', region, secrets }, (event) => runPodcastFollowup(console));
 exports.agentZoomLink = onSchedule({ schedule: '32 9 * * *', timeZone: 'Asia/Jerusalem', region, secrets }, (event) => runZoomLink(console));
-exports.agentDateBased08 = onSchedule({ schedule: '7 8 * * *', timeZone: 'Asia/Jerusalem', region, secrets }, (event) => runDateBased(console, '08'));
+exports.agentDateBased08 = onSchedule({ schedule: '7 9 * * *', timeZone: 'Asia/Jerusalem', region, secrets }, (event) => runDateBased(console, '08'));
 exports.agentDateBased09 = onSchedule({ schedule: '7 9 * * *', timeZone: 'Asia/Jerusalem', region, secrets }, (event) => runDateBased(console, '09'));
 exports.agentDateBased10 = onSchedule({ schedule: '7 10 * * *', timeZone: 'Asia/Jerusalem', region, secrets }, (event) => runDateBased(console, '10'));
 exports.agentDateBased14 = onSchedule({ schedule: '7 14 * * *', timeZone: 'Asia/Jerusalem', region, secrets }, (event) => runDateBased(console, '14'));
+/* 12/10/2026: בטבלת ההודעות לפי תאריך יש הודעה שתוזמנה ל-17:00, ולא
+   היה לה סוכן בכלל. היא לא נשלחה מעולם, ושום דבר לא התריע. */
+exports.agentDateBased17 = onSchedule({ schedule: '7 17 * * *', timeZone: 'Asia/Jerusalem', region, secrets }, (event) => runDateBased(console, '17'));
 
 module.exports._internal = { parseCsv, reminderDateFor, addDays, renderReminder, parsePollTemplate };
