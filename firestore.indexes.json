@@ -7,6 +7,15 @@
         { "fieldPath": "ownerUid", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
+    },
+    {
+      "_comment": "12/10/2026: giftFollowupSender רץ כל שעה ונפל בכל ריצה על FAILED_PRECONDITION. השאילתה שלו מצרפת שוויון על followupSent עם טווח על sentGiftAt, וצירוף כזה דורש אינדקס מורכב. בלעדיו אף מעקב של 24 שעות אחרי מתנת הסמינר לא נשלח, ושום דבר לא התריע על כך חוץ מהלוג.",
+      "collectionGroup": "giftFollowups",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "followupSent", "order": "ASCENDING" },
+        { "fieldPath": "sentGiftAt", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []
