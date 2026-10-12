@@ -11,6 +11,7 @@ import { burstConfetti } from './confetti.js';
 import { confirmDialog } from './confirm-dialog.js';
 import { updateIdea } from './ideas-store.js';
 import { showToast } from './toast.js';
+import { serverErrorText } from './server-error.js';
 const ADMIN_EMAIL = 'mayakislev@gmail.com';
 
 // checkIdea used to be a plain httpsCallable - converted to a raw streaming
@@ -403,7 +404,7 @@ async function sendIdeaMessage(text) {
     // מובנית של iOS Safari על stream שנקטע - זו לא הודעה שהקוד שלנו כתב) -
     // רק הודעות עברית שהשרת שלח בכוונה מוצגות כמו שהן.
     const hasHebrewText = /[֐-׿]/.test(err.message || '');
-    setBubbleText(thinkingBubble, hasHebrewText ? err.message : 'החיבור נכשל, כנראה בגלל רשת לא יציבה. נסו שוב.');
+    setBubbleText(thinkingBubble, serverErrorText(err, 'הבדיקה'));
   } finally {
     stopStatus();
     input.disabled = false;

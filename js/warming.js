@@ -5,6 +5,7 @@ import { showToast } from './toast.js';
 import { makeEditable, makeEditableSelect } from './editable.js';
 import { confirmDialog } from './confirm-dialog.js';
 import { estimateSeconds, recordDuration, timerView, stepText } from './warming-timer.js';
+import { serverErrorText } from './server-error.js';
 
 // היה httpsCallable - בקשה חוסמת יחידה. מדידה אמיתית (2026-08-11) הראתה 41
 // שניות שקטות לגמרי לפני שהלקוח רואה משהו - תלמידות בסדנה חיה דיווחו שזה
@@ -496,10 +497,7 @@ export function wireWarmingView() {
       }
     } catch (err) {
       console.error('generateWarmingPlan failed:', err);
-      const hasHebrewText = /[\u0590-\u05FF]/.test(err.message || '');
-      const message = hasHebrewText
-        ? `משהו השתבש בבניית התוכנית: ${err.message}. נסו שוב.`
-        : 'החיבור נכשל, כנראה בגלל רשת לא יציבה. נסו שוב.';
+      const message = serverErrorText(err, 'בניית התוכנית');
       errorEl.textContent = message;
       errorEl.hidden = false;
       // הודעת השגיאה יושבת בתוך הטופס, שמוסתר במסך הטבלה. בלי זה כישלון
