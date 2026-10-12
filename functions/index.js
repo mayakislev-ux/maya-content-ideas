@@ -2281,6 +2281,14 @@ Object.assign(exports, require('./strategy-form'));
 Object.assign(exports, require('./nightly-scripts'));
 Object.assign(exports, require('./backfill-marketing'));
 Object.assign(exports, require('./ofek-reminder'));
+
+/* 12/10/2026: הקובץ הזה לא היה מחובר כאן מעולם, ולכן Firebase לא הכיר
+   את שמונה הפונקציות שבו. הן המשיכו לרוץ בענן על קוד ישן שנפרס פעם
+   ונשכח, ואי אפשר היה לעדכן אותן: התיקון של גרין מ-11/10 לא הגיע
+   אליהן, וגם לא תיקון הענף.
+
+   זה מה שגרם לתזכורת המפגש של מחזור 6 ב-13/10 לא לצאת. */
+Object.assign(exports, require('./reminders-agent'));
 Object.assign(exports, require('./form-draft'));
 
 // 30/09/2026: טבלת החימום בסטורי. הפונקציה מקבלת את enforceAllowlist מכאן

@@ -53,7 +53,11 @@ function greenMediaBase(idInstance) {
 const greenApiIdInstance = defineSecret('GREEN_API_ID_INSTANCE');
 const greenApiTokenInstance = defineSecret('GREEN_API_TOKEN_INSTANCE');
 
-const REPO_RAW_BASE = 'https://raw.githubusercontent.com/mayakislev-ux/maya-session-reminders-agent/main';
+/* 12/10/2026: כאן היה 'main', והענף בריפו נקרא 'master'. כל קריאה
+   ללוח המפגשים ולתבניות החזירה 404, ולכן הסוכן לא ידע שיש מפגש בכלל
+   ולא שלח כלום. התזכורת למפגש של מחזור 6 ב-13/10 לא יצאה, ומאיה גילתה
+   את זה יום לפני. אומת: main מחזיר 404, master מחזיר את הקובץ. */
+const REPO_RAW_BASE = 'https://raw.githubusercontent.com/mayakislev-ux/maya-session-reminders-agent/master';
 const HEBREW_WEEKDAYS = { 1: 'שני', 2: 'שלישי', 3: 'רביעי', 4: 'חמישי', 5: 'שישי', 6: 'שבת', 0: 'ראשון' };
 const MIME_TYPES = { '.jpeg': 'image/jpeg', '.jpg': 'image/jpeg', '.png': 'image/png', '.mp4': 'video/mp4', '.ogg': 'audio/ogg', '.mp3': 'audio/mpeg' };
 
