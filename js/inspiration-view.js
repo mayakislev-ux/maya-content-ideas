@@ -3,6 +3,7 @@ import { openVideoPopup } from './inspiration-popup.js';
 import { readabilityOf, languageName } from './inspiration-readability.js';
 import { collection, getDocs } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
+import { serverErrorText } from './server-error.js';
 
 const matchInspirationQuery = httpsCallable(functions, 'matchInspirationQuery');
 
@@ -26,11 +27,21 @@ let cachedVideosPromise = null;
 // but the "collection is small" justification no longer holds on its own.
 async function loadVideos() {
   if (!cachedVideosPromise) {
-    cachedVideosPromise = getDocs(collection(db, 'inspirationBank')).then((snapshot) =>
-      snapshot.docs
-        .map((d) => ({ id: d.id, ...d.data() }))
-        .sort((a, b) => a.domain.localeCompare(b.domain) || a.order - b.order)
-    );
+    cachedVideosPromise = getDocs(collection(db, 'inspirationBank'))
+      .then((snapshot) =>
+        snapshot.docs
+          .map((d) => ({ id: d.id, ...d.data() }))
+          .sort((a, b) => a.domain.localeCompare(b.domain) || a.order - b.order))
+      /* 12/10/2026: בלי השחרור הזה כישלון אחד נשמר במטמון כהבטחה
+         דחויה לכל שארית הביקור. המסך נתקע על "טוען השראה..." בלי
+         שגיאה, ושינוי תחום או ניקוי חיפוש השתמשו שוב באותה הבטחה
+         שכבר נדחתה ונכשלו מיד בלי אפילו לפנות לרשת. רק רענון מלא
+         של הדף שחרר את זה. ולמנוי "רפרנסים בלבד" זה המסך היחיד
+         שהוא משלם עליו. */
+      .catch((err) => {
+        cachedVideosPromise = null;
+        throw err;
+      });
   }
   return cachedVideosPromise;
 }
@@ -464,7 +475,14 @@ async function runSearch(query) {
     grid.innerHTML = '';
     document.getElementById('inspiration-empty').hidden = true;
     status.hidden = false;
-    status.textContent = 'לא הצלחנו להבין את החיפוש - נסו לנסח אחרת.';
+    /* 12/10/2026: כאן נזרקה הסיבה האמיתית והוצג תמיד "נסו לנסח אחרת".
+       אבל השרת מחזיר נוסח מדויק בעברית למכסה יומית שנגמרה, למנוי שאין
+       לו גישה, ולתקלת הרשאה. הלקוחה שהגיעה למכסה נשלחה לנסח מחדש את
+       אותה שאילתה שוב ושוב ולקבל את אותה הודעה. */
+    const reason = String((err && err.message) || '');
+    status.textContent = /[֐-׿]/.test(reason)
+      ? reason
+      : serverErrorText(err, 'החיפוש');
     return;
   }
 
