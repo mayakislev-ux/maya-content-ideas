@@ -9,9 +9,20 @@ service cloud.firestore {
     }
     /* 08/10/2026: מנוי "רפרנסים בלבד", 79 ש"ח לחודש. הלקוחה רשומה
        ב-allowlist כמו כולן, אבל עם plan:'refs', ולכן isAllowed() לבדו
-       כבר לא מספיק כדי לגשת לתוכן. isFull() הוא מה שמגן על כל השאר. */
+       כבר לא מספיק כדי לגשת לתוכן. isFull() הוא מה שמגן על כל השאר.
+
+       11/10/2026: כאן ישב `.data.plan`, כלומר קריאה לשדה שלא קיים אצל
+       אף לקוחה ותיקה. plan נכתב רק ללקוחות המנוי החדש, ומיגרציה שתוסיף
+       אותו לכל השאר לא נכתבה מעולם. שדה חסר בכללי Firestore הוא שגיאת
+       הערכה, ושגיאה היא חסימה, ולכן מ-08/10 כל הלקוחות הוותיקות איבדו
+       גישה לרעיונות, לתוכניות החימום ולטבלת הסטורי. מבחוץ זה נראה
+       כאילו התוכניות שלהן נמחקו, והן דיווחו בדיוק כך.
+
+       data.get עם ברירת מחדל הוא מה שהופך את זה לבטוח: מי שאין לה
+       plan היא לקוחה מלאה, כמו שהיה לפני המנוי החדש, ו-'refs' נשאר
+       חסום בדיוק כמו קודם. */
     function planOf() {
-      return get(/databases/$(database)/documents/allowlist/$(request.auth.token.email)).data.plan;
+      return get(/databases/$(database)/documents/allowlist/$(request.auth.token.email)).data.get('plan', 'full');
     }
     function isFull() {
       return isAdmin() || (isAllowed() && planOf() != 'refs');

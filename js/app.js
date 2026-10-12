@@ -555,11 +555,23 @@ onAuthChange(async (user) => {
   try {
     access = await loadAccess(user.email);
   } catch (err) {
+    /* 12/10/2026: עד כאן כל כישלון כאן ניתק את הלקוחה מהאפליקציה ואמר
+       לה שהבעיה באינטרנט שלה. זה המסלול עם הנזק הרחב ביותר בתקלת שרת:
+       ב-11/10, כשהחיוב בפרויקט נותק, גם קריאות Firestore נכשלו, ולכן
+       *כל* לקוחה הייתה מנותקת ונשלחת להתחבר מחדש ל-PWA מותקן, שזאת
+       הדרך הגרועה ביותר להתאושש, בגלל בעיה שאין לה שום קשר אליה.
+
+       דחיית הרשאה היא תשובה אמיתית, וכשל זמני אינו. רק הראשונה מנתקת. */
     console.error('loadAccess check failed:', err);
+    const transient = String(err && err.code) !== 'permission-denied';
+    if (transient) {
+      showToast('לא הצלחנו לבדוק את ההרשאה כרגע. זאת תקלה אצלנו ולא אצלך, כדאי לנסות שוב בעוד רגע.', { duration: 9000 });
+      return;
+    }
     document.getElementById('login-screen').hidden = false;
     document.getElementById('app-screen').hidden = true;
     const errorEl = document.getElementById('login-error');
-    errorEl.textContent = 'משהו השתבש בבדיקת ההרשאה - בדקו חיבור לאינטרנט ונסו להתחבר שוב';
+    errorEl.textContent = 'ההרשאה נדחתה. אנא פני/פנה למאיה';
     errorEl.hidden = false;
     await signOutUser();
     return;
@@ -690,7 +702,12 @@ onAuthChange(async (user) => {
     window.history.replaceState({}, '', window.location.pathname);
   }
 
-  unsubscribeIdeas = subscribeToIdeas(onIdeasChanged);
+  /* 12/10/2026: בלי המסלול השני כאן, מאזין שנדחה השאיר את המסך ריק
+     בשקט, ותוכנית התוכן הצהירה "יש לך כרגע 0 מתוך 6". זה אמר ללקוחה
+     שאין לה רעיונות בזמן שהם פשוט לא נקראו. */
+  unsubscribeIdeas = subscribeToIdeas(onIdeasChanged, () => {
+    showToast('לא הצלחנו לטעון את הרעיונות שלך. הם לא נמחקו, כדאי לרענן בעוד רגע.', { duration: 9000 });
+  });
 
   /* 03/10/2026 (בדיקה): קריאה שנכשלת כאן דחתה את כל ה-callback של
      ההתחברות, ואז סיור הפתיחה ושלוש התזכורות שאחריו לא נורים אף פעם.

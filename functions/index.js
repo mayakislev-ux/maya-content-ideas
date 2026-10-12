@@ -42,6 +42,15 @@ const ADMIN_EMAIL = 'mayakislev@gmail.com';
 // מפורשת (לא cors:true הפתוח לכל מקור) כי checkIdea הוא onRequest גולמי
 // שמאמת בעצמו עם Bearer token, לא onCall עם אימות מובנה. localhost נשאר
 // לבדיקות מקומיות מול ה-emulator.
+/* 12/10/2026: שתי ההגנות שמונעות מהמודל לענות בפרוזה במקום ב-JSON.
+   system נפרד, כי חוזה פורמט בתוך הודעת משתמש ארוכה נבלע, ו-prefill
+   שמכריח את התשובה להתחיל כ-JSON. נוספו אחרי שבניית תוכנית החימום
+   נפלה פעמיים ב-08/10 כשהמודל ענה "I need you to provide...". */
+const PLAN_JSON_SYSTEM = 'את מחזירה JSON בלבד, בלי שום טקסט לפניו או אחריו, ובלי גדרות קוד. '
+  + 'אם חסר לך מידע, אל תשאלי שאלות ואל תבקשי הבהרות: בני את הטוב ביותר שאפשר '
+  + 'מהמידע שכן ניתן. שאלה בתשובה היא תשובה לא תקינה.';
+const JSON_PREFILL = '{';
+
 const ALLOWED_STREAM_ORIGINS = [
   'https://mayakislev-ux.github.io',
   'http://localhost:5000',
@@ -1546,18 +1555,53 @@ exports.generateWarmingPlan = onRequest(
 
       const promptArgs = { product, audience, extraContext, existingIdeasTitles: existingIdeasTitles.slice(0, 40) };
 
+      /* 11/10/2026: לקוחות דיווחו שבניית תוכנית חימום נכשלת כבר כמה ימים.
+         בלוג של 08/10 נראה בדיוק מה קרה: המודל ענה באנגלית, בפרוזה,
+         "I need you to provide: who is the product? who is the target
+         audience?" במקום להחזיר JSON. הניסיון החוזר קיבל את אותה תשובה
+         בדיוק, כי הוא שלח בדיוק את אותו prompt, ואז הכל נפל.
+
+         שתי הגנות, ולא אחת:
+
+         1. system. עד כאן לא היה בכלל, והכללים על הפורמט ישבו בתוך
+            הודעת המשתמש יחד עם התוכן. שם קל להם להיבלע.
+
+         2. prefill. התשובה מתחילה מראש ב-'{', ולכן המודל ממשיך JSON
+            במקום לפתוח פסקה. זאת ההגנה החזקה מהשתיים: היא לא מבקשת
+            ממנו להתנהג יפה אלא לא מאפשרת אחרת.
+
+         שתיהן ביחד הופכות את מצב השאלות לבלתי אפשרי כמעט, והפירוק
+         מקבל חזרה את ה-'{' שהוסר מהתשובה. */
+      const PLAN_SYSTEM = [
+        'את מחזירה JSON בלבד, בלי שום טקסט לפניו או אחריו, ובלי גדרות קוד.',
+        'אם חסר לך מידע, אל תשאלי שאלות ואל תבקשי הבהרות: בני את התוכנית',
+        'הטובה ביותר שאפשר מהמידע שכן ניתן, ופרטי את מה שהיה חסר בשדה',
+        'missingInfo. שאלה בתשובה היא תשובה לא תקינה.',
+      ].join(' ');
+      const PREFILL = '{';
+
       async function callAndParse(prompt, attempt = 1) {
         const data = await callAnthropic(
           anthropicApiKey.value(),
-          { model: 'claude-haiku-4-5-20251001', max_tokens: 4096, messages: [{ role: 'user', content: prompt }] },
+          {
+            model: 'claude-haiku-4-5-20251001',
+            max_tokens: 4096,
+            system: PLAN_SYSTEM,
+            messages: [
+              { role: 'user', content: prompt },
+              { role: 'assistant', content: PREFILL },
+            ],
+          },
           'generateWarmingPlan'
         );
-        const text = getResponseText(data) || '{}';
+        /* ה-prefill לא חוזר בתשובה, ולכן הוא מוחזר לתחילתה לפני הפירוק */
+        const raw = getResponseText(data) || '';
+        const text = raw.trimStart().startsWith('{') ? raw : PREFILL + raw;
         try {
           const match = text.match(/\{[\s\S]*\}/);
           return JSON.parse(match ? match[0] : text);
         } catch (err) {
-          console.error(`Failed to parse generateWarmingPlan response (attempt ${attempt}):`, text);
+          console.error(`Failed to parse generateWarmingPlan response (attempt ${attempt}):`, text.slice(0, 500));
           // שתי הקריאות (ongoing+presale) רצות יחד ב-Promise.all - כישלון
           // פירוק JSON חד-פעמי באחת מהן מפיל את כל הבקשה ומבזבז את הטוקנים
           // ששתיהן כבר צרכו. ניסיון חוזר יחיד קולט את רוב המקרים החולפים
@@ -2037,10 +2081,23 @@ exports.generateContentPlan = onRequest(
         // 16000) and trimming the prompt's wording - stop_reason kept coming
         // back "max_tokens" with zero text ever written. Raised further as a
         // safety margin on top of the trim.
+        /* 12/10/2026: כאן ישבה הודעת user יחידה, בלי system ובלי prefill,
+           בדיוק כמו ב-generateWarmingPlan לפני התיקון של אתמול. שם המודל
+           ענה בפרוזה באנגלית ושאל שאלות במקום להחזיר JSON, ונפלה כל
+           הבקשה. חוזה הפורמט כאן יושב בסוף prompt ארוך מאוד, כלומר
+           במקום הכי קל לאיבוד, והתוצאה היא דקות של המתנה שנגמרות ב"לא
+           הצלחתי לבנות את התכנית".
+
+           אותן שתי הגנות: system נפרד שאוסר שאלות, ו-prefill שמכריח
+           את התשובה להתחיל כ-JSON. */
         body: JSON.stringify({
           model: 'claude-sonnet-5',
           max_tokens: 24000,
-          messages: [{ role: 'user', content: prompt }],
+          system: PLAN_JSON_SYSTEM,
+          messages: [
+            { role: 'user', content: prompt },
+            { role: 'assistant', content: JSON_PREFILL },
+          ],
           stream: true,
         }),
       });
@@ -2111,7 +2168,11 @@ exports.generateContentPlan = onRequest(
 
     if (usage) await recordTokenUsage('generateContentPlan', usage);
 
-    const text = fullText || '{}';
+    /* ה-prefill לא חוזר בתשובה, ולכן הוא מוחזר לתחילתה. בלי זה כל
+       תשובה תקינה הייתה נכשלת בפירוק, כלומר התיקון היה הופך את
+       הבאג לקבוע במקום לפתור אותו. */
+    const streamed = fullText || '';
+    const text = streamed.trimStart().startsWith('{') ? streamed : JSON_PREFILL + streamed;
     let parsed;
     try {
       const match = text.match(/\{[\s\S]*\}/);
@@ -2218,6 +2279,9 @@ Object.assign(exports, require('./strategy-form'));
 /* 09/10/2026: מפעל התוכן הלילי. שלושה תסריטים מוכנים כל בוקר
    משיטת השכפול ומהמאגר, במקום שעתיים שבועיות של חיפוש רעיונות. */
 Object.assign(exports, require('./nightly-scripts'));
+Object.assign(exports, require('./backfill-marketing'));
+Object.assign(exports, require('./ofek-reminder'));
+Object.assign(exports, require('./form-draft'));
 
 // 30/09/2026: טבלת החימום בסטורי. הפונקציה מקבלת את enforceAllowlist מכאן
 // כדי לא לשכפל את בדיקת ההרשאה, שהיא אותה בדיקה בכל שאר הפונקציות.
@@ -2228,6 +2292,9 @@ exports.syncStoryTable = makeSyncStoryTable({ enforceAllowlist });
 // בפורטל. הפונקציה חיה כאן כי מפתח ה-AI כאן, והפורטל קורא אליה עם אסימון
 // ההתחברות שלו, כמו ב-portalSso.
 exports.readInsights = require('./readInsights').readInsights;
+// 10/10/2026: טיוטת פידבק לתסריט, בשיטה שחולצה מ-98 הפידבקים של מאיה.
+// הפורטל קורא לכאן כי המפתח יושב כאן, והוא שולח טקסט בלבד.
+exports.draftScriptFeedback = require('./draftScriptFeedback').draftScriptFeedback;
 
 
 

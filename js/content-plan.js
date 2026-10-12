@@ -16,6 +16,7 @@ import { makeEditable, makeEditableSelect } from './editable.js';
 import { showToast } from './toast.js';
 import { confirmDialog } from './confirm-dialog.js';
 import { getProfile, saveProfile } from './user-profile.js';
+import { serverErrorText } from './server-error.js';
 
 // היה httpsCallable עם timeout ידני - בקשה חוסמת יחידה, בלי שום בייט זורם
 // על הרשת מהרגע שהיא נשלחת ועד שהתשובה השלמה חוזרת (יכול לקחת עד דקה-שתיים
@@ -1290,10 +1291,7 @@ export function wireContentPlanView() {
       renderPlan(currentPlan);
     } catch (err) {
       console.error('generateContentPlan failed:', err);
-      const hasHebrewText = /[\u0590-\u05FF]/.test(err.message || '');
-      errorEl.textContent = hasHebrewText
-        ? `משהו השתבש בבניית התכנית: ${err.message}. נסו שוב.`
-        : 'החיבור נכשל, כנראה בגלל רשת לא יציבה. נסו שוב.';
+      errorEl.textContent = serverErrorText(err, 'בניית התכנית');
       errorEl.hidden = false;
     } finally {
       generateBtn.disabled = false;

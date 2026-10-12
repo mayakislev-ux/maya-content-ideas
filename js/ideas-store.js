@@ -14,13 +14,32 @@ function ideasCollection() {
   return collection(db, 'ideas');
 }
 
-export function subscribeToIdeas(callback) {
+/**
+ * @param {function} callback מקבל את הרעיונות
+ * @param {function} [onError] מקבל שגיאה כשהמאזין נדחה
+ *
+ * 12/10/2026: המאזין נרשם בלי טיפול בשגיאה, ולכן דחיית הרשאה או כשל
+ * רשת פשוט השתיקו אותו לנצח. המסכים שנשענים עליו נשארו עם הערך
+ * ההתחלתי: רשימת הרעיונות ריקה בלי אפילו מצב "עדיין שקט כאן", ומסך
+ * תוכנית התוכן הצהיר "יש לך כרגע 0 מתוך 6 הדרושים". כלומר האפליקציה
+ * אמרה ללקוחה במפורש שאין לה רעיונות, בזמן שהם פשוט לא נקראו.
+ *
+ * זאת אותה משפחה שגרמה ללקוחות לחשוב שנמחקו להן נתונים ב-11/10.
+ */
+export function subscribeToIdeas(callback, onError) {
   const uid = auth.currentUser?.uid;
   const q = query(ideasCollection(), where('ownerUid', '==', uid));
-  return onSnapshot(q, (snapshot) => {
-    const ideas = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
-    callback(ideas);
-  });
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const ideas = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+      callback(ideas);
+    },
+    (err) => {
+      console.error('subscribeToIdeas failed:', err);
+      if (typeof onError === 'function') onError(err);
+    },
+  );
 }
 
 export async function addIdea({

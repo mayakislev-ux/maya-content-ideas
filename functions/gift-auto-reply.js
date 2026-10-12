@@ -21,6 +21,19 @@ const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { defineSecret } = require('firebase-functions/params');
 const admin = require('firebase-admin');
 
+/**
+ * כתובת הבסיס של גרין, נגזרת ממזהה המופע.
+ *
+ * 11/10/2026: הדומיין המשותף api.green-api.com יושב על ענן רוסי ונחסם
+ * מהרשת של מאיה, בלי פרוקסי ובלי חוק בחומת אש. הדומיין לכל מופע עובד,
+ * והוא גם מה שגרין ממליצים עליו.
+ */
+function greenBase(idInstance) {
+  const prefix = String(idInstance || '').slice(0, 4);
+  return prefix ? `https://${prefix}.api.greenapi.com` : 'https://api.greenapi.com';
+}
+
+
 const greenApiIdInstance = defineSecret('GREEN_API_ID_INSTANCE');
 const greenApiTokenInstance = defineSecret('GREEN_API_TOKEN_INSTANCE');
 
@@ -34,7 +47,7 @@ const GIFT_REPLY_MESSAGE = `היי! 🎁 הנה הסרטון שביקשת - "10 
 const FOLLOWUP_MESSAGE = `היי! ראית את הסרטון על 10 המיתוסים בשיווק? 😊\nסקרן/ית לשמוע מה עלה לך.\n\nאם בא לך לקחת את זה צעד קדימה - "סמינר להיות מותג" הוא בדיוק ההמשך הטבעי לתוכן שראית. פרטים מלאים כאן:\n${SEMINAR_LANDING_PAGE_URL}`;
 
 async function sendGreenApiMessage(idInstance, token, chatId, message) {
-  const url = `https://api.green-api.com/waInstance${idInstance}/SendMessage/${token}`;
+  const url = `${greenBase(idInstance)}/waInstance${idInstance}/SendMessage/${token}`;
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
