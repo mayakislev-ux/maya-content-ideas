@@ -187,14 +187,170 @@ async function renderPulledReference() {
   });
 }
 
+function copyBtn(text, label) {
+  return `<button type="button" class="cosmic-btn" data-copy-text="${encodeURIComponent(text)}">${label}</button>`;
+}
+
+function wireCopyButtons(root) {
+  root.querySelectorAll('[data-copy-text]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const text = decodeURIComponent(btn.getAttribute('data-copy-text'));
+      try {
+        await navigator.clipboard.writeText(text);
+        showToast('הועתק ✓');
+      } catch {
+        showToast('לא הצלחתי להעתיק - סמני ידנית');
+      }
+    });
+  });
+}
+
+function renderTranscribe() {
+  cosmicCard(`
+    <h2>תמללי את הרפרנס</h2>
+    <p>פתחי את הסרטון וכתבי כאן מה נאמר בו, במילים שלו (או קרובות לזה)</p>
+    <textarea class="cosmic-textarea" id="va-transcript-input" placeholder="מה נאמר בסרטון..."></textarea>
+    <div class="cosmic-btn-row" style="margin-top:14px">
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-transcribe-done-btn">✓ עשיתי</button>
+    </div>
+  `);
+  document.getElementById('va-transcribe-done-btn').addEventListener('click', () => {
+    state.transcript = document.getElementById('va-transcript-input').value;
+    dispatch({ type: 'CONFIRM_DONE' });
+  });
+}
+
+async function renderPrompt1() {
+  const profile = await getProfile();
+  const audience = profile && profile.primaryAudience ? profile.primaryAudience : '';
+  const prompt = buildDuplicationPrompt({ audience, domain: domainInfo ? domainInfo.domain : '', hook: state.transcript || '' });
+  cosmicCard(`
+    <h2>פרומפט מוכן ל-ChatGPT</h2>
+    <p>העתיקי, הדביקי ב-ChatGPT, ותחזרי עם ההוק שהכי קרץ לך מתוך ה-30</p>
+    <div class="cosmic-prompt-box">${prompt}</div>
+    ${copyBtn(prompt, 'העתיקי פרומפט')}
+    <textarea class="cosmic-textarea" id="va-hook-input" placeholder="הדביקי כאן את ההוק שבחרת..." style="margin-top:14px"></textarea>
+    <div class="cosmic-btn-row" style="margin-top:14px">
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-hook-chosen-btn">המשך</button>
+    </div>
+  `);
+  wireCopyButtons(screenEl());
+  document.getElementById('va-hook-chosen-btn').addEventListener('click', () => {
+    const hook = document.getElementById('va-hook-input').value.trim();
+    if (!hook) {
+      showToast('צריך להדביק את ההוק שבחרת קודם');
+      return;
+    }
+    dispatch({ type: 'HOOK_CHOSEN', hook });
+  });
+}
+
+function renderHerWords() {
+  cosmicCard(`
+    <h2>מה יש לך להגיד?</h2>
+    <p>סיפור קצר, דוגמא, או דיבור כללי על הנושא - במילים שלך</p>
+    <textarea class="cosmic-textarea" id="va-herwords-input"></textarea>
+    <div class="cosmic-btn-row" style="margin-top:14px">
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-herwords-done-btn">המשך</button>
+    </div>
+  `);
+  document.getElementById('va-herwords-done-btn').addEventListener('click', () => {
+    const text = document.getElementById('va-herwords-input').value.trim();
+    if (!text) {
+      showToast('צריך לכתוב משהו קודם');
+      return;
+    }
+    dispatch({ type: 'HER_WORDS_SUBMITTED', text });
+  });
+}
+
+function renderPrompt2() {
+  const hook = state.hook || state.transcript || '';
+  const prompt = buildScriptPrompt({ hook, herWords: state.herWords });
+  cosmicCard(`
+    <h2>הפרומפט השני</h2>
+    <p>העתיקי, הדביקי ב-ChatGPT, ותקבלי תסריט מלא</p>
+    <div class="cosmic-prompt-box">${prompt}</div>
+    ${copyBtn(prompt, 'העתיקי פרומפט')}
+    <div class="cosmic-btn-row" style="margin-top:14px">
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-script-ready-btn">יש לי תסריט</button>
+    </div>
+  `);
+  wireCopyButtons(screenEl());
+  document.getElementById('va-script-ready-btn').addEventListener('click', () => {
+    playSuccess();
+    dispatch({ type: 'SCRIPT_READY' });
+  });
+}
+
+function renderReadAloud() {
+  cosmicCard(`
+    <h2>קראי בקול את התסריט</h2>
+    <p>תבדקי שהכל מתחבר, שאין פספוסים, ושהאורך מרגיש נכון</p>
+    <div class="cosmic-btn-row">
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-read-done-btn">✓ מוכן לעריכה</button>
+    </div>
+  `);
+  document.getElementById('va-read-done-btn').addEventListener('click', () => {
+    playSuccess();
+    dispatch({ type: 'CONFIRM_DONE' });
+  });
+}
+
+function renderDone() {
+  cosmicCard(`
+    <h2>🎬 מוכן!</h2>
+    <p>לכי לעריכה - בהצלחה עם הסרטון</p>
+    <div class="cosmic-btn-row">
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-restart-btn">ליצור סרטון נוסף</button>
+    </div>
+  `);
+  document.getElementById('va-restart-btn').addEventListener('click', () => {
+    state = INITIAL_STATE;
+    currentPickId = null;
+    saveSession(state).catch((err) => console.error('saveSession failed:', err));
+    render();
+  });
+}
+
 function render() {
   if (state.screen === 'opening') return renderOpening();
   if (state.screen === 'no-idea-choice') return renderNoIdeaChoice();
   if (state.screen === 'has-idea-choice') return renderHasIdeaChoice();
   if (state.screen === 'pulled-idea') return renderPulledIdea();
   if (state.screen === 'pulled-reference') return renderPulledReference();
-  // שאר המסכים נוספים במשימה הבאה
-  cosmicCard(`<p>מסך "${state.screen}" עוד לא בנוי</p>`);
+  if (state.screen === 'transcribe') return renderTranscribe();
+  if (state.screen === 'prompt1') return renderPrompt1();
+  if (state.screen === 'her-words') return renderHerWords();
+  if (state.screen === 'prompt2') return renderPrompt2();
+  if (state.screen === 'read-aloud') return renderReadAloud();
+  if (state.screen === 'done') return renderDone();
+  if (state.screen === 'from-scratch') {
+    // 13/10/2026: אין היום שום מסך/כלי בשם "כתיבת תסריטים" בתוך האפליקציה
+    // (זו רק לשונית בגיליון שלה) - בדוק בפועל לפני המימוש, לא הונח. לכן
+    // כאן תקציר קצר של 5 השלבים כטקסט הכוונה, לא הפניה לכלי שלא קיים.
+    // Wizard מלא לנתיב הזה הוא scope נפרד לגרסה הבאה (ראה design doc).
+    cosmicCard(`
+      <h2>כתיבה מ-0 - 5 השלבים</h2>
+      <p style="text-align:right">
+        1. בחרי נקודת פתיחה: סיפור אישי / סיפור לקוח / כללי<br>
+        2. בחרי סוג תוכן: ערכי / מכירתי / אישי / בידורי<br>
+        3. בחרי פורמט נגישות<br>
+        4. "מגילת אסתר" - שפכי הכל בלי סינון, כל מה שבא לך להגיד על זה<br>
+        5. צמצמי ל-5 חלקים: הוק → חיזוק הוק → נימוק → מסר → קריאה לפעולה<br><br>
+        ולבסוף: קראי בקול, תבדקי שהכל זורם
+      </p>
+      <div class="cosmic-btn-row">
+        <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-scratch-ok-btn">הבנתי, יוצאת לכתוב</button>
+      </div>
+    `);
+    document.getElementById('va-scratch-ok-btn').addEventListener('click', () => {
+      state = INITIAL_STATE;
+      render();
+    });
+    return;
+  }
+  cosmicCard(`<p>מסך לא מוכר: "${state.screen}"</p>`);
 }
 
 export function wireVideoAssistantView() {
