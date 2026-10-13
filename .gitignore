@@ -8,3 +8,4 @@ functions/.env
 functions/.env.*
 scripts/seed-allowlist.js
 .superpowers/
+.worktrees/
