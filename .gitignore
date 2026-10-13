@@ -7,3 +7,4 @@ functions/node_modules/
 functions/.env
 functions/.env.*
 scripts/seed-allowlist.js
+.superpowers/
