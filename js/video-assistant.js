@@ -89,11 +89,111 @@ function renderHasIdeaChoice() {
   document.getElementById('va-scratch-btn').addEventListener('click', () => dispatch({ type: 'CHOOSE_FROM_SCRATCH' }));
 }
 
+async function resolveDomain() {
+  if (domainInfo) return domainInfo;
+  const saved = await getSavedDomain();
+  if (saved) {
+    domainInfo = saved;
+    return domainInfo;
+  }
+  const profile = await getProfile();
+  const personaText = profile && profile.primaryAudience ? profile.primaryAudience : '';
+  let guessed = null;
+  try {
+    guessed = personaText ? await guessDomain(personaText) : null;
+  } catch (err) {
+    console.error('guessDomain failed:', err);
+  }
+  domainInfo = { domain: guessed, subCategory: null };
+  return domainInfo;
+}
+
+const DOMAIN_OPTIONS = [
+  'יופי וקוסמטיקה', 'בריאות נפשית, טיפול ורוח', 'עסקים ויזמות',
+  'עיצוב, נדל"ן ואדריכלות', 'כושר ותזונה', 'תוכן אישי וחיבור',
+];
+
+function renderDomainConfirm(guessedDomain, onConfirmed) {
+  const options = DOMAIN_OPTIONS.map(
+    (d) => `<option value="${d}" ${d === guessedDomain ? 'selected' : ''}>${d}</option>`
+  ).join('');
+  cosmicCard(`
+    <h2>ניחשתי את התחום שלך</h2>
+    <p>${guessedDomain ? `ניחשתי: ${guessedDomain} - נכון?` : 'לא הצלחתי לנחש - בחרי בעצמך:'}</p>
+    <select id="va-domain-select" class="cosmic-textarea" style="min-height:auto">${options}</select>
+    <div class="cosmic-btn-row" style="margin-top:14px">
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-domain-confirm-btn">מאשרת</button>
+    </div>
+  `);
+  document.getElementById('va-domain-confirm-btn').addEventListener('click', async () => {
+    const chosen = document.getElementById('va-domain-select').value;
+    await saveDomain(chosen, null);
+    domainInfo = { domain: chosen, subCategory: null };
+    onConfirmed();
+  });
+}
+
+function renderPulledIdea() {
+  const idea = ideasCache.find((i) => i.id === currentPickId);
+  cosmicCard(`
+    <h2>🎲 הרעיון הזה</h2>
+    <p style="font-size:16px;color:#fff;font-weight:600">${idea.title}</p>
+    <p>${idea.hookText}</p>
+    <div class="cosmic-btn-row">
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-accept-idea-btn">אהבתי, בואי נמשיך</button>
+    </div>
+    <button type="button" class="cosmic-reroll-btn" id="va-reroll-idea-btn">לא אהבתי - הגרילי שוב</button>
+  `);
+  document.getElementById('va-accept-idea-btn').addEventListener('click', () => dispatch({ type: 'ACCEPT_PICK' }));
+  document.getElementById('va-reroll-idea-btn').addEventListener('click', () => {
+    playReroll();
+    const picked = pickIdea(ideasCache, currentPickId);
+    if (picked) currentPickId = picked.id;
+    dispatch({ type: 'REROLL' });
+  });
+}
+
+async function renderPulledReference() {
+  if (!videosCache) videosCache = await fetchInspirationBank();
+  const { domain } = await resolveDomain();
+  if (!domain) {
+    renderDomainConfirm(null, () => render());
+    return;
+  }
+  if (!currentPickId) {
+    const picked = pickReference(videosCache, domain, null);
+    if (!picked) {
+      cosmicCard(`<h2>אין עדיין רפרנסים בתחום הזה</h2><p>בחרי "יש לי רעיון" במקום, או חזרי מאוחר יותר.</p>`);
+      return;
+    }
+    currentPickId = picked.id;
+  }
+  const video = videosCache.find((v) => v.id === currentPickId);
+  cosmicCard(`
+    <h2>🎲 הרפרנס הזה</h2>
+    <p><a href="${video.url}" target="_blank" rel="noopener" style="color:#fff">פתחי לצפייה ←</a></p>
+    <div class="cosmic-btn-row">
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-accept-ref-btn">אהבתי, בואי נמשיך</button>
+    </div>
+    <button type="button" class="cosmic-reroll-btn" id="va-reroll-ref-btn">לא אהבתי - הגרילי שוב</button>
+  `);
+  document.getElementById('va-accept-ref-btn').addEventListener('click', () => dispatch({ type: 'ACCEPT_PICK' }));
+  document.getElementById('va-reroll-ref-btn').addEventListener('click', () => {
+    playReroll();
+    const picked = pickReference(videosCache, domain, currentPickId);
+    if (picked) currentPickId = picked.id;
+    dispatch({ type: 'REROLL' });
+    renderPulledReference();
+  });
+}
+
 function render() {
   if (state.screen === 'opening') return renderOpening();
   if (state.screen === 'no-idea-choice') return renderNoIdeaChoice();
   if (state.screen === 'has-idea-choice') return renderHasIdeaChoice();
-  // שאר המסכים נוספים במשימות הבאות
+  if (state.screen === 'pulled-idea') return renderPulledIdea();
+  if (state.screen === 'pulled-reference') return renderPulledReference();
+  // שאר המסכים נוספים במשימה הבאה
   cosmicCard(`<p>מסך "${state.screen}" עוד לא בנוי</p>`);
 }
 
