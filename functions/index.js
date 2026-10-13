@@ -24,6 +24,7 @@ const { buildStorySequencePrompt, checkSequence } = require('./story-sequence-pr
 const { parseSequence } = require('./story-sequence-parse');
 const { fetchExtraContentLinks, sheetsServiceAccountKey } = require('./sheets-content');
 const { CATEGORIES, PERSUASION_STAGES, CATEGORY_DEFINITIONS, PERSUASION_STAGE_DEFINITIONS } = require('./ideas-constants');
+const { buildDomainGuessPrompt, parseDomainGuess } = require('./video-assistant-domain-prompt');
 const {
   FORMAT_TAGS, FORMAT_TAG_DEFINITIONS,
   ANGLE_TAGS, ANGLE_TAG_DEFINITIONS, anglesFromQuery, canonicalAngle,
@@ -1007,6 +1008,36 @@ ${PERSUASION_STAGES.map((s, i) => `${i + 1}. ${s}: ${PERSUASION_STAGE_DEFINITION
     throw new HttpsError('internal', 'לא הצלחתי לסווג את הרעיון, נסו שוב');
   }
   return { category, persuasionStage };
+});
+
+// "העוזר שלך ליצירת סרטון" - ניחוש חד-פעמי של תחום הלקוחה, ראה
+// video-assistant-domain-prompt.js. נקראת פעם אחת לכל לקוחה, התוצאה
+// נשמרת בצד הלקוח ב-profiles/{uid}.videoAssistantDomain - לא כאן.
+exports.guessClientDomain = onCall({ secrets: [anthropicApiKey], region: 'us-central1', timeoutSeconds: 60 }, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'יש להתחבר כדי להשתמש בתכונה הזו');
+  }
+  await enforceAllowlist(request.auth.token.email);
+
+  const personaText = (request.data && request.data.personaText) || '';
+  if (!personaText.trim()) {
+    throw new HttpsError('invalid-argument', 'חסר טקסט לניחוש התחום');
+  }
+  assertMaxLength(personaText, 4000, 'הסיפור האישי');
+
+  await enforceRateLimit(request.auth.uid, 'guessClientDomain');
+
+  const prompt = buildDomainGuessPrompt({ personaText });
+  const data = await callAnthropic(
+    anthropicApiKey.value(),
+    { model: 'claude-haiku-4-5-20251001', max_tokens: 100, messages: [{ role: 'user', content: prompt }] },
+    'guessClientDomain'
+  );
+  const domain = parseDomainGuess(getResponseText(data));
+  if (!domain) {
+    throw new HttpsError('internal', 'לא הצלחתי לנחש את התחום, נסו שוב או בחרו ידנית');
+  }
+  return { domain };
 });
 
 // "מאגר להשראה" - tags a batch of not-yet-tagged videos with a FORMAT tag
