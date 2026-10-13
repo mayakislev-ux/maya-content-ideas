@@ -6325,4 +6325,116 @@ body[data-plan="refs"] .view-tabs-scroll { justify-content: center; }
    כי צבע קבוע אחד לכל השורות לא נושא שום מידע בדוח שכל עניינו
    לראות לאן כל רעיון הולך. */
 .biduri-row-to { white-space: nowrap; }
+
+/* 13/10/2026: "העוזר שלך ליצירת סרטון" - כיוון "מסע קוסמי" שאושר ב-
+   brainstorm session (docs/superpowers/specs/2026-10-13-video-creation-assistant-design.md).
+   דארק-פירסט במכוון, גם במצב light של המכשיר - זו חוויה, לא מסמך לקריאה. */
+.cosmic-theme {
+  background: linear-gradient(160deg, #0b0f2e 0%, #1c2f82 55%, #2a1850 100%);
+  color: #fff;
+  min-height: 100vh;
+  position: relative;
+  overflow: hidden;
+  padding: 24px 16px;
+}
+.cosmic-theme::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(2px 2px at 20% 30%, #fff 100%, transparent),
+    radial-gradient(2px 2px at 70% 60%, #fff 100%, transparent),
+    radial-gradient(1.5px 1.5px at 40% 80%, #fff 100%, transparent),
+    radial-gradient(1.5px 1.5px at 85% 20%, #fff 100%, transparent),
+    radial-gradient(1.5px 1.5px at 55% 15%, #fff 100%, transparent),
+    radial-gradient(1.5px 1.5px at 10% 65%, #fff 100%, transparent),
+    radial-gradient(1.5px 1.5px at 92% 75%, #fff 100%, transparent);
+  opacity: .7;
+}
+.cosmic-card {
+  position: relative;
+  max-width: 480px;
+  margin: 40px auto;
+  background: rgba(255,255,255,.08);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(255,255,255,.22);
+  border-radius: 20px;
+  padding: 28px 24px;
+  text-align: center;
+  box-shadow: 0 0 40px rgba(255,46,168,.3);
+  animation: cosmic-fade-in .25s ease-out;
+}
+@keyframes cosmic-fade-in {
+  from { opacity: 0; transform: scale(.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+.cosmic-card h2 { margin: 0 0 8px; font-size: 20px; }
+.cosmic-card p { margin: 0 0 20px; opacity: .85; font-size: 14px; }
+.cosmic-btn-row { display: flex; flex-direction: column; gap: 12px; }
+.cosmic-btn {
+  background: rgba(255,255,255,.12);
+  border: 1px solid rgba(255,255,255,.3);
+  color: #fff;
+  border-radius: 14px;
+  padding: 14px 18px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s, transform .1s;
+}
+.cosmic-btn:hover { background: rgba(255,255,255,.2); }
+.cosmic-btn:active { transform: scale(.97); }
+.cosmic-btn--primary {
+  background: var(--accent-2);
+  border-color: var(--accent-2);
+}
+.cosmic-btn--primary:hover { background: #ff53bb; }
+.cosmic-reroll-btn {
+  background: transparent;
+  border: none;
+  color: rgba(255,255,255,.75);
+  font-size: 13px;
+  text-decoration: underline;
+  cursor: pointer;
+  margin-top: 10px;
+}
+.cosmic-mute-btn {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  background: rgba(255,255,255,.12);
+  border: none;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 16px;
+}
+.cosmic-textarea {
+  width: 100%;
+  min-height: 90px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.3);
+  background: rgba(255,255,255,.06);
+  color: #fff;
+  padding: 12px;
+  font-size: 14px;
+  font-family: inherit;
+  resize: vertical;
+}
+.cosmic-textarea::placeholder { color: rgba(255,255,255,.4); }
+.cosmic-prompt-box {
+  background: rgba(0,0,0,.25);
+  border-radius: 12px;
+  padding: 14px;
+  text-align: right;
+  white-space: pre-wrap;
+  font-size: 13px;
+  line-height: 1.6;
+  margin-bottom: 14px;
+  max-height: 260px;
+  overflow-y: auto;
+}
 .biduri-row-failed { color: var(--muted); font-weight: 500; white-space: normal; }
