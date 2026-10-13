@@ -14,6 +14,7 @@ import { wireFeedbackForm } from './feedback.js';
 import { wireContentPlanView, refreshGate as refreshContentPlanGate } from './content-plan.js';
 import { wireConfirmDialog } from './confirm-dialog.js';
 import { wireWarmingView } from './warming.js';
+import { wireVideoAssistantView } from './video-assistant.js';
 import { wireStoryTableView } from './story-table.js';
 import { wireInspirationView, openInspirationView } from './inspiration-view.js';
 import { showView, getLastView } from './view-router.js';
@@ -342,6 +343,8 @@ document.getElementById('tab-feedback').addEventListener('click', () => showView
 // unconditionally, alongside the app's other everyday features.
 document.getElementById('hub-link-ideas-guide').addEventListener('click', () => showView('ideas-guide'));
 document.getElementById('ideas-guide-back-btn').addEventListener('click', () => showView('guide'));
+document.getElementById('hub-link-video-assistant').addEventListener('click', () => showView('video-assistant'));
+document.getElementById('video-assistant-back-btn').addEventListener('click', () => showView('guide'));
 // "מפת הדרכים ליצירת תוכן" existed all along (same roadmap-view as
 // open-roadmap-link-btn below) but only as a secondary link buried inside
 // the "מאיפה להביא רעיונות" sub-page - not visible from the hub itself,
@@ -476,6 +479,7 @@ wireIdeaChat();
 wireFeedbackForm();
 wireContentPlanView();
 wireWarmingView();
+wireVideoAssistantView();
 wireStoryTableView();
 wireInspirationView();
 wireConfirmDialog();
