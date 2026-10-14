@@ -1063,8 +1063,23 @@ exports.classifyInspirationFormats = onCall(
     // Firestore can't query "field is absent" directly, and the collection
     // is small (~180 docs today) - a full scan + in-memory filter is simpler
     // and plenty fast for an admin batch job like this one.
+    //
+    // 12/10/2026: a video with no mirrored thumbnail (e.g. a dead link, or a
+    // TikTok photo-post with no audio/video to mirror from) always threw
+    // "no mirrored thumbnail to classify from" below, so it never got
+    // formatTags and kept reappearing in this exact filter on every call -
+    // hasMore never became false and a caller looping on it span forever.
+    // Same one-skip policy as angleTagsSkipped/subCategorySkipped: a video
+    // that gets a thumbnail later (re-mirrored) is retried once it has one.
     const snap = await db.collection('inspirationBank').get();
-    const targets = snap.docs.filter((d) => !d.data().formatTags).slice(0, limit);
+    const targets = snap.docs
+      .filter((d) => {
+        const v = d.data();
+        if (v.formatTags) return false;
+        if (v.formatTagsSkipped && !v.thumbnailUrl) return false;
+        return true;
+      })
+      .slice(0, limit);
 
     let tagged = 0;
     const failed = [];
@@ -1072,7 +1087,10 @@ exports.classifyInspirationFormats = onCall(
     for (const doc of targets) {
       const video = doc.data();
       try {
-        if (!video.thumbnailUrl) throw new Error('no mirrored thumbnail to classify from');
+        if (!video.thumbnailUrl) {
+          await doc.ref.update({ formatTagsSkipped: true });
+          continue;
+        }
         const imgRes = await fetch(video.thumbnailUrl);
         if (!imgRes.ok) throw new Error(`thumbnail fetch HTTP ${imgRes.status}`);
         const imageBase64 = Buffer.from(await imgRes.arrayBuffer()).toString('base64');
