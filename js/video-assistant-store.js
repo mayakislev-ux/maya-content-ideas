@@ -31,9 +31,12 @@ export async function getSavedDomain() {
   return profile && profile.videoAssistantDomain ? { domain: profile.videoAssistantDomain, subCategory: profile.videoAssistantSubCategory || null } : null;
 }
 
-export async function guessDomain(personaText) {
-  const result = await guessClientDomainFn({ personaText });
-  return result.data.domain;
+// 14/10/2026: הפונקציה בשרת קוראת בעצמה את sheetId ואת לשונית הפרסונה -
+// שום פרמטר לא נדרש כאן יותר (ראה functions/index.js, guessClientDomain).
+// מחזירה { domain, subCategory }.
+export async function guessDomain() {
+  const result = await guessClientDomainFn({});
+  return result.data;
 }
 
 export async function saveDomain(domain, subCategory) {

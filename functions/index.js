@@ -22,7 +22,7 @@ const { buildOngoingWarmingPrompt, buildPresaleWarmingPrompt } = require('./warm
 const { buildContentPlanPrompt } = require('./content-plan-system-prompt');
 const { buildStorySequencePrompt, checkSequence } = require('./story-sequence-prompt');
 const { parseSequence } = require('./story-sequence-parse');
-const { fetchExtraContentLinks, sheetsServiceAccountKey } = require('./sheets-content');
+const { fetchExtraContentLinks, fetchSheetTabs, sheetsServiceAccountKey } = require('./sheets-content');
 const { CATEGORIES, PERSUASION_STAGES, CATEGORY_DEFINITIONS, PERSUASION_STAGE_DEFINITIONS } = require('./ideas-constants');
 const { buildDomainGuessPrompt, parseDomainGuess } = require('./video-assistant-domain-prompt');
 const {
@@ -1013,31 +1013,51 @@ ${PERSUASION_STAGES.map((s, i) => `${i + 1}. ${s}: ${PERSUASION_STAGE_DEFINITION
 // "העוזר שלך ליצירת סרטון" - ניחוש חד-פעמי של תחום הלקוחה, ראה
 // video-assistant-domain-prompt.js. נקראת פעם אחת לכל לקוחה, התוצאה
 // נשמרת בצד הלקוח ב-profiles/{uid}.videoAssistantDomain - לא כאן.
-exports.guessClientDomain = onCall({ secrets: [anthropicApiKey], region: 'us-central1', timeoutSeconds: 60 }, async (request) => {
+// 14/10/2026 (מאיה, אחרי בדיקה אמיתית): "בתכלס הוא כבר צריך לדעת לפי
+// הSHEETS שלי" - הקריאה הישנה סמכה על טקסט שהלקוח שולח (בפועל נשלח
+// profile.primaryAudience, שדה על הקהל שלה ולא על העסק שלה - בדיוק למה
+// הניחוש היה לא מדויק). עכשיו הפונקציה קוראת בעצמה את sheetId מהפרופיל
+// ואת לשונית "פרסונה שיווקית" האמיתית - שום דבר לא מגיע מהלקוח חוץ
+// מהזהות שלו.
+const PERSONA_TAB = 'פרסונה שיווקית';
+exports.guessClientDomain = onCall({ secrets: [anthropicApiKey, sheetsServiceAccountKey], region: 'us-central1', timeoutSeconds: 60 }, async (request) => {
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'יש להתחבר כדי להשתמש בתכונה הזו');
   }
   await enforceAllowlist(request.auth.token.email);
-
-  const personaText = (request.data && request.data.personaText) || '';
-  if (!personaText.trim()) {
-    throw new HttpsError('invalid-argument', 'חסר טקסט לניחוש התחום');
-  }
-  assertMaxLength(personaText, 4000, 'הסיפור האישי');
-
   await enforceRateLimit(request.auth.uid, 'guessClientDomain');
 
-  const prompt = buildDomainGuessPrompt({ personaText });
+  const profileSnap = await db.collection('profiles').doc(request.auth.uid).get();
+  const profile = profileSnap.exists ? profileSnap.data() : {};
+  const sheetId = profile.sheetId;
+  if (!sheetId) {
+    throw new HttpsError('failed-precondition', 'אין עדיין קובץ Sheets מקושר לחשבון שלך');
+  }
+
+  let personaText = '';
+  const tabs = await fetchSheetTabs(sheetId, [PERSONA_TAB]);
+  if (tabs && tabs[PERSONA_TAB]) {
+    personaText = tabs[PERSONA_TAB]
+      .map((row) => (row && row[1]) || '')
+      .filter(Boolean)
+      .join('\n')
+      .slice(0, 4000);
+  }
+  if (!personaText.trim() && !(profile.business && profile.business.trim())) {
+    throw new HttpsError('failed-precondition', 'אין עדיין מספיק מידע בגיליון כדי לנחש את התחום');
+  }
+
+  const prompt = buildDomainGuessPrompt({ personaText, business: profile.business });
   const data = await callAnthropic(
     anthropicApiKey.value(),
-    { model: 'claude-haiku-4-5-20251001', max_tokens: 100, messages: [{ role: 'user', content: prompt }] },
+    { model: 'claude-haiku-4-5-20251001', max_tokens: 150, messages: [{ role: 'user', content: prompt }] },
     'guessClientDomain'
   );
-  const domain = parseDomainGuess(getResponseText(data));
-  if (!domain) {
+  const guess = parseDomainGuess(getResponseText(data));
+  if (!guess) {
     throw new HttpsError('internal', 'לא הצלחתי לנחש את התחום, נסו שוב או בחרו ידנית');
   }
-  return { domain };
+  return guess;
 });
 
 // "מאגר להשראה" - tags a batch of not-yet-tagged videos with a FORMAT tag

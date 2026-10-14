@@ -6425,6 +6425,14 @@ body[data-plan="refs"] .view-tabs-scroll { justify-content: center; }
   resize: vertical;
 }
 .cosmic-textarea::placeholder { color: rgba(255,255,255,.4); }
+/* 14/10/2026 (מאיה: "יש שם כתב לבן על לבן ולא רואים כלום"): select.cosmic-textarea
+   יורש color:#fff, אבל הרשימה הנפתחת של <option> מצוירת ע"י הדפדפן עצמו
+   ברקע לבן קבוע משלו, שלא מושפע מה-rgba השקוף שמוגדר למעלה - הטקסט הלבן
+   על הרקע הלבן הזה בלתי קריא לגמרי. option צריך רקע כהה מפורש משלו. */
+.cosmic-textarea option {
+  background-color: #1c2f82;
+  color: #fff;
+}
 .cosmic-prompt-box {
   background: rgba(0,0,0,.25);
   border-radius: 12px;

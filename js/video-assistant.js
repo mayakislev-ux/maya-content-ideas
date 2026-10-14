@@ -12,6 +12,16 @@ import {
   fetchIdeas, fetchInspirationBank, getSavedDomain, guessDomain, saveDomain, loadSession, saveSession,
 } from './video-assistant-store.js';
 import { getProfile } from './user-profile.js';
+// 14/10/2026: רשימת שמות בלבד (בלי ההגדרות הארוכות) - אותה רשימה בדיוק
+// כמו functions/inspiration-constants.js, לתפריט הבחירה הידני/לתיקון.
+const SUBCATEGORIES_BY_DOMAIN = {
+  'יופי וקוסמטיקה': ['טיפול פנים', 'איפור קבוע', 'גבות', 'ריסים', 'ציפורניים', 'שיער', 'איפור', 'לייזר והסרת שיער', 'אסתטיקה רפואית', 'טיפולי גוף', 'שיזוף'],
+  'בריאות נפשית, טיפול ורוח': ['פסיכולוגיה וטיפול רגשי', 'אימון אישי והתפתחות אישית', 'זוגיות ומערכות יחסים', 'הדרכת הורים ומשפחה', 'NLP ושיטות טיפול אלטרנטיביות', 'תקשור', 'נומרולוגיה', 'אסטרולוגיה', 'טארוט וקלפים'],
+  'עסקים ויזמות': ['שיווק ויצירת תוכן', 'מכירות', 'ייעוץ וליווי עסקי', 'פיננסים', 'קריירה ותעסוקה', 'משאבי אנוש וגיוס', 'AI ואוטומציות לעסקים'],
+  'עיצוב, נדל"ן ואדריכלות': ['תיווך נדל"ן', 'השקעות נדל"ן', 'השבחת נכסים', 'עיצוב פנים', 'אדריכלות', 'הום סטיילינג'],
+  'כושר ותזונה': ['פילאטיס', 'יוגה', 'אימוני כוח וכושר', 'ריצה וסיבולת', 'דיאטניות, תזונאיות, ליווי תזונתי', 'פיזיותרפיה ושיקום', 'ציוד ספורט'],
+  'תוכן אישי וחיבור': [],
+};
 import { showToast } from './toast.js';
 
 let state = INITIAL_STATE;
@@ -89,6 +99,9 @@ function renderHasIdeaChoice() {
   document.getElementById('va-scratch-btn').addEventListener('click', () => dispatch({ type: 'CHOOSE_FROM_SCRATCH' }));
 }
 
+// 14/10/2026 (מאיה, אחרי בדיקה אמיתית): "בתכלס הוא כבר צריך לדעת לפי
+// הSHEETS שלי, וצריך לדעת תחום מדויק" - guessDomain() קורא עכשיו בעצמו
+// את הגיליון בצד השרת ומחזיר גם תת-קטגוריה, לא רק תחום כללי.
 async function resolveDomain() {
   if (domainInfo) return domainInfo;
   const saved = await getSavedDomain();
@@ -96,39 +109,49 @@ async function resolveDomain() {
     domainInfo = saved;
     return domainInfo;
   }
-  const profile = await getProfile();
-  const personaText = profile && profile.primaryAudience ? profile.primaryAudience : '';
   let guessed = null;
   try {
-    guessed = personaText ? await guessDomain(personaText) : null;
+    guessed = await guessDomain();
   } catch (err) {
     console.error('guessDomain failed:', err);
   }
-  domainInfo = { domain: guessed, subCategory: null };
+  domainInfo = guessed || { domain: null, subCategory: null };
   return domainInfo;
 }
 
-const DOMAIN_OPTIONS = [
-  'יופי וקוסמטיקה', 'בריאות נפשית, טיפול ורוח', 'עסקים ויזמות',
-  'עיצוב, נדל"ן ואדריכלות', 'כושר ותזונה', 'תוכן אישי וחיבור',
-];
+const DOMAIN_OPTIONS = Object.keys(SUBCATEGORIES_BY_DOMAIN);
 
-function renderDomainConfirm(guessedDomain, onConfirmed) {
+function subCategorySelectHtml(domain, selectedSub) {
+  const subs = SUBCATEGORIES_BY_DOMAIN[domain] || [];
+  if (!subs.length) return '<p class="muted" style="font-size:13px">(לתחום הזה אין תתי-קטגוריה)</p>';
+  const opts = ['<option value="">בחרי תת-קטגוריה מדויקת</option>']
+    .concat(subs.map((s) => `<option value="${s}" ${s === selectedSub ? 'selected' : ''}>${s}</option>`))
+    .join('');
+  return `<select id="va-subcategory-select" class="cosmic-textarea" style="min-height:auto;margin-top:10px">${opts}</select>`;
+}
+
+function renderDomainConfirm(guessedDomain, guessedSub, onConfirmed) {
   const options = DOMAIN_OPTIONS.map(
     (d) => `<option value="${d}" ${d === guessedDomain ? 'selected' : ''}>${d}</option>`
   ).join('');
   cosmicCard(`
-    <h2>ניחשתי את התחום שלך</h2>
-    <p>${guessedDomain ? `ניחשתי: ${guessedDomain} - נכון?` : 'לא הצלחתי לנחש - בחרי בעצמך:'}</p>
+    <h2>התחום המדויק שלך</h2>
+    <p>${guessedDomain ? `ניחשתי לפי הגיליון שלך: ${guessedDomain}${guessedSub ? ' › ' + guessedSub : ''} - נכון?` : 'לא הצלחתי לנחש מהגיליון - בחרי בעצמך:'}</p>
     <select id="va-domain-select" class="cosmic-textarea" style="min-height:auto">${options}</select>
+    <div id="va-subcategory-wrap">${subCategorySelectHtml(guessedDomain, guessedSub)}</div>
     <div class="cosmic-btn-row" style="margin-top:14px">
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-domain-confirm-btn">מאשרת</button>
     </div>
   `);
+  document.getElementById('va-domain-select').addEventListener('change', (e) => {
+    document.getElementById('va-subcategory-wrap').innerHTML = subCategorySelectHtml(e.target.value, null);
+  });
   document.getElementById('va-domain-confirm-btn').addEventListener('click', async () => {
     const chosen = document.getElementById('va-domain-select').value;
-    await saveDomain(chosen, null);
-    domainInfo = { domain: chosen, subCategory: null };
+    const subSelect = document.getElementById('va-subcategory-select');
+    const chosenSub = subSelect ? subSelect.value || null : null;
+    await saveDomain(chosen, chosenSub);
+    domainInfo = { domain: chosen, subCategory: chosenSub };
     onConfirmed();
   });
 }
@@ -138,13 +161,19 @@ function renderPulledIdea() {
   cosmicCard(`
     <h2>🎲 הרעיון הזה</h2>
     <p style="font-size:16px;color:#fff;font-weight:600">${idea.title}</p>
-    <p>${idea.hookText}</p>
+    ${idea.hookText ? `<p>${idea.hookText}</p>` : ''}
     <div class="cosmic-btn-row">
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-accept-idea-btn">אהבתי, בואי נמשיך</button>
     </div>
     <button type="button" class="cosmic-reroll-btn" id="va-reroll-idea-btn">לא אהבתי - הגרילי שוב</button>
   `);
-  document.getElementById('va-accept-idea-btn').addEventListener('click', () => dispatch({ type: 'ACCEPT_PICK' }));
+  document.getElementById('va-accept-idea-btn').addEventListener('click', () => {
+    // 14/10/2026: בלי זה state.hook נשאר ריק עבור מסלול "רעיון מהבנק" (הוא
+    // מוגדר רק דרך HOOK_CHOSEN, ששייך למסלול הרפרנס) - והפרומפט הסופי
+    // (prompt2) היה יוצא בלי שום הוק בכלל. הטקסט של הרעיון עצמו הוא ההוק כאן.
+    state.hook = idea.hookText || idea.title;
+    dispatch({ type: 'ACCEPT_PICK' });
+  });
   document.getElementById('va-reroll-idea-btn').addEventListener('click', () => {
     playReroll();
     const picked = pickIdea(ideasCache, currentPickId);
@@ -155,13 +184,16 @@ function renderPulledIdea() {
 
 async function renderPulledReference() {
   if (!videosCache) videosCache = await fetchInspirationBank();
-  const { domain } = await resolveDomain();
-  if (!domain) {
-    renderDomainConfirm(null, () => render());
+  const { domain, subCategory } = await resolveDomain();
+  // גם כשיש ניחוש תחום, אם לתחום הזה יש תתי-קטגוריה אבל לא נבחרה אחת
+  // מדויקת - עדיין נעצרים לאישור, כי "תחום כללי" לא מספיק (מאיה, 14/10).
+  const needsConfirm = !domain || ((SUBCATEGORIES_BY_DOMAIN[domain] || []).length > 0 && !subCategory);
+  if (needsConfirm) {
+    renderDomainConfirm(domain, subCategory, () => render());
     return;
   }
   if (!currentPickId) {
-    const picked = pickReference(videosCache, domain, null);
+    const picked = pickReference(videosCache, domain, subCategory, null);
     if (!picked) {
       cosmicCard(`<h2>אין עדיין רפרנסים בתחום הזה</h2><p>בחרי "יש לי רעיון" במקום, או חזרי מאוחר יותר.</p>`);
       return;
@@ -180,7 +212,7 @@ async function renderPulledReference() {
   document.getElementById('va-accept-ref-btn').addEventListener('click', () => dispatch({ type: 'ACCEPT_PICK' }));
   document.getElementById('va-reroll-ref-btn').addEventListener('click', () => {
     playReroll();
-    const picked = pickReference(videosCache, domain, currentPickId);
+    const picked = pickReference(videosCache, domain, subCategory, currentPickId);
     if (picked) currentPickId = picked.id;
     dispatch({ type: 'REROLL' });
     renderPulledReference();
