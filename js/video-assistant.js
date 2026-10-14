@@ -362,7 +362,17 @@ export function wireVideoAssistantView() {
   document.getElementById('video-assistant-mute-btn').textContent = getMuted() ? '🔇' : '🔊';
 
   document.getElementById('hub-link-video-assistant').addEventListener('click', async () => {
-    const saved = await loadSession();
+    // 14/10/2026: הפריסה כאן בשני חלקים נפרדים (git push לפרונט, firebase
+    // deploy נפרד לפונקציות/rules) - אם ה-rules של videoAssistantSessions
+    // עדיין לא פרוסות, הקריאה הזו נכשלת ב-permission-denied. בלי ה-catch
+    // הזה כל מסך הכלי לא היה נפתח כלל (promise rejection שקטה) במקום
+    // פשוט להתחיל מהתחלה בלי המשכיות שמורה.
+    let saved = null;
+    try {
+      saved = await loadSession();
+    } catch (err) {
+      console.error('loadSession failed:', err);
+    }
     state = saved || INITIAL_STATE;
     render();
   });
