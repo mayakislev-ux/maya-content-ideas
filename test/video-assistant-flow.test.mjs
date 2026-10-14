@@ -44,43 +44,20 @@ test('REROLL replaces the reroll count and keeps the same screen', () => {
   assert.equal(before.rerollCount, 1);
 });
 
-test('has-idea -> reverse-duplication still needs a reference, found by describing the idea', () => {
-  // 14/10/2026 (מאיה, אחרי בדיקה אמיתית): גם במסלול הזה היא צריכה רפרנס -
-  // רק שהוא נמצא לפי תיאור הרעיון שלה, לא אקראי מהתחום.
+test('has-idea -> reverse-duplication: tool only suggests keywords, she searches herself', () => {
+  // 14/10/2026 (מאיה, שני תיקונים): לא matchInspirationQuery אוטומטי - רק
+  // הצעת מילות חיפוש (suggestSearchKeywords), והיא עצמה מוצאת ומאשרת.
   let s = nextStep(INITIAL_STATE, { type: 'CHOOSE_HAS_IDEA' });
   assert.equal(s.screen, 'has-idea-choice');
   s = nextStep(s, { type: 'CHOOSE_REVERSE_DUPLICATION' });
   assert.equal(s.screen, 'describe-idea');
   assert.equal(s.branch, 'idea-search');
-  s = nextStep(s, { type: 'IDEA_DESCRIBED', text: 'הסיפור שלי על בולמיה' });
+  s = nextStep(s, { type: 'SEARCH_GUIDANCE_READY', idea: 'הסיפור שלי על בולמיה', keywords: ['הסיפור שלי', 'סיפור אישי שמחבר'] });
+  assert.equal(s.screen, 'search-guidance');
   assert.equal(s.ideaDescription, 'הסיפור שלי על בולמיה');
-  s = nextStep(s, { type: 'SEARCH_DONE', ids: ['v1', 'v2', 'v3'] });
-  assert.equal(s.screen, 'searched-reference');
-  assert.deepEqual(s.referenceIds, ['v1', 'v2', 'v3']);
-  assert.equal(s.referenceIndex, 0);
-  s = nextStep(s, { type: 'NEXT_SEARCH_RESULT' });
-  assert.equal(s.referenceIndex, 1);
-  assert.equal(s.screen, 'searched-reference');
-  s = nextStep(s, { type: 'ACCEPT_PICK' });
-  assert.equal(s.screen, 'transcribe'); // כמו רפרנס רגיל - דורש תמלול לפני ששכפול ממשיך
-});
-
-test('RETRY_SEARCH goes back to describe-idea and clears stale search results', () => {
-  let s = nextStep(INITIAL_STATE, { type: 'CHOOSE_HAS_IDEA' });
-  s = nextStep(s, { type: 'CHOOSE_REVERSE_DUPLICATION' });
-  s = nextStep(s, { type: 'SEARCH_DONE', ids: ['v1'] });
-  assert.equal(s.screen, 'searched-reference');
-  s = nextStep(s, { type: 'RETRY_SEARCH' });
-  assert.equal(s.screen, 'describe-idea');
-  assert.equal(s.referenceIds, null);
-  assert.equal(s.referenceIndex, 0);
-});
-
-test('has-idea -> reverse-duplication -> no matching reference found -> she searches herself, still lands on transcribe', () => {
-  let s = nextStep(INITIAL_STATE, { type: 'CHOOSE_HAS_IDEA' });
-  s = nextStep(s, { type: 'CHOOSE_REVERSE_DUPLICATION' });
+  assert.deepEqual(s.searchKeywords, ['הסיפור שלי', 'סיפור אישי שמחבר']);
   s = nextStep(s, { type: 'SKIP_TO_TRANSCRIBE' });
-  assert.equal(s.screen, 'transcribe');
+  assert.equal(s.screen, 'transcribe'); // כמו רפרנס רגיל - דורש תמלול לפני ששכפול ממשיך
 });
 
 test('has-idea -> from-scratch is its own branch, independent of reverse-duplication', () => {

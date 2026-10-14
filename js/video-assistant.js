@@ -9,9 +9,11 @@ import { pickIdea, pickReference } from './video-assistant-picker.js';
 import { buildDuplicationPrompt, buildScriptPrompt } from './video-assistant-prompts.js';
 import { playReroll, playSuccess, setMuted, getMuted } from './video-assistant-sound.js';
 import {
-  fetchIdeas, fetchInspirationBank, getSavedDomain, guessDomain, saveDomain, loadSession, saveSession, searchReferences,
+  fetchIdeas, fetchInspirationBank, getSavedDomain, guessDomain, saveDomain, loadSession, saveSession, suggestSearchKeywords,
 } from './video-assistant-store.js';
 import { getProfile } from './user-profile.js';
+import { showView } from './view-router.js';
+import { openInspirationView } from './inspiration-view.js';
 // 14/10/2026: רשימת שמות בלבד (בלי ההגדרות הארוכות) - אותה רשימה בדיוק
 // כמו functions/inspiration-constants.js, לתפריט הבחירה הידני/לתיקון.
 const SUBCATEGORIES_BY_DOMAIN = {
@@ -225,17 +227,16 @@ async function renderPulledReference() {
   });
 }
 
-// 14/10/2026 (מאיה, "יש לי רעיון" → "שכפול הפוך"): היא מתארת את הרעיון
-// במילים שלה, ומחפשים לה רפרנסים מתאימים מהמאגר (matchInspirationQuery -
-// כבר קיים באפליקציה בדיוק בשביל זה, לא בנוי מחדש כאן). אם לא נמצא כלום,
-// היא הולכת לחפש בעצמה בטיקטוק/אינסטגרם במילות המפתח שהיא בחרה.
+// 14/10/2026 (מאיה: "את לא מקשיבה! אני מביאה לה רעיון, ואני רוצה שהיא
+// תמצא רפרנס לבד - את תביאי לה כותרות"): הכלי לא מחפש רפרנס בשבילה -
+// רק מציע מילות חיפוש, והיא עצמה מוצאת ומאשרת שמצאה.
 function renderDescribeIdea() {
   cosmicCard(`
     <h2>מה בדיוק הרעיון שלך?</h2>
     <p>תארי במילים שלך - למשל "הסיפור שלי על בולמיה" או "סיפור לקוחה שהחליקה שיער ופחדה שזה ישרוף לה אותו"</p>
     <textarea class="cosmic-textarea" id="va-idea-description-input" placeholder="הרעיון שלך..."></textarea>
     <div class="cosmic-btn-row" style="margin-top:14px">
-      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-idea-search-btn">חפשי לי רפרנסים מתאימים</button>
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-idea-search-btn">תני לי מילות חיפוש</button>
     </div>
     <p id="va-idea-search-status" class="muted" style="font-size:13px;margin-top:10px"></p>
   `);
@@ -248,70 +249,42 @@ function renderDescribeIdea() {
     const statusEl = document.getElementById('va-idea-search-status');
     const btn = document.getElementById('va-idea-search-btn');
     btn.disabled = true;
-    statusEl.textContent = 'מחפשת רפרנסים מתאימים...';
-    // state.ideaDescription מתעדכן ישירות, לא דרך dispatch - dispatch
-    // מפעיל render() מיידי שהיה מוחק את ההודעה/הטופס לפני שהחיפוש
-    // האסינכרוני בכלל התחיל (אותה שיטה כבר קיימת ל-state.transcript
-    // ב-renderTranscribe ול-state.hook ב-renderPulledIdea).
-    state.ideaDescription = text;
+    statusEl.textContent = 'חושבת על מילות חיפוש...';
+    let keywords = [];
     try {
-      const ids = await searchReferences(text);
-      currentPickId = null;
-      dispatch({ type: 'SEARCH_DONE', ids });
+      keywords = await suggestSearchKeywords(text);
     } catch (err) {
-      console.error('searchReferences failed:', err);
-      btn.disabled = false;
-      statusEl.textContent = '';
-      renderSearchFailed(text);
+      console.error('suggestSearchKeywords failed:', err);
+      // לא עוצרים אותה בגלל כישלון AI - התיאור שלה עצמו הוא מילת חיפוש
+      // סבירה, רק פחות מדויקת מהצעה אמיתית.
+      keywords = [text];
     }
+    dispatch({ type: 'SEARCH_GUIDANCE_READY', idea: text, keywords });
   });
 }
 
-// 14/10/2026 (מאיה: "ואם לא מוצאת רק אז להיכנס לטיקטוק ואינסטגרם ולחפש
-// בעברית ברוסית באנגלית"): כשהחיפוש במאגר לא מחזיר כלום, לא עוצרים אותה -
-// מנחים אותה לחפש בעצמה, עם אותו תיאור שהיא כבר כתבה כנקודת פתיחה.
-function renderSearchFailed(ideaText) {
+// 14/10/2026 (מאיה: "ואז היא בדיפולט צריכה לחפש רפרנסים מהמאגר שלי יש
+// שם אפשרות לחפש לפי זוויות... ואם לא מוצאת רק אז להיכנס לטיקטוק
+// ואינסטגרם ולחפש בעברית ברוסית באנגלית"): מסך הנחיה בלבד, בלי וידאו -
+// היא פותחת את מאגר ההשראה/טיקטוק/אינסטגרם בעצמה ומחפשת שם.
+function renderSearchGuidance() {
+  const keywordsHtml = (state.searchKeywords || [])
+    .map((k) => `<li>${k}</li>`)
+    .join('');
   cosmicCard(`
-    <h2>לא מצאתי רפרנס מתאים במאגר</h2>
-    <p>תחפשי בעצמך בטיקטוק ובאינסטגרם - נסי את התיאור שלך גם בעברית, גם ברוסית וגם באנגלית:</p>
-    <p class="cosmic-prompt-box" style="text-align:right">${ideaText}</p>
-    <div class="cosmic-btn-row">
-      <button type="button" class="cosmic-btn" id="va-idea-search-again-btn">לנסח מחדש ולחפש שוב</button>
-      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-skip-to-transcribe-btn">מצאתי רפרנס בעצמי</button>
+    <h2>מילות חיפוש מוצעות</h2>
+    <p>חפשי אותן קודם במאגר ההשראה שלך (יש שם גם אפשרות לחפש לפי זוויות) - ואם לא מוצאת, בטיקטוק ובאינסטגרם, גם בעברית, גם ברוסית וגם באנגלית:</p>
+    <ul style="text-align:right;padding-inline-start:20px">${keywordsHtml}</ul>
+    <div class="cosmic-btn-row" style="margin-top:14px">
+      <button type="button" class="cosmic-btn" id="va-open-bank-btn">פתחי את מאגר ההשראה</button>
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-found-reference-btn">מצאתי רפרנס, בואי נמשיך</button>
     </div>
   `);
-  document.getElementById('va-idea-search-again-btn').addEventListener('click', () => dispatch({ type: 'RETRY_SEARCH' }));
-  document.getElementById('va-skip-to-transcribe-btn').addEventListener('click', () => dispatch({ type: 'SKIP_TO_TRANSCRIBE' }));
-}
-
-async function renderSearchedReference() {
-  if (!videosCache) videosCache = await fetchInspirationBank();
-  const ids = state.referenceIds || [];
-  if (state.referenceIndex >= ids.length) {
-    renderSearchFailed(state.ideaDescription || '');
-    return;
-  }
-  const videoId = ids[state.referenceIndex];
-  const video = videosCache.find((v) => v.id === videoId);
-  if (!video) {
-    // רפרנס נמחק מהמאגר אחרי שהוחזר כהתאמה - עוברת לבא בתור בלי לעצור אותה
-    dispatch({ type: 'NEXT_SEARCH_RESULT' });
-    return;
-  }
-  currentPickId = video.id;
-  cosmicCard(`
-    <h2>🎯 מצאתי רפרנס מתאים</h2>
-    <p><a href="${video.url}" target="_blank" rel="noopener" style="color:#fff">פתחי לצפייה ←</a></p>
-    <div class="cosmic-btn-row">
-      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-accept-searched-btn">אהבתי, בואי נמשיך</button>
-    </div>
-    <button type="button" class="cosmic-reroll-btn" id="va-next-searched-btn">לא אהבתי - הראי לי את הבא</button>
-  `);
-  document.getElementById('va-accept-searched-btn').addEventListener('click', () => dispatch({ type: 'ACCEPT_PICK' }));
-  document.getElementById('va-next-searched-btn').addEventListener('click', () => {
-    playReroll();
-    dispatch({ type: 'NEXT_SEARCH_RESULT' });
+  document.getElementById('va-open-bank-btn').addEventListener('click', () => {
+    showView('inspiration');
+    openInspirationView();
   });
+  document.getElementById('va-found-reference-btn').addEventListener('click', () => dispatch({ type: 'SKIP_TO_TRANSCRIBE' }));
 }
 
 function copyBtn(text, label) {
@@ -449,7 +422,7 @@ function render() {
   if (state.screen === 'pulled-idea') return renderPulledIdea();
   if (state.screen === 'pulled-reference') return renderPulledReference();
   if (state.screen === 'describe-idea') return renderDescribeIdea();
-  if (state.screen === 'searched-reference') return renderSearchedReference();
+  if (state.screen === 'search-guidance') return renderSearchGuidance();
   if (state.screen === 'transcribe') return renderTranscribe();
   if (state.screen === 'prompt1') return renderPrompt1();
   if (state.screen === 'her-words') return renderHerWords();

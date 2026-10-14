@@ -10,7 +10,7 @@ import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/fireba
 import { getProfile, saveProfile } from './user-profile.js';
 
 const guessClientDomainFn = httpsCallable(functions, 'guessClientDomain');
-const matchInspirationQueryFn = httpsCallable(functions, 'matchInspirationQuery');
+const suggestSearchKeywordsFn = httpsCallable(functions, 'suggestSearchKeywords');
 
 /** רעיונות פעילים של הלקוחה הנוכחית - קריאה חד-פעמית, לא listener */
 export async function fetchIdeas() {
@@ -44,13 +44,12 @@ export async function saveDomain(domain, subCategory) {
   await saveProfile({ videoAssistantDomain: domain, videoAssistantSubCategory: subCategory || null });
 }
 
-// 14/10/2026 (מאיה, "שכפול הפוך" כשכבר יש לה רעיון): הכלי הקיים כבר -
-// matchInspirationQuery, בדיוק בשביל זה (ראה ההערה "שכפול הפוך" ב-
-// inspiration-view.js). מחזיר ids בלבד, מדורגים; הקריאה למסמכים עצמם
-// עוברת דרך fetchInspirationBank הרגיל כדי לא לשכפל לוגיקת שליפה.
-export async function searchReferences(query) {
-  const result = await matchInspirationQueryFn({ query });
-  return result.data.ids;
+// 14/10/2026 (מאיה: "את לא מקשיבה! אני רוצה שהיא תמצא רפרנס לבד - את
+// תביאי לה כותרות"): לא מחפשים וידאו בשבילה (matchInspirationQuery נשאר
+// רק במסך "מאגר להשראה" הרגיל) - רק מציעים מילות חיפוש, והיא מחפשת בעצמה.
+export async function suggestSearchKeywords(idea) {
+  const result = await suggestSearchKeywordsFn({ idea });
+  return result.data.keywords;
 }
 
 /** הסשן הפעיל - מסמך יחיד לפי uid, לא היסטוריה (ראה firestore.rules) */

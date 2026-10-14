@@ -1060,6 +1060,55 @@ exports.guessClientDomain = onCall({ secrets: [anthropicApiKey, sheetsServiceAcc
   return guess;
 });
 
+// 14/10/2026 (מאיה: "את לא מקשיבה! אני מביאה לה רעיון, ואני רוצה שהיא
+// תמצא רפרנס לבד - את תביאי לה כותרות"): בשכפול הפוך מ"יש לי רעיון", הכלי
+// לא מחפש רפרנס בשבילה (matchInspirationQuery נשאר רק במסך "מאגר
+// להשראה" הרגיל) - הוא רק מציע לה מילות חיפוש/כותרות קצרות שהיא עצמה
+// תקליד שם, או בטיקטוק/אינסטגרם. בלי חיפוש וידאו בכלל כאן, רק הצעת מילים.
+exports.suggestSearchKeywords = onCall({ secrets: [anthropicApiKey], region: 'us-central1', timeoutSeconds: 30 }, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'יש להתחבר כדי להשתמש בתכונה הזו');
+  }
+  await enforceAllowlist(request.auth.token.email);
+
+  const idea = ((request.data && request.data.idea) || '').trim();
+  if (!idea) {
+    throw new HttpsError('invalid-argument', 'חסר תיאור הרעיון');
+  }
+  assertMaxLength(idea, 1000, 'הרעיון');
+
+  await enforceRateLimit(request.auth.uid, 'suggestSearchKeywords');
+
+  const prompt = `לקוחה רוצה ליצור סרטון על הרעיון הבא: "${idea}"
+
+הציעי 4-6 מילות חיפוש/כותרות קצרות (2-4 מילים כל אחת) שהיא יכולה להקליד בחיפוש במאגר השראה שלה או בטיקטוק/אינסטגרם כדי למצוא סרטוני רפרנס מתאימים לשכפל. לא את הרעיון המדויק שלה מילה במילה - זוויות/נושאים כלליים וקרובים יותר שיעזרו למצוא השראה (למשל לרעיון "הסיפור שלי על בולמיה" הציעי "הסיפור שלי", "סיפור אישי שמחבר", לא "בולמיה" עצמה).
+
+השיבי אך ורק ב-JSON תקין, בלי שום טקסט נוסף: {"keywords": ["<מילת חיפוש 1>", ...]}`;
+
+  const data = await callAnthropic(
+    anthropicApiKey.value(),
+    { model: 'claude-haiku-4-5-20251001', max_tokens: 200, messages: [{ role: 'user', content: prompt }] },
+    'suggestSearchKeywords'
+  );
+  const text = getResponseText(data) || '{}';
+  let parsed;
+  try {
+    const match = text.match(/\{[\s\S]*\}/);
+    parsed = JSON.parse(match ? match[0] : text);
+  } catch (err) {
+    console.error('Failed to parse suggestSearchKeywords response:', text);
+    throw new HttpsError('internal', 'לא הצלחתי להציע מילות חיפוש, נסו שוב');
+  }
+  const keywords = (Array.isArray(parsed.keywords) ? parsed.keywords : [])
+    .map((k) => String(k || '').trim())
+    .filter(Boolean)
+    .slice(0, 6);
+  if (!keywords.length) {
+    throw new HttpsError('internal', 'לא הצלחתי להציע מילות חיפוש, נסו שוב');
+  }
+  return { keywords };
+});
+
 // "מאגר להשראה" - tags a batch of not-yet-tagged videos with a FORMAT tag
 // (independent of their domain) so the reverse-duplication search below can
 // find matching-structure references across domains. Admin-only, invoked
