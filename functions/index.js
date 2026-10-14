@@ -1229,6 +1229,10 @@ ${FORMAT_TAGS.map((t, i) => `${i + 1}. ${t}: ${FORMAT_TAG_DEFINITIONS[t]}`).join
 // only caught 1 of many genuinely relevant videos for that exact query.
 // matchInspirationQuery below reads this field to do real content-matching
 // instead of coarse tag-bucket matching.
+/* סירוב של המודל אינו תקציר. אותה מדיניות one-skip כמו
+   translationSkipped ו-subCategorySkipped: מסמנים ולא מנסים שוב לנצח. */
+const SUMMARY_REFUSAL = /^(אני לא יכול|אינני יכול|איני יכול|לא יכול|לא ניתן|אני מצטער|אני מתנצל|I cannot|I can't|I apologize|I'm sorry|I am sorry|I appreciate|I'm unable|I am unable|Unfortunately)/i;
+
 exports.generateContentSummaries = onCall(
   { secrets: [anthropicApiKey], region: 'us-central1', timeoutSeconds: 540 },
   async (request) => {
@@ -1243,6 +1247,7 @@ exports.generateContentSummaries = onCall(
       .slice(0, limit);
 
     let done = 0;
+    let skipped = 0;
     const failed = [];
 
     for (const doc of targets) {
@@ -1269,6 +1274,21 @@ exports.generateContentSummaries = onCall(
         const summary = (getResponseText(data) || '').trim().replace(/^["']|["']$/g, '');
         if (!summary) throw new Error('empty summary returned');
 
+        /* 14/10/2026: הבדיקה הזו הייתה קיימת רק על הקלט של
+           classifyInspirationSubcategories, ולא על הפלט כאן. לכן כשהתמלול
+           היה גיבריש, הסירוב של המודל ("אני לא יכול לתאר...", "I appreciate
+           your request, but I'm unable to...") נשמר כאילו הוא תקציר אמיתי.
+           נמצאו 40 כאלה מתוך 403, כלומר 10% מהמאגר.
+
+           זה לא נראה ללקוחות, כי contentSummary אינו מוצג בכרטיס, אבל הוא
+           כן נשלח ל-matchInspirationQuery כשורה בקטלוג, ולכן 40 שורות של
+           טקסט סירוב היו מזהמות את דירוג החיפוש. */
+        if (SUMMARY_REFUSAL.test(summary)) {
+          await doc.ref.update({ contentSummarySkipped: true });
+          skipped++;
+          continue;
+        }
+
         await doc.ref.update({ contentSummary: summary });
         done++;
       } catch (err) {
@@ -1276,7 +1296,7 @@ exports.generateContentSummaries = onCall(
       }
     }
 
-    return { done, hasMore: targets.length === limit, failed };
+    return { done, skipped, hasMore: targets.length === limit, failed };
   }
 );
 
