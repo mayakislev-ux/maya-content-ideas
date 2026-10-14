@@ -131,14 +131,20 @@ function subCategorySelectHtml(domain, selectedSub) {
 }
 
 function renderDomainConfirm(guessedDomain, guessedSub, onConfirmed) {
+  // 14/10/2026 (מאיה: "תחום השיווק נעלם, לא הכל מופיע שם"): כש-guessedDomain
+  // הוא null (עדיין אין ניחוש, או שהפונקציה עוד לא פרוסה), אף option לא
+  // מסומן selected והדפדפן בוחר לבד את הראשון ברשימה - אבל תיבת תת-
+  // הקטגוריה המשיכה להתייחס ל-null עצמו וקראה "אין תתי-קטגוריה", לא
+  // תואמת את מה שבאמת מוצג בתפריט. initialDomain מתאם בין השניים.
+  const initialDomain = guessedDomain || DOMAIN_OPTIONS[0];
   const options = DOMAIN_OPTIONS.map(
-    (d) => `<option value="${d}" ${d === guessedDomain ? 'selected' : ''}>${d}</option>`
+    (d) => `<option value="${d}" ${d === initialDomain ? 'selected' : ''}>${d}</option>`
   ).join('');
   cosmicCard(`
     <h2>התחום המדויק שלך</h2>
     <p>${guessedDomain ? `ניחשתי לפי הגיליון שלך: ${guessedDomain}${guessedSub ? ' › ' + guessedSub : ''} - נכון?` : 'לא הצלחתי לנחש מהגיליון - בחרי בעצמך:'}</p>
     <select id="va-domain-select" class="cosmic-textarea" style="min-height:auto">${options}</select>
-    <div id="va-subcategory-wrap">${subCategorySelectHtml(guessedDomain, guessedSub)}</div>
+    <div id="va-subcategory-wrap">${subCategorySelectHtml(initialDomain, guessedSub)}</div>
     <div class="cosmic-btn-row" style="margin-top:14px">
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-domain-confirm-btn">מאשרת</button>
     </div>
