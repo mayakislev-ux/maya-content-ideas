@@ -9,7 +9,7 @@ import { pickIdea, pickReference } from './video-assistant-picker.js';
 import { buildDuplicationPrompt, buildScriptPrompt } from './video-assistant-prompts.js';
 import { playReroll, playSuccess, setMuted, getMuted } from './video-assistant-sound.js';
 import {
-  fetchIdeas, fetchInspirationBank, getSavedDomain, guessDomain, saveDomain, loadSession, saveSession,
+  fetchIdeas, fetchInspirationBank, getSavedDomain, guessDomain, saveDomain, loadSession, saveSession, searchReferences,
 } from './video-assistant-store.js';
 import { getProfile } from './user-profile.js';
 // 14/10/2026: רשימת שמות בלבד (בלי ההגדרות הארוכות) - אותה רשימה בדיוק
@@ -225,6 +225,95 @@ async function renderPulledReference() {
   });
 }
 
+// 14/10/2026 (מאיה, "יש לי רעיון" → "שכפול הפוך"): היא מתארת את הרעיון
+// במילים שלה, ומחפשים לה רפרנסים מתאימים מהמאגר (matchInspirationQuery -
+// כבר קיים באפליקציה בדיוק בשביל זה, לא בנוי מחדש כאן). אם לא נמצא כלום,
+// היא הולכת לחפש בעצמה בטיקטוק/אינסטגרם במילות המפתח שהיא בחרה.
+function renderDescribeIdea() {
+  cosmicCard(`
+    <h2>מה בדיוק הרעיון שלך?</h2>
+    <p>תארי במילים שלך - למשל "הסיפור שלי על בולמיה" או "סיפור לקוחה שהחליקה שיער ופחדה שזה ישרוף לה אותו"</p>
+    <textarea class="cosmic-textarea" id="va-idea-description-input" placeholder="הרעיון שלך..."></textarea>
+    <div class="cosmic-btn-row" style="margin-top:14px">
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-idea-search-btn">חפשי לי רפרנסים מתאימים</button>
+    </div>
+    <p id="va-idea-search-status" class="muted" style="font-size:13px;margin-top:10px"></p>
+  `);
+  document.getElementById('va-idea-search-btn').addEventListener('click', async () => {
+    const text = document.getElementById('va-idea-description-input').value.trim();
+    if (!text) {
+      showToast('צריך לכתוב את הרעיון קודם');
+      return;
+    }
+    const statusEl = document.getElementById('va-idea-search-status');
+    const btn = document.getElementById('va-idea-search-btn');
+    btn.disabled = true;
+    statusEl.textContent = 'מחפשת רפרנסים מתאימים...';
+    // state.ideaDescription מתעדכן ישירות, לא דרך dispatch - dispatch
+    // מפעיל render() מיידי שהיה מוחק את ההודעה/הטופס לפני שהחיפוש
+    // האסינכרוני בכלל התחיל (אותה שיטה כבר קיימת ל-state.transcript
+    // ב-renderTranscribe ול-state.hook ב-renderPulledIdea).
+    state.ideaDescription = text;
+    try {
+      const ids = await searchReferences(text);
+      currentPickId = null;
+      dispatch({ type: 'SEARCH_DONE', ids });
+    } catch (err) {
+      console.error('searchReferences failed:', err);
+      btn.disabled = false;
+      statusEl.textContent = '';
+      renderSearchFailed(text);
+    }
+  });
+}
+
+// 14/10/2026 (מאיה: "ואם לא מוצאת רק אז להיכנס לטיקטוק ואינסטגרם ולחפש
+// בעברית ברוסית באנגלית"): כשהחיפוש במאגר לא מחזיר כלום, לא עוצרים אותה -
+// מנחים אותה לחפש בעצמה, עם אותו תיאור שהיא כבר כתבה כנקודת פתיחה.
+function renderSearchFailed(ideaText) {
+  cosmicCard(`
+    <h2>לא מצאתי רפרנס מתאים במאגר</h2>
+    <p>תחפשי בעצמך בטיקטוק ובאינסטגרם - נסי את התיאור שלך גם בעברית, גם ברוסית וגם באנגלית:</p>
+    <p class="cosmic-prompt-box" style="text-align:right">${ideaText}</p>
+    <div class="cosmic-btn-row">
+      <button type="button" class="cosmic-btn" id="va-idea-search-again-btn">לנסח מחדש ולחפש שוב</button>
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-skip-to-transcribe-btn">מצאתי רפרנס בעצמי</button>
+    </div>
+  `);
+  document.getElementById('va-idea-search-again-btn').addEventListener('click', () => dispatch({ type: 'RETRY_SEARCH' }));
+  document.getElementById('va-skip-to-transcribe-btn').addEventListener('click', () => dispatch({ type: 'SKIP_TO_TRANSCRIBE' }));
+}
+
+async function renderSearchedReference() {
+  if (!videosCache) videosCache = await fetchInspirationBank();
+  const ids = state.referenceIds || [];
+  if (state.referenceIndex >= ids.length) {
+    renderSearchFailed(state.ideaDescription || '');
+    return;
+  }
+  const videoId = ids[state.referenceIndex];
+  const video = videosCache.find((v) => v.id === videoId);
+  if (!video) {
+    // רפרנס נמחק מהמאגר אחרי שהוחזר כהתאמה - עוברת לבא בתור בלי לעצור אותה
+    dispatch({ type: 'NEXT_SEARCH_RESULT' });
+    return;
+  }
+  currentPickId = video.id;
+  cosmicCard(`
+    <h2>🎯 מצאתי רפרנס מתאים</h2>
+    <p><a href="${video.url}" target="_blank" rel="noopener" style="color:#fff">פתחי לצפייה ←</a></p>
+    <div class="cosmic-btn-row">
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-accept-searched-btn">אהבתי, בואי נמשיך</button>
+    </div>
+    <button type="button" class="cosmic-reroll-btn" id="va-next-searched-btn">לא אהבתי - הראי לי את הבא</button>
+  `);
+  document.getElementById('va-accept-searched-btn').addEventListener('click', () => dispatch({ type: 'ACCEPT_PICK' }));
+  document.getElementById('va-next-searched-btn').addEventListener('click', () => {
+    playReroll();
+    dispatch({ type: 'NEXT_SEARCH_RESULT' });
+  });
+}
+
 function copyBtn(text, label) {
   return `<button type="button" class="cosmic-btn" data-copy-text="${encodeURIComponent(text)}">${label}</button>`;
 }
@@ -243,11 +332,13 @@ function wireCopyButtons(root) {
   });
 }
 
+// 14/10/2026 (מאיה: "להנחות אותה להוריד את הסרטון ולתמלל לעברית במידת
+// הצורך בג'מיני"): לא הקלדה ידנית - הורדה + תמלול בג'מיני, ואז הדבקה כאן.
 function renderTranscribe() {
   cosmicCard(`
     <h2>תמללי את הרפרנס</h2>
-    <p>פתחי את הסרטון וכתבי כאן מה נאמר בו, במילים שלו (או קרובות לזה)</p>
-    <textarea class="cosmic-textarea" id="va-transcript-input" placeholder="מה נאמר בסרטון..."></textarea>
+    <p>תורידי את הסרטון, ותמללי אותו (לעברית אם צריך) בעזרת ג'מיני - ואז תדביקי כאן את התמלול</p>
+    <textarea class="cosmic-textarea" id="va-transcript-input" placeholder="הדביקי כאן את התמלול..."></textarea>
     <div class="cosmic-btn-row" style="margin-top:14px">
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-transcribe-done-btn">✓ עשיתי</button>
     </div>
@@ -357,6 +448,8 @@ function render() {
   if (state.screen === 'has-idea-choice') return renderHasIdeaChoice();
   if (state.screen === 'pulled-idea') return renderPulledIdea();
   if (state.screen === 'pulled-reference') return renderPulledReference();
+  if (state.screen === 'describe-idea') return renderDescribeIdea();
+  if (state.screen === 'searched-reference') return renderSearchedReference();
   if (state.screen === 'transcribe') return renderTranscribe();
   if (state.screen === 'prompt1') return renderPrompt1();
   if (state.screen === 'her-words') return renderHerWords();

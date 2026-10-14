@@ -10,6 +10,7 @@ import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/fireba
 import { getProfile, saveProfile } from './user-profile.js';
 
 const guessClientDomainFn = httpsCallable(functions, 'guessClientDomain');
+const matchInspirationQueryFn = httpsCallable(functions, 'matchInspirationQuery');
 
 /** רעיונות פעילים של הלקוחה הנוכחית - קריאה חד-פעמית, לא listener */
 export async function fetchIdeas() {
@@ -41,6 +42,15 @@ export async function guessDomain() {
 
 export async function saveDomain(domain, subCategory) {
   await saveProfile({ videoAssistantDomain: domain, videoAssistantSubCategory: subCategory || null });
+}
+
+// 14/10/2026 (מאיה, "שכפול הפוך" כשכבר יש לה רעיון): הכלי הקיים כבר -
+// matchInspirationQuery, בדיוק בשביל זה (ראה ההערה "שכפול הפוך" ב-
+// inspiration-view.js). מחזיר ids בלבד, מדורגים; הקריאה למסמכים עצמם
+// עוברת דרך fetchInspirationBank הרגיל כדי לא לשכפל לוגיקת שליפה.
+export async function searchReferences(query) {
+  const result = await matchInspirationQueryFn({ query });
+  return result.data.ids;
 }
 
 /** הסשן הפעיל - מסמך יחיד לפי uid, לא היסטוריה (ראה firestore.rules) */
