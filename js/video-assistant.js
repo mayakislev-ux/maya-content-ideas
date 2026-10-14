@@ -4,6 +4,15 @@
 // מרנדר תמיד מחדש innerHTML של #video-assistant-screen לפי ה-state הנוכחי
 // של video-assistant-flow.js, בדיוק כמו ש-warming.js מרנדר renderPlan()
 // מחדש בכל שינוי - לא DOM דיפ, זה מסך-אחד-בכל-רגע, לא רשימה גדולה.
+//
+// 14/10/2026 (מאיה, אחרי ניתוח מעמיק של "מפת הדרכים ליצירת תוכן" האמיתית):
+// "מרגיש שעכשיו קצת סיבכנו" - ההחלטה: לא לשכפל כאן את התוכן העשיר של
+// המסמכים האמיתיים (16 פורמטים, 31 זוויות, 3 פרומפטים ל-ChatGPT) - בדיוק
+// כמו שהמפה האמיתית שלה לא עושה את זה, רק מפנה אליהם בלינק. ראה
+// video-assistant-flow.js להסבר המלא על המבנה החדש.
+const FORMATS_DOC_URL = 'https://docs.google.com/document/d/14Az_ZFHNCEAzwPh4_VO4k2njqJjTxFOyS0G87KdCI8g/edit';
+const SCRIPT_WRITING_DOC_URL = 'https://docs.google.com/document/d/1Ejx_60ZHhhiA5VXWLboqyoZeaax5O61h05nO6QKfdc8/edit';
+
 import { INITIAL_STATE, nextStep } from './video-assistant-flow.js';
 import { pickIdea, pickReference } from './video-assistant-picker.js';
 import { buildDuplicationPrompt, buildScriptPrompt } from './video-assistant-prompts.js';
@@ -14,6 +23,8 @@ import {
 import { getProfile } from './user-profile.js';
 import { showView } from './view-router.js';
 import { openInspirationView } from './inspiration-view.js';
+import { showToast } from './toast.js';
+
 // 14/10/2026: רשימת שמות בלבד (בלי ההגדרות הארוכות) - אותה רשימה בדיוק
 // כמו functions/inspiration-constants.js, לתפריט הבחירה הידני/לתיקון.
 const SUBCATEGORIES_BY_DOMAIN = {
@@ -24,7 +35,6 @@ const SUBCATEGORIES_BY_DOMAIN = {
   'כושר ותזונה': ['פילאטיס', 'יוגה', 'אימוני כוח וכושר', 'ריצה וסיבולת', 'דיאטניות, תזונאיות, ליווי תזונתי', 'פיזיותרפיה ושיקום', 'ציוד ספורט'],
   'תוכן אישי וחיבור': [],
 };
-import { showToast } from './toast.js';
 
 let state = INITIAL_STATE;
 let ideasCache = null;
@@ -46,55 +56,216 @@ function cosmicCard(innerHtml) {
   screenEl().innerHTML = `<div class="cosmic-card">${innerHtml}</div>`;
 }
 
+function restart() {
+  state = INITIAL_STATE;
+  currentPickId = null;
+  saveSession(state).catch((err) => console.error('saveSession failed:', err));
+  render();
+}
+
+// ===== מסך פתיחה: שלושת מסלולי הפתיחה האמיתיים =====
 function renderOpening() {
   cosmicCard(`
     <h2>✨ היי מאיה</h2>
     <p>בואי ניצור את הסרטון הבא שלך</p>
     <div class="cosmic-btn-row">
-      <button type="button" class="cosmic-btn" id="va-no-idea-btn">אין לי רעיון</button>
-      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-has-idea-btn">יש לי רעיון</button>
+      <button type="button" class="cosmic-btn" id="va-footage-btn">יש לי קטע מצולם</button>
+      <button type="button" class="cosmic-btn" id="va-reference-btn">מצאתי סרטון שעבד ברשת</button>
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-idea-btn">יש לי רעיון</button>
     </div>
   `);
-  document.getElementById('va-no-idea-btn').addEventListener('click', () => dispatch({ type: 'CHOOSE_NO_IDEA' }));
-  document.getElementById('va-has-idea-btn').addEventListener('click', () => dispatch({ type: 'CHOOSE_HAS_IDEA' }));
+  document.getElementById('va-footage-btn').addEventListener('click', () => dispatch({ type: 'CHOOSE_FOOTAGE' }));
+  document.getElementById('va-reference-btn').addEventListener('click', () => {
+    // currentPickId לא יכול להישאר ממצב קודם באותו סשן (למשל היא חזרה
+    // אחורה והחליפה מסלול) - renderPulledReference בוחר רפרנס חדש רק
+    // כש-currentPickId ריק, אחרת זה יחפש וידאו שלא קיים ויקרוס על video.url.
+    currentPickId = null;
+    dispatch({ type: 'CHOOSE_REFERENCE' });
+  });
+  document.getElementById('va-idea-btn').addEventListener('click', () => dispatch({ type: 'CHOOSE_IDEA' }));
 }
 
-function renderNoIdeaChoice() {
+// ===== מסלול "יש לי רעיון" - איך מקבלים את הרעיון =====
+function renderIdeaSourceChoice() {
   cosmicCard(`
-    <h2>בואי נמצא מאיפה להתחיל</h2>
+    <h2>מאיפה הרעיון?</h2>
     <div class="cosmic-btn-row">
-      <button type="button" class="cosmic-btn" id="va-pull-idea-btn">לשלוף רעיון מהבנק שלי</button>
-      <button type="button" class="cosmic-btn" id="va-reference-btn">לשכפל רפרנס מהמאגר</button>
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-type-idea-btn">יש לי רעיון בראש, אכתוב אותו</button>
+      <button type="button" class="cosmic-btn" id="va-pull-idea-btn">תזכירי לי רעיון שכבר שמרתי</button>
     </div>
   `);
+  document.getElementById('va-type-idea-btn').addEventListener('click', () => dispatch({ type: 'CHOOSE_TYPE_IDEA' }));
   document.getElementById('va-pull-idea-btn').addEventListener('click', async () => {
     if (!ideasCache) ideasCache = await fetchIdeas();
     const picked = pickIdea(ideasCache, null);
     if (!picked) {
-      showToast('אין עדיין רעיונות בבנק שלך - בואי נשכפל רפרנס במקום');
-      currentPickId = null;
-      dispatch({ type: 'CHOOSE_REFERENCE' });
+      showToast('אין עדיין רעיונות שמורים בבנק שלך - תכתבי את הרעיון עכשיו');
+      dispatch({ type: 'CHOOSE_TYPE_IDEA' });
       return;
     }
     currentPickId = picked.id;
     dispatch({ type: 'CHOOSE_PULL_IDEA' });
   });
-  document.getElementById('va-reference-btn').addEventListener('click', () => {
-    // currentPickId must not leak in from a previous idea-pull in the same
-    // session (e.g. she went back and switched branches) - renderPulledReference
-    // only picks a fresh video when currentPickId is null, so a stale idea id
-    // here would make it look up a non-existent video and crash on video.url.
-    currentPickId = null;
-    dispatch({ type: 'CHOOSE_REFERENCE' });
+}
+
+function renderTypeIdea() {
+  cosmicCard(`
+    <h2>מה הרעיון שלך?</h2>
+    <textarea class="cosmic-textarea" id="va-type-idea-input" placeholder="כתבי את הרעיון שלך..."></textarea>
+    <div class="cosmic-btn-row" style="margin-top:14px">
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-type-idea-done-btn">המשך</button>
+    </div>
+  `);
+  document.getElementById('va-type-idea-done-btn').addEventListener('click', () => {
+    const text = document.getElementById('va-type-idea-input').value.trim();
+    if (!text) {
+      showToast('צריך לכתוב את הרעיון קודם');
+      return;
+    }
+    dispatch({ type: 'IDEA_TYPED', text });
   });
 }
 
+function renderPulledIdea() {
+  const idea = ideasCache.find((i) => i.id === currentPickId);
+  cosmicCard(`
+    <h2>🎲 הרעיון הזה</h2>
+    <p style="font-size:16px;color:#fff;font-weight:600">${idea.title}</p>
+    ${idea.hookText ? `<p>${idea.hookText}</p>` : ''}
+    <div class="cosmic-btn-row">
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-accept-idea-btn">אהבתי, בואי נמשיך</button>
+    </div>
+    <button type="button" class="cosmic-reroll-btn" id="va-reroll-idea-btn">לא אהבתי - הגרילי שוב</button>
+  `);
+  document.getElementById('va-accept-idea-btn').addEventListener('click', () => {
+    // state.hook/ideaDescription נשמרים ישירות (בלי dispatch ביניים) כדי
+    // ש-describe-idea בהמשך (אם תבחר שכפול הפוך) ידע מה הרעיון בלי לשאול
+    // שוב, ו-prompt2 בסוף הצינור ידע מה ה"הוק" של המסלול הזה.
+    state.hook = idea.hookText || idea.title;
+    state.ideaDescription = idea.hookText || idea.title;
+    dispatch({ type: 'ACCEPT_PICK' });
+  });
+  document.getElementById('va-reroll-idea-btn').addEventListener('click', () => {
+    playReroll();
+    const picked = pickIdea(ideasCache, currentPickId);
+    if (picked) currentPickId = picked.id;
+    dispatch({ type: 'REROLL' });
+  });
+}
+
+// ===== השער המשותף: "רלוונטי לקהל היעד, או משרת את המותג?" =====
+// 14/10/2026: טקסט מילה-במילה מ"מפת הדרכים ליצירת תוכן" האמיתית - לא
+// ניסוח חדש. חוזר אחרי כל אחד משלושת מסלולי הפתיחה, בדיוק כמו במפה שלה.
+function renderRelevanceCheck() {
+  cosmicCard(`
+    <h2>בודקים לפני שממשיכים</h2>
+    <p><strong>האם הרעיון רלוונטי לקהל היעד, או משרת את המותג?</strong></p>
+    <p style="font-size:14px">
+      <strong>רלוונטי לקהל היעד</strong> = תוכן שמדבר לקהל היעד הנכון.<br><br>
+      <strong>משרת את המותג</strong> = תוכן שלא בהכרח מדבר ישירות על העסק או התחום שלך, אבל כן מציג את האישיות/הערכים/תפיסת העולם שלך.
+    </p>
+    <p class="cosmic-prompt-box" style="text-align:right;font-size:13px">
+      דוגמה: מעצבת פנים שמעלה סרטון חמוד של אבא שלה רץ לחבק את הכלב - לא מדבר לקהל היעד שלה ולא מחזק את המותג שלה. אם זה היה סרטון של המעצבת פנים <strong>בעצמה</strong> רצה אל הכלב שלה - לגמרי היתה יכולה להעלות!
+    </p>
+    <div class="cosmic-btn-row" style="margin-top:14px">
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-relevance-ok-btn">כן, זה רלוונטי/משרת את המותג</button>
+    </div>
+  `);
+  document.getElementById('va-relevance-ok-btn').addEventListener('click', () => dispatch({ type: 'RELEVANCE_CONFIRMED' }));
+}
+
+// ===== מסלול קטע מצולם =====
+function renderFootageUseChoice() {
+  cosmicCard(`
+    <h2>מה עושים עם הקטע?</h2>
+    <p>רוב הקטעים המצולמים לא נוגעים בהם יותר מדי, חוץ מלערוך ולקצר. רק לפעמים כדאי להמיר לפורמט אחר (למשל וויס אובר) ואז אולי גם לכתוב תסריט.</p>
+    <div class="cosmic-btn-row">
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-footage-asis-btn">משתמשת כמו שהוא</button>
+      <button type="button" class="cosmic-btn" id="va-footage-convert-btn">רוצה להמיר לפורמט אחר</button>
+    </div>
+  `);
+  document.getElementById('va-footage-asis-btn').addEventListener('click', () => dispatch({ type: 'FOOTAGE_AS_IS' }));
+  document.getElementById('va-footage-convert-btn').addEventListener('click', () => dispatch({ type: 'FOOTAGE_CONVERT' }));
+}
+
+function renderFootageScript() {
+  cosmicCard(`
+    <h2>כתבי את התסריט/וויס אובר</h2>
+    <p>במילים שלך - מה שתרצי להגיד מעל הקטע המצולם</p>
+    <textarea class="cosmic-textarea" id="va-footage-script-input"></textarea>
+    <div class="cosmic-btn-row" style="margin-top:14px">
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-footage-script-done-btn">סיימתי</button>
+    </div>
+  `);
+  document.getElementById('va-footage-script-done-btn').addEventListener('click', () => {
+    const text = document.getElementById('va-footage-script-input').value.trim();
+    if (!text) {
+      showToast('צריך לכתוב משהו קודם');
+      return;
+    }
+    playSuccess();
+    dispatch({ type: 'FOOTAGE_SCRIPT_SUBMITTED', text });
+  });
+}
+
+function renderFootageDone() {
+  cosmicCard(`
+    <h2>🎬 מוכן!</h2>
+    <p>לכי לערוך ולקצר - בהצלחה עם הסרטון</p>
+    <div class="cosmic-btn-row">
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-restart-btn">ליצור סרטון נוסף</button>
+    </div>
+  `);
+  document.getElementById('va-restart-btn').addEventListener('click', restart);
+}
+
+// ===== בחירת פורמט הנגשה - קישור בלבד לרשימה האמיתית, לא נבנית מחדש כאן =====
+function renderFormatChoice() {
+  cosmicCard(`
+    <h2>בוחרים פורמט הנגשה</h2>
+    <p>לכל רעיון יכולים להתאים כמה פורמטים - תבחרי את מה שהכי מרגיש לך נכון.</p>
+    <div class="cosmic-btn-row">
+      <a href="${FORMATS_DOC_URL}" target="_blank" rel="noopener" class="cosmic-btn" style="text-decoration:none;display:block;text-align:center">לרשימת כל הפורמטים ↗</a>
+    </div>
+    <div class="cosmic-btn-row" style="margin-top:14px">
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-format-ok-btn">בחרתי פורמט, המשך</button>
+    </div>
+  `);
+  document.getElementById('va-format-ok-btn').addEventListener('click', () => dispatch({ type: 'FORMAT_ACKNOWLEDGED' }));
+}
+
+// ===== "צריך תסריט או לא?" - לא כל תוכן צריך תסריט =====
+function renderNeedsScriptCheck() {
+  cosmicCard(`
+    <h2>צריך תסריט בכלל?</h2>
+    <p>לא כל תוכן צריך תסריט! יש תכנים שנולדים מרגע חי וספונטני, או מפורמט ויזואלי שלא צריך תסריט.</p>
+    <div class="cosmic-btn-row">
+      <button type="button" class="cosmic-btn" id="va-needs-script-no-btn">לא, זה ספונטני/ויזואלי</button>
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-needs-script-yes-btn">כן, צריך תסריט</button>
+    </div>
+  `);
+  document.getElementById('va-needs-script-no-btn').addEventListener('click', () => dispatch({ type: 'NEEDS_SCRIPT_NO' }));
+  document.getElementById('va-needs-script-yes-btn').addEventListener('click', () => dispatch({ type: 'NEEDS_SCRIPT_YES' }));
+}
+
+function renderNoScriptDone() {
+  cosmicCard(`
+    <h2>🎬 מוכן!</h2>
+    <p>אין צורך בתסריט - פתחי מצלמה ותצלמי. בהצלחה עם הסרטון</p>
+    <div class="cosmic-btn-row">
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-restart-btn">ליצור סרטון נוסף</button>
+    </div>
+  `);
+  document.getElementById('va-restart-btn').addEventListener('click', restart);
+}
+
+// ===== בחירת שיטת הכתיבה =====
 function renderHasIdeaChoice() {
   cosmicCard(`
     <h2>שתי דרכים לכתוב את התסריט</h2>
     <div class="cosmic-btn-row">
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-reverse-btn">שכפול הפוך (מומלץ, קל יותר)</button>
-      <button type="button" class="cosmic-btn" id="va-scratch-btn">כתיבה מ-0</button>
+      <button type="button" class="cosmic-btn" id="va-scratch-btn">כתיבה מאפס</button>
     </div>
   `);
   document.getElementById('va-reverse-btn').addEventListener('click', () => dispatch({ type: 'CHOOSE_REVERSE_DUPLICATION' }));
@@ -164,32 +335,6 @@ function renderDomainConfirm(guessedDomain, guessedSub, onConfirmed) {
   });
 }
 
-function renderPulledIdea() {
-  const idea = ideasCache.find((i) => i.id === currentPickId);
-  cosmicCard(`
-    <h2>🎲 הרעיון הזה</h2>
-    <p style="font-size:16px;color:#fff;font-weight:600">${idea.title}</p>
-    ${idea.hookText ? `<p>${idea.hookText}</p>` : ''}
-    <div class="cosmic-btn-row">
-      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-accept-idea-btn">אהבתי, בואי נמשיך</button>
-    </div>
-    <button type="button" class="cosmic-reroll-btn" id="va-reroll-idea-btn">לא אהבתי - הגרילי שוב</button>
-  `);
-  document.getElementById('va-accept-idea-btn').addEventListener('click', () => {
-    // 14/10/2026: בלי זה state.hook נשאר ריק עבור מסלול "רעיון מהבנק" (הוא
-    // מוגדר רק דרך HOOK_CHOSEN, ששייך למסלול הרפרנס) - והפרומפט הסופי
-    // (prompt2) היה יוצא בלי שום הוק בכלל. הטקסט של הרעיון עצמו הוא ההוק כאן.
-    state.hook = idea.hookText || idea.title;
-    dispatch({ type: 'ACCEPT_PICK' });
-  });
-  document.getElementById('va-reroll-idea-btn').addEventListener('click', () => {
-    playReroll();
-    const picked = pickIdea(ideasCache, currentPickId);
-    if (picked) currentPickId = picked.id;
-    dispatch({ type: 'REROLL' });
-  });
-}
-
 async function renderPulledReference() {
   if (!videosCache) videosCache = await fetchInspirationBank();
   const { domain, subCategory } = await resolveDomain();
@@ -229,8 +374,31 @@ async function renderPulledReference() {
 
 // 14/10/2026 (מאיה: "את לא מקשיבה! אני מביאה לה רעיון, ואני רוצה שהיא
 // תמצא רפרנס לבד - את תביאי לה כותרות"): הכלי לא מחפש רפרנס בשבילה -
-// רק מציע מילות חיפוש, והיא עצמה מוצאת ומאשרת שמצאה.
+// רק מציע מילות חיפוש, והיא עצמה מוצאת ומאשרת שמצאה. אם כבר יש רעיון
+// ידוע (הקלידה אותו קודם, או משכה מהבנק) - לא שואלים שוב, ישר מציעים
+// מילות חיפוש על סמך מה שכבר יש.
+async function runSearchGuidanceFor(ideaText) {
+  const statusEl = document.getElementById('va-idea-search-status');
+  if (statusEl) statusEl.textContent = 'חושבת על מילות חיפוש...';
+  let keywords = [];
+  try {
+    keywords = await suggestSearchKeywords(ideaText);
+  } catch (err) {
+    console.error('suggestSearchKeywords failed:', err);
+    // לא עוצרים אותה בגלל כישלון AI - התיאור שלה עצמו הוא מילת חיפוש
+    // סבירה, רק פחות מדויקת מהצעה אמיתית.
+    keywords = [ideaText];
+  }
+  dispatch({ type: 'SEARCH_GUIDANCE_READY', idea: ideaText, keywords });
+}
+
 function renderDescribeIdea() {
+  const knownIdea = state.ideaDescription || state.hook;
+  if (knownIdea) {
+    cosmicCard(`<p id="va-idea-search-status">חושבת על מילות חיפוש בשביל "${knownIdea}"...</p>`);
+    runSearchGuidanceFor(knownIdea);
+    return;
+  }
   cosmicCard(`
     <h2>מה בדיוק הרעיון שלך?</h2>
     <p>תארי במילים שלך - למשל "הסיפור שלי על בולמיה" או "סיפור לקוחה שהחליקה שיער ופחדה שזה ישרוף לה אותו"</p>
@@ -246,20 +414,8 @@ function renderDescribeIdea() {
       showToast('צריך לכתוב את הרעיון קודם');
       return;
     }
-    const statusEl = document.getElementById('va-idea-search-status');
-    const btn = document.getElementById('va-idea-search-btn');
-    btn.disabled = true;
-    statusEl.textContent = 'חושבת על מילות חיפוש...';
-    let keywords = [];
-    try {
-      keywords = await suggestSearchKeywords(text);
-    } catch (err) {
-      console.error('suggestSearchKeywords failed:', err);
-      // לא עוצרים אותה בגלל כישלון AI - התיאור שלה עצמו הוא מילת חיפוש
-      // סבירה, רק פחות מדויקת מהצעה אמיתית.
-      keywords = [text];
-    }
-    dispatch({ type: 'SEARCH_GUIDANCE_READY', idea: text, keywords });
+    document.getElementById('va-idea-search-btn').disabled = true;
+    await runSearchGuidanceFor(text);
   });
 }
 
@@ -407,20 +563,41 @@ function renderDone() {
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-restart-btn">ליצור סרטון נוסף</button>
     </div>
   `);
-  document.getElementById('va-restart-btn').addEventListener('click', () => {
-    state = INITIAL_STATE;
-    currentPickId = null;
-    saveSession(state).catch((err) => console.error('saveSession failed:', err));
-    render();
-  });
+  document.getElementById('va-restart-btn').addEventListener('click', restart);
+}
+
+// 14/10/2026: לא בונים מחדש את 5 השלבים + 3 הפרומפטים (כולל בנק של כ-140
+// הוקים אמיתיים) - הם כבר כתובים במלואם במסמך שלה. מפנים אליו ישירות,
+// בדיוק כמו שהמפה האמיתית שלה עושה ("הנחיות לכתיבת תסריט ↗").
+function renderFromScratch() {
+  cosmicCard(`
+    <h2>כתיבה מאפס</h2>
+    <p>הדרך שדורשת את ההבנה השיווקית הגבוהה ביותר - שמרי אותה לרעיונות שאין להם שום מקבילה ברשת.</p>
+    <p>כל השלבים, וגם 3 פרומפטים מוכנים ל-ChatGPT (חילוץ תוכן, מציאת הוק מתוך בנק הוקים אמיתי, וחיזוק הוק) - נמצאים במסמך שלך:</p>
+    <div class="cosmic-btn-row">
+      <a href="${SCRIPT_WRITING_DOC_URL}" target="_blank" rel="noopener" class="cosmic-btn cosmic-btn--primary" style="text-decoration:none;display:block;text-align:center">הנחיות לכתיבת תסריט ↗</a>
+    </div>
+    <div class="cosmic-btn-row" style="margin-top:14px">
+      <button type="button" class="cosmic-btn" id="va-scratch-ok-btn">הבנתי, יוצאת לכתוב</button>
+    </div>
+  `);
+  document.getElementById('va-scratch-ok-btn').addEventListener('click', restart);
 }
 
 function render() {
   if (state.screen === 'opening') return renderOpening();
-  if (state.screen === 'no-idea-choice') return renderNoIdeaChoice();
-  if (state.screen === 'has-idea-choice') return renderHasIdeaChoice();
+  if (state.screen === 'idea-source-choice') return renderIdeaSourceChoice();
+  if (state.screen === 'type-idea') return renderTypeIdea();
+  if (state.screen === 'relevance-check') return renderRelevanceCheck();
   if (state.screen === 'pulled-idea') return renderPulledIdea();
   if (state.screen === 'pulled-reference') return renderPulledReference();
+  if (state.screen === 'footage-use-choice') return renderFootageUseChoice();
+  if (state.screen === 'footage-script') return renderFootageScript();
+  if (state.screen === 'footage-done') return renderFootageDone();
+  if (state.screen === 'format-choice') return renderFormatChoice();
+  if (state.screen === 'needs-script-check') return renderNeedsScriptCheck();
+  if (state.screen === 'no-script-done') return renderNoScriptDone();
+  if (state.screen === 'has-idea-choice') return renderHasIdeaChoice();
   if (state.screen === 'describe-idea') return renderDescribeIdea();
   if (state.screen === 'search-guidance') return renderSearchGuidance();
   if (state.screen === 'transcribe') return renderTranscribe();
@@ -429,31 +606,7 @@ function render() {
   if (state.screen === 'prompt2') return renderPrompt2();
   if (state.screen === 'read-aloud') return renderReadAloud();
   if (state.screen === 'done') return renderDone();
-  if (state.screen === 'from-scratch') {
-    // 13/10/2026: אין היום שום מסך/כלי בשם "כתיבת תסריטים" בתוך האפליקציה
-    // (זו רק לשונית בגיליון שלה) - בדוק בפועל לפני המימוש, לא הונח. לכן
-    // כאן תקציר קצר של 5 השלבים כטקסט הכוונה, לא הפניה לכלי שלא קיים.
-    // Wizard מלא לנתיב הזה הוא scope נפרד לגרסה הבאה (ראה design doc).
-    cosmicCard(`
-      <h2>כתיבה מ-0 - 5 השלבים</h2>
-      <p style="text-align:right">
-        1. בחרי נקודת פתיחה: סיפור אישי / סיפור לקוח / כללי<br>
-        2. בחרי סוג תוכן: ערכי / מכירתי / אישי / בידורי<br>
-        3. בחרי פורמט נגישות<br>
-        4. "מגילת אסתר" - שפכי הכל בלי סינון, כל מה שבא לך להגיד על זה<br>
-        5. צמצמי ל-5 חלקים: הוק → חיזוק הוק → נימוק → מסר → קריאה לפעולה<br><br>
-        ולבסוף: קראי בקול, תבדקי שהכל זורם
-      </p>
-      <div class="cosmic-btn-row">
-        <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-scratch-ok-btn">הבנתי, יוצאת לכתוב</button>
-      </div>
-    `);
-    document.getElementById('va-scratch-ok-btn').addEventListener('click', () => {
-      state = INITIAL_STATE;
-      render();
-    });
-    return;
-  }
+  if (state.screen === 'from-scratch') return renderFromScratch();
   cosmicCard(`<p>מסך לא מוכר: "${state.screen}"</p>`);
 }
 
