@@ -26,6 +26,7 @@
  */
 
 const { onSchedule } = require('firebase-functions/v2/scheduler');
+const { onRequest } = require('firebase-functions/v2/https');
 const { defineSecret } = require('firebase-functions/params');
 const quiet = require('./quietDays');
 
@@ -410,5 +411,35 @@ exports.agentDateBased14 = onSchedule({ schedule: '7 14 * * *', timeZone: 'Asia/
 /* 12/10/2026: בטבלת ההודעות לפי תאריך יש הודעה שתוזמנה ל-17:00, ולא
    היה לה סוכן בכלל. היא לא נשלחה מעולם, ושום דבר לא התריע. */
 exports.agentDateBased17 = onSchedule({ schedule: '7 17 * * *', timeZone: 'Asia/Jerusalem', region, secrets }, (event) => runDateBased(console, '17'));
+
+/* 13/10/2026: הפעלה ידנית של הודעת המשימות, באותו רגע.
+ *
+ * מאיה ביקשה לשלוח את הודעת המשימות של מחזור 6 מיד ולא לחכות ל-16:07,
+ * וההרצה הידנית דרך Cloud Scheduler דרשה ממנה לנווט בקונסולה ולא הצליחה.
+ *
+ * אותה לוגיקה בדיוק כמו הסוכן המתוזמן, כולל בדיקת ימים ושעות שקטות: רק
+ * הטריגר שונה. המפתחות נשארים בענן ואף אחד לא שולף אותם החוצה, בדיוק
+ * כמו ב-nightlyScriptsNow.
+ *
+ * אחרי שליחה ידנית צריך לרוקן את משימות_שם בשורה של היום בלוח המפגשים,
+ * אחרת הריצה המתוזמנת תשלח את אותה הודעה שוב.
+ */
+const MANUAL_KEY = 'f6df8fd76498e7a2afa6056c7821a548';
+
+exports.taskMessageNow = onRequest({ region, maxInstances: 1, secrets }, async (req, res) => {
+  if (req.query.key !== MANUAL_KEY) { res.status(403).json({ ok: false }); return; }
+  const logs = [];
+  const logger = {
+    log: (m) => logs.push(String(m)),
+    warn: (m) => logs.push(`warn: ${m}`),
+    error: (m) => logs.push(`error: ${m}`),
+  };
+  try {
+    await runTaskMessage(logger);
+    res.json({ ok: true, logs });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: String(err && err.message), logs });
+  }
+});
 
 module.exports._internal = { parseCsv, reminderDateFor, addDays, renderReminder, parsePollTemplate };
