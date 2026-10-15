@@ -169,9 +169,15 @@ function showUpdateDialog() {
   const later = dialog.querySelector('#update-dialog-later');
   const mustUpdate = snoozes >= MAX_SNOOZES;
   later.hidden = mustUpdate;
-  dialog.querySelector('#update-dialog-text').textContent = mustUpdate
-    ? 'הגרסה שפתוחה אצלך כבר לא מעודכנת, וחלק מהדברים עלולים לא לעבוד. לחיצה אחת ומעדכנים.'
-    : 'כדי שהכול יעבוד כמו שצריך (כולל בדיקת הרעיונות), צריך לעדכן. זה לוקח שנייה, ושום דבר לא נמחק.';
+  /* 15/10/2026 (מאיה: "שגם לה יופיע עדכון גרסה, אבל רק של החלקים האלה"):
+     מנוית רפרנסים רואה רק את מאגר ההשראה, ולכן הנוסח מדבר רק עליו ולא על
+     בדיקת הרעיונות שאין לה. */
+  const refs = document.body.dataset.plan === 'refs';
+  dialog.querySelector('#update-dialog-text').textContent = refs
+    ? 'יש עדכון למאגר ההשראה. לחיצה אחת ומעדכנים, ושום דבר לא נמחק.'
+    : mustUpdate
+      ? 'הגרסה שפתוחה אצלך כבר לא מעודכנת, וחלק מהדברים עלולים לא לעבוד. לחיצה אחת ומעדכנים.'
+      : 'כדי שהכול יעבוד כמו שצריך (כולל בדיקת הרעיונות), צריך לעדכן. זה לוקח שנייה, ושום דבר לא נמחק.';
   dialog.hidden = false;
   dialogOpen = true;
   dialog.querySelector('#update-dialog-now').focus();

@@ -3907,6 +3907,16 @@ textarea:focus-visible,
   border-inline-start: 4px solid var(--cat-mechirti);
 }
 
+.client-usage-plan-badge {
+  /* 15/10/2026: מנוי רפרנסים בלבד במעקב לקוחות */
+  display: inline-block;
+  font-size: 0.75rem;
+  padding: 0.2rem 0.6rem;
+  margin: 0.2rem 0;
+  border-radius: 999px;
+  background: var(--cat-biduri);
+  color: white;
+}
 .client-usage-unapproved-badge {
   display: inline-block;
   font-size: 0.75rem;

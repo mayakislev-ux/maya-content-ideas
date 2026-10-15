@@ -87,6 +87,19 @@ function renderClientsList() {
       li.appendChild(badge);
     }
 
+    /* 15/10/2026: מנוי רפרנסים בלבד, עם התאריך שעד אליו הוא בתוקף. התאריך
+       מתעדכן כל בוקר לפי התשלומים במורנינג. */
+    if (client.plan === 'refs') {
+      const plan = document.createElement('div');
+      plan.className = 'client-usage-plan-badge';
+      const until = client.paidUntil ? new Date(client.paidUntil) : null;
+      const active = until && until.getTime() > Date.now();
+      plan.textContent = until
+        ? `מנוי רפרנסים בלבד · ${active ? 'בתוקף עד' : 'הסתיים ב'} ${until.toLocaleDateString('he-IL', { timeZone: 'Asia/Jerusalem' })}`
+        : 'מנוי רפרנסים בלבד';
+      li.appendChild(plan);
+    }
+
     const stats = document.createElement('div');
     stats.className = 'client-usage-stats';
     stats.innerHTML = `

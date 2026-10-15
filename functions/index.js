@@ -685,6 +685,8 @@ exports.getClientUsageStats = onCall({ region: 'us-central1', timeoutSeconds: 60
     return isoTimestamps.filter(Boolean).sort().pop() || null;
   }
 
+  const allowlistByEmail = new Map(allowlistSnap.docs.map((d) => [d.id, d.data() || {}]));
+
   function buildClient(email, allowed) {
     const authUser = authByEmail.get(email);
     const ideas = authUser ? ideasByUid.get(authUser.uid) || [] : [];
@@ -697,6 +699,9 @@ exports.getClientUsageStats = onCall({ region: 'us-central1', timeoutSeconds: 60
       email,
       allowed,
       lastSignInTime: latestOf(lastSignInIso, lastActiveAt, lastIdeaAt),
+      // 15/10/2026: מנוי רפרנסים, כדי שמאיה תראה במעקב לקוחות גם עד מתי הוא בתוקף
+      plan: (allowlistByEmail.get(email) || {}).plan || 'full',
+      paidUntil: (() => { const p = (allowlistByEmail.get(email) || {}).paidUntil; return p && p.toDate ? p.toDate().toISOString() : null; })(),
       ideaCount: ideas.length,
       lastIdeaAt,
       ideas,
@@ -2374,7 +2379,17 @@ exports.sendNotification = onCall({ secrets: [vapidPrivateKey], region: 'us-cent
   if (target === 'one') {
     query = query.where('email', '==', targetEmail);
   }
-  const snap = await query.get();
+  const all = await query.get();
+  /* 15/10/2026 (מאיה, על מנוי הרפרנסים של הדס): התראה "לכולן" מספרת על
+     כלים שלמנויות הרפרנסים אין. הן לא מקבלות אותה. התראה אישית למייל שלהן
+     ("one") עדיין עוברת. */
+  let refsEmails = new Set();
+  if (target !== 'one') {
+    const refs = await db.collection('allowlist').where('plan', '==', 'refs').get();
+    refsEmails = new Set(refs.docs.map((d) => d.id.toLowerCase()));
+  }
+  const snap = { docs: all.docs.filter((d) => !refsEmails.has(String(d.data().email || '').toLowerCase())) };
+  snap.empty = snap.docs.length === 0;
 
   if (snap.empty) {
     throw new HttpsError('not-found', target === 'one' ? 'לא נמצאה הרשמה להתראות עבור המייל הזה' : 'אף אחת עוד לא הפעילה התראות');
