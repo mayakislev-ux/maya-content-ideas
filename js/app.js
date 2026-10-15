@@ -685,7 +685,14 @@ onAuthChange(async (user) => {
   }
 
   const params = new URLSearchParams(window.location.search);
-  if (params.get('action') === 'add') {
+  /* 15/10/2026 (מאיה: "לשום כלי אחר שלא תהיה לה גישה"): קישור עם
+     ?action=add או ?view=chat פתח את המסך המתאים גם למנוית רפרנסים. הנתונים
+     עצמם חסומים בכללים, אבל היא לא צריכה לראות מסך שאין לה. */
+  const refsView = access.refsOnly || previewRefs;
+  if (refsView) {
+    showView('inspiration');
+    openInspirationView();
+  } else if (params.get('action') === 'add') {
     showView('archive');
     openAddModal();
   } else if (params.get('view') === 'chat') {

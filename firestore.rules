@@ -27,6 +27,13 @@ service cloud.firestore {
     function isFull() {
       return isAdmin() || (isAllowed() && planOf() != 'refs');
     }
+    /* 15/10/2026: מנוי חודשי נגמר לפי paidUntil (מתעדכן מהתשלומים במורנינג).
+       המסך כבר מוציא מנוית שפג תוקפה, אבל קריאה ישירה למסד עדיין עברה.
+       data.get עם ברירת מחדל, כי לרוב הלקוחות אין paidUntil בכלל (ראו 11/10). */
+    function notExpired() {
+      return isAdmin() || get(/databases/$(database)/documents/allowlist/$(request.auth.token.email)).data.get('paidUntil', null) == null
+        || get(/databases/$(database)/documents/allowlist/$(request.auth.token.email)).data.paidUntil > request.time;
+    }
 
     match /ideas/{ideaId} {
       allow read, update, delete: if isFull() && request.auth.uid == resource.data.ownerUid;
@@ -82,7 +89,7 @@ service cloud.firestore {
       allow read, write: if isAllowed() && request.auth.uid == uid;
     }
     match /inspirationBank/{videoId} {
-      allow read: if isAllowed();
+      allow read: if isAllowed() && notExpired();
       allow write: if isAdmin();
     }
   }
