@@ -187,21 +187,32 @@ export function startAmbientDrone() {
     gain.connect(audioCtx.destination);
     osc1.start();
     osc2.start();
-    gain.gain.linearRampToValueAtTime(0.035, audioCtx.currentTime + 2);
+    gain.gain.linearRampToValueAtTime(0.02, audioCtx.currentTime + 2);
     droneNodes = { osc1, osc2, gain };
   } catch (err) {
     console.error('startAmbientDrone failed:', err);
   }
 }
+// 17/10/2026 (מאיה: "המוזיקה עושה סחרחורת") - השורש האמיתי: הפונקציה הזו
+// נקראה בכל render (גם כשהעוצמה לא השתנתה בפועל), וכל קריאה תזמנה ramp
+// חדש מעל ramp קודם שעדיין פעיל - חפיפה של כמה עקומות עוצמה-שקיעה-ועלייה
+// במקביל נשמעת כ"גלים"/תנודה לא נעימה. התיקון: מבטלים כל ramp מתוזמן
+// לפני שמתחילים ramp חדש, ומנמיכים משמעותית את התקרה.
 export function intensifyAmbientDrone(amount) {
   if (!droneNodes || !audioCtx) return;
-  const target = Math.min(0.09, 0.035 + amount * 0.05);
-  droneNodes.gain.gain.linearRampToValueAtTime(target, audioCtx.currentTime + 1.5);
+  const target = Math.min(0.04, 0.02 + amount * 0.02);
+  const now = audioCtx.currentTime;
+  droneNodes.gain.gain.cancelScheduledValues(now);
+  droneNodes.gain.gain.setValueAtTime(droneNodes.gain.gain.value, now);
+  droneNodes.gain.gain.linearRampToValueAtTime(target, now + 2.5);
 }
 export function stopAmbientDrone() {
   if (!droneNodes) return;
   try {
-    droneNodes.gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.8);
+    const now = audioCtx.currentTime;
+    droneNodes.gain.gain.cancelScheduledValues(now);
+    droneNodes.gain.gain.setValueAtTime(droneNodes.gain.gain.value, now);
+    droneNodes.gain.gain.linearRampToValueAtTime(0, now + 0.8);
     setTimeout(() => {
       droneNodes.osc1.stop();
       droneNodes.osc2.stop();
@@ -231,20 +242,6 @@ export function spinReveal(labelEl, candidateTexts, finalText, done) {
       if (done) done();
     }
   }, 80);
-}
-
-// ----- #32: מעבר "פורטל" בין מסכים - document.startViewTransition כשנתמך,
-// נפילה חלקה ל-render ישיר (בלי מעבר) בכל דפדפן/מצב אחר -----
-export function portalTransition(renderFn) {
-  if (!hasDom || typeof document.startViewTransition !== 'function') {
-    renderFn();
-    return;
-  }
-  try {
-    document.startViewTransition(() => renderFn());
-  } catch {
-    renderFn();
-  }
 }
 
 // ----- #37: זוכרת תחום/קהל אחרון מקומית, לתצוגה מיידית בלי לחכות לרשת -----

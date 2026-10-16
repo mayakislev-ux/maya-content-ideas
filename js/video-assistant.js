@@ -32,7 +32,7 @@ import {
   pickEncouragement, domainTheme, formatElapsed, dnaSteps, challengeIndexForToday,
   mascotMood, mascotFace, burstConfetti, flipReveal, startParticleTrail,
   startAmbientDrone, intensifyAmbientDrone, stopAmbientDrone, cacheDomainInfoLocally,
-  readCachedDomainInfo, spinReveal, portalTransition,
+  readCachedDomainInfo, spinReveal,
 } from './video-assistant-fx.js';
 
 const SUBCATEGORIES_BY_DOMAIN = {
@@ -68,8 +68,9 @@ function screenEl() {
 function dispatch(action) {
   state = nextStep(state, action);
   saveSession(state).catch((err) => console.error('saveSession failed:', err));
-  // #32: מעבר "פורטל" בין מסכים - נפילה חלקה ל-render ישיר בדפדפן שלא תומך.
-  portalTransition(render);
+  // 17/10/2026 (מאיה: "המעבר בין המסכים עושה סחרחורת"): מעבר הפורטל (#32)
+  // הוסר - render ישיר, בלי אנימציית scale/blur בין מסכים.
+  render();
 }
 
 function escapeHtml(str) {
@@ -271,7 +272,7 @@ function renderOpening() {
     </div>
     <p>מאיפה מתחילים הפעם?</p>
     <div class="cosmic-btn-row">
-      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-reference-btn">מצאתי רפרנס לשכפול</button>
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-reference-btn">יש לי רפרנס לשכפול</button>
       <button type="button" class="cosmic-btn" id="va-footage-btn">יש לי קטע שצולם</button>
       <button type="button" class="cosmic-btn" id="va-idea-btn">יש לי רעיון מ-0</button>
     </div>
@@ -1107,7 +1108,10 @@ export function wireVideoAssistantView() {
     } catch (err) {
       console.error('loadSession failed:', err);
     }
-    state = saved || INITIAL_STATE;
+    // 17/10/2026 (מאיה: "כשנכנסתי למסך זה הוביל אותי לסוף ולא להתחלה") -
+    // סשן שמור שנעצר במסך הסיכום הוא סשן שכבר נגמר - אין מה "להמשיך" בו,
+    // חוזרים למסך הפתיחה ולא נשארים תקועים/ים במסך סיום ישן.
+    state = (saved && saved.screen !== 'summary') ? saved : INITIAL_STATE;
     // 16/10/2026: סשנים ישנים שנשמרו לפני כפתור החזרה לא יכילו history -
     // בלי זה BACK על סשן ישן יקרוס על undefined.length.
     if (!state.history) state.history = [];
