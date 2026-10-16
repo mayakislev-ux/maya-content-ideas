@@ -15,7 +15,7 @@
 export const INITIAL_STATE = {
   screen: 'opening', branch: null, hook: null, hookReinforcement: null, herWords: null,
   rerollCount: 0, ideaDescription: null, searchKeywords: null, formatFor: null,
-  selectedFormat: null, rawDump: null, draftScript: null, history: [],
+  selectedFormat: null, rawDump: null, draftScript: null, finalScript: null, history: [],
 };
 
 function withoutHistory(state) {
@@ -48,9 +48,16 @@ function step(state, action) {
     case 'CHOOSE_FOOTAGE':
       return { ...state, screen: 'relevance-check', branch: 'footage' };
     case 'CHOOSE_REFERENCE':
-      return { ...state, screen: 'pulled-reference', branch: 'reference' };
+      return { ...state, screen: 'reference-source-choice', branch: 'reference' };
     case 'CHOOSE_IDEA':
       return { ...state, screen: 'idea-source-choice', branch: 'idea' };
+
+    // ===== מסלול "מצאתי רפרנס" - יש לה כבר אחד, או שצריך להגריל לה (17/10,
+    // מאיה: "צריך להיות 2 כפתורים יש לי רפרנס / אין לי רפרנס ואז להגריל") =====
+    case 'CHOOSE_HAS_REFERENCE':
+      return { ...state, screen: 'relevance-check' };
+    case 'CHOOSE_PULL_REFERENCE':
+      return { ...state, screen: 'pulled-reference' };
 
     // ===== מסלול "יש לי רעיון" - איך מקבלים את הרעיון =====
     case 'CHOOSE_TYPE_IDEA':
@@ -116,7 +123,9 @@ function step(state, action) {
     case 'HER_WORDS_SUBMITTED':
       return { ...state, screen: 'prompt2', herWords: action.text };
     case 'SCRIPT_READY':
-      return { ...state, screen: 'read-aloud' };
+      // 17/10/2026 (מאיה: "הייתי שמחה שבסיכום יהיה כתוב גם את התסריט") -
+      // עכשיו שומרים את התסריט הסופי שחזרה איתו, לא רק ממשיכים הלאה.
+      return { ...state, screen: 'read-aloud', finalScript: action.text };
 
     // ===== מסלול "כתיבה מאפס" - 4 הפרומפטים האמיתיים מתוך המסמך שלה =====
     // שלב 1 (אופציונלי, רק למי שתקועה): פרומפט חילוץ תוכן, או כתיבה חופשית

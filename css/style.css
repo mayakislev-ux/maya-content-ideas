@@ -6468,9 +6468,17 @@ body[data-plan="refs"] .view-tabs-scroll { justify-content: center; }
 .cosmic-prompt-box,
 .cosmic-textarea,
 .cosmic-accordion-item,
-.cosmic-summary-list {
+.cosmic-summary-list,
+.cosmic-btn,
+.cosmic-reroll-btn,
+.cosmic-pick-btn,
+.cosmic-selected-chip {
+  /* 17/10/2026 (מאיה, שוב: "לא שינית את הפונט... לא קריא, קשה לקרוא" -
+     על כפתורי הפתיחה עצמם): התיקון הקודם כיסה רק פסקאות/תיבות טקסט,
+     פספס לגמרי את טקסט הכפתורים עצמם - שעדיין ירש את פלוני בלק 900. */
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
 }
+.cosmic-btn { font-weight: 600; }
 
 /* כפתור חזרה גלובלי (מאיה: "מעצבן שאין כפתור אחורה") - תמיד באותו מקום,
    מופיע רק כשיש היסטוריה אמיתית לחזור אליה (state.history.length). */
@@ -6543,6 +6551,14 @@ body[data-plan="refs"] .view-tabs-scroll { justify-content: center; }
   justify-content: space-between;
   gap: 8px;
 }
+.cosmic-accordion-item summary > span {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+/* 17/10/2026 (מאיה: "תצוגה מקדימה שישר ויזואלית אראה") - אייקון גדול לכל
+   פורמט, כדי שהעין תזהה מיד גם לפני שפותחים לקרוא. */
+.cosmic-format-icon { font-size: 22px; line-height: 1; }
 .cosmic-accordion-item summary::-webkit-details-marker { display: none; }
 .cosmic-accordion-item summary::after { content: '⌄'; font-size: 16px; opacity: .7; }
 .cosmic-accordion-item[open] summary::after { content: '⌃'; }
@@ -6641,6 +6657,18 @@ body[data-plan="refs"] .view-tabs-scroll { justify-content: center; }
   border-radius: 20px;
   padding: 24px;
   position: relative;
+  /* 17/10/2026 (מאיה: "כתוב כהה על רקע כהה" - פעמיים): המודאל מוצמד ל-body,
+     לא בתוך .cosmic-theme/.cosmic-card, ולכן לא ירש מהם color:#fff - בלי
+     זה הטקסט נופל לצבע ברירת המחדל הכהה של האתר הראשי וממש לא נראה. */
+  color: #fff;
+  text-align: right;
+}
+.cosmic-modal p,
+.cosmic-modal input {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+}
+.cosmic-modal input[type="text"] {
+  text-align: right;
 }
 .cosmic-modal-close {
   position: absolute;

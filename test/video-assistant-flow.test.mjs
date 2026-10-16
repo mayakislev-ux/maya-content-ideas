@@ -31,11 +31,25 @@ test('footage path: convert -> format selection -> freeform script -> summary', 
   assert.equal(s.herWords, 'התסריט שלי');
 });
 
-test('reference path (שכפול רגיל): skips format-choice and needs-script, goes straight to transcribe', () => {
+test('reference path: opening choice leads to a has/pull sub-choice first (17/10)', () => {
   let s = nextStep(INITIAL_STATE, { type: 'CHOOSE_REFERENCE' });
-  assert.equal(s.screen, 'pulled-reference');
+  assert.equal(s.screen, 'reference-source-choice');
   assert.equal(s.branch, 'reference');
+});
+
+test('reference path, pull from bank: sub-choice -> pulled-reference -> relevance -> transcribe', () => {
+  let s = nextStep(INITIAL_STATE, { type: 'CHOOSE_REFERENCE' });
+  s = nextStep(s, { type: 'CHOOSE_PULL_REFERENCE' });
+  assert.equal(s.screen, 'pulled-reference');
   s = nextStep(s, { type: 'ACCEPT_PICK' });
+  assert.equal(s.screen, 'relevance-check');
+  s = nextStep(s, { type: 'RELEVANCE_CONFIRMED' });
+  assert.equal(s.screen, 'transcribe');
+});
+
+test('reference path, already has one: sub-choice skips the pick screen entirely', () => {
+  let s = nextStep(INITIAL_STATE, { type: 'CHOOSE_REFERENCE' });
+  s = nextStep(s, { type: 'CHOOSE_HAS_REFERENCE' });
   assert.equal(s.screen, 'relevance-check');
   s = nextStep(s, { type: 'RELEVANCE_CONFIRMED' });
   assert.equal(s.screen, 'transcribe');
@@ -136,14 +150,16 @@ test('shared pipeline: transcribe -> prompt1 -> her-words -> prompt2 -> read-alo
   s = nextStep(s, { type: 'HER_WORDS_SUBMITTED', text: 'מה שיש לה להגיד' });
   assert.equal(s.screen, 'prompt2');
   assert.equal(s.herWords, 'מה שיש לה להגיד');
-  s = nextStep(s, { type: 'SCRIPT_READY' });
+  s = nextStep(s, { type: 'SCRIPT_READY', text: 'התסריט המלא שקיבלה' });
   assert.equal(s.screen, 'read-aloud');
+  assert.equal(s.finalScript, 'התסריט המלא שקיבלה');
   s = nextStep(s, { type: 'CONFIRM_DONE' });
   assert.equal(s.screen, 'summary');
 });
 
 test('REROLL keeps the current screen, only bumps the count, and leaves no back-entry', () => {
   let s = nextStep(INITIAL_STATE, { type: 'CHOOSE_REFERENCE' });
+  s = nextStep(s, { type: 'CHOOSE_PULL_REFERENCE' });
   const before = nextStep(s, { type: 'REROLL' });
   assert.equal(before.screen, 'pulled-reference');
   assert.equal(before.rerollCount, 1);
@@ -172,11 +188,12 @@ test('BACK is a no-op at the very start (empty history)', () => {
 
 test('BACK after a REROLL returns to the screen before the roll, not an intermediate reroll state', () => {
   let s = nextStep(INITIAL_STATE, { type: 'CHOOSE_REFERENCE' });
+  s = nextStep(s, { type: 'CHOOSE_PULL_REFERENCE' });
   s = nextStep(s, { type: 'REROLL' });
   s = nextStep(s, { type: 'REROLL' });
   assert.equal(s.rerollCount, 2);
   s = nextStep(s, { type: 'BACK' });
-  assert.equal(s.screen, 'opening');
+  assert.equal(s.screen, 'reference-source-choice');
 });
 
 test('RESTART resets everything back to INITIAL_STATE', () => {
