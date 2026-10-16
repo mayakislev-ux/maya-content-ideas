@@ -6456,3 +6456,202 @@ body[data-plan="refs"] .view-tabs-scroll { justify-content: center; }
   overflow-y: auto;
 }
 .biduri-row-failed { color: var(--muted); font-weight: 500; white-space: normal; }
+
+/* 16/10/2026 (מאיה, בדיקה מעמיקה - 10 הערות): "הפונט שם לא קריא" - השורש
+   האמיתי: body כולו על 'Ploni Black' במשקל 900 (הכי כבד שיש), וזה מה
+   שהטקסט הרץ בפרומפטים ובפסקאות יורש. משקל 900 בגודל טקסט רגיל נראה
+   סמיך ועמוס, במיוחד בפסקאות ארוכות. התיקון: טקסט רץ (לא כותרות) עובר
+   לפונט מערכת רגיל שקריא בגדלים קטנים - הכותרות (h2) נשארות על פלוני
+   בלק בכוונה, זו הזהות החזותית.*/
+.cosmic-card p,
+.cosmic-card li,
+.cosmic-prompt-box,
+.cosmic-textarea,
+.cosmic-accordion-item,
+.cosmic-summary-list {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+}
+
+/* כפתור חזרה גלובלי (מאיה: "מעצבן שאין כפתור אחורה") - תמיד באותו מקום,
+   מופיע רק כשיש היסטוריה אמיתית לחזור אליה (state.history.length). */
+.cosmic-back-btn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: rgba(255,255,255,.12);
+  border: none;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+}
+.cosmic-back-btn:hover { background: rgba(255,255,255,.22); }
+
+/* פס התקדמות - "אפקטים, סרגל הסתעפות/התקדמות" (מאיה) - צעד X מתוך Y
+   בתוך המסלול שבחרה, כדי שתמיד תדע כמה עוד נשאר. */
+.cosmic-progress {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  margin-bottom: 18px;
+}
+.cosmic-progress__dot {
+  width: 100%;
+  max-width: 34px;
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(255,255,255,.18);
+  transition: background .2s;
+}
+.cosmic-progress__dot.is-done { background: var(--accent-2); }
+.cosmic-progress__dot.is-current { background: #fff; }
+.cosmic-progress__label {
+  font-size: 12px;
+  opacity: .65;
+  margin-bottom: 10px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+}
+
+/* אקורדיון פורמטים/זוויות - "פופאפ מסודר עם כל פורמט שאפשר לפתוח
+   אקורדיון ולראות בקטנה דוגמא" (מאיה) */
+.cosmic-accordion { text-align: right; margin-bottom: 14px; max-height: 50vh; overflow-y: auto; }
+.cosmic-accordion-item {
+  border: 1px solid rgba(255,255,255,.2);
+  border-radius: 12px;
+  margin-bottom: 8px;
+  overflow: hidden;
+  background: rgba(255,255,255,.05);
+}
+.cosmic-accordion-item.is-selected {
+  border-color: var(--accent-2);
+  background: rgba(255,70,170,.15);
+}
+.cosmic-accordion-item summary {
+  padding: 12px 14px;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 14px;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.cosmic-accordion-item summary::-webkit-details-marker { display: none; }
+.cosmic-accordion-item summary::after { content: '⌄'; font-size: 16px; opacity: .7; }
+.cosmic-accordion-item[open] summary::after { content: '⌃'; }
+.cosmic-accordion-body { padding: 0 14px 14px; font-size: 13px; line-height: 1.6; opacity: .9; }
+.cosmic-accordion-body .cosmic-angle-example {
+  margin-top: 8px;
+  padding: 10px;
+  background: rgba(0,0,0,.2);
+  border-radius: 8px;
+  font-style: normal;
+}
+.cosmic-pick-btn {
+  margin-top: 10px;
+  background: var(--accent-2);
+  border: none;
+  color: #fff;
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  width: 100%;
+}
+.cosmic-selected-chip {
+  display: inline-block;
+  background: rgba(255,70,170,.2);
+  border: 1px solid var(--accent-2);
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-size: 13px;
+  margin-bottom: 14px;
+}
+
+/* תיבות צבעוניות ברורות למקום שצריך להשלים בפרומפט (מאיה: "ריבוע כזה
+   ברור בצבע שיהיה לה ברור איפה היא צריכה להשלים") - מסמן את ה-[...] */
+.cosmic-prompt-box mark {
+  background: #ffd23f;
+  color: #1c2f82;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-weight: 700;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+/* מסך סיכום סופי - "ילד בן 10 יכול להבין" (מאיה) */
+.cosmic-summary-list {
+  text-align: right;
+  list-style: none;
+  padding: 0;
+  margin: 0 0 20px;
+}
+.cosmic-summary-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255,255,255,.12);
+  font-size: 14px;
+}
+.cosmic-summary-list li:last-child { border-bottom: none; }
+.cosmic-summary-num {
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--accent-2);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* מודאל עזרה (למשל פרומפט חילוץ תוכן מעל מסך "שופכים הכל") - נשאר מעל
+   המסך הנוכחי, לא עוזב אותו ולא פותח קובץ/לשונית חדשה. */
+.cosmic-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(5,5,20,.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  padding: 16px;
+  animation: cosmic-fade-in .2s ease-out;
+}
+.cosmic-modal {
+  max-width: 480px;
+  width: 100%;
+  max-height: 85vh;
+  overflow-y: auto;
+  background: linear-gradient(160deg, #14184a 0%, #1c2f82 100%);
+  border: 1px solid rgba(255,255,255,.25);
+  border-radius: 20px;
+  padding: 24px;
+  position: relative;
+}
+.cosmic-modal-close {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  background: rgba(255,255,255,.12);
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  color: #fff;
+  font-size: 16px;
+  cursor: pointer;
+}
