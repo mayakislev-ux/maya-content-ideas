@@ -22,7 +22,7 @@ import {
 } from './video-assistant-content.js';
 import { playReroll, playSuccess, setMuted, getMuted } from './video-assistant-sound.js';
 import {
-  fetchIdeas, fetchInspirationBank, getSavedDomain, guessDomain, saveDomain, loadSession, saveSession, suggestSearchKeywords,
+  fetchIdeas, fetchInspirationBank, getSavedDomain, guessDomain, saveDomain, saveSession, suggestSearchKeywords,
 } from './video-assistant-store.js';
 import { getProfile } from './user-profile.js';
 import { showView } from './view-router.js';
@@ -1101,20 +1101,15 @@ export function wireVideoAssistantView() {
   document.getElementById('video-assistant-view').addEventListener('click', resetIdleTimer);
   document.getElementById('video-assistant-view').addEventListener('input', resetIdleTimer);
 
-  document.getElementById('hub-link-video-assistant').addEventListener('click', async () => {
-    let saved = null;
-    try {
-      saved = await loadSession();
-    } catch (err) {
-      console.error('loadSession failed:', err);
-    }
-    // 17/10/2026 (מאיה: "כשנכנסתי למסך זה הוביל אותי לסוף ולא להתחלה") -
-    // סשן שמור שנעצר במסך הסיכום הוא סשן שכבר נגמר - אין מה "להמשיך" בו,
-    // חוזרים למסך הפתיחה ולא נשארים תקועים/ים במסך סיום ישן.
-    state = (saved && saved.screen !== 'summary') ? saved : INITIAL_STATE;
-    // 16/10/2026: סשנים ישנים שנשמרו לפני כפתור החזרה לא יכילו history -
-    // בלי זה BACK על סשן ישן יקרוס על undefined.length.
-    if (!state.history) state.history = [];
+  document.getElementById('hub-link-video-assistant').addEventListener('click', () => {
+    // 17/10/2026 (מאיה, פעמיים: "נכנסת למסך זה הוביל אותי לסוף ולא
+    // להתחלה", ואז שוב גם אחרי סגירה ופתיחה מלאה: "שוב מכניס אותי
+    // מהאמצע") - התיקון הקודם (לא לחזור ל-summary) היה חלקי מדי: היא
+    // חזרה בפועל למסך "תמלל/י את הרפרנס" באמצע מסלול, לא לסיכום.
+    // ההחלטה הנכונה היא לא לנחש איזה מסך "בסדר" לחזור אליו ואיזה לא -
+    // כניסה מהרכזת (hub) תמיד מתחילה מחדש במסך הפתיחה. ה-state עדיין
+    // נשמר ברקע (saveSession) לאורך כל מסלול, רק שלא טוענים אותו כאן.
+    state = INITIAL_STATE;
     sessionStartTs = Date.now();
     if (!getMuted()) startAmbientDrone();
     render();
