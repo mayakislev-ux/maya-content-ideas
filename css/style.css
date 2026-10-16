@@ -6683,3 +6683,271 @@ body[data-plan="refs"] .view-tabs-scroll { justify-content: center; }
   font-size: 16px;
   cursor: pointer;
 }
+
+/* 17/10/2026 (מאיה, מתוך 16 הרעיונות שבחרה מרשימת 50): שכבת ה"חוויה
+   ממכרת" - קונפטי, פס התקדמות נוזלי, DNA של הסרטון, מסקוט, SOS, שובל
+   חלקיקים, זוהר לפי תחום, מעבר פורטל, תצוגה מקדימה צפה, ואתגר היום. */
+
+/* ----- #28: זוהר לפי תחום - ברירת מחדל ניאון-פינק, מוחלף בזמן אמת ----- */
+.cosmic-theme {
+  --cosmic-glow: #ff2ea8;
+}
+.cosmic-card {
+  box-shadow: 0 0 40px color-mix(in srgb, var(--cosmic-glow, #ff2ea8) 45%, transparent);
+  transition: box-shadow .6s ease;
+}
+
+/* ----- #6: פס התקדמות נוזלי זוהר, במקום נקודות סטטיות ----- */
+.cosmic-liquid-bar {
+  position: relative;
+  height: 10px;
+  border-radius: 6px;
+  background: rgba(255,255,255,.14);
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+.cosmic-liquid-fill {
+  position: absolute;
+  inset: 0;
+  width: 0%;
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--cosmic-glow, #ff2ea8), #ffd23f);
+  box-shadow: 0 0 12px var(--cosmic-glow, #ff2ea8);
+  transition: width .5s cubic-bezier(.4,0,.2,1);
+}
+.cosmic-liquid-fill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.55), transparent);
+  width: 40%;
+  animation: cosmic-liquid-sheen 1.8s linear infinite;
+}
+@keyframes cosmic-liquid-sheen {
+  from { transform: translateX(-120%); }
+  to { transform: translateX(340%); }
+}
+
+/* ----- #10: "DNA של הסרטון" - שרשרת צעדים אופקית ----- */
+.cosmic-dna-chain {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 2px 0 16px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+.cosmic-dna-step {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.cosmic-dna-step__dot {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: rgba(255,255,255,.18);
+  border: 2px solid rgba(255,255,255,.25);
+}
+.cosmic-dna-step.done .cosmic-dna-step__dot { background: var(--cosmic-glow, #ff2ea8); border-color: var(--cosmic-glow, #ff2ea8); }
+.cosmic-dna-step.current .cosmic-dna-step__dot {
+  background: #fff;
+  border-color: #fff;
+  box-shadow: 0 0 8px #fff;
+  animation: cosmic-dna-pulse 1.2s ease-in-out infinite;
+}
+@keyframes cosmic-dna-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.35); }
+}
+.cosmic-dna-step__label {
+  font-size: 10px;
+  opacity: .7;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 54px;
+}
+.cosmic-dna-step.current .cosmic-dna-step__label { opacity: 1; font-weight: 700; }
+.cosmic-dna-step__line {
+  flex: 1 1 auto;
+  height: 2px;
+  background: rgba(255,255,255,.18);
+  min-width: 6px;
+}
+.cosmic-dna-step.done + .cosmic-dna-step__line,
+.cosmic-dna-step__line.is-done { background: var(--cosmic-glow, #ff2ea8); }
+
+/* ----- #7 / #22: מסקוט קוסמי קבוע + SOS ----- */
+.cosmic-mascot {
+  position: absolute;
+  top: -18px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff, var(--cosmic-glow, #ff2ea8));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  box-shadow: 0 0 18px var(--cosmic-glow, #ff2ea8);
+  animation: cosmic-mascot-float 3s ease-in-out infinite;
+  z-index: 4;
+}
+@keyframes cosmic-mascot-float {
+  0%, 100% { transform: translateX(-50%) translateY(0); }
+  50% { transform: translateX(-50%) translateY(-6px); }
+}
+.cosmic-mascot.is-celebrate { animation: cosmic-mascot-celebrate .6s ease-in-out 2; }
+@keyframes cosmic-mascot-celebrate {
+  0%, 100% { transform: translateX(-50%) rotate(0deg) scale(1); }
+  25% { transform: translateX(-50%) rotate(-12deg) scale(1.15); }
+  75% { transform: translateX(-50%) rotate(12deg) scale(1.15); }
+}
+.cosmic-sos-mascot {
+  position: fixed;
+  bottom: 22px;
+  left: 22px;
+  z-index: 40;
+  background: linear-gradient(135deg, #ffd23f, var(--cosmic-glow, #ff2ea8));
+  color: #1c2f82;
+  border: none;
+  border-radius: 999px;
+  padding: 12px 18px;
+  font-size: 13px;
+  font-weight: 800;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+  box-shadow: 0 4px 20px rgba(0,0,0,.35);
+  cursor: pointer;
+  animation: cosmic-sos-in .3s ease-out, cosmic-sos-wiggle 2.4s ease-in-out .3s infinite;
+}
+@keyframes cosmic-sos-in {
+  from { opacity: 0; transform: translateY(16px) scale(.8); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes cosmic-sos-wiggle {
+  0%, 85%, 100% { transform: rotate(0deg); }
+  88% { transform: rotate(-6deg); }
+  91% { transform: rotate(6deg); }
+  94% { transform: rotate(-4deg); }
+}
+
+/* ----- #2: קונפטי בסיום ----- */
+.cosmic-confetti-piece {
+  position: absolute;
+  top: -10px;
+  width: 8px;
+  height: 14px;
+  border-radius: 2px;
+  pointer-events: none;
+  z-index: 30;
+  animation-name: cosmic-confetti-fall;
+  animation-timing-function: ease-in;
+  animation-fill-mode: forwards;
+}
+@keyframes cosmic-confetti-fall {
+  from { top: -10px; opacity: 1; }
+  to { top: 100%; opacity: .2; }
+}
+
+/* ----- #12: הפיכת קלף לחשיפת רפרנס/רעיון ----- */
+.cosmic-flip-reveal { animation: cosmic-flip .65s ease-in-out; }
+@keyframes cosmic-flip {
+  0% { transform: rotateY(0deg); }
+  50% { transform: rotateY(90deg); opacity: .4; }
+  100% { transform: rotateY(0deg); }
+}
+
+/* ----- #14: שובל חלקיקים אחרי האצבע/עכבר ----- */
+.cosmic-trail-dot {
+  position: fixed;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--cosmic-glow, #ff2ea8);
+  box-shadow: 0 0 8px var(--cosmic-glow, #ff2ea8);
+  pointer-events: none;
+  z-index: 60;
+  transform: translate(-50%, -50%);
+  animation: cosmic-trail-fade .7s ease-out forwards;
+}
+@keyframes cosmic-trail-fade {
+  from { opacity: .9; transform: translate(-50%, -50%) scale(1); }
+  to { opacity: 0; transform: translate(-50%, -50%) scale(.3); }
+}
+
+/* ----- #32: מעבר "פורטל" בין מסכים (document.startViewTransition) ----- */
+::view-transition-old(root) {
+  animation: cosmic-portal-out .35s ease-in forwards;
+}
+::view-transition-new(root) {
+  animation: cosmic-portal-in .35s ease-out forwards;
+}
+@keyframes cosmic-portal-out {
+  from { opacity: 1; transform: scale(1); filter: blur(0); }
+  to { opacity: 0; transform: scale(.85); filter: blur(6px); }
+}
+@keyframes cosmic-portal-in {
+  from { opacity: 0; transform: scale(1.12); filter: blur(6px); }
+  to { opacity: 1; transform: scale(1); filter: blur(0); }
+}
+
+/* ----- #1: ספינר הגרלה - מסתובב לפני שנופל על בחירה ----- */
+.cosmic-slot-spin {
+  display: block;
+  font-weight: 700;
+  animation: cosmic-slot-blur .08s linear infinite;
+}
+@keyframes cosmic-slot-blur {
+  0%, 100% { transform: translateY(0); opacity: 1; }
+  50% { transform: translateY(-3px); opacity: .55; }
+}
+
+/* ----- #43: פאנל צף - התסריט/הטקסט המצטבר בזמן אמת ----- */
+.cosmic-live-preview {
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  max-width: 260px;
+  max-height: 160px;
+  overflow-y: auto;
+  background: rgba(10,10,35,.82);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(255,255,255,.2);
+  border-radius: 14px;
+  padding: 10px 12px;
+  z-index: 35;
+  font-size: 11px;
+  line-height: 1.5;
+  color: rgba(255,255,255,.85);
+  text-align: right;
+  box-shadow: 0 4px 20px rgba(0,0,0,.35);
+  animation: cosmic-fade-in .25s ease-out;
+}
+.cosmic-live-preview__title {
+  font-size: 10px;
+  font-weight: 800;
+  opacity: .7;
+  margin-bottom: 4px;
+}
+.cosmic-live-preview strong { color: #ffd23f; }
+
+/* ----- #8: "אתגר היום" - בנר על מסך הפתיחה ----- */
+.cosmic-today-challenge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255,210,63,.14);
+  border: 1px solid rgba(255,210,63,.4);
+  border-radius: 14px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  text-align: right;
+  font-size: 13px;
+}
+.cosmic-today-challenge__icon { font-size: 20px; flex: 0 0 auto; }

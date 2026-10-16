@@ -28,6 +28,12 @@ import { getProfile } from './user-profile.js';
 import { showView } from './view-router.js';
 import { openInspirationView } from './inspiration-view.js';
 import { showToast } from './toast.js';
+import {
+  pickEncouragement, domainTheme, formatElapsed, dnaSteps, challengeIndexForToday,
+  mascotMood, mascotFace, burstConfetti, flipReveal, startParticleTrail,
+  startAmbientDrone, intensifyAmbientDrone, stopAmbientDrone, cacheDomainInfoLocally,
+  readCachedDomainInfo, spinReveal, portalTransition,
+} from './video-assistant-fx.js';
 
 const SUBCATEGORIES_BY_DOMAIN = {
   'יופי וקוסמטיקה': ['טיפול פנים', 'איפור קבוע', 'גבות', 'ריסים', 'ציפורניים', 'שיער', 'איפור', 'לייזר והסרת שיער', 'אסתטיקה רפואית', 'טיפולי גוף', 'שיזוף'],
@@ -53,6 +59,7 @@ let ideasCache = null;
 let videosCache = null;
 let domainInfo = null; // { domain, subCategory }
 let currentPickId = null;
+let sessionStartTs = null; // רעיון #47 - "בנית תוך X דקות"
 
 function screenEl() {
   return document.getElementById('video-assistant-screen');
@@ -61,7 +68,8 @@ function screenEl() {
 function dispatch(action) {
   state = nextStep(state, action);
   saveSession(state).catch((err) => console.error('saveSession failed:', err));
-  render();
+  // #32: מעבר "פורטל" בין מסכים - נפילה חלקה ל-render ישיר בדפדפן שלא תומך.
+  portalTransition(render);
 }
 
 function escapeHtml(str) {
@@ -89,14 +97,25 @@ function highlightPlaceholders(text, values = []) {
   return html.replace(/\[([^\]<>]+)\]/g, (m) => (m.includes('<mark>') ? m : `<mark>${m}</mark>`));
 }
 
+// 17/10/2026 (מאיה, רעיון #6): פס התקדמות נוזלי זוהר במקום נקודות סטטיות,
+// ו-#10 "DNA של הסרטון" - שרשרת הצעדים הממשיים של המסלול הנוכחי שלה
+// (לא רק 5 ה"פאזות" הכלליות), כדי שתראה חזותית את הסרטון "נבנה" צעד-צעד.
 function progressHtml() {
   const current = PHASE_BY_SCREEN[state.screen] ?? 0;
-  const dots = PHASES.map((_, i) => {
-    const cls = i < current ? 'is-done' : i === current ? 'is-current' : '';
-    return `<div class="cosmic-progress__dot ${cls}"></div>`;
-  }).join('');
-  return `<div class="cosmic-progress__label">שלב ${current + 1} מתוך ${PHASES.length}: ${PHASES[current]}</div>
-    <div class="cosmic-progress">${dots}</div>`;
+  const pct = Math.round(((current + 1) / PHASES.length) * 100);
+  intensifyAmbientDrone(PHASES.length > 1 ? current / (PHASES.length - 1) : 0);
+  const steps = dnaSteps(state.branch || 'idea', current, PHASES.length);
+  const dnaHtml = steps.map((s, i) => `
+    <div class="cosmic-dna-step ${s.status}">
+      <div class="cosmic-dna-step__dot"></div>
+      <div class="cosmic-dna-step__label">${escapeHtml(s.name)}</div>
+    </div>
+    ${i < steps.length - 1 ? `<div class="cosmic-dna-step__line ${s.status === 'done' ? 'is-done' : ''}"></div>` : ''}
+  `).join('');
+  return `
+    <div class="cosmic-progress__label">שלב ${current + 1} מתוך ${PHASES.length}: ${PHASES[current]}</div>
+    <div class="cosmic-liquid-bar"><div class="cosmic-liquid-fill" style="width:${pct}%"></div></div>
+    <div class="cosmic-dna-chain">${dnaHtml}</div>`;
 }
 
 function backButtonHtml() {
@@ -105,19 +124,118 @@ function backButtonHtml() {
     : '';
 }
 
+// 17/10/2026 (מאיה, רעיון #7): מסקוט קוסמי קבוע שמגיב רגשית לפי המסך -
+// חי בכל cosmicCard, לא רק במסכים ספציפיים. מחזיר את אלמנט הכרטיס עצמו
+// כדי שפעולות כמו flipReveal (#12) יוכלו להפעיל עליו אנימציה.
 function cosmicCard(innerHtml, { showProgress = true } = {}) {
-  screenEl().innerHTML = `<div class="cosmic-card">
+  const mood = mascotMood(state.screen);
+  screenEl().innerHTML = `<div class="cosmic-card" id="va-card">
+    <div class="cosmic-mascot ${mood === 'celebrate' ? 'is-celebrate' : ''}" id="va-mascot">${mascotFace(mood)}</div>
     ${backButtonHtml()}
     ${showProgress ? progressHtml() : ''}
     ${innerHtml}
   </div>`;
   const backBtn = document.getElementById('va-back-btn');
   if (backBtn) backBtn.addEventListener('click', () => dispatch({ type: 'BACK' }));
+  updateLivePreview();
+  resetIdleTimer();
+  return document.getElementById('va-card');
 }
 
 function restart() {
   dispatch({ type: 'RESTART' });
   currentPickId = null;
+  sessionStartTs = Date.now();
+  if (!getMuted()) startAmbientDrone();
+}
+
+// ===== #9: צליל הצלחה + משפט עידוד שלא חוזר על עצמו פעמיים ברצף =====
+function celebrate() {
+  playSuccess();
+  showToast(pickEncouragement());
+}
+
+// ===== #28: זוהר הכרטיס לפי התחום, מופעל ברגע שהתחום ידוע =====
+function applyDomainTheme(domain) {
+  const theme = domainTheme(domain);
+  const root = document.getElementById('video-assistant-view');
+  if (root) root.style.setProperty('--cosmic-glow', theme.glow);
+}
+
+// ===== #22: מסקוט SOS שקופץ רק כשאין אינטראקציה זמן-מה, לא כפתור קבוע =====
+const IDLE_MS = 25000;
+const SOS_EXCLUDED_SCREENS = new Set(['opening', 'summary']);
+let idleTimer = null;
+
+function removeSos() {
+  const el = document.getElementById('va-sos-mascot');
+  if (el) el.remove();
+}
+
+function showSos() {
+  if (document.getElementById('va-sos-mascot') || SOS_EXCLUDED_SCREENS.has(state.screen)) return;
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.id = 'va-sos-mascot';
+  btn.className = 'cosmic-sos-mascot';
+  btn.textContent = '🆘 תקוע/ה? אני כאן';
+  btn.addEventListener('click', () => {
+    removeSos();
+    openModal(`
+      <h2 style="margin-top:0">תקוע/ה רגע?</h2>
+      <p>${escapeHtml(pickEncouragement())} זה בסדר להתקדם לאט - אפשר לחזור צעד אחד אחורה, או להתחיל סרטון אחר.</p>
+      <div class="cosmic-btn-row">
+        ${state.history.length ? '<button type="button" class="cosmic-btn" id="va-sos-back-btn">חזרה צעד אחד אחורה</button>' : ''}
+        <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-sos-restart-btn">להתחיל סרטון אחר</button>
+      </div>
+    `);
+    const backBtn = document.getElementById('va-sos-back-btn');
+    if (backBtn) backBtn.addEventListener('click', () => { closeModal(); dispatch({ type: 'BACK' }); });
+    document.getElementById('va-sos-restart-btn').addEventListener('click', () => { closeModal(); restart(); });
+  });
+  document.body.appendChild(btn);
+}
+
+function resetIdleTimer() {
+  if (idleTimer) clearTimeout(idleTimer);
+  removeSos();
+  if (SOS_EXCLUDED_SCREENS.has(state.screen)) return;
+  idleTimer = setTimeout(showSos, IDLE_MS);
+}
+
+// ===== #43: פאנל צף שמראה את התסריט/הטקסט המצטבר, בזמן אמת =====
+function removeLivePreview() {
+  const panel = document.getElementById('va-live-preview');
+  if (panel) panel.remove();
+}
+
+function updateLivePreview() {
+  if (state.screen === 'opening' || state.screen === 'summary') {
+    removeLivePreview();
+    return;
+  }
+  const parts = [];
+  if (state.ideaDescription) parts.push(['רעיון', state.ideaDescription]);
+  if (state.transcript) parts.push(['תמלול', state.transcript]);
+  if (state.hook) parts.push(['הוק', state.hook]);
+  if (state.hookReinforcement) parts.push(['חיזוק ההוק', state.hookReinforcement]);
+  if (state.herWords) parts.push(['המילים שלך', state.herWords]);
+  if (state.rawDump) parts.push(['שפכ/י', state.rawDump]);
+  if (state.draftScript) parts.push(['תסריט', state.draftScript]);
+  if (state.finalScript) parts.push(['תסריט', state.finalScript]);
+  if (!parts.length) {
+    removeLivePreview();
+    return;
+  }
+  const [label, text] = parts[parts.length - 1];
+  let panel = document.getElementById('va-live-preview');
+  if (!panel) {
+    panel = document.createElement('div');
+    panel.className = 'cosmic-live-preview';
+    panel.id = 'va-live-preview';
+    document.body.appendChild(panel);
+  }
+  panel.innerHTML = `<div class="cosmic-live-preview__title">📝 הסרטון שלך נוצר...</div><strong>${escapeHtml(label)}:</strong> ${escapeHtml(text).slice(0, 220)}`;
 }
 
 function openModal(innerHtml) {
@@ -140,9 +258,17 @@ function closeModal() {
 }
 
 // ===== מסך פתיחה: שלושת מסלולי הפתיחה, ניסוח מדויק של מאיה (16/10) =====
+// 17/10/2026 (רעיון #8, "אתגר היום"): פורמט קבוע ליום הזה - משתנה למחרת,
+// לא בכל רענון - מציע לנסות משהו שלא בהכרח המסלול הקבוע שלה.
 function renderOpening() {
+  removeLivePreview();
+  const challenge = FORMATS[challengeIndexForToday(FORMATS.length)];
   cosmicCard(`
     <h2>✨ בוא/י ניצור סרטון</h2>
+    <div class="cosmic-today-challenge">
+      <div class="cosmic-today-challenge__icon">${FORMAT_ICONS[challenge.name] || '🎬'}</div>
+      <div><strong>אתגר היום:</strong> מה דעתך לנסות הפעם את "${escapeHtml(challenge.name)}"?</div>
+    </div>
     <p>מאיפה מתחילים הפעם?</p>
     <div class="cosmic-btn-row">
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-reference-btn">מצאתי רפרנס לשכפול</button>
@@ -224,25 +350,36 @@ function renderTypeIdea() {
 
 function renderPulledIdea() {
   const idea = ideasCache.find((i) => i.id === currentPickId);
-  cosmicCard(`
+  const card = cosmicCard(`
     <h2>🎲 הרעיון הזה</h2>
-    <p style="font-size:16px;color:#fff;font-weight:600">${escapeHtml(idea.title)}</p>
+    <p style="font-size:16px;color:#fff;font-weight:600" id="va-idea-title">${escapeHtml(idea.title)}</p>
     ${idea.hookText ? `<p>${escapeHtml(idea.hookText)}</p>` : ''}
     <div class="cosmic-btn-row">
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-accept-idea-btn">אהבתי, בוא/י נמשיך</button>
     </div>
     <button type="button" class="cosmic-reroll-btn" id="va-reroll-idea-btn">לא אהבתי - הגרל/י שוב</button>
   `);
+  // 17/10/2026 (רעיון #12, "הפיכת קלף"): החשיפה הראשונה של הרעיון המוגרל
+  // מקבלת רגע הפיכה - לא רק מופיעה.
+  flipReveal(card);
   document.getElementById('va-accept-idea-btn').addEventListener('click', () => {
     state.hook = idea.hookText || idea.title;
     state.ideaDescription = idea.hookText || idea.title;
+    celebrate();
     dispatch({ type: 'ACCEPT_PICK' });
   });
   document.getElementById('va-reroll-idea-btn').addEventListener('click', () => {
     playReroll();
     const picked = pickIdea(ideasCache, currentPickId);
+    const nextTitle = picked ? picked.title : idea.title;
     if (picked) currentPickId = picked.id;
-    dispatch({ type: 'REROLL' });
+    // 17/10/2026 (רעיון #1, "ספינר הגרלה"): לפני שמתיישב על הרעיון הסופי,
+    // כמה רעיונות אמיתיים "מתערבבים" מהר על המסך - מתח של ממש, לא רק
+    // החלפה מכנית.
+    const candidates = ideasCache.filter((i) => i.title).map((i) => i.title);
+    spinReveal(document.getElementById('va-idea-title'), candidates, nextTitle, () => {
+      dispatch({ type: 'REROLL' });
+    });
   });
 }
 
@@ -294,7 +431,7 @@ function renderFootageScript() {
       showToast('צריך/ה לכתוב משהו קודם');
       return;
     }
-    playSuccess();
+    celebrate();
     dispatch({ type: 'FOOTAGE_SCRIPT_SUBMITTED', text });
   });
 }
@@ -332,7 +469,7 @@ function renderFormatChoice() {
     btn.addEventListener('click', (e) => {
       e.preventDefault();
       const format = FORMATS[Number(btn.dataset.pickFormat)].name;
-      playSuccess();
+      celebrate();
       dispatch({ type: 'FORMAT_SELECTED', format });
     });
   });
@@ -370,6 +507,8 @@ async function resolveDomain() {
   const saved = await getSavedDomain();
   if (saved) {
     domainInfo = saved;
+    cacheDomainInfoLocally(saved);
+    applyDomainTheme(saved.domain);
     return domainInfo;
   }
   let guessed = null;
@@ -378,7 +517,12 @@ async function resolveDomain() {
   } catch (err) {
     console.error('guessDomain failed:', err);
   }
+  // 17/10/2026 (רעיון #37, "לא ישאלו אותי שוב מה הקהל/תחום שלי"): אם גם
+  // השמירה בפיירסטור וגם הניחוש נכשלו/ריקים, נופלים חזרה לקאש המקומי
+  // האחרון שהצליח - עדיף על לשאול שוב מאפס.
+  if (!guessed) guessed = readCachedDomainInfo();
   domainInfo = guessed || { domain: null, subCategory: null };
+  applyDomainTheme(domainInfo.domain);
   return domainInfo;
 }
 
@@ -416,6 +560,8 @@ function renderDomainConfirm(guessedDomain, guessedSub, onConfirmed) {
     const chosenSub = subSelect ? subSelect.value || null : null;
     await saveDomain(chosen, chosenSub);
     domainInfo = { domain: chosen, subCategory: chosenSub };
+    cacheDomainInfoLocally(domainInfo);
+    applyDomainTheme(chosen);
     onConfirmed();
   });
 }
@@ -437,7 +583,7 @@ async function renderPulledReference() {
     currentPickId = picked.id;
   }
   const video = videosCache.find((v) => v.id === currentPickId);
-  cosmicCard(`
+  const card = cosmicCard(`
     <h2>🎲 הרפרנס הזה</h2>
     ${video.thumbnailUrl
       ? `<button type="button" id="va-ref-preview-btn" style="all:unset;cursor:pointer;display:block">
@@ -449,6 +595,7 @@ async function renderPulledReference() {
     </div>
     <button type="button" class="cosmic-reroll-btn" id="va-reroll-ref-btn">לא אהבתי - הגרל/י שוב</button>
   `);
+  flipReveal(card);
   // 17/10/2026 (מאיה: "לא הקשבת לי... שהפרפנסים לדוגמא שנפתחים לא במסך
   // נפרד רק בפופאפ"): צפייה נשארת בתוך האפליקציה - פופאפ עם התמונה
   // הממוזערת האמיתית (כבר ממוזערת מקומית במאגר, אין בעיית CORS), עם
@@ -461,13 +608,23 @@ async function renderPulledReference() {
     `);
   }
   document.getElementById('va-ref-preview-btn').addEventListener('click', openRefPreview);
-  document.getElementById('va-accept-ref-btn').addEventListener('click', () => dispatch({ type: 'ACCEPT_PICK' }));
+  document.getElementById('va-accept-ref-btn').addEventListener('click', () => {
+    celebrate();
+    dispatch({ type: 'ACCEPT_PICK' });
+  });
   document.getElementById('va-reroll-ref-btn').addEventListener('click', () => {
     playReroll();
     const picked = pickReference(videosCache, domain, subCategory, currentPickId);
     if (picked) currentPickId = picked.id;
-    dispatch({ type: 'REROLL' });
-    renderPulledReference();
+    // 17/10/2026 (רעיון #1): אין טקסט-כותרת אמיתי לרפרנסים (רק תמונה
+    // ממוזערת), אז הספינר כאן מראה סימוני "הגרלה" קוסמיים ולא טקסט מזויף.
+    const label = document.createElement('div');
+    label.style.fontSize = '36px';
+    label.style.margin = '0 0 14px';
+    card.prepend(label);
+    spinReveal(label, ['🎲', '🎯', '🔮', '✨', '🌀'], '🎲', () => {
+      dispatch({ type: 'REROLL' });
+    });
   });
 }
 
@@ -638,7 +795,7 @@ function renderPrompt2() {
       showToast('צריך/ה להדביק את התסריט קודם');
       return;
     }
-    playSuccess();
+    celebrate();
     dispatch({ type: 'SCRIPT_READY', text });
   });
 }
@@ -652,7 +809,7 @@ function renderReadAloud() {
     </div>
   `);
   document.getElementById('va-read-done-btn').addEventListener('click', () => {
-    playSuccess();
+    celebrate();
     dispatch({ type: 'CONFIRM_DONE' });
   });
 }
@@ -814,7 +971,7 @@ function renderScratchDistill() {
       showToast('צריך/ה להדביק את התסריט קודם');
       return;
     }
-    playSuccess();
+    celebrate();
     dispatch({ type: 'SCRATCH_SCRIPT_READY', text });
   });
 }
@@ -862,12 +1019,21 @@ function finalScriptText() {
   return null;
 }
 
+// 17/10/2026 (רעיון #47, "בנית תוך X דקות"): זמן שחלף מרגע פתיחת העוזר
+// ועד הסיכום - סטטיסטיקת גאווה, לא מדידה מדויקת של זמן צילום/עריכה בפועל.
+function elapsedSinceStart() {
+  if (!sessionStartTs) return null;
+  return formatElapsed(Date.now() - sessionStartTs);
+}
+
 function renderSummary() {
   const steps = buildSummarySteps();
   const stepsHtml = steps.map((s, i) => `<li><span class="cosmic-summary-num">${i + 1}</span><div>${escapeHtml(s)}</div></li>`).join('');
   const script = finalScriptText();
-  cosmicCard(`
+  const elapsed = elapsedSinceStart();
+  const card = cosmicCard(`
     <h2>🎬 מוכן! הנה בדיוק מה קרה</h2>
+    ${elapsed ? `<div class="cosmic-today-challenge"><div class="cosmic-today-challenge__icon">⏱️</div><div>בנית/בנית את זה תוך <strong>${elapsed}</strong>!</div></div>` : ''}
     <ul class="cosmic-summary-list">${stepsHtml}</ul>
     ${script ? `<p style="font-weight:700;text-align:right;margin-bottom:8px">הטקסט/תסריט הסופי שלך:</p>
       <div class="cosmic-prompt-box">${escapeHtml(script)}</div>
@@ -876,6 +1042,10 @@ function renderSummary() {
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-restart-btn">ליצור סרטון נוסף</button>
     </div>
   `, { showProgress: false });
+  // 17/10/2026 (רעיון #2, #15): קונפטי אמיתי בסיום, והאודיו האמביינטי
+  // (אם פעיל) "משתחרר" - התח שנבנה כל המסלול נפתר ברגע הזה.
+  burstConfetti(card);
+  stopAmbientDrone();
   if (script) wireCopyButtons(screenEl());
   document.getElementById('va-restart-btn').addEventListener('click', restart);
 }
@@ -910,12 +1080,25 @@ function render() {
 }
 
 export function wireVideoAssistantView() {
+  // 17/10/2026 (רעיון #15, "אודיו אמביינטי מסונכרן עם כפתור ההשתקה
+  // הקיים"): השתקה/ביטול השתקה מפעילים ומכבים את הדרון בזמן אמת.
   document.getElementById('video-assistant-mute-btn').addEventListener('click', (e) => {
     const muted = !getMuted();
     setMuted(muted);
     e.target.textContent = muted ? '🔇' : '🔊';
+    if (muted) stopAmbientDrone();
+    else startAmbientDrone();
   });
   document.getElementById('video-assistant-mute-btn').textContent = getMuted() ? '🔇' : '🔊';
+
+  // 17/10/2026 (רעיון #14, "שובל חלקיקים"): מופעל פעם אחת על כל אזור
+  // התצוגה, לא בכל רענון מסך - מאזין ל-pointermove גם מעל כרטיס שמתחלף.
+  startParticleTrail(document.getElementById('video-assistant-view'));
+  // 17/10/2026 (רעיון #22, "SOS כשאין אינטראקציה"): כל קליק/הקלדה בתוך
+  // התצוגה מאפסים את טיימר ה-idle, כדי שהמסקוט לא יקפוץ בזמן שבפועל
+  // כן עובדים (רק כשבאמת נתקעים זמן-מה).
+  document.getElementById('video-assistant-view').addEventListener('click', resetIdleTimer);
+  document.getElementById('video-assistant-view').addEventListener('input', resetIdleTimer);
 
   document.getElementById('hub-link-video-assistant').addEventListener('click', async () => {
     let saved = null;
@@ -928,6 +1111,8 @@ export function wireVideoAssistantView() {
     // 16/10/2026: סשנים ישנים שנשמרו לפני כפתור החזרה לא יכילו history -
     // בלי זה BACK על סשן ישן יקרוס על undefined.length.
     if (!state.history) state.history = [];
+    sessionStartTs = Date.now();
+    if (!getMuted()) startAmbientDrone();
     render();
   });
 }
