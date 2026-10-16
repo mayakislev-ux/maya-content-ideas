@@ -93,15 +93,6 @@ export function mascotFace(mood) {
   return MASCOT_FACES[mood] || MASCOT_FACES.happy;
 }
 
-// ===== #8: "אתגר היום" - פורמט קבוע ליום הנתון, לא רנדומלי בכל רענון =====
-// פשוט (לא עוקב היסטוריית שימוש אמיתית - זה פיצ'ר גדול יותר) אבל אמיתי:
-// אותו פורמט לאורך כל היום הזה, משתנה למחרת.
-export function challengeIndexForToday(listLength) {
-  const d = new Date();
-  const seed = d.getFullYear() * 372 + d.getMonth() * 31 + d.getDate();
-  return seed % listLength;
-}
-
 // ======================================================================
 // מכאן ואילך: אפקטים שנוגעים ב-DOM/Audio בפועל - לא ניתנים לבדיקה טהורה,
 // באותו עיקרון כמו video-assistant-sound.js הקיים. כל פונקציה כאן בודקת

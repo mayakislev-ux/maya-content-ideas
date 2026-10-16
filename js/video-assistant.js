@@ -29,7 +29,7 @@ import { showView } from './view-router.js';
 import { openInspirationView } from './inspiration-view.js';
 import { showToast } from './toast.js';
 import {
-  pickEncouragement, domainTheme, formatElapsed, dnaSteps, challengeIndexForToday,
+  pickEncouragement, domainTheme, formatElapsed, dnaSteps,
   mascotMood, mascotFace, burstConfetti, flipReveal, startParticleTrail,
   startAmbientDrone, intensifyAmbientDrone, stopAmbientDrone, cacheDomainInfoLocally,
   readCachedDomainInfo, spinReveal,
@@ -259,17 +259,12 @@ function closeModal() {
 }
 
 // ===== מסך פתיחה: שלושת מסלולי הפתיחה, ניסוח מדויק של מאיה (16/10) =====
-// 17/10/2026 (רעיון #8, "אתגר היום"): פורמט קבוע ליום הזה - משתנה למחרת,
-// לא בכל רענון - מציע לנסות משהו שלא בהכרח המסלול הקבוע שלה.
+// 17/10/2026 (מאיה: "תעיפי את האתגר, לא אהבתי") - רעיון #8 ("אתגר היום")
+// הוסר מהמסך הזה.
 function renderOpening() {
   removeLivePreview();
-  const challenge = FORMATS[challengeIndexForToday(FORMATS.length)];
   cosmicCard(`
     <h2>✨ בוא/י ניצור סרטון</h2>
-    <div class="cosmic-today-challenge">
-      <div class="cosmic-today-challenge__icon">${FORMAT_ICONS[challenge.name] || '🎬'}</div>
-      <div><strong>אתגר היום:</strong> מה דעתך לנסות הפעם את "${escapeHtml(challenge.name)}"?</div>
-    </div>
     <p>מאיפה מתחילים הפעם?</p>
     <div class="cosmic-btn-row">
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-reference-btn">יש לי רפרנס לשכפול</button>

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { pickEncouragement, ENCOURAGEMENTS, domainTheme, formatElapsed, dnaSteps, challengeIndexForToday, mascotMood, mascotFace } from '../js/video-assistant-fx.js';
+import { pickEncouragement, ENCOURAGEMENTS, domainTheme, formatElapsed, dnaSteps, mascotMood, mascotFace } from '../js/video-assistant-fx.js';
 
 test('pickEncouragement never repeats the immediately previous phrase', () => {
   let last = pickEncouragement();
@@ -60,18 +60,6 @@ test('dnaSteps falls back to the "idea" step list for an unknown branch', () => 
 test('dnaSteps at phase 0 of 1 total phases does not divide by zero', () => {
   const steps = dnaSteps('footage', 0, 1);
   assert.equal(steps[0].status, 'current');
-});
-
-test('challengeIndexForToday returns a stable index within range, same all day', () => {
-  const idx1 = challengeIndexForToday(14);
-  const idx2 = challengeIndexForToday(14);
-  assert.equal(idx1, idx2);
-  assert.ok(idx1 >= 0 && idx1 < 14);
-});
-
-test('challengeIndexForToday stays in range for a different list length', () => {
-  const idx = challengeIndexForToday(3);
-  assert.ok(idx >= 0 && idx < 3);
 });
 
 test('mascotMood picks celebrate for summary, winking for a reveal screen, happy as default', () => {
