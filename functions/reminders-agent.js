@@ -519,9 +519,6 @@ exports.agentDateBasedExact0900 = onSchedule({ schedule: '0 9 * * *', timeZone: 
 exports.agentDateBasedExact0900Retry = onSchedule({ schedule: '10 9 * * *', timeZone: 'Asia/Jerusalem', region, secrets },
   () => runExactDateBased(console, '=09:00', { pass: 'retry' }));
 
-  res.json({ ok: true, results: out });
-});
-
 /* 13/10/2026: הפעלה ידנית של הודעת המשימות, באותו רגע.
  *
  * מאיה ביקשה לשלוח את הודעת המשימות של מחזור 6 מיד ולא לחכות ל-16:07,
