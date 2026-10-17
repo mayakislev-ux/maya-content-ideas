@@ -424,11 +424,15 @@ exports.agentDateBased17 = onSchedule({ schedule: '7 17 * * *', timeZone: 'Asia/
    בסוף, מאיה מקבלת אישור לטלפון הפרטי שלה. */
 const MAYA_PRIVATE = '972525533679@c.us';
 
-async function runExactDateBased(logger, tag, { pass = 'main' } = {}) {
-  if (!mayRunNow(logger, `הודעות בדיוק ${tag}`)) return;
+async function runExactDateBased(logger, tag, { pass = 'main', test = null } = {}) {
+  /* test: { date, chatId, markers } - בדיקה מקצה לקצה בענן, עם השורה האמיתית
+     והקבצים האמיתיים, אבל ליעד אחר (הטלפון של מאיה) ולאוסף רישום נפרד, כדי
+     שהבדיקה לא תסמן את השליחה האמיתית של מחר כאילו כבר יצאה. */
+  if (!test && !mayRunNow(logger, `הודעות בדיוק ${tag}`)) return;
   const admin = require('firebase-admin');
   const db = admin.firestore();
-  const today = israelToday();
+  const today = (test && test.date) || israelToday();
+  const results = [];
   const rows = (await loadDateBasedRows()).filter(
     (r) => r['תאריך_שליחה'] === today && (r['שעה'] || '').trim() === tag
   );
@@ -447,7 +451,8 @@ async function runExactDateBased(logger, tag, { pass = 'main' } = {}) {
     }
     const mediaName = (row['מדיה'] || '').trim();
     const audioName = (row['אודיו'] || '').trim();
-    const ref = db.collection('exactSends').doc(`${today}_${type}_${chatId}`.replace(/[/@.]/g, '_'));
+    const ref = db.collection((test && test.markers) || 'exactSends').doc(`${today}_${type}_${chatId}`.replace(/[/@.]/g, '_'));
+    const target = (test && test.chatId) || chatId;
 
     const claimed = await db.runTransaction(async (tx) => {
       const s = await tx.get(ref);
@@ -475,13 +480,13 @@ async function runExactDateBased(logger, tag, { pass = 'main' } = {}) {
     try {
       if (!textSent) {
         const r1 = mediaName
-          ? await sendGreenApiFile(id, token, chatId, `תבניות-הודעות/${mediaName}`, template)
-          : await sendGreenApiMessage(id, token, chatId, template);
+          ? await sendGreenApiFile(id, token, target, `תבניות-הודעות/${mediaName}`, template)
+          : await sendGreenApiMessage(id, token, target, template);
         textSent = r1.ok;
         if (!r1.ok) logger.error(`❌ טקסט נכשל: ${label} -> ${String(r1.raw).slice(0, 300)}`);
       }
       if (textSent && audioName && !audioSent) {
-        const r2 = await sendGreenApiFile(id, token, chatId, `תבניות-הודעות/${audioName}`, null);
+        const r2 = await sendGreenApiFile(id, token, target, `תבניות-הודעות/${audioName}`, null);
         audioSent = r2.ok;
         if (!r2.ok) logger.error(`❌ הקלטה נכשלה: ${label} -> ${String(r2.raw).slice(0, 300)}`);
       }
@@ -496,21 +501,26 @@ async function runExactDateBased(logger, tag, { pass = 'main' } = {}) {
 
     const done = textSent && (audioSent || !audioName);
     await ref.set({ status: done ? 'sent' : 'failed', textSent, audioSent, finishedAt: new Date().toISOString() }, { merge: true });
+    results.push({ label, done, textSent, audioSent });
     if (done) {
-      logger.log(`✅ נשלח בדיוק ב-${tag}: ${label}`);
+      logger.log(`✅ נשלח בדיוק ב-${tag}: ${label}${test ? ' (בדיקה)' : ''}`);
       await sendGreenApiMessage(id, token, MAYA_PRIVATE,
-        `✅ ההודעה "${type}" נשלחה עכשיו לקבוצת ההכרזות של ${row['מחזור']}${audioName ? ', כולל ההקלטה' : ''}.`).catch(() => {});
+        `${test ? '🧪 בדיקה: ' : ''}✅ ההודעה "${type}" נשלחה עכשיו לקבוצת ההכרזות של ${row['מחזור']}${audioName ? ', כולל ההקלטה' : ''}.`).catch(() => {});
     } else if (pass === 'retry') {
       await sendGreenApiMessage(id, token, MAYA_PRIVATE,
         `⚠️ ההודעה "${type}" לקבוצת ${row['מחזור']} לא יצאה במלואה גם בניסיון החוזר (${textSent ? 'הטקסט יצא, ההקלטה לא' : 'לא יצא כלום'}). צריך לשלוח ידנית.`).catch(() => {});
     }
   }
+  return results;
 }
 
 exports.agentDateBasedExact0900 = onSchedule({ schedule: '0 9 * * *', timeZone: 'Asia/Jerusalem', region, secrets },
   () => runExactDateBased(console, '=09:00'));
 exports.agentDateBasedExact0900Retry = onSchedule({ schedule: '10 9 * * *', timeZone: 'Asia/Jerusalem', region, secrets },
   () => runExactDateBased(console, '=09:00', { pass: 'retry' }));
+
+  res.json({ ok: true, results: out });
+});
 
 /* 13/10/2026: הפעלה ידנית של הודעת המשימות, באותו רגע.
  *
