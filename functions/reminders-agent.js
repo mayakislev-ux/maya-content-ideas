@@ -412,6 +412,106 @@ exports.agentDateBased14 = onSchedule({ schedule: '7 14 * * *', timeZone: 'Asia/
    היה לה סוכן בכלל. היא לא נשלחה מעולם, ושום דבר לא התריע. */
 exports.agentDateBased17 = onSchedule({ schedule: '7 17 * * *', timeZone: 'Asia/Jerusalem', region, secrets }, (event) => runDateBased(console, '17'));
 
+/* 17/10/2026 (מאיה: "אני חייבת מחר אוטומציה לשעה 9:00 בבוקר בדיוק, שיעבוד
+   בוודאות גם בלי מחשב"). הסוכנים של הודעות לפי תאריך רצים ב-X:07, ולכן
+   לשליחה "בדיוק" יש תג שעה משלה בטבלה: שעה שמתחילה ב-"=" (למשל =09:00).
+   אף סוכן קיים לא תופס אותה, כי "=09:00" לא מתחיל ב-"09".
+
+   ההבדל מ-runDateBased: כאן כל שליחה נרשמת ב-exactSends לפני שהיא יוצאת,
+   ויש ריצת גיבוי עשר דקות אחר כך שמשלימה רק את מה שלא יצא (הטקסט או
+   ההקלטה). תקלה לא ודאית (רשת שנפלה באמצע) לא נשלחת שוב, כי זה בדיוק מה
+   שגרם לכפילות האמיתית ב-26/07; במקום זה מאיה מקבלת הודעה לבדוק.
+   בסוף, מאיה מקבלת אישור לטלפון הפרטי שלה. */
+const MAYA_PRIVATE = '972525533679@c.us';
+
+async function runExactDateBased(logger, tag, { pass = 'main' } = {}) {
+  if (!mayRunNow(logger, `הודעות בדיוק ${tag}`)) return;
+  const admin = require('firebase-admin');
+  const db = admin.firestore();
+  const today = israelToday();
+  const rows = (await loadDateBasedRows()).filter(
+    (r) => r['תאריך_שליחה'] === today && (r['שעה'] || '').trim() === tag
+  );
+  if (rows.length === 0) return;
+  const { id, token } = creds();
+  for (const row of rows) {
+    const chatId = (row['chatId_ווטסאפ'] || '').trim();
+    const type = row['סוג_הודעה'];
+    const label = `מחזור '${row['מחזור']}' הודעה '${type}' (${today} ${tag})`;
+    if (!chatId.endsWith('@g.us')) { logger.warn(`⛔ דילוג: ${label} - אין chatId אמיתי.`); continue; }
+    const template = await fetchRaw(`תבניות-הודעות/${type}.txt`);
+    if (template == null) {
+      logger.error(`❌ ${label} - אין תבנית, לא נשלח כלום`);
+      await sendGreenApiMessage(id, token, MAYA_PRIVATE, `⚠️ ההודעה המתוזמנת "${type}" לא יצאה: לא נמצאה התבנית שלה.`).catch(() => {});
+      continue;
+    }
+    const mediaName = (row['מדיה'] || '').trim();
+    const audioName = (row['אודיו'] || '').trim();
+    const ref = db.collection('exactSends').doc(`${today}_${type}_${chatId}`.replace(/[/@.]/g, '_'));
+
+    const claimed = await db.runTransaction(async (tx) => {
+      const s = await tx.get(ref);
+      const d = s.exists ? s.data() : {};
+      if (d.status === 'uncertain') return null; // כבר דווח למאיה
+      if (d.status === 'sending') {
+        // ריצת הגיבוי מוצאת שליחה שנתקעה באמצע: לא ידוע אם יצאה. לא שולחים שוב
+        if (pass === 'retry') { tx.set(ref, { status: 'uncertain' }, { merge: true }); return { stuck: true }; }
+        return null;
+      }
+      if (d.textSent && (d.audioSent || !audioName)) return null; // הכל כבר יצא
+      tx.set(ref, { status: 'sending', pass, label, chatId, at: new Date().toISOString() }, { merge: true });
+      return d;
+    });
+    if (!claimed) { logger.log(`⏭ ${label}: כבר נשלח או בטיפול`); continue; }
+    if (claimed.stuck) {
+      logger.error(`❓ ${label}: השליחה הראשית נתקעה באמצע`);
+      await sendGreenApiMessage(id, token, MAYA_PRIVATE,
+        `⚠️ ההודעה "${type}" לקבוצת ${row['מחזור']}: השליחה של 9:00 נתקעה באמצע ולא ידוע אם יצאה. כדאי להציץ בקבוצה. המערכת לא תשלח שוב לבד.`).catch(() => {});
+      continue;
+    }
+
+    let textSent = Boolean(claimed.textSent);
+    let audioSent = Boolean(claimed.audioSent);
+    try {
+      if (!textSent) {
+        const r1 = mediaName
+          ? await sendGreenApiFile(id, token, chatId, `תבניות-הודעות/${mediaName}`, template)
+          : await sendGreenApiMessage(id, token, chatId, template);
+        textSent = r1.ok;
+        if (!r1.ok) logger.error(`❌ טקסט נכשל: ${label} -> ${String(r1.raw).slice(0, 300)}`);
+      }
+      if (textSent && audioName && !audioSent) {
+        const r2 = await sendGreenApiFile(id, token, chatId, `תבניות-הודעות/${audioName}`, null);
+        audioSent = r2.ok;
+        if (!r2.ok) logger.error(`❌ הקלטה נכשלה: ${label} -> ${String(r2.raw).slice(0, 300)}`);
+      }
+    } catch (err) {
+      // רשת שנפלה באמצע: לא ידוע אם יצא. לא שולחים שוב, מבקשים ממאיה לבדוק
+      await ref.set({ status: 'uncertain', textSent, audioSent, error: String(err && err.message).slice(0, 300) }, { merge: true });
+      logger.error(`❓ ${label}: תקלה באמצע, לא ידוע אם יצא - ${err && err.message}`);
+      await sendGreenApiMessage(id, token, MAYA_PRIVATE,
+        `⚠️ ההודעה "${type}" לקבוצת ${row['מחזור']}: הייתה תקלה באמצע השליחה ולא ידוע אם יצאה. כדאי להציץ בקבוצה. המערכת לא תשלח שוב לבד כדי לא לשלוח פעמיים.`).catch(() => {});
+      continue;
+    }
+
+    const done = textSent && (audioSent || !audioName);
+    await ref.set({ status: done ? 'sent' : 'failed', textSent, audioSent, finishedAt: new Date().toISOString() }, { merge: true });
+    if (done) {
+      logger.log(`✅ נשלח בדיוק ב-${tag}: ${label}`);
+      await sendGreenApiMessage(id, token, MAYA_PRIVATE,
+        `✅ ההודעה "${type}" נשלחה עכשיו לקבוצת ההכרזות של ${row['מחזור']}${audioName ? ', כולל ההקלטה' : ''}.`).catch(() => {});
+    } else if (pass === 'retry') {
+      await sendGreenApiMessage(id, token, MAYA_PRIVATE,
+        `⚠️ ההודעה "${type}" לקבוצת ${row['מחזור']} לא יצאה במלואה גם בניסיון החוזר (${textSent ? 'הטקסט יצא, ההקלטה לא' : 'לא יצא כלום'}). צריך לשלוח ידנית.`).catch(() => {});
+    }
+  }
+}
+
+exports.agentDateBasedExact0900 = onSchedule({ schedule: '0 9 * * *', timeZone: 'Asia/Jerusalem', region, secrets },
+  () => runExactDateBased(console, '=09:00'));
+exports.agentDateBasedExact0900Retry = onSchedule({ schedule: '10 9 * * *', timeZone: 'Asia/Jerusalem', region, secrets },
+  () => runExactDateBased(console, '=09:00', { pass: 'retry' }));
+
 /* 13/10/2026: הפעלה ידנית של הודעת המשימות, באותו רגע.
  *
  * מאיה ביקשה לשלוח את הודעת המשימות של מחזור 6 מיד ולא לחכות ל-16:07,
@@ -442,4 +542,4 @@ exports.taskMessageNow = onRequest({ region, maxInstances: 1, secrets }, async (
   }
 });
 
-module.exports._internal = { parseCsv, reminderDateFor, addDays, renderReminder, parsePollTemplate };
+module.exports._internal = { parseCsv, reminderDateFor, addDays, renderReminder, parsePollTemplate, runExactDateBased, sendGreenApiMessage, sendGreenApiFile, fetchRaw };
