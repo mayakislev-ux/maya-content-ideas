@@ -15,30 +15,24 @@ test('footage path: footage -> relevance check -> "what did you film?"', () => {
   assert.equal(s.screen, 'footage-type-choice');
 });
 
-test('footage, speech clip, find-a-moment goal -> shared Hook/Point/Proof/End ending -> summary', () => {
+test('footage, speech clip: one sequence (find -> shorten -> sharpen -> done), not a choice (18/10)', () => {
   let s = nextStep(INITIAL_STATE, { type: 'CHOOSE_FOOTAGE' });
   s = nextStep(s, { type: 'RELEVANCE_CONFIRMED' });
   s = nextStep(s, { type: 'FOOTAGE_IS_SPEECH' });
-  assert.equal(s.screen, 'footage-speech-goal');
-  s = nextStep(s, { type: 'FOOTAGE_SPEECH_FIND_MOMENT' });
   assert.equal(s.screen, 'footage-speech-find');
-  s = nextStep(s, { type: 'FOOTAGE_SPEECH_READY' });
+  s = nextStep(s, { type: 'FOOTAGE_SPEECH_NEXT' });
+  assert.equal(s.screen, 'footage-speech-shorten');
+  s = nextStep(s, { type: 'FOOTAGE_SPEECH_NEXT' });
+  assert.equal(s.screen, 'footage-speech-sharpen');
+  s = nextStep(s, { type: 'FOOTAGE_SPEECH_NEXT' });
   assert.equal(s.screen, 'footage-speech-done');
   s = nextStep(s, { type: 'FOOTAGE_SPEECH_DONE' });
   assert.equal(s.screen, 'summary');
 });
 
-test('footage, speech clip, the other two goals also reach the shared ending', () => {
-  const base = { ...INITIAL_STATE, screen: 'footage-speech-goal', branch: 'footage' };
-  let s = nextStep(base, { type: 'FOOTAGE_SPEECH_SHORTEN' });
-  assert.equal(s.screen, 'footage-speech-shorten');
-  s = nextStep(s, { type: 'FOOTAGE_SPEECH_READY' });
-  assert.equal(s.screen, 'footage-speech-done');
-
-  s = nextStep(base, { type: 'FOOTAGE_SPEECH_SHARPEN' });
-  assert.equal(s.screen, 'footage-speech-sharpen');
-  s = nextStep(s, { type: 'FOOTAGE_SPEECH_READY' });
-  assert.equal(s.screen, 'footage-speech-done');
+test('FOOTAGE_SPEECH_NEXT throws from a screen outside the sequence', () => {
+  const base = { ...INITIAL_STATE, screen: 'footage-visual-scan', branch: 'footage' };
+  assert.throws(() => nextStep(base, { type: 'FOOTAGE_SPEECH_NEXT' }), /FOOTAGE_SPEECH_NEXT not valid/);
 });
 
 test('footage, visual clip, found a moment -> extraction guidance -> summary', () => {
@@ -52,7 +46,7 @@ test('footage, visual clip, found a moment -> extraction guidance -> summary', (
   assert.equal(s.screen, 'summary');
 });
 
-test('footage, visual clip, no moment found -> reframe into message/objection/story -> summary', () => {
+test('footage, visual clip, no moment found -> reframe into message/story only (18/10: objection removed) -> summary', () => {
   const base = { ...INITIAL_STATE, screen: 'footage-visual-scan', branch: 'footage' };
   let s = nextStep(base, { type: 'FOOTAGE_VISUAL_NO_MOMENT' });
   assert.equal(s.screen, 'footage-visual-reframe');
@@ -60,10 +54,6 @@ test('footage, visual clip, no moment found -> reframe into message/objection/st
   let msg = nextStep(s, { type: 'FOOTAGE_VISUAL_FOUND_MESSAGE' });
   assert.equal(msg.screen, 'footage-visual-message');
   assert.equal(nextStep(msg, { type: 'FOOTAGE_VISUAL_READY' }).screen, 'summary');
-
-  let obj = nextStep(s, { type: 'FOOTAGE_VISUAL_FOUND_OBJECTION' });
-  assert.equal(obj.screen, 'footage-visual-objection');
-  assert.equal(nextStep(obj, { type: 'FOOTAGE_VISUAL_READY' }).screen, 'summary');
 
   let story = nextStep(s, { type: 'FOOTAGE_VISUAL_FOUND_STORY' });
   assert.equal(story.screen, 'footage-visual-story');

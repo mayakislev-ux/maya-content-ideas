@@ -48,9 +48,9 @@ const PHASE_BY_SCREEN = {
   'footage-type-choice': 2, 'format-choice': 2, 'needs-script-check': 2, 'has-idea-choice': 2,
   transcribe: 3, prompt1: 3, 'her-words': 3, prompt2: 3, 'read-aloud': 3,
   'scratch-intro': 3, 'scratch-dump': 3, 'scratch-hook': 3, 'scratch-hook-reinforce': 3, 'scratch-distill': 3,
-  'footage-speech-goal': 3, 'footage-speech-find': 3, 'footage-speech-shorten': 3, 'footage-speech-sharpen': 3, 'footage-speech-done': 3,
+  'footage-speech-find': 3, 'footage-speech-shorten': 3, 'footage-speech-sharpen': 3, 'footage-speech-done': 3,
   'footage-visual-scan': 3, 'footage-visual-extract': 3, 'footage-visual-reframe': 3,
-  'footage-visual-message': 3, 'footage-visual-objection': 3, 'footage-visual-story': 3,
+  'footage-visual-message': 3, 'footage-visual-story': 3,
   summary: 4,
 };
 
@@ -416,26 +416,15 @@ function renderFootageTypeChoice() {
   document.getElementById('va-footage-visual-btn').addEventListener('click', () => dispatch({ type: 'FOOTAGE_IS_VISUAL' }));
 }
 
-// --- תת-ענף "יש בו דיבור" ---
-function renderFootageSpeechGoal() {
-  cosmicCard(`
-    <h2>מה המטרה שלך עם הקטע?</h2>
-    <div class="cosmic-btn-row">
-      <button type="button" class="cosmic-btn" id="va-speech-find-btn">למצוא ממנו רגע חזק לריל</button>
-      <button type="button" class="cosmic-btn" id="va-speech-shorten-btn">לקצר קטע שכבר בחרתי</button>
-      <button type="button" class="cosmic-btn" id="va-speech-sharpen-btn">להפוך אותו לקטע יותר חד ושיווקי</button>
-    </div>
-  `);
-  document.getElementById('va-speech-find-btn').addEventListener('click', () => dispatch({ type: 'FOOTAGE_SPEECH_FIND_MOMENT' }));
-  document.getElementById('va-speech-shorten-btn').addEventListener('click', () => dispatch({ type: 'FOOTAGE_SPEECH_SHORTEN' }));
-  document.getElementById('va-speech-sharpen-btn').addEventListener('click', () => dispatch({ type: 'FOOTAGE_SPEECH_SHARPEN' }));
-}
-
+// --- תת-ענף "יש בו דיבור" - 18/10/2026 (מאיה: "כל המטרות כאן נכונות,
+// יש בלבול") - לא בחירה בין 3 מסלולים, אלא רצף אחד: קודם מוצאים רגע
+// חזק, אז מקצרים אותו, ואז מחדדים אותו שיווקית. כל השלבים רלוונטיים
+// לאותו קטע. גם תוקן ניסוח לגוף פונה לנשים וגברים (X/י) בכל השלבים. ---
 function renderFootageSpeechFind() {
   cosmicCard(`
-    <h2>למצוא רגע חזק</h2>
-    <p>חפשי משפט שיש בו דעה / הפתעה / טעות / תוצאה / ויכוח. סמני 20–60 שניות סביבו.</p>
-    <p>עכשיו תשאלי: האם אפשר להבין את הקטע גם בלי מה שהיה לפני?<br>אם לא → תוסיפי משפט פתיחה קטן. אם כן → מתחילים משם.</p>
+    <h2>שלב 1: למצוא רגע חזק</h2>
+    <p>חפש/י משפט שיש בו דעה / הפתעה / טעות / תוצאה / ויכוח. סמן/י 20–60 שניות סביבו.</p>
+    <p>עכשיו שאל/י את עצמך: האם אפשר להבין את הקטע גם בלי מה שהיה לפני?<br>אם לא → הוסיף/י משפט פתיחה קטן. אם כן → מתחילים משם.</p>
     <p style="font-weight:700;text-align:right;margin-bottom:4px">מה להשאיר?</p>
     <ul style="text-align:right;padding-inline-start:20px;margin-bottom:14px">
       <li>משפט שפותח חזק</li>
@@ -451,16 +440,16 @@ function renderFootageSpeechFind() {
       <li>כל משפט שלא מקדם את הפואנטה</li>
     </ul>
     <div class="cosmic-btn-row" style="margin-top:14px">
-      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-speech-find-ready-btn">סיימתי ללקט</button>
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-speech-find-next-btn">להמשיך</button>
     </div>
   `);
-  document.getElementById('va-speech-find-ready-btn').addEventListener('click', () => dispatch({ type: 'FOOTAGE_SPEECH_READY' }));
+  document.getElementById('va-speech-find-next-btn').addEventListener('click', () => dispatch({ type: 'FOOTAGE_SPEECH_NEXT' }));
 }
 
 function renderFootageSpeechShorten() {
   cosmicCard(`
-    <h2>לקצר קטע שכבר בחרתי</h2>
-    <p>עברי על הצ'קליסט:</p>
+    <h2>שלב 2: לקצר</h2>
+    <p>עבור/י על הצ'קליסט:</p>
     <ul style="text-align:right;padding-inline-start:20px">
       <li>האם ההתחלה מעניינת תוך 2 שניות?</li>
       <li>האם אפשר למחוק את המשפט הראשון?</li>
@@ -470,15 +459,15 @@ function renderFootageSpeechShorten() {
       <li>אפשר לקצר 30% בלי לאבד משמעות?</li>
     </ul>
     <div class="cosmic-btn-row" style="margin-top:14px">
-      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-speech-shorten-ready-btn">עברתי על הכל</button>
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-speech-shorten-next-btn">להמשיך</button>
     </div>
   `);
-  document.getElementById('va-speech-shorten-ready-btn').addEventListener('click', () => dispatch({ type: 'FOOTAGE_SPEECH_READY' }));
+  document.getElementById('va-speech-shorten-next-btn').addEventListener('click', () => dispatch({ type: 'FOOTAGE_SPEECH_NEXT' }));
 }
 
 function renderFootageSpeechSharpen() {
   cosmicCard(`
-    <h2>להפוך לקטע יותר חד ושיווקי</h2>
+    <h2>שלב 3: לחדד שיווקית</h2>
     <p>קטע שיווקי טוב עומד בשלושה דברים:</p>
     <ul style="text-align:right;padding-inline-start:20px;margin-bottom:14px">
       <li>יש בו אמירה אחת ברורה</li>
@@ -487,15 +476,15 @@ function renderFootageSpeechSharpen() {
     </ul>
     <p style="font-weight:700;text-align:right;margin-bottom:4px">מה לעשות:</p>
     <ul style="text-align:right;padding-inline-start:20px">
-      <li>הוסיפי משפט פתיחה שאומר במפורש את התועלת או הנקודה</li>
-      <li>ודאי שיש בסוף מסקנה ברורה או קריאה לפעולה</li>
-      <li>הוסיפי טקסט על המסך שמדגיש את הנקודה המרכזית</li>
+      <li>הוסיפ/י משפט פתיחה שאומר במפורש את התועלת או הנקודה</li>
+      <li>ודא/י שיש בסוף מסקנה ברורה או קריאה לפעולה</li>
+      <li>הוסיפ/י טקסט על המסך שמדגיש את הנקודה המרכזית</li>
     </ul>
     <div class="cosmic-btn-row" style="margin-top:14px">
-      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-speech-sharpen-ready-btn">חידדתי את הקטע</button>
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-speech-sharpen-next-btn">להמשיך</button>
     </div>
   `);
-  document.getElementById('va-speech-sharpen-ready-btn').addEventListener('click', () => dispatch({ type: 'FOOTAGE_SPEECH_READY' }));
+  document.getElementById('va-speech-sharpen-next-btn').addEventListener('click', () => dispatch({ type: 'FOOTAGE_SPEECH_NEXT' }));
 }
 
 function renderFootageSpeechDone() {
@@ -518,11 +507,11 @@ function renderFootageSpeechDone() {
 function renderFootageVisualScan() {
   cosmicCard(`
     <h2>עוברים על כל הקטע פעם אחת</h2>
-    <p>צפי בקטע מההתחלה עד הסוף וחפשי רגע שיכול להיות מעניין גם בלי כל מה שמסביב.</p>
-    <p style="font-weight:700;text-align:right;margin-bottom:4px">חפשי אחד מאלה:</p>
+    <p>צפה/י בקטע מההתחלה עד הסוף וחפש/י רגע שיכול להיות מעניין גם בלי כל מה שמסביב.</p>
+    <p style="font-weight:700;text-align:right;margin-bottom:4px">חפש/י אחד מאלה:</p>
     <ul style="text-align:right;padding-inline-start:20px">
       <li>שאלה או תשובה טובה</li>
-      <li>תגובה של לקוחה</li>
+      <li>תגובה של לקוח/ה</li>
       <li>רגע מפתיע / מצחיק / מסקרן</li>
       <li>משהו שמוכיח תוצאה</li>
       <li>משהו ששובר התנגדות</li>
@@ -541,11 +530,11 @@ function renderFootageVisualExtract() {
   const card = cosmicCard(`
     <h2>מלקטים את הרגע</h2>
     <ul class="cosmic-summary-list">
-      <li><span class="cosmic-summary-num">1</span><div>חתכי כמה שיותר קרוב לרגע החזק</div></li>
-      <li><span class="cosmic-summary-num">2</span><div>תשאירי רק מה שחייבים כדי להבין אותו</div></li>
-      <li><span class="cosmic-summary-num">3</span><div>שאלי: האם צריך משפט על המסך כדי להבין למה זה מעניין?</div></li>
-      <li><span class="cosmic-summary-num">4</span><div>אם כן → כתבי הוק קצר</div></li>
-      <li><span class="cosmic-summary-num">5</span><div>הוסיפי כתוביות</div></li>
+      <li><span class="cosmic-summary-num">1</span><div>חתוך/י כמה שיותר קרוב לרגע החזק</div></li>
+      <li><span class="cosmic-summary-num">2</span><div>השאר/י רק מה שחייבים כדי להבין אותו</div></li>
+      <li><span class="cosmic-summary-num">3</span><div>שאל/י: האם צריך משפט על המסך כדי להבין למה זה מעניין?</div></li>
+      <li><span class="cosmic-summary-num">4</span><div>אם כן → כתוב/י הוק קצר</div></li>
+      <li><span class="cosmic-summary-num">5</span><div>הוסיפ/י כתוביות</div></li>
       <li><span class="cosmic-summary-num">6</span><div>סיימת</div></li>
     </ul>
     <div class="cosmic-btn-row">
@@ -559,22 +548,27 @@ function renderFootageVisualExtract() {
   });
 }
 
+// 18/10/2026 (מאיה: "מצאתי שאלה/התנגדות חוסם... רגע מסר וסיפור בלי עוד
+// כפתור, והסבר קטן ליד... אבל לא לסגור רק לסיפורי לקוחות, זה יכול להיות
+// גם משהו אישי או משקף תדמות") - צומצם לשני כפתורים בלבד, כל אחד עם
+// ההסבר שלו צמוד בתוכו (כמו תיקון "מה צילמת?"), והניסוח לא מניח יותר
+// שמדובר דווקא בלקוח/ה - גם משהו אישי או כללי נכנס כאן.
 function renderFootageVisualReframe() {
   cosmicCard(`
-    <h2>מעולה. עכשיו נבדוק איזה רעיון החומר הזה יכול להמחיש</h2>
-    <ul style="text-align:right;padding-inline-start:20px">
-      <li>מה קורה פה ששווה להסביר? (שלב מקצועי, תהליך, החלטה, משהו שעשית)</li>
-      <li>איזה פחד / שאלה / אמונה של הלקוח החומר הזה יכול לענות עליה?</li>
-      <li>יש סיפור מאחורי מי או מה שמצולם פה? למה הלקוחה הגיעה? מה היה לפני? מה השתנה?</li>
-    </ul>
-    <div class="cosmic-btn-row" style="margin-top:14px">
-      <button type="button" class="cosmic-btn" id="va-visual-msg-btn">מצאתי מסר</button>
-      <button type="button" class="cosmic-btn" id="va-visual-obj-btn">מצאתי שאלה/התנגדות</button>
-      <button type="button" class="cosmic-btn" id="va-visual-story-btn">מצאתי סיפור</button>
+    <h2>מה החומר הזה יכול להמחיש?</h2>
+    <p>עבר/י רגע על הקטע ותשאל/י את עצמך:</p>
+    <div class="cosmic-btn-row">
+      <button type="button" class="cosmic-btn cosmic-btn--option" id="va-visual-msg-btn">
+        <span class="cosmic-btn__title">מצאתי מסר</span>
+        <span class="cosmic-btn__subtitle">מה קורה פה ששווה להסביר? שלב מקצועי, תהליך, החלטה, משהו שעשית</span>
+      </button>
+      <button type="button" class="cosmic-btn cosmic-btn--option" id="va-visual-story-btn">
+        <span class="cosmic-btn__title">מצאתי סיפור</span>
+        <span class="cosmic-btn__subtitle">יש סיפור מאחורי מה שמצולם פה? לא חייב להיות לקוח/ה - יכול להיות משהו אישי, שינוי, תהליך, או רגע שמשקף מי את/ה</span>
+      </button>
     </div>
   `);
   document.getElementById('va-visual-msg-btn').addEventListener('click', () => dispatch({ type: 'FOOTAGE_VISUAL_FOUND_MESSAGE' }));
-  document.getElementById('va-visual-obj-btn').addEventListener('click', () => dispatch({ type: 'FOOTAGE_VISUAL_FOUND_OBJECTION' }));
   document.getElementById('va-visual-story-btn').addEventListener('click', () => dispatch({ type: 'FOOTAGE_VISUAL_FOUND_STORY' }));
 }
 
@@ -594,10 +588,6 @@ function renderFootageVisualOutcome({ title, body }) {
 
 function renderFootageVisualMessage() {
   renderFootageVisualOutcome({ title: 'בונים סביב מסר', body: 'הוק → הסבר קצר → הקטעים ממחישים.' });
-}
-
-function renderFootageVisualObjection() {
-  renderFootageVisualOutcome({ title: 'בונים סביב שאלה/התנגדות', body: 'פותחים בשאלה → עונים → משתמשים בחומר כהוכחה.' });
 }
 
 function renderFootageVisualStory() {
@@ -1164,7 +1154,6 @@ function render() {
   if (state.screen === 'pulled-idea') return renderPulledIdea();
   if (state.screen === 'pulled-reference') return renderPulledReference();
   if (state.screen === 'footage-type-choice') return renderFootageTypeChoice();
-  if (state.screen === 'footage-speech-goal') return renderFootageSpeechGoal();
   if (state.screen === 'footage-speech-find') return renderFootageSpeechFind();
   if (state.screen === 'footage-speech-shorten') return renderFootageSpeechShorten();
   if (state.screen === 'footage-speech-sharpen') return renderFootageSpeechSharpen();
@@ -1173,7 +1162,6 @@ function render() {
   if (state.screen === 'footage-visual-extract') return renderFootageVisualExtract();
   if (state.screen === 'footage-visual-reframe') return renderFootageVisualReframe();
   if (state.screen === 'footage-visual-message') return renderFootageVisualMessage();
-  if (state.screen === 'footage-visual-objection') return renderFootageVisualObjection();
   if (state.screen === 'footage-visual-story') return renderFootageVisualStory();
   if (state.screen === 'format-choice') return renderFormatChoice();
   if (state.screen === 'needs-script-check') return renderNeedsScriptCheck();

@@ -83,25 +83,28 @@ function step(state, action) {
     // מלא - מחליף את "משתמש/ת בו כמו שהוא / רוצה להמיר לפורמט אחר" בליווי
     // אמיתי ללקיטת הקטע, לפי אם יש בו דיבור או שהוא ויזואלי) =====
     case 'FOOTAGE_IS_SPEECH':
-      return { ...state, screen: 'footage-speech-goal' };
+      return { ...state, screen: 'footage-speech-find' };
     case 'FOOTAGE_IS_VISUAL':
       return { ...state, screen: 'footage-visual-scan' };
 
-    // --- תת-ענף "יש בו דיבור" - שלוש מטרות אפשריות, כולן מסתיימות באותו
-    // מסך סיום (Hook → Point → Proof → End) ---
-    case 'FOOTAGE_SPEECH_FIND_MOMENT':
-      return { ...state, screen: 'footage-speech-find' };
-    case 'FOOTAGE_SPEECH_SHORTEN':
-      return { ...state, screen: 'footage-speech-shorten' };
-    case 'FOOTAGE_SPEECH_SHARPEN':
-      return { ...state, screen: 'footage-speech-sharpen' };
-    case 'FOOTAGE_SPEECH_READY':
-      return { ...state, screen: 'footage-speech-done' };
+    // --- תת-ענף "יש בו דיבור" - 18/10/2026 (מאיה: "כל המטרות כאן נכונות,
+    // יש פה בלבול") - זה לא באמת 3 מסלולים נפרדים שבוחרים ביניהם, זה 3
+    // שלבים שכולם רלוונטיים לאותו קטע: קודם מוצאים רגע חזק, אז מקצרים
+    // אותו, ואז מחדדים אותו שיווקית. רצף אחד, לא בחירה. מסתיים באותו מסך
+    // סיום (Hook → Point → Proof → End). אותו דפוס כמו CONFIRM_DONE -
+    // הצעד הבא נקבע לפי המסך הנוכחי. ---
+    case 'FOOTAGE_SPEECH_NEXT':
+      if (state.screen === 'footage-speech-find') return { ...state, screen: 'footage-speech-shorten' };
+      if (state.screen === 'footage-speech-shorten') return { ...state, screen: 'footage-speech-sharpen' };
+      if (state.screen === 'footage-speech-sharpen') return { ...state, screen: 'footage-speech-done' };
+      throw new Error(`FOOTAGE_SPEECH_NEXT not valid from screen "${state.screen}"`);
     case 'FOOTAGE_SPEECH_DONE':
       return { ...state, screen: 'summary' };
 
     // --- תת-ענף "קטע ויזואלי" - קודם סריקה אחת, ואז או שיש רגע לחלץ או
-    // שהופכים את החומר לתוכן אחר (מסר / שאלה-התנגדות / סיפור) ---
+    // שהופכים את החומר לתוכן אחר. 18/10/2026 (מאיה: "מצאתי שאלה/התנגדות
+    // חוסם... אז רגע מסר וסיפור בלי עוד כפתור") - "שאלה/התנגדות" הוסר,
+    // נשארו רק מסר וסיפור. ---
     case 'FOOTAGE_VISUAL_FOUND_MOMENT':
       return { ...state, screen: 'footage-visual-extract' };
     case 'FOOTAGE_VISUAL_EXTRACT_DONE':
@@ -110,8 +113,6 @@ function step(state, action) {
       return { ...state, screen: 'footage-visual-reframe' };
     case 'FOOTAGE_VISUAL_FOUND_MESSAGE':
       return { ...state, screen: 'footage-visual-message' };
-    case 'FOOTAGE_VISUAL_FOUND_OBJECTION':
-      return { ...state, screen: 'footage-visual-objection' };
     case 'FOOTAGE_VISUAL_FOUND_STORY':
       return { ...state, screen: 'footage-visual-story' };
     case 'FOOTAGE_VISUAL_READY':

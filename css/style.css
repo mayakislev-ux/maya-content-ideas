@@ -6402,11 +6402,15 @@ body[data-plan="refs"] .view-tabs-scroll { justify-content: center; }
 .cosmic-btn--primary:hover { background: #ff53bb; }
 /* 18/10/2026 (מאיה: "תהיה למעלה ולא כזה קטן על הכפתור, שיהיה מהיר
    ונגיש") - כפתור עם כותרת + הסבר קצר צמוד, לבחירה בין כמה אפשרויות
-   שוות במבט אחד, בלי פסקה נפרדת למעלה שצריך להתאים לכפתור למטה. */
+   שוות במבט אחד, בלי פסקה נפרדת למעלה שצריך להתאים לכפתור למטה.
+   18/10/2026 שוב (מאיה: "משהו משמאל לימין במקום מימין לשמאל") - הבאג:
+   ב-flex-direction:column, ציר הרוחב (cross axis) מיושר לפי "start"/"end"
+   לוגיים, ו-RTL הופך אותם - flex-end באמת מתורגם ל"inline-end" שב-RTL
+   הוא דווקא **שמאל**, לא ימין. flex-start הוא ה"ימין" הנכון ב-RTL. */
 .cosmic-btn--option {
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
+  align-items: flex-start;
   gap: 4px;
   text-align: right;
   padding: 12px 18px;
