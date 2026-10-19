@@ -16,6 +16,11 @@ export const INITIAL_STATE = {
   screen: 'opening', branch: null, hook: null, hookReinforcement: null, herWords: null,
   rerollCount: 0, ideaDescription: null, searchKeywords: null, formatFor: null,
   selectedFormat: null, rawDump: null, draftScript: null, finalScript: null, history: [],
+  // 18/10/2026 (מאיה: "הסיכום בסוף כללי מדי, לא מובן איך אני בונה את
+  // הסרטון שלי"): בלי שני השדות האלה אין שום זכר בסטייט לאיזה מסלול
+  // קטע-מצולם ספציפי עברה (דיבור, או ויזואלי-רגע/מסר/סיפור) - מסך
+  // הסיכום לא יכול להיות קונקרטי בלעדיהם.
+  footageKind: null, footageOutcome: null,
 };
 
 function withoutHistory(state) {
@@ -83,9 +88,9 @@ function step(state, action) {
     // מלא - מחליף את "משתמש/ת בו כמו שהוא / רוצה להמיר לפורמט אחר" בליווי
     // אמיתי ללקיטת הקטע, לפי אם יש בו דיבור או שהוא ויזואלי) =====
     case 'FOOTAGE_IS_SPEECH':
-      return { ...state, screen: 'footage-speech-find' };
+      return { ...state, screen: 'footage-speech-find', footageKind: 'speech' };
     case 'FOOTAGE_IS_VISUAL':
-      return { ...state, screen: 'footage-visual-scan' };
+      return { ...state, screen: 'footage-visual-scan', footageKind: 'visual' };
 
     // --- תת-ענף "יש בו דיבור" - 18/10/2026 (מאיה: "כל המטרות כאן נכונות,
     // יש פה בלבול") - זה לא באמת 3 מסלולים נפרדים שבוחרים ביניהם, זה 3
@@ -106,15 +111,15 @@ function step(state, action) {
     // חוסם... אז רגע מסר וסיפור בלי עוד כפתור") - "שאלה/התנגדות" הוסר,
     // נשארו רק מסר וסיפור. ---
     case 'FOOTAGE_VISUAL_FOUND_MOMENT':
-      return { ...state, screen: 'footage-visual-extract' };
+      return { ...state, screen: 'footage-visual-extract', footageOutcome: 'extract' };
     case 'FOOTAGE_VISUAL_EXTRACT_DONE':
       return { ...state, screen: 'summary' };
     case 'FOOTAGE_VISUAL_NO_MOMENT':
       return { ...state, screen: 'footage-visual-reframe' };
     case 'FOOTAGE_VISUAL_FOUND_MESSAGE':
-      return { ...state, screen: 'footage-visual-message' };
+      return { ...state, screen: 'footage-visual-message', footageOutcome: 'message' };
     case 'FOOTAGE_VISUAL_FOUND_STORY':
-      return { ...state, screen: 'footage-visual-story' };
+      return { ...state, screen: 'footage-visual-story', footageOutcome: 'story' };
     case 'FOOTAGE_VISUAL_READY':
       return { ...state, screen: 'summary' };
 

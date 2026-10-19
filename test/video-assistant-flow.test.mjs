@@ -60,6 +60,28 @@ test('footage, visual clip, no moment found -> reframe into message/story only (
   assert.equal(nextStep(story, { type: 'FOOTAGE_VISUAL_READY' }).screen, 'summary');
 });
 
+test('footage branch records which path was actually taken, for a concrete summary (18/10)', () => {
+  // 18/10/2026 (מאיה: "הסיכום כללי מדי, לא מובן איך אני בונה את הסרטון
+  // שלי") - בלי footageKind/footageOutcome מסך הסיכום לא יכול לדעת מה
+  // באמת קרה במסלול הזה.
+  let speech = nextStep(INITIAL_STATE, { type: 'CHOOSE_FOOTAGE' });
+  speech = nextStep(speech, { type: 'RELEVANCE_CONFIRMED' });
+  speech = nextStep(speech, { type: 'FOOTAGE_IS_SPEECH' });
+  assert.equal(speech.footageKind, 'speech');
+
+  let visual = nextStep(INITIAL_STATE, { type: 'CHOOSE_FOOTAGE' });
+  visual = nextStep(visual, { type: 'RELEVANCE_CONFIRMED' });
+  visual = nextStep(visual, { type: 'FOOTAGE_IS_VISUAL' });
+  assert.equal(visual.footageKind, 'visual');
+
+  const extracted = nextStep(visual, { type: 'FOOTAGE_VISUAL_FOUND_MOMENT' });
+  assert.equal(extracted.footageOutcome, 'extract');
+
+  const reframed = nextStep(visual, { type: 'FOOTAGE_VISUAL_NO_MOMENT' });
+  assert.equal(nextStep(reframed, { type: 'FOOTAGE_VISUAL_FOUND_MESSAGE' }).footageOutcome, 'message');
+  assert.equal(nextStep(reframed, { type: 'FOOTAGE_VISUAL_FOUND_STORY' }).footageOutcome, 'story');
+});
+
 test('reference path: opening choice leads to a has/pull sub-choice first (17/10)', () => {
   let s = nextStep(INITIAL_STATE, { type: 'CHOOSE_REFERENCE' });
   assert.equal(s.screen, 'reference-source-choice');
