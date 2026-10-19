@@ -11,6 +11,7 @@ import { getProfile, saveProfile } from './user-profile.js';
 
 const guessClientDomainFn = httpsCallable(functions, 'guessClientDomain');
 const suggestSearchKeywordsFn = httpsCallable(functions, 'suggestSearchKeywords');
+const extractOpeningHookFn = httpsCallable(functions, 'extractOpeningHook');
 
 /** רעיונות פעילים של הלקוחה הנוכחית - קריאה חד-פעמית, לא listener */
 export async function fetchIdeas() {
@@ -50,6 +51,16 @@ export async function saveDomain(domain, subCategory) {
 export async function suggestSearchKeywords(idea) {
   const result = await suggestSearchKeywordsFn({ idea });
   return result.data.keywords;
+}
+
+// 19/10/2026 (מאיה, אחרי בדיקה אמיתית מול ChatGPT: "הוא כתב את כל
+// התסריט" - שכפול הפוך העביר את כל התמלול המודבק כ"ההוק הזה", אז
+// ChatGPT פשוט שכפל חזרה את כל הפסקה במקום לייצר 30 הוקים חדשים).
+// מזהה רק את המשפט/ים הפותחים (עד שמגיעים לנימוק/הרחבה) - ראה
+// renderPrompt1 ב-video-assistant.js.
+export async function extractOpeningHook(transcript) {
+  const result = await extractOpeningHookFn({ transcript });
+  return result.data.hook;
 }
 
 /** הסשן הפעיל - מסמך יחיד לפי uid, לא היסטוריה (ראה firestore.rules) */

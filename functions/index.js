@@ -65,6 +65,7 @@ const DAILY_LIMITS = {
   breakdownStorySequence: 40,
   generateContentPlan: 20,
   matchInspirationQuery: 40,
+  extractOpeningHook: 40,
 };
 
 // checkIdea/classifyIdea/generateWarmingPlan/generateContentPlan עד עכשיו רק
@@ -1115,6 +1116,56 @@ exports.suggestSearchKeywords = onCall({ secrets: [anthropicApiKey], region: 'us
     throw new HttpsError('internal', 'לא הצלחתי להציע מילות חיפוש, נסו שוב');
   }
   return { keywords };
+});
+
+// 19/10/2026 (מאיה, אחרי בדיקה אמיתית מול ChatGPT בפועל: "הדבקתי לו את
+// התסריט המתומלל... הוא צריך לזהות כמה שורות ההוק, אבל הוא כתב את כל
+// התסריט"): "שכפול הפוך" (video-assistant.js, renderPrompt1) הדביק את
+// כל התמלול שהיא מתמללת מהרפרנס כ"ההוק הזה" בפרומפט ל-ChatGPT, וChatGPT
+// בפועל פשוט שכפל חזרה את כל הפסקה (הוק + נימוק + הרחבה) במקום לייצר 30
+// הוקים חדשים ומגוונים. מזהה כאן, לפני שהתמלול נכנס לפרומפט, רק את
+// המשפט/ים הפותחים שמושכים תשומת לב - עוצר בדיוק איפה שמתחיל הנימוק/
+// ההסבר/ההרחבה, בדיוק כמו שמאיה הדגימה בעצמה (לרוב שורה, לפעמים שתיים).
+exports.extractOpeningHook = onCall({ secrets: [anthropicApiKey], region: 'us-central1', timeoutSeconds: 30 }, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'יש להתחבר כדי להשתמש בתכונה הזו');
+  }
+  await enforceAllowlist(request.auth.token.email);
+
+  const transcript = ((request.data && request.data.transcript) || '').trim();
+  if (!transcript) {
+    throw new HttpsError('invalid-argument', 'חסר התמלול');
+  }
+  assertMaxLength(transcript, 6000, 'התמלול');
+
+  await enforceRateLimit(request.auth.uid, 'extractOpeningHook');
+
+  const prompt = `הנה תמלול מלא של סרטון רפרנס:
+"${transcript}"
+
+זהה/זהי רק את ההוק - המשפט או שני המשפטים הפותחים שמושכים תשומת לב (דעה שנויה במחלוקת, הפתעה, ניגוד, שאלה מסקרנת וכו') - ועצור/י בדיוק ברגע שהתמלול עובר לנימוק, הסבר או הרחבה של הרעיון. לרוב זו שורה אחת, לפעמים שתיים.
+
+השב/י אך ורק ב-JSON תקין, בלי שום טקסט נוסף: {"hook": "<ההוק בדיוק כפי שמופיע בתמלול, מילה במילה>"}`;
+
+  const data = await callAnthropic(
+    anthropicApiKey.value(),
+    { model: 'claude-haiku-4-5-20251001', max_tokens: 300, messages: [{ role: 'user', content: prompt }] },
+    'extractOpeningHook'
+  );
+  const text = getResponseText(data) || '{}';
+  let parsed;
+  try {
+    const match = text.match(/\{[\s\S]*\}/);
+    parsed = JSON.parse(match ? match[0] : text);
+  } catch (err) {
+    console.error('Failed to parse extractOpeningHook response:', text);
+    throw new HttpsError('internal', 'לא הצלחתי לזהות את ההוק, נסו שוב');
+  }
+  const hook = String(parsed.hook || '').trim();
+  if (!hook) {
+    throw new HttpsError('internal', 'לא הצלחתי לזהות את ההוק, נסו שוב');
+  }
+  return { hook };
 });
 
 // "מאגר להשראה" - tags a batch of not-yet-tagged videos with a FORMAT tag

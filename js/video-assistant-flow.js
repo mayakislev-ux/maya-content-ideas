@@ -16,6 +16,11 @@ export const INITIAL_STATE = {
   screen: 'opening', branch: null, hook: null, hookReinforcement: null, herWords: null,
   rerollCount: 0, ideaDescription: null, searchKeywords: null, formatFor: null,
   selectedFormat: null, rawDump: null, draftScript: null, finalScript: null, history: [],
+  // 19/10/2026 (מאיה: "הוא כתב את כל התסריט" - שכפול הפוך הדביק את כל
+  // התמלול כ"ההוק" בפרומפט ל-ChatGPT) - ההוק הפותח שזוהה אוטומטית מתוך
+  // התמלול (extractOpeningHook), נפרד מ-hook שהוא ההוק הסופי שנבחר
+  // מתוך ה-30 שChatGPT מחזיר.
+  openingHook: null,
   // 18/10/2026 (מאיה: "הסיכום בסוף כללי מדי, לא מובן איך אני בונה את
   // הסרטון שלי"): בלי שני השדות האלה אין שום זכר בסטייט לאיזה מסלול
   // קטע-מצולם ספציפי עברה (דיבור, או ויזואלי-רגע/מסר/סיפור) - מסך

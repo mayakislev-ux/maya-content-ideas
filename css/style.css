@@ -6474,6 +6474,28 @@ body[data-plan="refs"] .view-tabs-scroll { justify-content: center; }
 }
 .biduri-row-failed { color: var(--muted); font-weight: 500; white-space: normal; }
 
+/* 19/10/2026 (מאיה: "צריך להיות כתוב בצהוב למעלה את הרעיון/הוק הנבחר",
+   מסך "מה יש לך להגיד?") - תזכורת הקשר קבועה, כדי שלא תאבד את מה שהיא
+   בונה עליו. אותו שימוש גם ב-renderPrompt1 להצגת ההוק שזוהה אוטומטית. */
+.cosmic-context-box {
+  background: #ffd23f;
+  color: #211d2e;
+  border-radius: 12px;
+  padding: 12px 14px;
+  text-align: right;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.5;
+  margin-bottom: 14px;
+}
+.cosmic-context-box span {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  opacity: .7;
+  margin-bottom: 2px;
+}
+
 /* 16/10/2026 (מאיה, בדיקה מעמיקה - 10 הערות): "הפונט שם לא קריא" - השורש
    האמיתי: body כולו על 'Ploni Black' במשקל 900 (הכי כבד שיש), וזה מה
    שהטקסט הרץ בפרומפטים ובפסקאות יורש. משקל 900 בגודל טקסט רגיל נראה

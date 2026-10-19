@@ -25,6 +25,7 @@ import { embedUrlFor, embedShape } from './video-preview.js';
 import { languageName } from './inspiration-readability.js';
 import {
   fetchIdeas, fetchInspirationBank, getSavedDomain, guessDomain, saveDomain, saveSession, loadSession,
+  extractOpeningHook,
 } from './video-assistant-store.js';
 import { getProfile } from './user-profile.js';
 import { showToast } from './toast.js';
@@ -422,25 +423,12 @@ function renderFootageTypeChoice() {
 // יש בלבול") - לא בחירה בין 3 מסלולים, אלא רצף אחד: קודם מוצאים רגע
 // חזק, אז מקצרים אותו, ואז מחדדים אותו שיווקית. כל השלבים רלוונטיים
 // לאותו קטע. גם תוקן ניסוח לגוף פונה לנשים וגברים (X/י) בכל השלבים. ---
+// 19/10/2026 (מאיה: "צריך להשאיר רק את זה בלי כל החפירה לאחר מכן") -
+// כל הרשימות (מה להשאיר/מה למחוק) הוסרו, נשארה רק ההוראה המקורית.
 function renderFootageSpeechFind() {
   cosmicCard(`
     <h2>שלב 1: למצוא רגע חזק</h2>
     <p>חפש/י משפט שיש בו דעה / הפתעה / טעות / תוצאה / ויכוח. סמן/י 20–60 שניות סביבו.</p>
-    <p>עכשיו שאל/י את עצמך: האם אפשר להבין את הקטע גם בלי מה שהיה לפני?<br>אם לא → הוסיף/י משפט פתיחה קטן. אם כן → מתחילים משם.</p>
-    <p style="font-weight:700;text-align:right;margin-bottom:4px">מה להשאיר?</p>
-    <ul style="text-align:right;padding-inline-start:20px;margin-bottom:14px">
-      <li>משפט שפותח חזק</li>
-      <li>ההסבר הכי קצר שמוכיח אותו</li>
-      <li>פואנטה / מסקנה</li>
-    </ul>
-    <p style="font-weight:700;text-align:right;margin-bottom:4px">מה למחוק?</p>
-    <ul style="text-align:right;padding-inline-start:20px">
-      <li>הקדמות</li>
-      <li>חזרות</li>
-      <li>"אממ"</li>
-      <li>דוגמאות מיותרות</li>
-      <li>כל משפט שלא מקדם את הפואנטה</li>
-    </ul>
     <div class="cosmic-btn-row" style="margin-top:14px">
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-speech-find-next-btn">להמשיך</button>
     </div>
@@ -489,11 +477,16 @@ function renderFootageSpeechSharpen() {
   document.getElementById('va-speech-sharpen-next-btn').addEventListener('click', () => dispatch({ type: 'FOOTAGE_SPEECH_NEXT' }));
 }
 
+// 19/10/2026 (מאיה: "Hook → Point → Proof → End זה באנגלית ולא הבנתי") -
+// הוחלף בהסבר בעברית, בדיוק לפי מה שהיא תיארה: בוחרים את ההוק הכי
+// מסקרן וברור לתחילת הסרטון (גם ויזואלית), מומלץ להוסיף הוק כתוב על
+// המסך כדי שיבינו את ההקשר מיד, ואז מלקטים לפי הוק → הרחבה → פואנטה.
 function renderFootageSpeechDone() {
   const card = cosmicCard(`
     <h2>הקטע מוכן</h2>
-    <p class="cosmic-prompt-box" style="text-align:center;font-size:17px;font-weight:700">Hook → Point → Proof → End</p>
-    <p>כשיש לך את ארבעת אלה בקטע - הוא מוכן.</p>
+    <p>עכשיו מלקטים את הקטע שיווקית: בחר/י את ההוק הכי מסקרן וברור לתחילת הסרטון - גם ויזואלית. מומלץ להוסיף הוק כתוב על המסך, כדי שיבינו את ההקשר מיד.</p>
+    <p class="cosmic-prompt-box" style="text-align:center;font-size:17px;font-weight:700">הוק → הרחבת הנושא → פואנטה / סיומת</p>
+    <p>כשהקטע בנוי ככה - הוא מוכן.</p>
     <div class="cosmic-btn-row" style="margin-top:14px">
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-speech-done-btn">מוכן/ה</button>
     </div>
@@ -873,12 +866,33 @@ async function renderPrompt1() {
   const profile = await getProfile();
   const audience = profile && profile.primaryAudience ? profile.primaryAudience : '';
   const domain = domainInfo ? domainInfo.domain : '';
-  const prompt = buildDuplicationPrompt({ audience, domain, hook: state.transcript || '' });
+
+  // 19/10/2026 (מאיה, אחרי בדיקה אמיתית מול ChatGPT בפועל: "הדבקתי לו את
+  // התסריט המתומלל... הוא צריך לזהות כמה שורות ההוק, אבל הוא כתב את כל
+  // התסריט") - עד עכשיו כל התמלול שהיא הדביקה נכנס בתור "ההוק הזה"
+  // בפרומפט, ו-ChatGPT פשוט שכפל חזרה את כל הפסקה (הוק + נימוק + הרחבה)
+  // במקום לייצר 30 הוקים חדשים ומגוונים. עכשיו מזהים קודם, דרך
+  // extractOpeningHook, רק את המשפט/ים הפותחים - בדיוק איפה שמסתיים ההוק
+  // ומתחיל הנימוק, כמו שמאיה הדגימה בעצמה - ורק הוא נכנס לפרומפט.
+  if (!state.openingHook && state.transcript) {
+    cosmicCard(`<p>מזהה/ת את ההוק מתוך התמלול...</p>`, { showProgress: false });
+    try {
+      state.openingHook = await extractOpeningHook(state.transcript);
+    } catch (err) {
+      console.error('extractOpeningHook failed:', err);
+      // נכשל השרת - נופלים חזרה לכל התמלול במקום לתקוע אותה כאן לגמרי
+      state.openingHook = state.transcript;
+    }
+    saveSession(state).catch((err) => console.error('saveSession failed:', err));
+  }
+  const hookForPrompt = state.openingHook || state.transcript || '';
+  const prompt = buildDuplicationPrompt({ audience, domain, hook: hookForPrompt });
   cosmicCard(`
     <h2>פרומפט מוכן ל-ChatGPT</h2>
-    <p>הפרומפט כולל את כל התמלול שהדבקת - זה בכוונה: ChatGPT משתמש בו כדי להבין את הסגנון והמבנה, ולבנות ממנו 30 הוקים חדשים. הוא לא אמור להחזיר לך את התמלול עצמו, רק את 30 הרעיונות.</p>
+    <div class="cosmic-context-box"><span>ההוק שזיהינו מתוך התמלול שלך:</span>${escapeHtml(hookForPrompt)}</div>
+    <p>רק ההוק הזה נשלח ל-ChatGPT - לא כל התמלול. הוא ישכפל אותו ויביא לך 30 הוקים חדשים באותו מנגנון.</p>
     <p>העתק/י, הדבק/י ב-ChatGPT, וחזור/חזרי עם ההוק שהכי קרץ לך מתוך ה-30</p>
-    <div class="cosmic-prompt-box">${highlightPlaceholders(prompt, [audience, domain, state.transcript])}</div>
+    <div class="cosmic-prompt-box">${highlightPlaceholders(prompt, [audience, domain, hookForPrompt])}</div>
     ${copyBtn(prompt, 'העתק/י פרומפט')}
     <textarea class="cosmic-textarea" id="va-hook-input" placeholder="הדבק/י כאן את ההוק שבחרת..." style="margin-top:14px"></textarea>
     <div class="cosmic-btn-row" style="margin-top:14px">
@@ -896,15 +910,26 @@ async function renderPrompt1() {
   });
 }
 
+// 19/10/2026 (מאיה: "לא מובן ההקשר בשיטה... צריך להיות כתוב בצהוב למעלה
+// את הרעיון/הוק הנבחר, ושיהיה ברור שעכשיו הזמן להרחיב עליו... ואם
+// נתקעים, SOS של פרומפט חילוץ תוכן") - עד עכשיו המסך הזה הגיע בלי שום
+// תזכורת על מה בדיוק בונים, ובלי אפשרות עזרה אם נתקעים (בניגוד למסך
+// המקביל במסלול "כתיבה מאפס", שכבר יש לו אותו כפתור SOS).
 function renderHerWords() {
+  const context = state.hook || state.ideaDescription || '';
   cosmicCard(`
     <h2>מה יש לך להגיד?</h2>
-    <p>סיפור קצר, דוגמא, או דיבור כללי על הנושא - במילים שלך</p>
+    ${context ? `<div class="cosmic-context-box"><span>ההוק/הרעיון שבחרת:</span>${escapeHtml(context)}</div>` : ''}
+    <p>עכשיו הזמן להרחיב עליו - סיפור קצר, דוגמא, או דיבור כללי על הנושא, במילים שלך</p>
+    <div class="cosmic-btn-row" style="margin-bottom:14px">
+      <button type="button" class="cosmic-btn" id="va-herwords-help-btn">נתקעת? קבל/י עזרה 🆘</button>
+    </div>
     <textarea class="cosmic-textarea" id="va-herwords-input"></textarea>
     <div class="cosmic-btn-row" style="margin-top:14px">
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-herwords-done-btn">המשך/המשיכי</button>
     </div>
   `);
+  document.getElementById('va-herwords-help-btn').addEventListener('click', openExtractionHelperModal);
   document.getElementById('va-herwords-done-btn').addEventListener('click', () => {
     const text = document.getElementById('va-herwords-input').value.trim();
     if (!text) {
@@ -978,7 +1003,10 @@ function renderScratchIntro() {
 // ChatGPT, 3) חוזרים ומדביקים את התשובה בתיבת הטקסט הגדולה במסך
 // הקודם (לא כאן - המודאל הזה רק בונה את הפרומפט).
 function openExtractionHelperModal() {
-  const idea = state.ideaDescription || '';
+  // 19/10/2026: גם קרוא ממסך "מה יש לך להגיד?" (מסלולי רפרנס/שכפול
+  // הפוך), שבהם ideaDescription ריק אבל hook כן מוגדר - fallback אליו
+  // כדי שגם שם יהיה הקשר אמיתי לבנאי הפרומפט, לא ריק.
+  const idea = state.ideaDescription || state.hook || '';
   const overlay = openModal(`
     <h2 style="margin-top:0">קשה למצוא מה להגיד?</h2>
     <p style="font-size:13px">זה בנאי פרומפט בלבד: ממלאים כאן, מקבלים פרומפט מוכן, מעתיקים אותו ושולחים ל-ChatGPT - הוא ישאל שאלות שיוציאו ממך בדיוק מה להגיד. את התשובות שתקבלי מ-ChatGPT מדביקים חזרה בתיבת הטקסט הגדולה (לא כאן במודאל).</p>
