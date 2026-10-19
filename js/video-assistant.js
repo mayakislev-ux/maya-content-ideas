@@ -395,13 +395,21 @@ function renderRelevanceCheck() {
 
 // ===== מסלול קטע מצולם - "מה צילמת?" (18/10/2026, מאיה: עיצוב מחדש מלא
 // - ליווי אמיתי ללקיטת הקטע, לא רק "כמו שהוא / להמיר") =====
+// 18/10/2026 (מאיה: "תהיה למעלה ולא כזה קטן על הכפתור, שיהיה מהיר
+// ונגיש") - ההסבר של כל אפשרות עבר לתוך הכפתור שלה עצמו, צמוד לכותרת -
+// מבט אחד במקום לקרוא פסקה למעלה ואז להתאים אותה לכפתור למטה.
 function renderFootageTypeChoice() {
   cosmicCard(`
     <h2>מה צילמת?</h2>
-    <p>🎙️ קטע שיש בו דיבור - סדנה, פודקאסט, לייב, שיחה וכו׳<br>🎥 קטע ויזואלי - תהליך, עבודה, תוצאה, רגע שצולם וכו׳</p>
     <div class="cosmic-btn-row">
-      <button type="button" class="cosmic-btn" id="va-footage-speech-btn">🎙️ קטע שיש בו דיבור</button>
-      <button type="button" class="cosmic-btn" id="va-footage-visual-btn">🎥 קטע ויזואלי</button>
+      <button type="button" class="cosmic-btn cosmic-btn--option" id="va-footage-speech-btn">
+        <span class="cosmic-btn__title">🎙️ קטע שיש בו דיבור</span>
+        <span class="cosmic-btn__subtitle">סדנה, פודקאסט, לייב, שיחה וכו׳</span>
+      </button>
+      <button type="button" class="cosmic-btn cosmic-btn--option" id="va-footage-visual-btn">
+        <span class="cosmic-btn__title">🎥 קטע ויזואלי</span>
+        <span class="cosmic-btn__subtitle">תהליך, עבודה, תוצאה, רגע שצולם וכו׳</span>
+      </button>
     </div>
   `);
   document.getElementById('va-footage-speech-btn').addEventListener('click', () => dispatch({ type: 'FOOTAGE_IS_SPEECH' }));
