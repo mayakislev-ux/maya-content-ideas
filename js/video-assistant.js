@@ -22,7 +22,7 @@ import {
 } from './video-assistant-content.js';
 import { playReroll, playSuccess, setMuted, getMuted } from './video-assistant-sound.js';
 import {
-  fetchIdeas, fetchInspirationBank, getSavedDomain, guessDomain, saveDomain, saveSession,
+  fetchIdeas, fetchInspirationBank, getSavedDomain, guessDomain, saveDomain, saveSession, loadSession,
 } from './video-assistant-store.js';
 import { getProfile } from './user-profile.js';
 import { showToast } from './toast.js';
@@ -840,6 +840,7 @@ async function renderPrompt1() {
   const prompt = buildDuplicationPrompt({ audience, domain, hook: state.transcript || '' });
   cosmicCard(`
     <h2>פרומפט מוכן ל-ChatGPT</h2>
+    <p>הפרומפט כולל את כל התמלול שהדבקת - זה בכוונה: ChatGPT משתמש בו כדי להבין את הסגנון והמבנה, ולבנות ממנו 30 הוקים חדשים. הוא לא אמור להחזיר לך את התמלול עצמו, רק את 30 הרעיונות.</p>
     <p>העתק/י, הדבק/י ב-ChatGPT, וחזור/חזרי עם ההוק שהכי קרץ לך מתוך ה-30</p>
     <div class="cosmic-prompt-box">${highlightPlaceholders(prompt, [audience, domain, state.transcript])}</div>
     ${copyBtn(prompt, 'העתק/י פרומפט')}
@@ -1220,15 +1221,28 @@ export function wireVideoAssistantView() {
   document.getElementById('video-assistant-view').addEventListener('click', resetIdleTimer);
   document.getElementById('video-assistant-view').addEventListener('input', resetIdleTimer);
 
-  document.getElementById('hub-link-video-assistant').addEventListener('click', () => {
-    // 17/10/2026 (מאיה, פעמיים: "נכנסת למסך זה הוביל אותי לסוף ולא
-    // להתחלה", ואז שוב גם אחרי סגירה ופתיחה מלאה: "שוב מכניס אותי
-    // מהאמצע") - התיקון הקודם (לא לחזור ל-summary) היה חלקי מדי: היא
-    // חזרה בפועל למסך "תמלל/י את הרפרנס" באמצע מסלול, לא לסיכום.
-    // ההחלטה הנכונה היא לא לנחש איזה מסך "בסדר" לחזור אליו ואיזה לא -
-    // כניסה מהרכזת (hub) תמיד מתחילה מחדש במסך הפתיחה. ה-state עדיין
-    // נשמר ברקע (saveSession) לאורך כל מסלול, רק שלא טוענים אותו כאן.
-    state = INITIAL_STATE;
+  // 18/10/2026 (לקוחה אמיתית, דרך מאיה: "עניתי בצ'אט על השאלות... זה
+  // ריפרש לי והייתי צריכה להתחיל מחדש") - ה"תיקון" מ-17/10 (למעלה,
+  // "תמיד מתחילה מחדש") פתר את הבעיה של מאיה (נכנסת ישר אחרי שסיימה,
+  // חוזרת לסשן ישן ולא רלוונטי) אבל שבר בדיוק את מה שהתכנון המקורי
+  // התכוון אליו: "רענון דף/חזרה תוך כדי עבודה בלי לאבד התקדמות"
+  // (docs/superpowers/specs/2026-10-13-video-creation-assistant-design.md).
+  // הפתרון הנכון לשתי התלונות גם יחד: לשחזר רק סשן *טרי* (לא סיום,
+  // לא פתיחה, ונשמר לאחרונה) - לא כל סשן ישן.
+  const RESUME_WINDOW_MS = 2 * 60 * 60 * 1000;
+  document.getElementById('hub-link-video-assistant').addEventListener('click', async () => {
+    let saved = null;
+    try {
+      saved = await loadSession();
+    } catch (err) {
+      console.error('loadSession failed:', err);
+    }
+    const isFresh = saved && saved.updatedAt && (Date.now() - saved.updatedAt) < RESUME_WINDOW_MS;
+    const isResumable = isFresh && saved.screen && saved.screen !== 'summary' && saved.screen !== 'opening';
+    state = isResumable ? saved : INITIAL_STATE;
+    // 16/10/2026: סשנים ישנים שנשמרו לפני כפתור החזרה לא יכילו history -
+    // בלי זה BACK על סשן ישן יקרוס על undefined.length.
+    if (!state.history) state.history = [];
     sessionStartTs = Date.now();
     render();
   });

@@ -58,6 +58,10 @@ export async function loadSession() {
   return snap.exists() ? snap.data() : null;
 }
 
+// 18/10/2026 (לקוחה, דרך מאיה: "עניתי בצ'אט על השאלות... זה ריפרש לי
+// והייתי צריכה להתחיל מחדש, כאילו זה לא שמר") - updatedAt הוא מה שמאפשר
+// להבחין בין סשן פעיל שהתרענן בטעות (לשחזר) לבין סשן ישן שהיא כבר לא
+// רוצה לחזור אליו (להתחיל ממנו מחדש) - ראה video-assistant.js, wireVideoAssistantView.
 export async function saveSession(state) {
-  await setDoc(doc(db, 'videoAssistantSessions', auth.currentUser.uid), state);
+  await setDoc(doc(db, 'videoAssistantSessions', auth.currentUser.uid), { ...state, updatedAt: Date.now() });
 }
