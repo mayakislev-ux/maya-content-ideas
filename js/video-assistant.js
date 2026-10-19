@@ -22,11 +22,9 @@ import {
 } from './video-assistant-content.js';
 import { playReroll, playSuccess, setMuted, getMuted } from './video-assistant-sound.js';
 import {
-  fetchIdeas, fetchInspirationBank, getSavedDomain, guessDomain, saveDomain, saveSession, suggestSearchKeywords,
+  fetchIdeas, fetchInspirationBank, getSavedDomain, guessDomain, saveDomain, saveSession,
 } from './video-assistant-store.js';
 import { getProfile } from './user-profile.js';
-import { showView } from './view-router.js';
-import { openInspirationView } from './inspiration-view.js';
 import { showToast } from './toast.js';
 import {
   pickEncouragement, domainTheme, formatElapsed, dnaSteps,
@@ -48,9 +46,12 @@ const PHASES = ['התחלה', 'בדיקת התאמה', 'פורמט ושיטה', 
 const PHASE_BY_SCREEN = {
   opening: 0, 'reference-source-choice': 0, 'idea-source-choice': 0, 'type-idea': 0, 'pulled-idea': 0, 'pulled-reference': 0,
   'relevance-check': 1,
-  'footage-use-choice': 2, 'format-choice': 2, 'needs-script-check': 2, 'has-idea-choice': 2,
-  'footage-script': 3, 'describe-idea': 3, 'search-guidance': 3, transcribe: 3, prompt1: 3, 'her-words': 3, prompt2: 3, 'read-aloud': 3,
+  'footage-type-choice': 2, 'format-choice': 2, 'needs-script-check': 2, 'has-idea-choice': 2,
+  transcribe: 3, prompt1: 3, 'her-words': 3, prompt2: 3, 'read-aloud': 3,
   'scratch-intro': 3, 'scratch-dump': 3, 'scratch-hook': 3, 'scratch-hook-reinforce': 3, 'scratch-distill': 3,
+  'footage-speech-goal': 3, 'footage-speech-find': 3, 'footage-speech-shorten': 3, 'footage-speech-sharpen': 3, 'footage-speech-done': 3,
+  'footage-visual-scan': 3, 'footage-visual-extract': 3, 'footage-visual-reframe': 3,
+  'footage-visual-message': 3, 'footage-visual-objection': 3, 'footage-visual-story': 3,
   summary: 4,
 };
 
@@ -267,9 +268,9 @@ function renderOpening() {
     <h2>✨ בוא/י ניצור סרטון</h2>
     <p>מאיפה מתחילים הפעם?</p>
     <div class="cosmic-btn-row">
-      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-reference-btn">יש לי רפרנס לשכפול</button>
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-reference-btn">שיטת השכפול</button>
       <button type="button" class="cosmic-btn" id="va-footage-btn">יש לי קטע שצולם</button>
-      <button type="button" class="cosmic-btn" id="va-idea-btn">יש לי רעיון מ-0</button>
+      <button type="button" class="cosmic-btn" id="va-idea-btn">רעיון מ-0</button>
     </div>
   `);
   document.getElementById('va-footage-btn').addEventListener('click', () => dispatch({ type: 'CHOOSE_FOOTAGE' }));
@@ -388,9 +389,6 @@ function renderRelevanceCheck() {
       <strong>רלוונטי לקהל היעד</strong> = תוכן שמדבר לקהל היעד הנכון.<br><br>
       <strong>משרת את המותג</strong> = תוכן שלא בהכרח מדבר ישירות על העסק או התחום, אבל כן מציג את האישיות/הערכים/תפיסת העולם שלך.
     </p>
-    <p class="cosmic-prompt-box" style="text-align:right;font-size:13px">
-      דוגמה: מעצבת פנים שמעלה סרטון חמוד של אבא שלה רץ לחבק את הכלב - לא מדבר לקהל היעד שלה ולא מחזק את המותג שלה. אם זה היה סרטון שלה <strong>בעצמה</strong> רצה אל הכלב שלה - לגמרי היתה יכולה להעלות!
-    </p>
     <div class="cosmic-btn-row" style="margin-top:14px">
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-relevance-ok-btn">כן, זה רלוונטי/משרת את המותג</button>
     </div>
@@ -398,38 +396,207 @@ function renderRelevanceCheck() {
   document.getElementById('va-relevance-ok-btn').addEventListener('click', () => dispatch({ type: 'RELEVANCE_CONFIRMED' }));
 }
 
-// ===== מסלול קטע מצולם =====
-function renderFootageUseChoice() {
+// ===== מסלול קטע מצולם - "מה צילמת?" (18/10/2026, מאיה: עיצוב מחדש מלא
+// - ליווי אמיתי ללקיטת הקטע, לא רק "כמו שהוא / להמיר") =====
+function renderFootageTypeChoice() {
   cosmicCard(`
-    <h2>מה עושים עם הקטע?</h2>
-    <p>ברוב המקרים לא נוגעים בקטע מצולם יותר מדי, חוץ מלערוך ולקצר. רק לפעמים כדאי להמיר לפורמט אחר (למשל וויס אובר) ואז אולי גם לכתוב תסריט.</p>
+    <h2>מה צילמת?</h2>
+    <p>🎙️ קטע שיש בו דיבור - סדנה, פודקאסט, לייב, שיחה וכו׳<br>🎥 קטע ויזואלי - תהליך, עבודה, תוצאה, רגע שצולם וכו׳</p>
     <div class="cosmic-btn-row">
-      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-footage-asis-btn">משתמש/ת בו כמו שהוא</button>
-      <button type="button" class="cosmic-btn" id="va-footage-convert-btn">רוצה להמיר לפורמט אחר</button>
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-footage-speech-btn">🎙️ קטע שיש בו דיבור</button>
+      <button type="button" class="cosmic-btn" id="va-footage-visual-btn">🎥 קטע ויזואלי</button>
     </div>
   `);
-  document.getElementById('va-footage-asis-btn').addEventListener('click', () => dispatch({ type: 'FOOTAGE_AS_IS' }));
-  document.getElementById('va-footage-convert-btn').addEventListener('click', () => dispatch({ type: 'FOOTAGE_CONVERT' }));
+  document.getElementById('va-footage-speech-btn').addEventListener('click', () => dispatch({ type: 'FOOTAGE_IS_SPEECH' }));
+  document.getElementById('va-footage-visual-btn').addEventListener('click', () => dispatch({ type: 'FOOTAGE_IS_VISUAL' }));
 }
 
-function renderFootageScript() {
+// --- תת-ענף "יש בו דיבור" ---
+function renderFootageSpeechGoal() {
   cosmicCard(`
-    <h2>כתוב/כתבי את התסריט/וויס אובר</h2>
-    <p>במילים שלך - מה שתרצה/י להגיד מעל הקטע המצולם</p>
-    <textarea class="cosmic-textarea" id="va-footage-script-input"></textarea>
-    <div class="cosmic-btn-row" style="margin-top:14px">
-      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-footage-script-done-btn">סיימתי</button>
+    <h2>מה המטרה שלך עם הקטע?</h2>
+    <div class="cosmic-btn-row">
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-speech-find-btn">למצוא ממנו רגע חזק לריל</button>
+      <button type="button" class="cosmic-btn" id="va-speech-shorten-btn">לקצר קטע שכבר בחרתי</button>
+      <button type="button" class="cosmic-btn" id="va-speech-sharpen-btn">להפוך אותו לקטע יותר חד ושיווקי</button>
     </div>
   `);
-  document.getElementById('va-footage-script-done-btn').addEventListener('click', () => {
-    const text = document.getElementById('va-footage-script-input').value.trim();
-    if (!text) {
-      showToast('צריך/ה לכתוב משהו קודם');
-      return;
-    }
+  document.getElementById('va-speech-find-btn').addEventListener('click', () => dispatch({ type: 'FOOTAGE_SPEECH_FIND_MOMENT' }));
+  document.getElementById('va-speech-shorten-btn').addEventListener('click', () => dispatch({ type: 'FOOTAGE_SPEECH_SHORTEN' }));
+  document.getElementById('va-speech-sharpen-btn').addEventListener('click', () => dispatch({ type: 'FOOTAGE_SPEECH_SHARPEN' }));
+}
+
+function renderFootageSpeechFind() {
+  cosmicCard(`
+    <h2>למצוא רגע חזק</h2>
+    <p>חפשי משפט שיש בו דעה / הפתעה / טעות / תוצאה / ויכוח. סמני 20–60 שניות סביבו.</p>
+    <p>עכשיו תשאלי: האם אפשר להבין את הקטע גם בלי מה שהיה לפני?<br>אם לא → תוסיפי משפט פתיחה קטן. אם כן → מתחילים משם.</p>
+    <p style="font-weight:700;text-align:right;margin-bottom:4px">מה להשאיר?</p>
+    <ul style="text-align:right;padding-inline-start:20px;margin-bottom:14px">
+      <li>משפט שפותח חזק</li>
+      <li>ההסבר הכי קצר שמוכיח אותו</li>
+      <li>פואנטה / מסקנה</li>
+    </ul>
+    <p style="font-weight:700;text-align:right;margin-bottom:4px">מה למחוק?</p>
+    <ul style="text-align:right;padding-inline-start:20px">
+      <li>הקדמות</li>
+      <li>חזרות</li>
+      <li>"אממ"</li>
+      <li>דוגמאות מיותרות</li>
+      <li>כל משפט שלא מקדם את הפואנטה</li>
+    </ul>
+    <div class="cosmic-btn-row" style="margin-top:14px">
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-speech-find-ready-btn">סיימתי ללקט</button>
+    </div>
+  `);
+  document.getElementById('va-speech-find-ready-btn').addEventListener('click', () => dispatch({ type: 'FOOTAGE_SPEECH_READY' }));
+}
+
+function renderFootageSpeechShorten() {
+  cosmicCard(`
+    <h2>לקצר קטע שכבר בחרתי</h2>
+    <p>עברי על הצ'קליסט:</p>
+    <ul style="text-align:right;padding-inline-start:20px">
+      <li>האם ההתחלה מעניינת תוך 2 שניות?</li>
+      <li>האם אפשר למחוק את המשפט הראשון?</li>
+      <li>האם יש חזרה?</li>
+      <li>האם יש הסבר ארוך מדי?</li>
+      <li>האם הפואנטה מגיעה מאוחר?</li>
+      <li>אפשר לקצר 30% בלי לאבד משמעות?</li>
+    </ul>
+    <div class="cosmic-btn-row" style="margin-top:14px">
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-speech-shorten-ready-btn">עברתי על הכל</button>
+    </div>
+  `);
+  document.getElementById('va-speech-shorten-ready-btn').addEventListener('click', () => dispatch({ type: 'FOOTAGE_SPEECH_READY' }));
+}
+
+function renderFootageSpeechSharpen() {
+  cosmicCard(`
+    <h2>להפוך לקטע יותר חד ושיווקי</h2>
+    <p>קטע שיווקי טוב עומד בשלושה דברים:</p>
+    <ul style="text-align:right;padding-inline-start:20px;margin-bottom:14px">
+      <li>יש בו אמירה אחת ברורה</li>
+      <li>אפשר להבין על מה מדובר תוך 3 שניות</li>
+      <li>יש בו משהו שמניע לפעולה או לתגובה</li>
+    </ul>
+    <p style="font-weight:700;text-align:right;margin-bottom:4px">מה לעשות:</p>
+    <ul style="text-align:right;padding-inline-start:20px">
+      <li>הוסיפי משפט פתיחה שאומר במפורש את התועלת או הנקודה</li>
+      <li>ודאי שיש בסוף מסקנה ברורה או קריאה לפעולה</li>
+      <li>הוסיפי טקסט על המסך שמדגיש את הנקודה המרכזית</li>
+    </ul>
+    <div class="cosmic-btn-row" style="margin-top:14px">
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-speech-sharpen-ready-btn">חידדתי את הקטע</button>
+    </div>
+  `);
+  document.getElementById('va-speech-sharpen-ready-btn').addEventListener('click', () => dispatch({ type: 'FOOTAGE_SPEECH_READY' }));
+}
+
+function renderFootageSpeechDone() {
+  const card = cosmicCard(`
+    <h2>הקטע מוכן</h2>
+    <p class="cosmic-prompt-box" style="text-align:center;font-size:17px;font-weight:700">Hook → Point → Proof → End</p>
+    <p>כשיש לך את ארבעת אלה בקטע - הוא מוכן.</p>
+    <div class="cosmic-btn-row" style="margin-top:14px">
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-speech-done-btn">מוכן/ה</button>
+    </div>
+  `);
+  flipReveal(card);
+  document.getElementById('va-speech-done-btn').addEventListener('click', () => {
     celebrate();
-    dispatch({ type: 'FOOTAGE_SCRIPT_SUBMITTED', text });
+    dispatch({ type: 'FOOTAGE_SPEECH_DONE' });
   });
+}
+
+// --- תת-ענף "קטע ויזואלי" ---
+function renderFootageVisualScan() {
+  cosmicCard(`
+    <h2>עוברים על כל הקטע פעם אחת</h2>
+    <p>צפי בקטע מההתחלה עד הסוף וחפשי רגע שיכול להיות מעניין גם בלי כל מה שמסביב.</p>
+    <p style="font-weight:700;text-align:right;margin-bottom:4px">חפשי אחד מאלה:</p>
+    <ul style="text-align:right;padding-inline-start:20px">
+      <li>שאלה או תשובה טובה</li>
+      <li>תגובה של לקוחה</li>
+      <li>רגע מפתיע / מצחיק / מסקרן</li>
+      <li>משהו שמוכיח תוצאה</li>
+      <li>משהו ששובר התנגדות</li>
+      <li>רגע שפשוט כיף לראות</li>
+    </ul>
+    <div class="cosmic-btn-row" style="margin-top:14px">
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-visual-found-btn">מצאתי רגע ששווה להוציא</button>
+      <button type="button" class="cosmic-btn" id="va-visual-notfound-btn">לא מצאתי - נהפוך את החומר לתוכן אחר</button>
+    </div>
+  `);
+  document.getElementById('va-visual-found-btn').addEventListener('click', () => dispatch({ type: 'FOOTAGE_VISUAL_FOUND_MOMENT' }));
+  document.getElementById('va-visual-notfound-btn').addEventListener('click', () => dispatch({ type: 'FOOTAGE_VISUAL_NO_MOMENT' }));
+}
+
+function renderFootageVisualExtract() {
+  const card = cosmicCard(`
+    <h2>מלקטים את הרגע</h2>
+    <ul class="cosmic-summary-list">
+      <li><span class="cosmic-summary-num">1</span><div>חתכי כמה שיותר קרוב לרגע החזק</div></li>
+      <li><span class="cosmic-summary-num">2</span><div>תשאירי רק מה שחייבים כדי להבין אותו</div></li>
+      <li><span class="cosmic-summary-num">3</span><div>שאלי: האם צריך משפט על המסך כדי להבין למה זה מעניין?</div></li>
+      <li><span class="cosmic-summary-num">4</span><div>אם כן → כתבי הוק קצר</div></li>
+      <li><span class="cosmic-summary-num">5</span><div>הוסיפי כתוביות</div></li>
+      <li><span class="cosmic-summary-num">6</span><div>סיימת</div></li>
+    </ul>
+    <div class="cosmic-btn-row">
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-visual-extract-done-btn">סיימתי</button>
+    </div>
+  `);
+  flipReveal(card);
+  document.getElementById('va-visual-extract-done-btn').addEventListener('click', () => {
+    celebrate();
+    dispatch({ type: 'FOOTAGE_VISUAL_EXTRACT_DONE' });
+  });
+}
+
+function renderFootageVisualReframe() {
+  cosmicCard(`
+    <h2>מעולה. עכשיו נבדוק איזה רעיון החומר הזה יכול להמחיש</h2>
+    <ul style="text-align:right;padding-inline-start:20px">
+      <li>מה קורה פה ששווה להסביר? (שלב מקצועי, תהליך, החלטה, משהו שעשית)</li>
+      <li>איזה פחד / שאלה / אמונה של הלקוח החומר הזה יכול לענות עליה?</li>
+      <li>יש סיפור מאחורי מי או מה שמצולם פה? למה הלקוחה הגיעה? מה היה לפני? מה השתנה?</li>
+    </ul>
+    <div class="cosmic-btn-row" style="margin-top:14px">
+      <button type="button" class="cosmic-btn" id="va-visual-msg-btn">מצאתי מסר</button>
+      <button type="button" class="cosmic-btn" id="va-visual-obj-btn">מצאתי שאלה/התנגדות</button>
+      <button type="button" class="cosmic-btn" id="va-visual-story-btn">מצאתי סיפור</button>
+    </div>
+  `);
+  document.getElementById('va-visual-msg-btn').addEventListener('click', () => dispatch({ type: 'FOOTAGE_VISUAL_FOUND_MESSAGE' }));
+  document.getElementById('va-visual-obj-btn').addEventListener('click', () => dispatch({ type: 'FOOTAGE_VISUAL_FOUND_OBJECTION' }));
+  document.getElementById('va-visual-story-btn').addEventListener('click', () => dispatch({ type: 'FOOTAGE_VISUAL_FOUND_STORY' }));
+}
+
+function renderFootageVisualOutcome({ title, body }) {
+  cosmicCard(`
+    <h2>${title}</h2>
+    <p>${body}</p>
+    <div class="cosmic-btn-row" style="margin-top:14px">
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-visual-outcome-ready-btn">הבנתי, בונה/ת</button>
+    </div>
+  `);
+  document.getElementById('va-visual-outcome-ready-btn').addEventListener('click', () => {
+    celebrate();
+    dispatch({ type: 'FOOTAGE_VISUAL_READY' });
+  });
+}
+
+function renderFootageVisualMessage() {
+  renderFootageVisualOutcome({ title: 'בונים סביב מסר', body: 'הוק → הסבר קצר → הקטעים ממחישים.' });
+}
+
+function renderFootageVisualObjection() {
+  renderFootageVisualOutcome({ title: 'בונים סביב שאלה/התנגדות', body: 'פותחים בשאלה → עונים → משתמשים בחומר כהוכחה.' });
+}
+
+function renderFootageVisualStory() {
+  renderFootageVisualOutcome({ title: 'בונים סביב סיפור', body: 'לפני → מה קרה → תהליך → תוצאה. החומר הופך לווויס-אובר או B-roll.' });
 }
 
 // 17/10/2026 (מאיה: "תצוגה מקדימה של הפורמט שישר ויזואלית אראה"): אין לי
@@ -486,12 +653,14 @@ function renderNeedsScriptCheck() {
 }
 
 // ===== בחירת שיטת הכתיבה =====
+// 18/10/2026 (מאיה: "מצאתי רפרנס מתאים לשכפול הפוך" / "לא מצאתי רפרנס
+// שיכול להתאים") - ניסוח מחודש, ברור יותר ממה שהיה לפני.
 function renderHasIdeaChoice() {
   cosmicCard(`
-    <h2>שתי דרכים לכתוב את התסריט</h2>
+    <h2>יש לך רפרנס לשכפול הפוך?</h2>
     <div class="cosmic-btn-row">
-      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-reverse-btn">שכפול הפוך (מומלץ, קל יותר)</button>
-      <button type="button" class="cosmic-btn" id="va-scratch-btn">כתיבה מאפס</button>
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-reverse-btn">מצאתי רפרנס מתאים לשכפול הפוך</button>
+      <button type="button" class="cosmic-btn" id="va-scratch-btn">לא מצאתי רפרנס שיכול להתאים</button>
     </div>
   `);
   document.getElementById('va-reverse-btn').addEventListener('click', () => dispatch({ type: 'CHOOSE_REVERSE_DUPLICATION' }));
@@ -622,66 +791,6 @@ async function renderPulledReference() {
       dispatch({ type: 'REROLL' });
     });
   });
-}
-
-async function runSearchGuidanceFor(ideaText) {
-  const statusEl = document.getElementById('va-idea-search-status');
-  if (statusEl) statusEl.textContent = 'חושב/ת על מילות חיפוש...';
-  let keywords = [];
-  try {
-    keywords = await suggestSearchKeywords(ideaText);
-  } catch (err) {
-    console.error('suggestSearchKeywords failed:', err);
-    keywords = [ideaText];
-  }
-  dispatch({ type: 'SEARCH_GUIDANCE_READY', idea: ideaText, keywords });
-}
-
-function renderDescribeIdea() {
-  const knownIdea = state.ideaDescription || state.hook;
-  if (knownIdea) {
-    cosmicCard(`<p id="va-idea-search-status">חושב/ת על מילות חיפוש בשביל "${escapeHtml(knownIdea)}"...</p>`);
-    runSearchGuidanceFor(knownIdea);
-    return;
-  }
-  cosmicCard(`
-    <h2>מה בדיוק הרעיון?</h2>
-    <p>תאר/י במילים שלך - למשל "הסיפור שלי על בולמיה" או "סיפור לקוחה שהחליקה שיער ופחדה שזה ישרוף לה אותו"</p>
-    <textarea class="cosmic-textarea" id="va-idea-description-input" placeholder="הרעיון שלך..."></textarea>
-    <div class="cosmic-btn-row" style="margin-top:14px">
-      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-idea-search-btn">תן/י לי מילות חיפוש</button>
-    </div>
-    <p id="va-idea-search-status" class="muted" style="font-size:13px;margin-top:10px"></p>
-  `);
-  document.getElementById('va-idea-search-btn').addEventListener('click', async () => {
-    const text = document.getElementById('va-idea-description-input').value.trim();
-    if (!text) {
-      showToast('צריך/ה לכתוב את הרעיון קודם');
-      return;
-    }
-    document.getElementById('va-idea-search-btn').disabled = true;
-    await runSearchGuidanceFor(text);
-  });
-}
-
-function renderSearchGuidance() {
-  const keywordsHtml = (state.searchKeywords || [])
-    .map((k) => `<li>${escapeHtml(k)}</li>`)
-    .join('');
-  cosmicCard(`
-    <h2>מילות חיפוש מוצעות</h2>
-    <p>חפש/י אותן קודם במאגר ההשראה (יש שם גם אפשרות לחפש לפי זוויות) - ואם לא מוצא/ת, בטיקטוק ובאינסטגרם, גם בעברית, גם ברוסית וגם באנגלית:</p>
-    <ul style="text-align:right;padding-inline-start:20px">${keywordsHtml}</ul>
-    <div class="cosmic-btn-row" style="margin-top:14px">
-      <button type="button" class="cosmic-btn" id="va-open-bank-btn">פתח/י את מאגר ההשראה</button>
-      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-found-reference-btn">מצאתי רפרנס, בוא/י נמשיך</button>
-    </div>
-  `);
-  document.getElementById('va-open-bank-btn').addEventListener('click', () => {
-    showView('inspiration');
-    openInspirationView();
-  });
-  document.getElementById('va-found-reference-btn').addEventListener('click', () => dispatch({ type: 'SKIP_TO_TRANSCRIBE' }));
 }
 
 function copyBtn(text, label) {
@@ -976,14 +1085,11 @@ function renderScratchDistill() {
 function buildSummarySteps() {
   const steps = [];
   if (state.branch === 'footage') {
+    // 18/10/2026: עברת למסלול ליקוט מודרך (דיבור/ויזואלי) במקום "כמו שהוא
+    // / להמיר פורמט" - selectedFormat כבר לא רלוונטי למסלול הזה.
     steps.push('בחרת קטע מצולם קיים.');
-    if (state.selectedFormat) {
-      steps.push(`החלטת להמיר אותו לפורמט "${state.selectedFormat}".`);
-      steps.push('כתבת את הטקסט/וויס אובר שלך.');
-    } else {
-      steps.push('החלטת להשתמש בקטע כמו שהוא.');
-    }
-    steps.push('עכשיו: לכי/לך לערוך ולקצר, ואז להעלות.');
+    steps.push('עברת על הדרכת הליקוט שמתאימה לקטע שלך.');
+    steps.push('עכשיו: לכי/לך לערוך לפי מה שסימנת, ואז להעלות.');
   } else if (state.branch === 'reference' || state.branch === 'idea-search') {
     steps.push(state.branch === 'reference' ? 'מצאת רפרנס מוכן במאגר שלך.' : 'מצאת רפרנס בעצמך לפי מילות החיפוש שקיבלת.');
     steps.push('תימללת את הרפרנס.');
@@ -1054,13 +1160,21 @@ function render() {
   if (state.screen === 'relevance-check') return renderRelevanceCheck();
   if (state.screen === 'pulled-idea') return renderPulledIdea();
   if (state.screen === 'pulled-reference') return renderPulledReference();
-  if (state.screen === 'footage-use-choice') return renderFootageUseChoice();
-  if (state.screen === 'footage-script') return renderFootageScript();
+  if (state.screen === 'footage-type-choice') return renderFootageTypeChoice();
+  if (state.screen === 'footage-speech-goal') return renderFootageSpeechGoal();
+  if (state.screen === 'footage-speech-find') return renderFootageSpeechFind();
+  if (state.screen === 'footage-speech-shorten') return renderFootageSpeechShorten();
+  if (state.screen === 'footage-speech-sharpen') return renderFootageSpeechSharpen();
+  if (state.screen === 'footage-speech-done') return renderFootageSpeechDone();
+  if (state.screen === 'footage-visual-scan') return renderFootageVisualScan();
+  if (state.screen === 'footage-visual-extract') return renderFootageVisualExtract();
+  if (state.screen === 'footage-visual-reframe') return renderFootageVisualReframe();
+  if (state.screen === 'footage-visual-message') return renderFootageVisualMessage();
+  if (state.screen === 'footage-visual-objection') return renderFootageVisualObjection();
+  if (state.screen === 'footage-visual-story') return renderFootageVisualStory();
   if (state.screen === 'format-choice') return renderFormatChoice();
   if (state.screen === 'needs-script-check') return renderNeedsScriptCheck();
   if (state.screen === 'has-idea-choice') return renderHasIdeaChoice();
-  if (state.screen === 'describe-idea') return renderDescribeIdea();
-  if (state.screen === 'search-guidance') return renderSearchGuidance();
   if (state.screen === 'transcribe') return renderTranscribe();
   if (state.screen === 'prompt1') return renderPrompt1();
   if (state.screen === 'her-words') return renderHerWords();

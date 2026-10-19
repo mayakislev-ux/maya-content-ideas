@@ -54,7 +54,7 @@ export function formatElapsed(ms) {
 // לפי branch+screen נוכחיים. טהור (סטייט בלבד, בלי DOM) כדי שאפשר יהיה
 // לבדוק אותו ישירות.
 const BRANCH_STEP_NAMES = {
-  footage: ['בחירת קטע', 'בדיקת התאמה', 'שימוש/פורמט', 'תסריט', 'סיום'],
+  footage: ['בחירת קטע', 'בדיקת התאמה', 'מה צילמת', 'ליקוט', 'סיום'],
   reference: ['רפרנס', 'בדיקת התאמה', 'תמלול', 'הוק', 'תסריט', 'סיום'],
   'idea-search': ['רעיון', 'בדיקת התאמה', 'חיפוש רפרנס', 'תמלול', 'הוק', 'תסריט', 'סיום'],
   scratch: ['רעיון', 'בדיקת התאמה', 'שפיכת תוכן', 'הוק', 'חיזוק', 'תסריט', 'סיום'],
@@ -215,12 +215,18 @@ export function stopAmbientDrone() {
 }
 
 // ----- #1: ספינר הגרלה - מראה כמה אפשרויות "מתערבבות" לפני הנפילה על אחת -----
+// 18/10/2026 (מאיה: "זה מגריל יותר מדי זמן... אמור להיות מהיר לא לעכב"):
+// מספר הסיבובים היה תלוי בגודל בנק הרעיונות (candidateTexts.length * 2) -
+// עם בנק אמיתי של עשרות רעיונות זה יצא שניות ארוכות של ריצוד, שהרגיש
+// תקוע. קבוע עכשיו ולא תלוי בגודל הבנק: תמיד מספר קטן של סיבובים,
+// מתח אמיתי בלי עיכוב אמיתי.
+const SPIN_COUNT = 8;
 export function spinReveal(labelEl, candidateTexts, finalText, done) {
   if (!hasDom || !labelEl) {
     if (done) done();
     return;
   }
-  const spins = Math.max(6, candidateTexts.length * 2);
+  const spins = SPIN_COUNT;
   let i = 0;
   labelEl.classList.add('cosmic-slot-spin');
   const interval = setInterval(() => {

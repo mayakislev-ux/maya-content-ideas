@@ -75,25 +75,52 @@ function step(state, action) {
 
     // ===== השער המשותף: "רלוונטי לקהל היעד, או משרת את המותג?" =====
     case 'RELEVANCE_CONFIRMED':
-      if (state.branch === 'footage') return { ...state, screen: 'footage-use-choice' };
+      if (state.branch === 'footage') return { ...state, screen: 'footage-type-choice' };
       if (state.branch === 'reference') return { ...state, screen: 'transcribe' };
       return { ...state, screen: 'format-choice', formatFor: 'idea' };
 
-    // ===== מסלול קטע מצולם =====
-    case 'FOOTAGE_AS_IS':
-      return { ...state, screen: 'summary' };
-    case 'FOOTAGE_CONVERT':
-      return { ...state, screen: 'format-choice', formatFor: 'footage' };
-    case 'FOOTAGE_SCRIPT_SUBMITTED':
-      return { ...state, screen: 'summary', herWords: action.text };
+    // ===== מסלול קטע מצולם - "מה צילמת?" (18/10/2026, מאיה: עיצוב מחדש
+    // מלא - מחליף את "משתמש/ת בו כמו שהוא / רוצה להמיר לפורמט אחר" בליווי
+    // אמיתי ללקיטת הקטע, לפי אם יש בו דיבור או שהוא ויזואלי) =====
+    case 'FOOTAGE_IS_SPEECH':
+      return { ...state, screen: 'footage-speech-goal' };
+    case 'FOOTAGE_IS_VISUAL':
+      return { ...state, screen: 'footage-visual-scan' };
 
-    // ===== בחירת פורמט הנגשה - פופאפ אמיתי, בחירה אמיתית (16/10) =====
+    // --- תת-ענף "יש בו דיבור" - שלוש מטרות אפשריות, כולן מסתיימות באותו
+    // מסך סיום (Hook → Point → Proof → End) ---
+    case 'FOOTAGE_SPEECH_FIND_MOMENT':
+      return { ...state, screen: 'footage-speech-find' };
+    case 'FOOTAGE_SPEECH_SHORTEN':
+      return { ...state, screen: 'footage-speech-shorten' };
+    case 'FOOTAGE_SPEECH_SHARPEN':
+      return { ...state, screen: 'footage-speech-sharpen' };
+    case 'FOOTAGE_SPEECH_READY':
+      return { ...state, screen: 'footage-speech-done' };
+    case 'FOOTAGE_SPEECH_DONE':
+      return { ...state, screen: 'summary' };
+
+    // --- תת-ענף "קטע ויזואלי" - קודם סריקה אחת, ואז או שיש רגע לחלץ או
+    // שהופכים את החומר לתוכן אחר (מסר / שאלה-התנגדות / סיפור) ---
+    case 'FOOTAGE_VISUAL_FOUND_MOMENT':
+      return { ...state, screen: 'footage-visual-extract' };
+    case 'FOOTAGE_VISUAL_EXTRACT_DONE':
+      return { ...state, screen: 'summary' };
+    case 'FOOTAGE_VISUAL_NO_MOMENT':
+      return { ...state, screen: 'footage-visual-reframe' };
+    case 'FOOTAGE_VISUAL_FOUND_MESSAGE':
+      return { ...state, screen: 'footage-visual-message' };
+    case 'FOOTAGE_VISUAL_FOUND_OBJECTION':
+      return { ...state, screen: 'footage-visual-objection' };
+    case 'FOOTAGE_VISUAL_FOUND_STORY':
+      return { ...state, screen: 'footage-visual-story' };
+    case 'FOOTAGE_VISUAL_READY':
+      return { ...state, screen: 'summary' };
+
+    // ===== בחירת פורמט הנגשה - פופאפ אמיתי, בחירה אמיתית (16/10) - מסלול
+    // "רעיון מ-0" בלבד; קטע מצולם עבר למסלול הייעודי שלו למעלה =====
     case 'FORMAT_SELECTED':
-      return {
-        ...state,
-        selectedFormat: action.format,
-        screen: state.formatFor === 'footage' ? 'footage-script' : 'needs-script-check',
-      };
+      return { ...state, selectedFormat: action.format, screen: 'needs-script-check' };
 
     // ===== "צריך תסריט או לא?" - לא כל תוכן צריך תסריט =====
     case 'NEEDS_SCRIPT_NO':
@@ -102,15 +129,13 @@ function step(state, action) {
       return { ...state, screen: 'has-idea-choice' };
 
     // ===== בחירת שיטת הכתיבה (יש לה רעיון + פורמט + אישרה שצריך תסריט) =====
+    // 18/10/2026 (מאיה: "מצאתי רפרנס מתאים לשכפול הפוך" / "לא מצאתי רפרנס
+    // שיכול להתאים"): מי שלוחצת שהיא כבר מצאה רפרנס מדלגת ישר לתמלול -
+    // אין טעם להציע לה עזרה בחיפוש רפרנס שהיא כבר אומרת שיש לה.
     case 'CHOOSE_REVERSE_DUPLICATION':
-      return { ...state, screen: 'describe-idea', branch: 'idea-search' };
+      return { ...state, screen: 'transcribe', branch: 'idea-search' };
     case 'CHOOSE_FROM_SCRATCH':
       return { ...state, screen: 'scratch-intro', branch: 'scratch' };
-
-    case 'SEARCH_GUIDANCE_READY':
-      return { ...state, screen: 'search-guidance', ideaDescription: action.idea, searchKeywords: action.keywords };
-    case 'SKIP_TO_TRANSCRIBE':
-      return { ...state, screen: 'transcribe' };
 
     // ===== הצינור המשותף (מסלול שכפול הפוך/רגיל): תמלול → פרומפט 1 →
     // המילים שלה → פרומפט 2 → קריאה בקול → סיכום =====

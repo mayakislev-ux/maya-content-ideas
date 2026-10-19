@@ -7,28 +7,67 @@ test('initial state is the opening screen with empty history', () => {
   assert.deepEqual(INITIAL_STATE.history, []);
 });
 
-test('footage path: footage -> relevance check -> use as-is -> summary', () => {
+test('footage path: footage -> relevance check -> "what did you film?"', () => {
   let s = nextStep(INITIAL_STATE, { type: 'CHOOSE_FOOTAGE' });
   assert.equal(s.screen, 'relevance-check');
   assert.equal(s.branch, 'footage');
   s = nextStep(s, { type: 'RELEVANCE_CONFIRMED' });
-  assert.equal(s.screen, 'footage-use-choice');
-  s = nextStep(s, { type: 'FOOTAGE_AS_IS' });
+  assert.equal(s.screen, 'footage-type-choice');
+});
+
+test('footage, speech clip, find-a-moment goal -> shared Hook/Point/Proof/End ending -> summary', () => {
+  let s = nextStep(INITIAL_STATE, { type: 'CHOOSE_FOOTAGE' });
+  s = nextStep(s, { type: 'RELEVANCE_CONFIRMED' });
+  s = nextStep(s, { type: 'FOOTAGE_IS_SPEECH' });
+  assert.equal(s.screen, 'footage-speech-goal');
+  s = nextStep(s, { type: 'FOOTAGE_SPEECH_FIND_MOMENT' });
+  assert.equal(s.screen, 'footage-speech-find');
+  s = nextStep(s, { type: 'FOOTAGE_SPEECH_READY' });
+  assert.equal(s.screen, 'footage-speech-done');
+  s = nextStep(s, { type: 'FOOTAGE_SPEECH_DONE' });
   assert.equal(s.screen, 'summary');
 });
 
-test('footage path: convert -> format selection -> freeform script -> summary', () => {
+test('footage, speech clip, the other two goals also reach the shared ending', () => {
+  const base = { ...INITIAL_STATE, screen: 'footage-speech-goal', branch: 'footage' };
+  let s = nextStep(base, { type: 'FOOTAGE_SPEECH_SHORTEN' });
+  assert.equal(s.screen, 'footage-speech-shorten');
+  s = nextStep(s, { type: 'FOOTAGE_SPEECH_READY' });
+  assert.equal(s.screen, 'footage-speech-done');
+
+  s = nextStep(base, { type: 'FOOTAGE_SPEECH_SHARPEN' });
+  assert.equal(s.screen, 'footage-speech-sharpen');
+  s = nextStep(s, { type: 'FOOTAGE_SPEECH_READY' });
+  assert.equal(s.screen, 'footage-speech-done');
+});
+
+test('footage, visual clip, found a moment -> extraction guidance -> summary', () => {
   let s = nextStep(INITIAL_STATE, { type: 'CHOOSE_FOOTAGE' });
   s = nextStep(s, { type: 'RELEVANCE_CONFIRMED' });
-  s = nextStep(s, { type: 'FOOTAGE_CONVERT' });
-  assert.equal(s.screen, 'format-choice');
-  assert.equal(s.formatFor, 'footage');
-  s = nextStep(s, { type: 'FORMAT_SELECTED', format: 'וויס אובר' });
-  assert.equal(s.selectedFormat, 'וויס אובר');
-  assert.equal(s.screen, 'footage-script');
-  s = nextStep(s, { type: 'FOOTAGE_SCRIPT_SUBMITTED', text: 'התסריט שלי' });
+  s = nextStep(s, { type: 'FOOTAGE_IS_VISUAL' });
+  assert.equal(s.screen, 'footage-visual-scan');
+  s = nextStep(s, { type: 'FOOTAGE_VISUAL_FOUND_MOMENT' });
+  assert.equal(s.screen, 'footage-visual-extract');
+  s = nextStep(s, { type: 'FOOTAGE_VISUAL_EXTRACT_DONE' });
   assert.equal(s.screen, 'summary');
-  assert.equal(s.herWords, 'התסריט שלי');
+});
+
+test('footage, visual clip, no moment found -> reframe into message/objection/story -> summary', () => {
+  const base = { ...INITIAL_STATE, screen: 'footage-visual-scan', branch: 'footage' };
+  let s = nextStep(base, { type: 'FOOTAGE_VISUAL_NO_MOMENT' });
+  assert.equal(s.screen, 'footage-visual-reframe');
+
+  let msg = nextStep(s, { type: 'FOOTAGE_VISUAL_FOUND_MESSAGE' });
+  assert.equal(msg.screen, 'footage-visual-message');
+  assert.equal(nextStep(msg, { type: 'FOOTAGE_VISUAL_READY' }).screen, 'summary');
+
+  let obj = nextStep(s, { type: 'FOOTAGE_VISUAL_FOUND_OBJECTION' });
+  assert.equal(obj.screen, 'footage-visual-objection');
+  assert.equal(nextStep(obj, { type: 'FOOTAGE_VISUAL_READY' }).screen, 'summary');
+
+  let story = nextStep(s, { type: 'FOOTAGE_VISUAL_FOUND_STORY' });
+  assert.equal(story.screen, 'footage-visual-story');
+  assert.equal(nextStep(story, { type: 'FOOTAGE_VISUAL_READY' }).screen, 'summary');
 });
 
 test('reference path: opening choice leads to a has/pull sub-choice first (17/10)', () => {
@@ -71,7 +110,7 @@ test('idea path (typed) -> relevance -> format selection -> needs script yes -> 
   s = nextStep(s, { type: 'NEEDS_SCRIPT_YES' });
   assert.equal(s.screen, 'has-idea-choice');
   s = nextStep(s, { type: 'CHOOSE_REVERSE_DUPLICATION' });
-  assert.equal(s.screen, 'describe-idea');
+  assert.equal(s.screen, 'transcribe');
   assert.equal(s.branch, 'idea-search');
 });
 
@@ -127,17 +166,11 @@ test('from-scratch: full 4-prompt chain (dump -> hook -> reinforcement -> distil
   assert.equal(s.draftScript, 'התסריט הסופי');
 });
 
-test('reverse-duplication: tool only suggests keywords, she searches herself', () => {
+test('reverse-duplication: already found a reference, so it skips straight to transcribing (18/10)', () => {
   const base = { ...INITIAL_STATE, screen: 'has-idea-choice', branch: 'idea' };
-  let s = nextStep(base, { type: 'CHOOSE_REVERSE_DUPLICATION' });
-  assert.equal(s.screen, 'describe-idea');
-  assert.equal(s.branch, 'idea-search');
-  s = nextStep(s, { type: 'SEARCH_GUIDANCE_READY', idea: 'הסיפור שלי על בולמיה', keywords: ['הסיפור שלי', 'סיפור אישי שמחבר'] });
-  assert.equal(s.screen, 'search-guidance');
-  assert.equal(s.ideaDescription, 'הסיפור שלי על בולמיה');
-  assert.deepEqual(s.searchKeywords, ['הסיפור שלי', 'סיפור אישי שמחבר']);
-  s = nextStep(s, { type: 'SKIP_TO_TRANSCRIBE' });
+  const s = nextStep(base, { type: 'CHOOSE_REVERSE_DUPLICATION' });
   assert.equal(s.screen, 'transcribe');
+  assert.equal(s.branch, 'idea-search');
 });
 
 test('shared pipeline: transcribe -> prompt1 -> her-words -> prompt2 -> read-aloud -> summary', () => {
@@ -169,7 +202,7 @@ test('REROLL keeps the current screen, only bumps the count, and leaves no back-
 test('BACK undoes the previous real navigation, one step at a time', () => {
   let s = nextStep(INITIAL_STATE, { type: 'CHOOSE_FOOTAGE' });
   s = nextStep(s, { type: 'RELEVANCE_CONFIRMED' });
-  assert.equal(s.screen, 'footage-use-choice');
+  assert.equal(s.screen, 'footage-type-choice');
 
   s = nextStep(s, { type: 'BACK' });
   assert.equal(s.screen, 'relevance-check');
