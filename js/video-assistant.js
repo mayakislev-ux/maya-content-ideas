@@ -21,6 +21,8 @@ import {
   buildExtractionPrompt, buildHookFindingPrompt, buildHookReinforcementPrompt, buildScriptDistillationPrompt,
 } from './video-assistant-content.js';
 import { playReroll, playSuccess, setMuted, getMuted } from './video-assistant-sound.js';
+import { embedUrlFor, embedShape } from './video-preview.js';
+import { languageName } from './inspiration-readability.js';
 import {
   fetchIdeas, fetchInspirationBank, getSavedDomain, guessDomain, saveDomain, saveSession, loadSession,
 } from './video-assistant-store.js';
@@ -765,12 +767,46 @@ async function renderPulledReference() {
   // נפרד רק בפופאפ"): צפייה נשארת בתוך האפליקציה - פופאפ עם התמונה
   // הממוזערת האמיתית (כבר ממוזערת מקומית במאגר, אין בעיית CORS), עם
   // קישור יציאה מפורש רק אם רוצה לצפות בפועל בפלטפורמה המקורית.
+  //
+  // 19/10/2026 (מאיה, לקוחה דרכה: "לחצתי ניגון וזה לא ממש התנגן, נתקע על
+  // תמונת הפריוויו"): עד עכשיו לא הייתה כאן בכלל אפשרות ניגון אמיתית - רק
+  // התמונה הממוזערת. עכשיו מוטמע הסרטון עצמו (אותו embedUrlFor ששכבת
+  // מאגר ההשראה כבר משתמשת בו) - עובד בכל שפה, כי ההטמעה לא תלויה בשפה.
+  // אם ההטמעה עצמה חסומה (ראה הערה דומה ב-inspiration-popup.js), נופלים
+  // חזרה לתמונה אחרי 4 שניות בלי טעינה. וכשמקור הסרטון זר, מוסיפים גם
+  // תזכורת שהבנה מהצפייה בלבד עלולה להיות חלקית, ושבשלב התמלול הבא ממילא
+  // יש להיעזר ב-Gemini (ראה renderTranscribe) - לא הבטחה לתרגום מדויק כאן.
   function openRefPreview() {
-    openModal(`
+    const embed = embedUrlFor(video.url, video);
+    const shape = embedShape(video.url, video);
+    const lang = languageName(video);
+    const langNote = lang
+      ? `<p class="muted" style="font-size:13px;margin-top:10px">⚠️ הרפרנס הזה ב${escapeHtml(lang)} - אם לא תביני הכל רק מהצפייה, זה בסדר: בשלב הבא תורידי את הסרטון ותתמללי אותו (לעברית אם צריך) בעזרת Gemini.</p>`
+      : '';
+    const overlay = openModal(`
       <h2 style="margin-top:0">תצוגה מקדימה</h2>
-      ${video.thumbnailUrl ? `<img src="${escapeHtml(video.thumbnailUrl)}" alt="" style="width:100%;border-radius:14px;margin-bottom:14px">` : '<p>אין תמונה ממוזערת לסרטון הזה.</p>'}
+      <div id="va-ref-embed-wrap" style="width:100%;border-radius:14px;overflow:hidden;margin-bottom:14px;background:#000;${embed ? `aspect-ratio:${shape.w}/${shape.h}` : ''}">
+        ${embed
+          ? `<iframe src="${escapeHtml(embed)}" title="סרטון רפרנס" loading="lazy" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture" allowfullscreen style="width:100%;height:100%;border:0;display:block"></iframe>`
+          : (video.thumbnailUrl ? `<img src="${escapeHtml(video.thumbnailUrl)}" alt="" style="width:100%;border-radius:14px">` : '<p style="padding:40px 16px;text-align:center;color:#fff">אין תמונה ממוזערת לסרטון הזה.</p>')}
+      </div>
+      ${langNote}
       <a href="${escapeHtml(video.url)}" target="_blank" rel="noopener" class="cosmic-btn" style="display:block;text-align:center;text-decoration:none">לצפייה המלאה בפלטפורמה המקורית ↗</a>
     `);
+    if (!embed) return;
+    const frame = overlay.querySelector('iframe');
+    let loaded = false;
+    frame.addEventListener('load', () => { loaded = true; });
+    setTimeout(() => {
+      if (loaded || !document.body.contains(overlay)) return;
+      const wrap = document.getElementById('va-ref-embed-wrap');
+      if (!wrap) return;
+      wrap.style.aspectRatio = '';
+      wrap.style.background = 'transparent';
+      wrap.innerHTML = video.thumbnailUrl
+        ? `<img src="${escapeHtml(video.thumbnailUrl)}" alt="" style="width:100%;border-radius:14px">`
+        : '<p style="padding:40px 16px;text-align:center;color:#fff">הסרטון הזה לא מוכן להצגה כאן - אפשר לצפות בקישור למטה.</p>';
+    }, 4000);
   }
   document.getElementById('va-ref-preview-btn').addEventListener('click', openRefPreview);
   document.getElementById('va-accept-ref-btn').addEventListener('click', () => {
