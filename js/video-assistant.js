@@ -185,7 +185,7 @@ function showSos() {
       <p>${escapeHtml(pickEncouragement())} זה בסדר להתקדם לאט - אפשר לחזור צעד אחד אחורה, או להתחיל סרטון אחר.</p>
       <div class="cosmic-btn-row">
         ${state.history.length ? '<button type="button" class="cosmic-btn" id="va-sos-back-btn">חזרה צעד אחד אחורה</button>' : ''}
-        <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-sos-restart-btn">להתחיל סרטון אחר</button>
+        <button type="button" class="cosmic-btn" id="va-sos-restart-btn">להתחיל סרטון אחר</button>
       </div>
     `);
     const backBtn = document.getElementById('va-sos-back-btn');
@@ -265,7 +265,7 @@ function renderOpening() {
     <h2>✨ בוא/י ניצור סרטון</h2>
     <p>מאיפה מתחילים הפעם?</p>
     <div class="cosmic-btn-row">
-      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-reference-btn">שיטת השכפול</button>
+      <button type="button" class="cosmic-btn" id="va-reference-btn">שיטת השכפול</button>
       <button type="button" class="cosmic-btn" id="va-footage-btn">יש לי קטע שצולם</button>
       <button type="button" class="cosmic-btn" id="va-idea-btn">רעיון מ-0</button>
     </div>
@@ -281,7 +281,7 @@ function renderReferenceSourceChoice() {
   cosmicCard(`
     <h2>יש לך כבר רפרנס?</h2>
     <div class="cosmic-btn-row">
-      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-has-ref-btn">יש לי רפרנס</button>
+      <button type="button" class="cosmic-btn" id="va-has-ref-btn">יש לי רפרנס</button>
       <button type="button" class="cosmic-btn" id="va-pull-ref-btn">אין לי רפרנס, הגרל/י לי אחד</button>
     </div>
   `);
@@ -300,7 +300,7 @@ function renderIdeaSourceChoice() {
   cosmicCard(`
     <h2>מאיפה הרעיון?</h2>
     <div class="cosmic-btn-row">
-      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-type-idea-btn">יש לי רעיון</button>
+      <button type="button" class="cosmic-btn" id="va-type-idea-btn">יש לי רעיון</button>
       <button type="button" class="cosmic-btn" id="va-pull-idea-btn">תמצא/י לי רעיון</button>
     </div>
   `);
@@ -633,14 +633,19 @@ function renderFormatChoice() {
   });
 }
 
-// ===== "צריך תסריט או לא?" - ניסוח מתוקן (16/10) =====
+// ===== "צריך תסריט או לא?" - ניסוח מתוקן (16/10)
+// 18/10/2026 (מאיה: "לא מובן החלק של זה ספונטני/צולם כבר/ויזואלי") -
+// "צולם כבר" לא באמת שייך למסך הזה (הוא מגיע רק ממסלול "רעיון מ-0",
+// כלום עוד לא צולם) ושלושת התיוגים ביחד בכפתור אחד היו לא ברורים.
+// במקום תיוגים, שאלה ישירה בגוף ראשון עם שתי תשובות ברורות. גם הוסרה
+// הצביעה הוורודה האוטומטית - שתי התשובות שוות משקל. =====
 function renderNeedsScriptCheck() {
   cosmicCard(`
     <h2>צריך תסריט בכלל?</h2>
-    <p>לא כל תוכן צריך תסריט! יש תכנים שנולדים מרגע חי וספונטני, או מפורמט ויזואלי שלא צריך תסריט.</p>
+    <p>לא כל תוכן צריך תסריט כתוב מראש - לפעמים עדיף לדעת את הכיוון ולדבר בספונטניות, או שהפורמט עצמו ויזואלי ולא מבוסס דיבור.</p>
     <div class="cosmic-btn-row">
-      <button type="button" class="cosmic-btn" id="va-needs-script-no-btn">זה ספונטני / צולם כבר / ויזואלי</button>
-      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-needs-script-yes-btn">כן, צריך תסריט</button>
+      <button type="button" class="cosmic-btn" id="va-needs-script-no-btn">לא, אדע מה להגיד בלי תסריט כתוב</button>
+      <button type="button" class="cosmic-btn" id="va-needs-script-yes-btn">כן, אני רוצה תסריט מסודר</button>
     </div>
   `);
   document.getElementById('va-needs-script-no-btn').addEventListener('click', () => dispatch({ type: 'NEEDS_SCRIPT_NO' }));
@@ -654,7 +659,7 @@ function renderHasIdeaChoice() {
   cosmicCard(`
     <h2>יש לך רפרנס לשכפול הפוך?</h2>
     <div class="cosmic-btn-row">
-      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-reverse-btn">מצאתי רפרנס מתאים לשכפול הפוך</button>
+      <button type="button" class="cosmic-btn" id="va-reverse-btn">מצאתי רפרנס מתאים לשכפול הפוך</button>
       <button type="button" class="cosmic-btn" id="va-scratch-btn">לא מצאתי רפרנס שיכול להתאים</button>
     </div>
   `);
@@ -930,11 +935,16 @@ function renderScratchIntro() {
   document.getElementById('va-scratch-start-btn').addEventListener('click', () => dispatch({ type: 'SCRATCH_START_DUMP' }));
 }
 
+// 18/10/2026 (מאיה: "צריך להסביר ששולחים את זה ל-ChatGPT ואז מדביקים
+// לכאן") - עד עכשיו לא היה כתוב בשום מקום מה עושים עם הפרומפט שנוצר.
+// עכשיו שלושה שלבים מפורשים: 1) ממלאים כאן, 2) מעתיקים ושולחים ל-
+// ChatGPT, 3) חוזרים ומדביקים את התשובה בתיבת הטקסט הגדולה במסך
+// הקודם (לא כאן - המודאל הזה רק בונה את הפרומפט).
 function openExtractionHelperModal() {
   const idea = state.ideaDescription || '';
   const overlay = openModal(`
     <h2 style="margin-top:0">קשה למצוא מה להגיד?</h2>
-    <p style="font-size:13px">מלא/י את הפרטים, קבל/י פרומפט שישאל שאלות שיוציאו בדיוק מה להגיד - בלי לעצב, רק לענות.</p>
+    <p style="font-size:13px">זה בנאי פרומפט בלבד: ממלאים כאן, מקבלים פרומפט מוכן, מעתיקים אותו ושולחים ל-ChatGPT - הוא ישאל שאלות שיוציאו ממך בדיוק מה להגיד. את התשובות שתקבלי מ-ChatGPT מדביקים חזרה בתיבת הטקסט הגדולה (לא כאן במודאל).</p>
     <input type="text" class="cosmic-textarea" id="va-ext-contenttype" style="min-height:auto" placeholder="סוג תוכן (מכירתי / בעל ערך / בידורי / אישי)">
     <input type="text" class="cosmic-textarea" id="va-ext-startpoint" style="min-height:auto;margin-top:8px" placeholder="נקודת יציאה (סיפור אישי / סיפור לקוח / כללי)">
     <input type="text" class="cosmic-textarea" id="va-ext-audience" style="min-height:auto;margin-top:8px" placeholder="קהל היעד">
@@ -956,6 +966,7 @@ function openExtractionHelperModal() {
     resultEl.innerHTML = `
       <div class="cosmic-prompt-box" style="margin-top:14px">${highlightPlaceholders(prompt, [idea, contentType, startingPoint, audience])}</div>
       ${copyBtn(prompt, 'העתק/י פרומפט')}
+      <p style="font-size:12px;opacity:.75;margin-top:10px;margin-bottom:0">עכשיו: הדביקי/הדבק את זה בשיחה חדשה ב-ChatGPT, תעני/תענה על השאלות שלו, ואז תחזרי/תחזור לכאן ותדביקי/תדביק את מה שעלה בתיבת הטקסט הגדולה.</p>
     `;
     wireCopyButtons(resultEl);
   });
