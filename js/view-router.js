@@ -19,6 +19,11 @@ export function showView(name) {
   document.getElementById('embed-back-btn').hidden = !EMBED_VIEWS.includes(name);
   document.getElementById('content-plan-open-builder-btn').hidden = name !== 'content-plan';
   sessionStorage.setItem(LAST_VIEW_KEY, name);
+  // 19/10/2026 (מאיה: לחיצה על "מעקב לקוחות" מתחתית מסך הבית - עמוד ארוך -
+  // זרקה אותה לתחתית המסך הבא, לא למעלה). showView מחליפה תוכן בלי לאפס
+  // גלילה; כשהמסך הקודם היה ארוך והבא קצר יותר, הדפדפן פשוט הצמיד את
+  // הגלילה לסוף החדש - בדיוק מה שהיא תיארה. כל מעבר מסך אמור להתחיל מלמעלה.
+  window.scrollTo(0, 0);
 }
 
 export function getLastView() {

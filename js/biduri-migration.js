@@ -155,6 +155,10 @@ export function wireBiduriMigration() {
   const close = () => { modal.hidden = true; };
 
   openBtn.addEventListener('click', () => {
+    // 19/10/2026 (מאיה: החלון נפתח, אבל כבר גלול לסוף) - ראה אותה הערה
+    // ב-openPolicyModal (app.js): scrollTop של .modal נשמר גם כש-hidden,
+    // אז פתיחה חוזרת ממשיכה מהגלילה הקודמת במקום להתחיל מלמעלה.
+    modal.scrollTop = 0;
     modal.hidden = false;
     pendingDecisions = [];
     el('biduri-summary').textContent = '';

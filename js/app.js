@@ -251,7 +251,13 @@ document.getElementById('drawer-signout-btn').addEventListener('click', () => si
 const getTokenUsage = httpsCallable(functions, 'getTokenUsage');
 document.getElementById('token-usage-btn').addEventListener('click', async () => {
   const btn = document.getElementById('token-usage-btn');
+  // 19/10/2026 (מאיה: כפתור כאן גם הוא זרק אותה לתחתית העמוד) - לכפתור הזה
+  // אין בכלל חלון משלו, רק alert() של הדפדפן, אז זה לא אותה סיבה שבמודאלים
+  // (ראה openPolicyModal) - אבל השבתת הכפתור הממוקד מיד אחרי הלחיצה עלולה
+  // להזיז את הפוקוס ולגרור גלילה. שומרים ומחזירים את מקום הגלילה ליתר ביטחון.
+  const scrollY = window.scrollY;
   btn.disabled = true;
+  requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, scrollY)));
   try {
     const { data } = await getTokenUsage();
     const lines = Object.entries(data.byFunction).map(
@@ -272,7 +278,10 @@ document.getElementById('token-usage-btn').addEventListener('click', async () =>
 const getFeedback = httpsCallable(functions, 'getFeedback');
 document.getElementById('view-feedback-btn').addEventListener('click', async () => {
   const btn = document.getElementById('view-feedback-btn');
+  // 19/10/2026 - אותה שמירת-מקום-גלילה כמו ב-token-usage-btn, מאותה סיבה.
+  const scrollY = window.scrollY;
   btn.disabled = true;
+  requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, scrollY)));
   try {
     const { data } = await getFeedback();
     if (!data.items.length) {
@@ -293,7 +302,13 @@ document.getElementById('view-feedback-btn').addEventListener('click', async () 
 });
 
 function openPolicyModal() {
-  document.getElementById('policy-modal').hidden = false;
+  const modal = document.getElementById('policy-modal');
+  // 19/10/2026 (מאיה: לחיצה על כפתור בתחתית העמוד פתחה את החלון, אבל הוא
+  // נפתח כבר גלול לסופו, לא מלמעלה). .modal עצמו הוא ה-overflow-y:auto -
+  // ה-scrollTop שלו נשאר שמור גם כש-hidden מסתיר אותו, אז פתיחה חוזרת אחרי
+  // שגללו בתוכו בפעם הקודמת ממשיכה בדיוק מאיפה שהפסיקו. איפוס לפני ההצגה.
+  modal.scrollTop = 0;
+  modal.hidden = false;
 }
 document.getElementById('open-policy-btn-login').addEventListener('click', openPolicyModal);
 document.getElementById('open-policy-btn-app').addEventListener('click', openPolicyModal);
