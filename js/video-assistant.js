@@ -29,8 +29,7 @@ import { showToast } from './toast.js';
 import {
   pickEncouragement, domainTheme, formatElapsed, dnaSteps,
   mascotMood, mascotFace, burstConfetti, flipReveal, startParticleTrail,
-  startAmbientDrone, intensifyAmbientDrone, stopAmbientDrone, cacheDomainInfoLocally,
-  readCachedDomainInfo, spinReveal,
+  cacheDomainInfoLocally, readCachedDomainInfo, spinReveal,
 } from './video-assistant-fx.js';
 
 const SUBCATEGORIES_BY_DOMAIN = {
@@ -105,7 +104,6 @@ function highlightPlaceholders(text, values = []) {
 function progressHtml() {
   const current = PHASE_BY_SCREEN[state.screen] ?? 0;
   const pct = Math.round(((current + 1) / PHASES.length) * 100);
-  intensifyAmbientDrone(PHASES.length > 1 ? current / (PHASES.length - 1) : 0);
   const steps = dnaSteps(state.branch || 'idea', current, PHASES.length);
   const dnaHtml = steps.map((s, i) => `
     <div class="cosmic-dna-step ${s.status}">
@@ -148,7 +146,6 @@ function restart() {
   dispatch({ type: 'RESTART' });
   currentPickId = null;
   sessionStartTs = Date.now();
-  if (!getMuted()) startAmbientDrone();
 }
 
 // ===== #9: צליל הצלחה + משפט עידוד שלא חוזר על עצמו פעמיים ברצף =====
@@ -403,7 +400,7 @@ function renderFootageTypeChoice() {
     <h2>מה צילמת?</h2>
     <p>🎙️ קטע שיש בו דיבור - סדנה, פודקאסט, לייב, שיחה וכו׳<br>🎥 קטע ויזואלי - תהליך, עבודה, תוצאה, רגע שצולם וכו׳</p>
     <div class="cosmic-btn-row">
-      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-footage-speech-btn">🎙️ קטע שיש בו דיבור</button>
+      <button type="button" class="cosmic-btn" id="va-footage-speech-btn">🎙️ קטע שיש בו דיבור</button>
       <button type="button" class="cosmic-btn" id="va-footage-visual-btn">🎥 קטע ויזואלי</button>
     </div>
   `);
@@ -416,7 +413,7 @@ function renderFootageSpeechGoal() {
   cosmicCard(`
     <h2>מה המטרה שלך עם הקטע?</h2>
     <div class="cosmic-btn-row">
-      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-speech-find-btn">למצוא ממנו רגע חזק לריל</button>
+      <button type="button" class="cosmic-btn" id="va-speech-find-btn">למצוא ממנו רגע חזק לריל</button>
       <button type="button" class="cosmic-btn" id="va-speech-shorten-btn">לקצר קטע שכבר בחרתי</button>
       <button type="button" class="cosmic-btn" id="va-speech-sharpen-btn">להפוך אותו לקטע יותר חד ושיווקי</button>
     </div>
@@ -524,7 +521,7 @@ function renderFootageVisualScan() {
       <li>רגע שפשוט כיף לראות</li>
     </ul>
     <div class="cosmic-btn-row" style="margin-top:14px">
-      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-visual-found-btn">מצאתי רגע ששווה להוציא</button>
+      <button type="button" class="cosmic-btn" id="va-visual-found-btn">מצאתי רגע ששווה להוציא</button>
       <button type="button" class="cosmic-btn" id="va-visual-notfound-btn">לא מצאתי - נהפוך את החומר לתוכן אחר</button>
     </div>
   `);
@@ -1144,10 +1141,8 @@ function renderSummary() {
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-restart-btn">ליצור סרטון נוסף</button>
     </div>
   `, { showProgress: false });
-  // 17/10/2026 (רעיון #2, #15): קונפטי אמיתי בסיום, והאודיו האמביינטי
-  // (אם פעיל) "משתחרר" - התח שנבנה כל המסלול נפתר ברגע הזה.
+  // 17/10/2026 (רעיון #2): קונפטי אמיתי בסיום.
   burstConfetti(card);
-  stopAmbientDrone();
   if (script) wireCopyButtons(screenEl());
   document.getElementById('va-restart-btn').addEventListener('click', restart);
 }
@@ -1190,14 +1185,10 @@ function render() {
 }
 
 export function wireVideoAssistantView() {
-  // 17/10/2026 (רעיון #15, "אודיו אמביינטי מסונכרן עם כפתור ההשתקה
-  // הקיים"): השתקה/ביטול השתקה מפעילים ומכבים את הדרון בזמן אמת.
   document.getElementById('video-assistant-mute-btn').addEventListener('click', (e) => {
     const muted = !getMuted();
     setMuted(muted);
     e.target.textContent = muted ? '🔇' : '🔊';
-    if (muted) stopAmbientDrone();
-    else startAmbientDrone();
   });
   document.getElementById('video-assistant-mute-btn').textContent = getMuted() ? '🔇' : '🔊';
 
@@ -1220,7 +1211,6 @@ export function wireVideoAssistantView() {
     // נשמר ברקע (saveSession) לאורך כל מסלול, רק שלא טוענים אותו כאן.
     state = INITIAL_STATE;
     sessionStartTs = Date.now();
-    if (!getMuted()) startAmbientDrone();
     render();
   });
 }

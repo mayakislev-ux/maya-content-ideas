@@ -158,61 +158,9 @@ export function stopParticleTrail(container) {
   particleHandler = null;
 }
 
-// ----- #15: אודיו אמביינטי שבונה מתח, משוחרר ע"י אותו מצב השתקה -----
-let audioCtx = null;
-let droneNodes = null;
-export function startAmbientDrone() {
-  if (!hasDom || droneNodes) return;
-  try {
-    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-    const osc1 = audioCtx.createOscillator();
-    const osc2 = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc1.type = 'sine';
-    osc2.type = 'sine';
-    osc1.frequency.value = 110;
-    osc2.frequency.value = 164.81; // חמישית - נשמע קוסמי, לא צורם
-    gain.gain.value = 0;
-    osc1.connect(gain);
-    osc2.connect(gain);
-    gain.connect(audioCtx.destination);
-    osc1.start();
-    osc2.start();
-    gain.gain.linearRampToValueAtTime(0.02, audioCtx.currentTime + 2);
-    droneNodes = { osc1, osc2, gain };
-  } catch (err) {
-    console.error('startAmbientDrone failed:', err);
-  }
-}
-// 17/10/2026 (מאיה: "המוזיקה עושה סחרחורת") - השורש האמיתי: הפונקציה הזו
-// נקראה בכל render (גם כשהעוצמה לא השתנתה בפועל), וכל קריאה תזמנה ramp
-// חדש מעל ramp קודם שעדיין פעיל - חפיפה של כמה עקומות עוצמה-שקיעה-ועלייה
-// במקביל נשמעת כ"גלים"/תנודה לא נעימה. התיקון: מבטלים כל ramp מתוזמן
-// לפני שמתחילים ramp חדש, ומנמיכים משמעותית את התקרה.
-export function intensifyAmbientDrone(amount) {
-  if (!droneNodes || !audioCtx) return;
-  const target = Math.min(0.04, 0.02 + amount * 0.02);
-  const now = audioCtx.currentTime;
-  droneNodes.gain.gain.cancelScheduledValues(now);
-  droneNodes.gain.gain.setValueAtTime(droneNodes.gain.gain.value, now);
-  droneNodes.gain.gain.linearRampToValueAtTime(target, now + 2.5);
-}
-export function stopAmbientDrone() {
-  if (!droneNodes) return;
-  try {
-    const now = audioCtx.currentTime;
-    droneNodes.gain.gain.cancelScheduledValues(now);
-    droneNodes.gain.gain.setValueAtTime(droneNodes.gain.gain.value, now);
-    droneNodes.gain.gain.linearRampToValueAtTime(0, now + 0.8);
-    setTimeout(() => {
-      droneNodes.osc1.stop();
-      droneNodes.osc2.stop();
-      droneNodes = null;
-    }, 900);
-  } catch (err) {
-    console.error('stopAmbientDrone failed:', err);
-  }
-}
+// 18/10/2026 (מאיה: "תעיפי את המוזיקה, לא אהבתי"): רעיון #15 (אודיו
+// אמביינטי) הוסר לגמרי - גם אחרי תיקון באג התנודה הקודם, היא פשוט לא
+// רצתה את זה.
 
 // ----- #1: ספינר הגרלה - מראה כמה אפשרויות "מתערבבות" לפני הנפילה על אחת -----
 // 18/10/2026 (מאיה: "זה מגריל יותר מדי זמן... אמור להיות מהיר לא לעכב"):
