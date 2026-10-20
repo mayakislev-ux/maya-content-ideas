@@ -50,6 +50,22 @@ async function morning(path, body, token) {
   return res.json();
 }
 
+/* 20/10/2026: מורנינג סגרו את /account/token (404 לכל מפתח), והסנכרון נכשל
+   ב-19/10 וב-20/10. הכתובת החדשה: OAuth 2.0 עם client_credentials, אותו
+   מפתח. שאר הקריאות נשארות ב-BASE. */
+async function morningToken(id, secret) {
+  const res = await fetch('https://api.morning.co/idp/v1/oauth/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ grant_type: 'client_credentials', client_id: id, client_secret: secret }),
+  });
+  if (!res.ok) throw new Error(`morning token ${res.status}`);
+  const j = await res.json();
+  const token = j.accessToken || j.token;
+  if (!token) throw new Error('morning token missing');
+  return token;
+}
+
 async function recentReceipts(token, now = new Date()) {
   const from = new Date(now.getTime() - LOOKBACK_DAYS * 86400000).toISOString().slice(0, 10);
   const to = now.toISOString().slice(0, 10);
@@ -70,7 +86,7 @@ const syncRefsSubscriptions = onSchedule(
     const db = admin.firestore();
     const subs = (await db.collection('allowlist').where('billing', '==', 'morning').get()).docs;
     if (subs.length === 0) return;
-    const { token } = await morning('/account/token', { id: MORNING_API_ID.value(), secret: MORNING_API_SECRET.value() });
+    const token = await morningToken(MORNING_API_ID.value(), MORNING_API_SECRET.value());
     const receipts = await recentReceipts(token);
     for (const sub of subs) {
       const data = sub.data() || {};
