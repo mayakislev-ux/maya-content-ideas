@@ -359,7 +359,17 @@ document.getElementById('tab-feedback').addEventListener('click', () => showView
 document.getElementById('hub-link-ideas-guide').addEventListener('click', () => showView('ideas-guide'));
 document.getElementById('ideas-guide-back-btn').addEventListener('click', () => showView('guide'));
 document.getElementById('hub-link-video-assistant').addEventListener('click', () => showView('video-assistant'));
-document.getElementById('video-assistant-back-btn').addEventListener('click', () => showView('guide'));
+/* 20/10/2026: מנוית רפרנסים מגיעה לעוזר מהלשונית שלו, ואין לה מרכז למידה.
+   החזרה שלה היא למאגר ההשראה. */
+document.getElementById('tab-video-assistant').addEventListener('click', () => showView('video-assistant'));
+document.getElementById('video-assistant-back-btn').addEventListener('click', () => {
+  if (document.body.dataset.plan === 'refs') {
+    showView('inspiration');
+    openInspirationView();
+  } else {
+    showView('guide');
+  }
+});
 // "מפת הדרכים ליצירת תוכן" existed all along (same roadmap-view as
 // open-roadmap-link-btn below) but only as a secondary link buried inside
 // the "מאיפה להביא רעיונות" sub-page - not visible from the hub itself,

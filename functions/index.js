@@ -1033,7 +1033,9 @@ exports.guessClientDomain = onCall({ secrets: [anthropicApiKey, sheetsServiceAcc
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'יש להתחבר כדי להשתמש בתכונה הזו');
   }
-  await enforceAllowlist(request.auth.token.email);
+  /* 20/10/2026 (מאיה: "לפתוח למי שרוכשת רק רפרנסים את הסוכן שבונה את הסרטונים"):
+     העוזר ליצירת סרטון פתוח גם למנוי הרפרנסים. */
+  await enforceAllowlist(request.auth.token.email, { allowRefs: true });
   await enforceRateLimit(request.auth.uid, 'guessClientDomain');
 
   const profileSnap = await db.collection('profiles').doc(request.auth.uid).get();
@@ -1078,7 +1080,9 @@ exports.suggestSearchKeywords = onCall({ secrets: [anthropicApiKey], region: 'us
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'יש להתחבר כדי להשתמש בתכונה הזו');
   }
-  await enforceAllowlist(request.auth.token.email);
+  /* 20/10/2026 (מאיה: "לפתוח למי שרוכשת רק רפרנסים את הסוכן שבונה את הסרטונים"):
+     העוזר ליצירת סרטון פתוח גם למנוי הרפרנסים. */
+  await enforceAllowlist(request.auth.token.email, { allowRefs: true });
 
   const idea = ((request.data && request.data.idea) || '').trim();
   if (!idea) {
@@ -1130,7 +1134,9 @@ exports.extractOpeningHook = onCall({ secrets: [anthropicApiKey], region: 'us-ce
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'יש להתחבר כדי להשתמש בתכונה הזו');
   }
-  await enforceAllowlist(request.auth.token.email);
+  /* 20/10/2026 (מאיה: "לפתוח למי שרוכשת רק רפרנסים את הסוכן שבונה את הסרטונים"):
+     העוזר ליצירת סרטון פתוח גם למנוי הרפרנסים. */
+  await enforceAllowlist(request.auth.token.email, { allowRefs: true });
 
   const transcript = ((request.data && request.data.transcript) || '').trim();
   if (!transcript) {

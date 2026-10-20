@@ -56,6 +56,9 @@ function declaredNames(src) {
   };
   add(/\b(?:function|class)\s+([A-Za-z_$][\w$]*)/g);
   add(/\b(?:const|let|var)\s+([^=;\n]+)/g);
+  // 20/10/2026: פירוק על כמה שורות (const {\n a, b,\n} = require(...)).
+  // השורה למעלה עוצרת בירידת שורה, ולכן ראתה רק את "{" והתריעה לשווא.
+  add(/\b(?:const|let|var)\s*\{([^}]*)\}\s*=/g);
   add(/\bimport\s+([^;]+?)\s+from/g);
   // פרמטרים של פונקציות ושל חיצים
   add(/\bfunction\s*[A-Za-z_$\w]*\s*\(([^)]*)\)/g);

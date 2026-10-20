@@ -6296,6 +6296,10 @@ body[data-plan="refs"] #install-app-btn,
 body[data-plan="refs"] #portal-back-btn,
 body[data-plan="refs"] #login-portal-back { display: none !important; }
 
+/* 20/10/2026: לשונית העוזר ליצירת סרטון קיימת רק במנוי הרפרנסים */
+.tab-refs-only { display: none !important; }
+body[data-plan="refs"] .tab-refs-only { display: inline-flex !important; }
+
 /* בלי הכפתורים התחתונים אין טעם בסרגל התחתון כולו */
 body[data-plan="refs"] .bottom-nav { display: none !important; }
 

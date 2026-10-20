@@ -66,7 +66,8 @@ service cloud.firestore {
     // 13/10/2026: "העוזר שלך ליצירת סרטון" - מסמך אחד לכל לקוחה (הסשן
     // הפעיל שלה, לא היסטוריה), אותה צורה בדיוק כמו storyTables.
     match /videoAssistantSessions/{uid} {
-      allow read, write: if isFull() && request.auth.uid == uid;
+      /* 20/10/2026: גם מנוי הרפרנסים, כל עוד המנוי בתוקף */
+      allow read, write: if (isFull() || (isAllowed() && notExpired())) && request.auth.uid == uid;
       allow read: if isAdmin();
     }
     /* 02/10/2026 (מאיה): "בגלל שהסטוריז בצבע מותג אז הייתי רוצה

@@ -299,15 +299,21 @@ function renderReferenceSourceChoice() {
 // 17/10/2026 (מאיה: "פשוט יש לי רעיון שבחרתי או תמצא לי רעיון"): ניסוח
 // קצר יותר, ואם אין בכלל רעיונות בבנק - הודעה ברורה שעוצרת, לא הפניה
 // שקטה למסך אחר.
+function refsPlan() {
+  return document.body.dataset.plan === 'refs';
+}
+
 function renderIdeaSourceChoice() {
   cosmicCard(`
     <h2>מאיפה הרעיון?</h2>
     <div class="cosmic-btn-row">
       <button type="button" class="cosmic-btn" id="va-type-idea-btn">יש לי רעיון</button>
-      <button type="button" class="cosmic-btn" id="va-pull-idea-btn">תמצא/י לי רעיון</button>
+      ${refsPlan() ? '' : '<button type="button" class="cosmic-btn" id="va-pull-idea-btn">תמצא/י לי רעיון</button>'}
     </div>
   `);
   document.getElementById('va-type-idea-btn').addEventListener('click', () => dispatch({ type: 'CHOOSE_TYPE_IDEA' }));
+  /* 20/10/2026: במנוי הרפרנסים אין בנק רעיונות, ולכן אין "תמצא לי רעיון" */
+  if (refsPlan()) return;
   document.getElementById('va-pull-idea-btn').addEventListener('click', async () => {
     if (!ideasCache) ideasCache = await fetchIdeas();
     const picked = pickIdea(ideasCache, null);

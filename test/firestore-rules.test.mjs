@@ -74,7 +74,12 @@ test('מנוי רפרנסים מזוהה לפי plan ולא לפי עצם הקי
 });
 
 test('מאגר ההשראה פתוח לכל מי שברשימה, כולל מנוי רפרנסים', () => {
-  assert.ok(block('inspirationBank').includes('allow read: if isAllowed();'));
+  /* 15/10/2026: נוספה גם בדיקת תוקף המנוי (notExpired), והבדיקה לא עודכנה */
+  assert.ok(block('inspirationBank').includes('allow read: if isAllowed() && notExpired();'));
+});
+
+test('העוזר ליצירת סרטון פתוח גם למנוי רפרנסים בתוקף (20/10)', () => {
+  assert.ok(block('videoAssistantSessions').includes('(isFull() || (isAllowed() && notExpired())) && request.auth.uid == uid'));
 });
 
 test('אוספי התוכן דורשים מנוי מלא', () => {
