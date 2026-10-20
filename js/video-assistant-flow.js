@@ -148,15 +148,31 @@ function step(state, action) {
     case 'CHOOSE_FROM_SCRATCH':
       return { ...state, screen: 'scratch-intro', branch: 'scratch' };
 
-    // ===== הצינור המשותף (מסלול שכפול הפוך/רגיל): תמלול → פרומפט 1 →
-    // המילים שלה → פרומפט 2 → קריאה בקול → סיכום =====
+    // ===== הצינור המשותף: תמלול → [פרומפט 1 → המילים שלה] או [המילים שלה
+    // → פרומפט 1] → פרומפט 2 → קריאה בקול → סיכום. הסדר בין פרומפט 1
+    // למילים שלה שונה בין שני המסלולים - ראה הערה ב-HOOK_CHOSEN למטה. =====
     case 'CONFIRM_DONE':
-      if (state.screen === 'transcribe') return { ...state, screen: 'prompt1' };
+      if (state.screen === 'transcribe') {
+        // 19/10/2026 (מאיה, אחרי שהבהירה פעמיים: "בשכפול הפוך לפני
+        // שמוצאים הוק צריך קודם שידביקו לך את המגילת אסתר") - בשכפול
+        // הפוך (idea-search) כותבים את מגילת אסתר (state.herWords) *לפני*
+        // שמחפשים הוק, כי התוכן שלה נכנס לתוך פרומפט 1 עצמו (ראה
+        // buildReverseDuplicationPrompt) - ChatGPT "מחליט על הוקים" לפי
+        // המגילה שלה + הרפרנס, לא רק לפי שורת-רעיון קצרה. בשכפול רגיל
+        // (branch 'reference') הסדר נשאר כמו שהיה: קודם ההוק, המגילה רק
+        // אחר כך (כי שם עוד אין רעיון קונקרטי לדבר עליו).
+        if (state.branch === 'idea-search') return { ...state, screen: 'her-words' };
+        return { ...state, screen: 'prompt1' };
+      }
       if (state.screen === 'read-aloud') return { ...state, screen: 'summary' };
       throw new Error(`CONFIRM_DONE not valid from screen "${state.screen}"`);
     case 'HOOK_CHOSEN':
+      // בשכפול הפוך המגילה כבר נכתבה (לפני ההוק) - ממשיכים ישר לפרומפט
+      // הסופי. בשכפול רגיל זה הרגע שבו שואלים אותה מה יש לה להגיד.
+      if (state.branch === 'idea-search') return { ...state, screen: 'prompt2', hook: action.hook };
       return { ...state, screen: 'her-words', hook: action.hook };
     case 'HER_WORDS_SUBMITTED':
+      if (state.branch === 'idea-search') return { ...state, screen: 'prompt1', herWords: action.text };
       return { ...state, screen: 'prompt2', herWords: action.text };
     case 'SCRIPT_READY':
       // 17/10/2026 (מאיה: "הייתי שמחה שבסיכום יהיה כתוב גם את התסריט") -

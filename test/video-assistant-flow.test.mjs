@@ -185,7 +185,7 @@ test('reverse-duplication: already found a reference, so it skips straight to tr
   assert.equal(s.branch, 'idea-search');
 });
 
-test('shared pipeline: transcribe -> prompt1 -> her-words -> prompt2 -> read-aloud -> summary', () => {
+test('regular reference duplication: transcribe -> prompt1 -> her-words -> prompt2 -> read-aloud -> summary', () => {
   const base = { ...INITIAL_STATE, screen: 'transcribe' };
   let s = nextStep(base, { type: 'CONFIRM_DONE' });
   assert.equal(s.screen, 'prompt1');
@@ -200,6 +200,25 @@ test('shared pipeline: transcribe -> prompt1 -> her-words -> prompt2 -> read-alo
   assert.equal(s.finalScript, 'התסריט המלא שקיבלה');
   s = nextStep(s, { type: 'CONFIRM_DONE' });
   assert.equal(s.screen, 'summary');
+});
+
+// 19/10/2026 (מאיה, אחרי שהבהירה פעמיים: "בשכפול הפוך לפני שמוצאים הוק
+// צריך קודם שידביקו לך את המגילת אסתר, הבנת? התפספס מה שכתבתי לך") -
+// בשכפול הפוך (branch 'idea-search') מגילת אסתר נכתבת *לפני* שמחפשים
+// הוק, לא אחרי כמו בשכפול רגיל - כי התוכן שלה נכנס לתוך הפרומפט שמוצא
+// את ההוק (ChatGPT "מחליט על הוקים" לפי המגילה + הרפרנס).
+test('reverse duplication: transcribe -> her-words (מגילת אסתר first) -> prompt1 -> prompt2', () => {
+  const base = { ...INITIAL_STATE, screen: 'transcribe', branch: 'idea-search' };
+  let s = nextStep(base, { type: 'CONFIRM_DONE' });
+  assert.equal(s.screen, 'her-words');
+  s = nextStep(s, { type: 'HER_WORDS_SUBMITTED', text: 'מגילת האסתר שלי' });
+  assert.equal(s.screen, 'prompt1');
+  assert.equal(s.herWords, 'מגילת האסתר שלי');
+  assert.equal(s.hook, null);
+  s = nextStep(s, { type: 'HOOK_CHOSEN', hook: 'ההוק שבחרה מתוך ה-20' });
+  assert.equal(s.screen, 'prompt2');
+  assert.equal(s.hook, 'ההוק שבחרה מתוך ה-20');
+  assert.equal(s.herWords, 'מגילת האסתר שלי');
 });
 
 test('REROLL keeps the current screen, only bumps the count, and leaves no back-entry', () => {

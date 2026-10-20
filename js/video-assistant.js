@@ -892,12 +892,18 @@ async function renderPrompt1() {
   // משלה לפני שהיא בכלל חיפשה רפרנס - בניגוד לשכפול רגיל (אין עדיין
   // רעיון קונקרטי, רק תחום/קהל) - אז הפרומפט כאן חייב לכלול את הרעיון
   // הזה בתוכו, בניסוח אחר לגמרי. ראה buildReverseDuplicationPrompt.
+  // 19/10/2026 (מאיה, שוב: "בשכפול הפוך לפני שמוצאים הוק צריך קודם
+  // שידביקו לך את המגילת אסתר") - מגילת האסתר (state.herWords) נכתבת
+  // עכשיו *לפני* המסך הזה במסלול שכפול הפוך (ראה HER_WORDS_SUBMITTED ב-
+  // video-assistant-flow.js), והיא-היא ה"רעיון" שנכנס לפרומפט - לא שורת
+  // ideaDescription הקצרה.
   const isReverseDup = state.branch === 'idea-search';
+  const reverseDupIdea = state.herWords || state.ideaDescription || '';
   const prompt = isReverseDup
-    ? buildReverseDuplicationPrompt({ domain, hook: hookForPrompt, idea: state.ideaDescription || '' })
+    ? buildReverseDuplicationPrompt({ domain, hook: hookForPrompt, idea: reverseDupIdea })
     : buildDuplicationPrompt({ audience, domain, hook: hookForPrompt });
   const highlightValues = isReverseDup
-    ? [domain, hookForPrompt, state.ideaDescription]
+    ? [domain, hookForPrompt, reverseDupIdea]
     : [audience, domain, hookForPrompt];
   cosmicCard(`
     <h2>פרומפט מוכן ל-ChatGPT</h2>
@@ -929,16 +935,25 @@ async function renderPrompt1() {
 // נתקעים, SOS של פרומפט חילוץ תוכן") - עד עכשיו המסך הזה הגיע בלי שום
 // תזכורת על מה בדיוק בונים, ובלי אפשרות עזרה אם נתקעים (בניגוד למסך
 // המקביל במסלול "כתיבה מאפס", שכבר יש לו אותו כפתור SOS).
+//
+// 19/10/2026 (מאיה, שוב: "בשכפול הפוך לפני שמוצאים הוק צריך קודם שידביקו
+// לך את המגילת אסתר") - במסלול שכפול הפוך המסך הזה מגיע *לפני* שנבחר
+// הוק (state.hook עדיין ריק) - אז ה"הקשר" שמוצג הוא הרעיון שלה, וההסבר
+// מבקש מגילת אסתר אמיתית (לפי השאלות המנחות מהמתודולוגיה שלה), לא רק
+// "סיפור קצר" - כי כל התוכן הזה בעצמו נכנס לפרומפט הבא שמוצא את ההוק.
 function renderHerWords() {
+  const isPreHookMegillah = state.branch === 'idea-search' && !state.hook;
   const context = state.hook || state.ideaDescription || '';
   cosmicCard(`
-    <h2>מה יש לך להגיד?</h2>
-    ${context ? `<div class="cosmic-context-box"><span>ההוק/הרעיון שבחרת:</span>${escapeHtml(context)}</div>` : ''}
-    <p>עכשיו הזמן להרחיב עליו - סיפור קצר, דוגמא, או דיבור כללי על הנושא, במילים שלך</p>
+    <h2>${isPreHookMegillah ? 'מגילת אסתר - מה יש לך להגיד?' : 'מה יש לך להגיד?'}</h2>
+    ${context ? `<div class="cosmic-context-box"><span>${isPreHookMegillah ? 'הרעיון שבחרת:' : 'ההוק/הרעיון שבחרת:'}</span>${escapeHtml(context)}</div>` : ''}
+    ${isPreHookMegillah
+      ? `<p>לפני שמחפשים הוק - כתב/י כאן את כל מה שיש לך להגיד על הנושא. לא צריך לנסח יפה: מה את/ה חושב/ת על זה? למה? מה חשוב שהקהל יבין? איזה ניסיון או דוגמה יש לך?</p>`
+      : `<p>עכשיו הזמן להרחיב עליו - סיפור קצר, דוגמא, או דיבור כללי על הנושא, במילים שלך</p>`}
     <div class="cosmic-btn-row" style="margin-bottom:14px">
       <button type="button" class="cosmic-btn" id="va-herwords-help-btn">נתקעת? קבל/י עזרה 🆘</button>
     </div>
-    <textarea class="cosmic-textarea" id="va-herwords-input"></textarea>
+    <textarea class="cosmic-textarea" id="va-herwords-input" style="${isPreHookMegillah ? 'min-height:160px' : ''}">${isPreHookMegillah && state.herWords ? escapeHtml(state.herWords) : ''}</textarea>
     <div class="cosmic-btn-row" style="margin-top:14px">
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-herwords-done-btn">המשך/המשיכי</button>
     </div>
