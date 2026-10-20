@@ -15,7 +15,7 @@
 
 import { INITIAL_STATE, nextStep } from './video-assistant-flow.js';
 import { pickIdea, pickReference } from './video-assistant-picker.js';
-import { buildDuplicationPrompt, buildScriptPrompt } from './video-assistant-prompts.js';
+import { buildDuplicationPrompt, buildReverseDuplicationPrompt, buildScriptPrompt } from './video-assistant-prompts.js';
 import {
   FORMATS, SCRIPT_STRUCTURE,
   buildExtractionPrompt, buildHookFindingPrompt, buildHookReinforcementPrompt, buildScriptDistillationPrompt,
@@ -886,13 +886,27 @@ async function renderPrompt1() {
     saveSession(state).catch((err) => console.error('saveSession failed:', err));
   }
   const hookForPrompt = state.openingHook || state.transcript || '';
-  const prompt = buildDuplicationPrompt({ audience, domain, hook: hookForPrompt });
+
+  // 19/10/2026 (מאיה: "יש טעות בשלבים של שכפול הפוך" - שלחה את המתודולוגיה
+  // המלאה): בשכפול הפוך (branch 'idea-search') כבר יש לה רעיון ספציפי
+  // משלה לפני שהיא בכלל חיפשה רפרנס - בניגוד לשכפול רגיל (אין עדיין
+  // רעיון קונקרטי, רק תחום/קהל) - אז הפרומפט כאן חייב לכלול את הרעיון
+  // הזה בתוכו, בניסוח אחר לגמרי. ראה buildReverseDuplicationPrompt.
+  const isReverseDup = state.branch === 'idea-search';
+  const prompt = isReverseDup
+    ? buildReverseDuplicationPrompt({ domain, hook: hookForPrompt, idea: state.ideaDescription || '' })
+    : buildDuplicationPrompt({ audience, domain, hook: hookForPrompt });
+  const highlightValues = isReverseDup
+    ? [domain, hookForPrompt, state.ideaDescription]
+    : [audience, domain, hookForPrompt];
   cosmicCard(`
     <h2>פרומפט מוכן ל-ChatGPT</h2>
     <div class="cosmic-context-box"><span>ההוק שזיהינו מתוך התמלול שלך:</span>${escapeHtml(hookForPrompt)}</div>
-    <p>רק ההוק הזה נשלח ל-ChatGPT - לא כל התמלול. הוא ישכפל אותו ויביא לך 30 הוקים חדשים באותו מנגנון.</p>
-    <p>העתק/י, הדבק/י ב-ChatGPT, וחזור/חזרי עם ההוק שהכי קרץ לך מתוך ה-30</p>
-    <div class="cosmic-prompt-box">${highlightPlaceholders(prompt, [audience, domain, hookForPrompt])}</div>
+    ${isReverseDup
+      ? `<p>רק ההוק הזה, מותאם לרעיון שלך, נשלח ל-ChatGPT - הוא ישכפל את המנגנון ויביא לך 20 כיוונים.</p>`
+      : `<p>רק ההוק הזה נשלח ל-ChatGPT - לא כל התמלול. הוא ישכפל אותו ויביא לך 30 הוקים חדשים באותו מנגנון.</p>`}
+    <p>העתק/י, הדבק/י ב-ChatGPT, וחזור/חזרי עם ${isReverseDup ? 'ההוק שהכי קרץ לך מתוך ה-20' : 'ההוק שהכי קרץ לך מתוך ה-30'}</p>
+    <div class="cosmic-prompt-box">${highlightPlaceholders(prompt, highlightValues)}</div>
     ${copyBtn(prompt, 'העתק/י פרומפט')}
     <textarea class="cosmic-textarea" id="va-hook-input" placeholder="הדבק/י כאן את ההוק שבחרת..." style="margin-top:14px"></textarea>
     <div class="cosmic-btn-row" style="margin-top:14px">
@@ -942,11 +956,14 @@ function renderHerWords() {
 
 function renderPrompt2() {
   const hook = state.hook || state.transcript || '';
-  const prompt = buildScriptPrompt({ hook, herWords: state.herWords });
+  // 19/10/2026 (מאיה, אחרי אישור מפורש) - שדה "התסריט המקורי" מפורש, לא
+  // הסתמכות על ש-ChatGPT "זוכר" אותו מפרומפט 1 באותה שיחה; ראה
+  // video-assistant-prompts.js, buildScriptPrompt.
+  const prompt = buildScriptPrompt({ hook, herWords: state.herWords, originalScript: state.transcript || '' });
   cosmicCard(`
     <h2>הפרומפט השני</h2>
     <p>העתק/י, הדבק/י ב-ChatGPT, ותקבל/י תסריט מלא</p>
-    <div class="cosmic-prompt-box">${highlightPlaceholders(prompt, [hook, state.herWords])}</div>
+    <div class="cosmic-prompt-box">${highlightPlaceholders(prompt, [hook, state.herWords, state.transcript])}</div>
     ${copyBtn(prompt, 'העתק/י פרומפט')}
     <textarea class="cosmic-textarea" id="va-prompt2-script-input" placeholder="הדבק/י כאן את התסריט שקיבלת..." style="margin-top:14px"></textarea>
     <div class="cosmic-btn-row" style="margin-top:14px">
