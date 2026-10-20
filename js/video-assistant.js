@@ -1347,7 +1347,11 @@ export function wireVideoAssistantView() {
   // הפתרון הנכון לשתי התלונות גם יחד: לשחזר רק סשן *טרי* (לא סיום,
   // לא פתיחה, ונשמר לאחרונה) - לא כל סשן ישן.
   const RESUME_WINDOW_MS = 2 * 60 * 60 * 1000;
-  document.getElementById('hub-link-video-assistant').addEventListener('click', async () => {
+  /* 20/10/2026 (מאיה: "המסך של העוזר נפתח אבל לא מופיע כלום, ריק"): הציור
+     של המסך קרה רק בלחיצה על הכרטיס שבמרכז הלמידה. הלשונית של מנוי
+     הרפרנסים פתחה את התצוגה בלי לצייר בה כלום. שני הכפתורים מתחילים עכשיו
+     באותה דרך בדיוק. */
+  const startAssistant = async () => {
     let saved = null;
     try {
       saved = await loadSession();
@@ -1362,5 +1366,8 @@ export function wireVideoAssistantView() {
     if (!state.history) state.history = [];
     sessionStartTs = Date.now();
     render();
-  });
+  };
+  document.getElementById('hub-link-video-assistant').addEventListener('click', startAssistant);
+  const refsTab = document.getElementById('tab-video-assistant');
+  if (refsTab) refsTab.addEventListener('click', startAssistant);
 }
