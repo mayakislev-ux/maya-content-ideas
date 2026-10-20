@@ -862,56 +862,62 @@ function renderTranscribe() {
   });
 }
 
+// 19/10/2026 (מאיה, אחרי בדיקה אמיתית מול ChatGPT בפועל: "הדבקתי לו את
+// התסריט המתומלל... הוא צריך לזהות כמה שורות ההוק, אבל הוא כתב את כל
+// התסריט") - עד עכשיו כל התמלול שהיא הדביקה נכנס בתור "ההוק הזה"
+// בפרומפט, ו-ChatGPT פשוט שכפל חזרה את כל הפסקה (הוק + נימוק + הרחבה)
+// במקום לייצר הוקים חדשים ומגוונים. מזהים קודם, דרך extractOpeningHook,
+// רק את המשפט/ים הפותחים - בדיוק איפה שמסתיים ההוק ומתחיל הנימוק, כמו
+// שמאיה הדגימה בעצמה. משותף לשני המקומות שצריכים את ההוק המזוהה: מסך
+// "מגילת אסתר" (שכפול הפוך - צריך לראות את ההוק לפני שכותבים עליו) ומסך
+// הפרומפט הראשון (שכפול רגיל - שם זה המסך הראשון שמגיע אחרי התמלול).
+async function ensureOpeningHook() {
+  if (state.openingHook || !state.transcript) return;
+  try {
+    state.openingHook = await extractOpeningHook(state.transcript);
+  } catch (err) {
+    console.error('extractOpeningHook failed:', err);
+    // נכשל השרת - נופלים חזרה לכל התמלול במקום לתקוע אותה כאן לגמרי
+    state.openingHook = state.transcript;
+  }
+  saveSession(state).catch((err) => console.error('saveSession failed:', err));
+}
+
 async function renderPrompt1() {
   const profile = await getProfile();
   const audience = profile && profile.primaryAudience ? profile.primaryAudience : '';
   const domain = domainInfo ? domainInfo.domain : '';
 
-  // 19/10/2026 (מאיה, אחרי בדיקה אמיתית מול ChatGPT בפועל: "הדבקתי לו את
-  // התסריט המתומלל... הוא צריך לזהות כמה שורות ההוק, אבל הוא כתב את כל
-  // התסריט") - עד עכשיו כל התמלול שהיא הדביקה נכנס בתור "ההוק הזה"
-  // בפרומפט, ו-ChatGPT פשוט שכפל חזרה את כל הפסקה (הוק + נימוק + הרחבה)
-  // במקום לייצר 30 הוקים חדשים ומגוונים. עכשיו מזהים קודם, דרך
-  // extractOpeningHook, רק את המשפט/ים הפותחים - בדיוק איפה שמסתיים ההוק
-  // ומתחיל הנימוק, כמו שמאיה הדגימה בעצמה - ורק הוא נכנס לפרומפט.
-  if (!state.openingHook && state.transcript) {
+  // 19/10/2026 (מאיה: "קודם כל מדביקים לך את התסריט של הרפרנס ואז הוא
+  // כבר מזהה הוק ואז בעצם צריך מגילת אסתר") - בשכפול הפוך ההוק כבר זוהה
+  // ומוצג במסך "מגילת אסתר" הקודם (ensureOpeningHook נקרא משם), אז כאן
+  // זה כבר קיים ב-state.openingHook. בשכפול רגיל זה עדיין המסך הראשון
+  // שמגיע אחרי התמלול, אז מזהים כאן אם עוד לא זוהה.
+  if (!state.openingHook) {
     cosmicCard(`<p>מזהה/ת את ההוק מתוך התמלול...</p>`, { showProgress: false });
-    try {
-      state.openingHook = await extractOpeningHook(state.transcript);
-    } catch (err) {
-      console.error('extractOpeningHook failed:', err);
-      // נכשל השרת - נופלים חזרה לכל התמלול במקום לתקוע אותה כאן לגמרי
-      state.openingHook = state.transcript;
-    }
-    saveSession(state).catch((err) => console.error('saveSession failed:', err));
+    await ensureOpeningHook();
   }
   const hookForPrompt = state.openingHook || state.transcript || '';
 
-  // 19/10/2026 (מאיה: "יש טעות בשלבים של שכפול הפוך" - שלחה את המתודולוגיה
-  // המלאה): בשכפול הפוך (branch 'idea-search') כבר יש לה רעיון ספציפי
-  // משלה לפני שהיא בכלל חיפשה רפרנס - בניגוד לשכפול רגיל (אין עדיין
-  // רעיון קונקרטי, רק תחום/קהל) - אז הפרומפט כאן חייב לכלול את הרעיון
-  // הזה בתוכו, בניסוח אחר לגמרי. ראה buildReverseDuplicationPrompt.
-  // 19/10/2026 (מאיה, שוב: "בשכפול הפוך לפני שמוצאים הוק צריך קודם
-  // שידביקו לך את המגילת אסתר") - מגילת האסתר (state.herWords) נכתבת
-  // עכשיו *לפני* המסך הזה במסלול שכפול הפוך (ראה HER_WORDS_SUBMITTED ב-
-  // video-assistant-flow.js), והיא-היא ה"רעיון" שנכנס לפרומפט - לא שורת
-  // ideaDescription הקצרה.
+  // 19/10/2026 (מאיה, גרסה שלישית - "הסדר בשכפול ההפוך לא טוב", עם ניסוח
+  // מדויק סופי): בשכפול הפוך כבר יש לה תסריט/מגילת אסתר משלה (state.herWords,
+  // נכתב אחרי שההוק כבר זוהה) - הפרומפט כאן חייב לכלול אותו, לא רק תחום,
+  // ועכשיו גם קהל יעד. ראה buildReverseDuplicationPrompt.
   const isReverseDup = state.branch === 'idea-search';
-  const reverseDupIdea = state.herWords || state.ideaDescription || '';
+  const reverseDupScript = state.herWords || state.ideaDescription || '';
   const prompt = isReverseDup
-    ? buildReverseDuplicationPrompt({ domain, hook: hookForPrompt, idea: reverseDupIdea })
+    ? buildReverseDuplicationPrompt({ domain, audience, hook: hookForPrompt, script: reverseDupScript })
     : buildDuplicationPrompt({ audience, domain, hook: hookForPrompt });
   const highlightValues = isReverseDup
-    ? [domain, hookForPrompt, reverseDupIdea]
+    ? [audience, domain, hookForPrompt, reverseDupScript]
     : [audience, domain, hookForPrompt];
   cosmicCard(`
     <h2>פרומפט מוכן ל-ChatGPT</h2>
     <div class="cosmic-context-box"><span>ההוק שזיהינו מתוך התמלול שלך:</span>${escapeHtml(hookForPrompt)}</div>
     ${isReverseDup
-      ? `<p>רק ההוק הזה, מותאם לרעיון שלך, נשלח ל-ChatGPT - הוא ישכפל את המנגנון ויביא לך 20 כיוונים.</p>`
+      ? `<p>ההוק המקורי + התסריט שלך נשלחים ל-ChatGPT - הוא שולף מתוך התסריט שלך הוקים חזקים ומלביש אותם על מנגנון ההוק המקורי, ומביא לך 30 רעיונות (כולל המלצה על ה-3 הכי חזקים).</p>`
       : `<p>רק ההוק הזה נשלח ל-ChatGPT - לא כל התמלול. הוא ישכפל אותו ויביא לך 30 הוקים חדשים באותו מנגנון.</p>`}
-    <p>העתק/י, הדבק/י ב-ChatGPT, וחזור/חזרי עם ${isReverseDup ? 'ההוק שהכי קרץ לך מתוך ה-20' : 'ההוק שהכי קרץ לך מתוך ה-30'}</p>
+    <p>העתק/י, הדבק/י ב-ChatGPT, וחזור/חזרי עם ההוק שהכי קרץ לך מתוך ה-30</p>
     <div class="cosmic-prompt-box">${highlightPlaceholders(prompt, highlightValues)}</div>
     ${copyBtn(prompt, 'העתק/י פרומפט')}
     <textarea class="cosmic-textarea" id="va-hook-input" placeholder="הדבק/י כאן את ההוק שבחרת..." style="margin-top:14px"></textarea>
@@ -941,14 +947,23 @@ async function renderPrompt1() {
 // הוק (state.hook עדיין ריק) - אז ה"הקשר" שמוצג הוא הרעיון שלה, וההסבר
 // מבקש מגילת אסתר אמיתית (לפי השאלות המנחות מהמתודולוגיה שלה), לא רק
 // "סיפור קצר" - כי כל התוכן הזה בעצמו נכנס לפרומפט הבא שמוצא את ההוק.
-function renderHerWords() {
+//
+// 19/10/2026 (מאיה, גרסה שלישית: "קודם כל מדביקים לך את התסריט של
+// הרפרנס ואז הוא כבר מזהה הוק ואז בעצם צריך מגילת אסתר") - ההוק של
+// הרפרנס חייב להיות מזוהה ומוצג *כאן*, לפני שהיא כותבת את המגילה - לא
+// רק במסך הפרומפט הבא - כדי שתדע למה היא בעצם כותבת.
+async function renderHerWords() {
   const isPreHookMegillah = state.branch === 'idea-search' && !state.hook;
-  const context = state.hook || state.ideaDescription || '';
+  if (isPreHookMegillah && !state.openingHook) {
+    cosmicCard(`<p>מזהה/ת את ההוק מתוך התמלול...</p>`, { showProgress: false });
+    await ensureOpeningHook();
+  }
+  const context = isPreHookMegillah ? (state.openingHook || state.ideaDescription || '') : (state.hook || state.ideaDescription || '');
   cosmicCard(`
     <h2>${isPreHookMegillah ? 'מגילת אסתר - מה יש לך להגיד?' : 'מה יש לך להגיד?'}</h2>
-    ${context ? `<div class="cosmic-context-box"><span>${isPreHookMegillah ? 'הרעיון שבחרת:' : 'ההוק/הרעיון שבחרת:'}</span>${escapeHtml(context)}</div>` : ''}
+    ${context ? `<div class="cosmic-context-box"><span>${isPreHookMegillah ? 'ההוק שזיהינו מהרפרנס:' : 'ההוק/הרעיון שבחרת:'}</span>${escapeHtml(context)}</div>` : ''}
     ${isPreHookMegillah
-      ? `<p>לפני שמחפשים הוק - כתב/י כאן את כל מה שיש לך להגיד על הנושא. לא צריך לנסח יפה: מה את/ה חושב/ת על זה? למה? מה חשוב שהקהל יבין? איזה ניסיון או דוגמה יש לך?</p>`
+      ? `<p>עכשיו, לפני שמבקשים הוקים - כתב/י כאן את כל מה שיש לך להגיד על הנושא. לא צריך לנסח יפה: מה את/ה חושב/ת על זה? למה? מה חשוב שהקהל יבין? איזה ניסיון או דוגמה יש לך?</p>`
       : `<p>עכשיו הזמן להרחיב עליו - סיפור קצר, דוגמא, או דיבור כללי על הנושא, במילים שלך</p>`}
     <div class="cosmic-btn-row" style="margin-bottom:14px">
       <button type="button" class="cosmic-btn" id="va-herwords-help-btn">נתקעת? קבל/י עזרה 🆘</button>
