@@ -1171,9 +1171,14 @@ exports.extractOpeningHook = onCall({ secrets: [anthropicApiKey], region: 'us-ce
 
 השב/י אך ורק ב-JSON תקין, בלי שום טקסט נוסף: {"hook": "<ההוק בדיוק כפי שמופיע בתמלול, מילה במילה - לא יותר ולא פחות ממה שבאמת ההוק>"}`;
 
+  // 19/10/2026 (מאיה: "שוב... קודם כל ההוק כאן הוא רק [שורה 1] ולא התוספת
+  // של השורה" - אותו תמלול בדיוק ששימש כדוגמה 1 בניסוח למעלה, ועדיין
+  // חולצה שורה מיותרת) - temperature:0 כמו ב-recategorizeBiduri, כדי
+  // שאותו תמלול תמיד יתן את אותה תוצאה במקום לפעמים לדבוק בדוגמה ולפעמים
+  // לא.
   const data = await callAnthropic(
     anthropicApiKey.value(),
-    { model: 'claude-haiku-4-5-20251001', max_tokens: 300, messages: [{ role: 'user', content: prompt }] },
+    { model: 'claude-haiku-4-5-20251001', max_tokens: 300, temperature: 0, messages: [{ role: 'user', content: prompt }] },
     'extractOpeningHook'
   );
   const text = getResponseText(data) || '{}';
