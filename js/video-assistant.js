@@ -63,12 +63,17 @@ let videosCache = null;
 let domainInfo = null; // { domain, subCategory }
 let currentPickId = null;
 let sessionStartTs = null; // רעיון #47 - "בנית תוך X דקות"
+/* 20/10/2026 (מאיה: "למה העוזר לא נפתח במסך הראשי, וכאילו נפתח באמצע
+   כתיבה, ממש מוזר"): סשן טרי משוחזר בשקט, ולכן נראה כאילו המסך נפתח
+   באמצע במקרה. מעכשיו אומרים את זה במפורש, עם כפתור להתחיל מההתחלה. */
+let resumedNotice = false;
 
 function screenEl() {
   return document.getElementById('video-assistant-screen');
 }
 
 function dispatch(action) {
+  resumedNotice = false;
   state = nextStep(state, action);
   saveSession(state).catch((err) => console.error('saveSession failed:', err));
   // 17/10/2026 (מאיה: "המעבר בין המסכים עושה סחרחורת"): מעבר הפורטל (#32)
@@ -133,6 +138,10 @@ function backButtonHtml() {
 function cosmicCard(innerHtml, { showProgress = true } = {}) {
   const mood = mascotMood(state.screen);
   screenEl().innerHTML = `<div class="cosmic-card" id="va-card">
+    ${resumedNotice ? `<div class="cosmic-resume-bar" style="display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;margin:0 0 12px;font-size:14px">
+      <span>ממשיכים מאיפה שעצרת 👋</span>
+      <button type="button" class="cosmic-btn" id="va-start-over-btn" style="padding:4px 12px;font-size:13px">להתחיל מההתחלה</button>
+    </div>` : ''}
     <div class="cosmic-mascot ${mood === 'celebrate' ? 'is-celebrate' : ''}" id="va-mascot">${mascotFace(mood)}</div>
     ${backButtonHtml()}
     ${showProgress ? progressHtml() : ''}
@@ -140,6 +149,8 @@ function cosmicCard(innerHtml, { showProgress = true } = {}) {
   </div>`;
   const backBtn = document.getElementById('va-back-btn');
   if (backBtn) backBtn.addEventListener('click', () => dispatch({ type: 'BACK' }));
+  const startOverBtn = document.getElementById('va-start-over-btn');
+  if (startOverBtn) startOverBtn.addEventListener('click', () => restart());
   updateLivePreview();
   resetIdleTimer();
   return document.getElementById('va-card');
@@ -1365,6 +1376,7 @@ export function wireVideoAssistantView() {
     // בלי זה BACK על סשן ישן יקרוס על undefined.length.
     if (!state.history) state.history = [];
     sessionStartTs = Date.now();
+    resumedNotice = Boolean(isResumable);
     render();
   };
   document.getElementById('hub-link-video-assistant').addEventListener('click', startAssistant);
