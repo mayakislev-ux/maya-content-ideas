@@ -156,12 +156,73 @@ test('has-idea-choice -> from-scratch starts the real 4-prompt chain', () => {
   s = nextStep(s, { type: 'FORMAT_SELECTED', format: 'דיבור למצלמה' });
   s = nextStep(s, { type: 'NEEDS_SCRIPT_YES' });
   s = nextStep(s, { type: 'CHOOSE_FROM_SCRATCH' });
-  assert.equal(s.screen, 'scratch-intro');
+  // 22/10/2026: המסלול כבר לא מתחיל בהסבר, אלא בזווית ההגשה
+  assert.equal(s.screen, 'scratch-angle');
   assert.equal(s.branch, 'scratch');
 });
 
+/* 22/10/2026 (מאיה: "קודם כל לוודא שיש זווית הגשה חזקה"): אי אפשר להגיע
+   לכתיבה בלי לעבור בזווית, והנימוק נשמר כדי להיכנס לפרומפטים הבאים. */
+test('זווית הגשה: בלי לבחור זווית אין דרך להגיע לשפיכת התוכן', () => {
+  const s = { ...INITIAL_STATE, screen: 'scratch-angle', branch: 'scratch' };
+  assert.throws(() => nextStep(s, { type: 'SCRATCH_START_DUMP' }));
+});
+
+test('זווית הגשה: בחירה מובילה למסך הבדיקה ושומרת את הזווית', () => {
+  const s = nextStep({ ...INITIAL_STATE, screen: 'scratch-angle', branch: 'scratch' },
+    { type: 'ANGLE_CHOSEN', angle: 'טעות נפוצה' });
+  assert.equal(s.screen, 'scratch-angle-check');
+  assert.equal(s.angle, 'טעות נפוצה');
+});
+
+test('זווית הגשה: אישור ממשיך למסלול הרגיל ושומר את הנימוק', () => {
+  let s = nextStep({ ...INITIAL_STATE, screen: 'scratch-angle', branch: 'scratch' },
+    { type: 'ANGLE_CHOSEN', angle: 'מיתוס / אמונה מגבילה' });
+  s = nextStep(s, { type: 'ANGLE_CONFIRMED', why: 'הקהל שלי באמת מאמין בזה' });
+  assert.equal(s.screen, 'scratch-intro');
+  assert.equal(s.angle, 'מיתוס / אמונה מגבילה');
+  assert.equal(s.angleWhy, 'הקהל שלי באמת מאמין בזה');
+});
+
+test('זווית הגשה: אפשר לאשר בלי נימוק, והשדה נשאר ריק ולא undefined', () => {
+  let s = nextStep({ ...INITIAL_STATE, screen: 'scratch-angle', branch: 'scratch' },
+    { type: 'ANGLE_CHOSEN', angle: 'ביקורת' });
+  s = nextStep(s, { type: 'ANGLE_CONFIRMED' });
+  assert.equal(s.screen, 'scratch-intro');
+  assert.equal(s.angleWhy, null);
+});
+
+test('זווית הגשה: כפתור חזרה מחזיר ממסך הבדיקה לבחירת הזווית', () => {
+  let s = nextStep({ ...INITIAL_STATE, screen: 'scratch-angle', branch: 'scratch' },
+    { type: 'ANGLE_CHOSEN', angle: 'שאלה נפוצה' });
+  s = nextStep(s, { type: 'BACK' });
+  assert.equal(s.screen, 'scratch-angle');
+});
+
+test('הזווית שורדת עד סוף המסלול ומגיעה לסיכום', () => {
+  let s = nextStep({ ...INITIAL_STATE, screen: 'scratch-angle', branch: 'scratch' },
+    { type: 'ANGLE_CHOSEN', angle: 'לשרוף גשרים' });
+  s = nextStep(s, { type: 'ANGLE_CONFIRMED', why: 'כי הן שוקלות קורס זול' });
+  s = nextStep(s, { type: 'SCRATCH_START_DUMP' });
+  s = nextStep(s, { type: 'SCRATCH_DUMP_READY', text: 'הכל' });
+  s = nextStep(s, { type: 'SCRATCH_HOOK_CHOSEN', hook: 'הוק' });
+  s = nextStep(s, { type: 'SCRATCH_REINFORCEMENT_CHOSEN', text: 'חיזוק' });
+  s = nextStep(s, { type: 'SCRATCH_SCRIPT_READY', text: 'תסריט' });
+  assert.equal(s.screen, 'summary');
+  assert.equal(s.angle, 'לשרוף גשרים');
+  assert.equal(s.angleWhy, 'כי הן שוקלות קורס זול');
+});
+
+test('התחלה מחדש מנקה גם את הזווית', () => {
+  const s = nextStep({ ...INITIAL_STATE, screen: 'summary', angle: 'ביקורת', angleWhy: 'כי' },
+    { type: 'RESTART' });
+  assert.equal(s.angle, null);
+  assert.equal(s.angleWhy, null);
+});
+
 test('from-scratch: full 4-prompt chain (dump -> hook -> reinforcement -> distilled script) ends at summary', () => {
-  const base = { ...INITIAL_STATE, screen: 'scratch-intro', branch: 'scratch' };
+  // 22/10/2026: המסלול הזה מתחיל אחרי שכבר נבחרה זווית, ולכן היא בסטייט
+  const base = { ...INITIAL_STATE, screen: 'scratch-intro', branch: 'scratch', angle: 'טעות נפוצה' };
   let s = nextStep(base, { type: 'SCRATCH_START_DUMP' });
   assert.equal(s.screen, 'scratch-dump');
   s = nextStep(s, { type: 'SCRATCH_DUMP_READY', text: 'כל מה שיש לי להגיד' });

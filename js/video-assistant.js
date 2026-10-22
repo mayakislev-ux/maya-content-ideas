@@ -17,9 +17,12 @@ import { INITIAL_STATE, nextStep } from './video-assistant-flow.js';
 import { pickIdea, pickReference } from './video-assistant-picker.js';
 import { buildDuplicationPrompt, buildReverseDuplicationPrompt, buildScriptPrompt } from './video-assistant-prompts.js';
 import {
-  FORMATS, SCRIPT_STRUCTURE,
+  FORMATS, SCRIPT_STRUCTURE, ANGLES,
   buildExtractionPrompt, buildHookFindingPrompt, buildHookReinforcementPrompt, buildScriptDistillationPrompt,
 } from './video-assistant-content.js';
+// 22/10/2026: הצ'אט "בדיקת רעיון" הקיים, ולא עותק שלו. הוא כבר מכיר את
+// הסימון "זווית: X" בכותרת הרעיון, אותו סימון שתכנית התוכן סומכת עליו.
+import { startIdeaChatWithExistingIdea } from './idea-chat.js';
 import { playReroll, playSuccess, setMuted, getMuted } from './video-assistant-sound.js';
 import { embedUrlFor, embedShape } from './video-preview.js';
 import { languageName } from './inspiration-readability.js';
@@ -50,7 +53,7 @@ const PHASE_BY_SCREEN = {
   'relevance-check': 1,
   'footage-type-choice': 2, 'format-choice': 2, 'needs-script-check': 2, 'has-idea-choice': 2,
   transcribe: 3, prompt1: 3, 'her-words': 3, prompt2: 3, 'read-aloud': 3,
-  'scratch-intro': 3, 'scratch-dump': 3, 'scratch-hook': 3, 'scratch-hook-reinforce': 3, 'scratch-distill': 3,
+  'scratch-angle': 3, 'scratch-angle-check': 3, 'scratch-intro': 3, 'scratch-dump': 3, 'scratch-hook': 3, 'scratch-hook-reinforce': 3, 'scratch-distill': 3,
   'footage-speech-find': 3, 'footage-speech-shorten': 3, 'footage-speech-sharpen': 3, 'footage-speech-done': 3,
   'footage-visual-scan': 3, 'footage-visual-extract': 3, 'footage-visual-reframe': 3,
   'footage-visual-message': 3, 'footage-visual-story': 3,
@@ -1046,6 +1049,78 @@ function renderReadAloud() {
 }
 
 // ===== מסלול "כתיבה מאפס" - 4 הפרומפטים האמיתיים (16/10) =====
+/* 22/10/2026 (מאיה: "להכניס את זווית ההגשה לרעיון ולא סתם שיכתבו רעיון,
+   קודם כל לוודא שיש זווית הגשה חזקה").
+
+   עד היום מסלול הכתיבה מאפס פתח בהסבר והמשיך לשפיכת תוכן. בנק 31 הזוויות
+   היה קיים בכלי אבל רק כחומר עזר, ולכן אפשר היה לכתוב תסריט שלם על רעיון
+   בלי שום זווית - וזה בדיוק הרעיון השטוח שהיא לא רוצה לקבל.
+
+   הזווית היא עכשיו המסך הראשון, והיא תנאי: המכונה זורקת אם מנסים להתקדם
+   בלעדיה (ראה SCRATCH_START_DUMP ב-video-assistant-flow.js). */
+function renderScratchAngle() {
+  // אותה תבנית אקורדיון של בחירת הפורמט: רשימה ארוכה שנפתחת פריט-פריט,
+  // ולא 31 כרטיסים פתוחים שמציפים את המסך.
+  const itemsHtml = ANGLES.map((a, i) => `
+    <details class="cosmic-accordion-item" ${state.angle === a.name ? 'open' : ''}>
+      <summary><span>${escapeHtml(a.name)}</span></summary>
+      <div class="cosmic-accordion-body">
+        <p style="margin:0">${escapeHtml(a.description)}</p>
+        ${a.example ? `<p style="margin:6px 0 0;opacity:.8">לדוגמה: ${escapeHtml(a.example)}</p>` : ''}
+        <button type="button" class="cosmic-pick-btn" data-pick-angle="${i}">הזווית שלי</button>
+      </div>
+    </details>
+  `).join('');
+  cosmicCard(`
+    <h2>קודם כל, מה הזווית?</h2>
+    <p>רעיון בלי זווית הגשה הוא נושא, לא סרטון. בחרי את הזווית שממנה את ניגשת לרעיון, ורק אחר כך נכתוב.</p>
+    ${state.angle ? `<div class="cosmic-selected-chip">✓ נבחרה: ${escapeHtml(state.angle)}</div>` : ''}
+    <div class="cosmic-accordion">${itemsHtml}</div>
+  `);
+  document.querySelectorAll('[data-pick-angle]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      playSuccess();
+      dispatch({ type: 'ANGLE_CHOSEN', angle: ANGLES[Number(btn.dataset.pickAngle)].name });
+    });
+  });
+}
+
+/* מסך הלחיצה על הזווית. שני דברים קורים כאן:
+   לנמק במילה שלה למה הזווית מחזיקה, ולהעביר אותה לצ'אט "בדיקת רעיון"
+   הקיים כדי שילחץ עליה. הנימוק נשמר בסטייט גם בלי הצ'אט, כי הוא מה
+   שנכנס לפרומפטים הבאים ולמסך הסיכום. */
+function renderScratchAngleCheck() {
+  const angle = ANGLES.find((a) => a.name === state.angle)
+    || { name: state.angle || '', description: '', example: '' };
+  cosmicCard(`
+    <h2>הזווית שבחרת</h2>
+    <div class="cosmic-context-box">
+      <strong>${escapeHtml(angle.name)}</strong>
+      <p style="margin:6px 0 0">${escapeHtml(angle.description)}</p>
+      ${angle.example ? `<p style="margin:6px 0 0;opacity:.8">לדוגמה: ${escapeHtml(angle.example)}</p>` : ''}
+    </div>
+    <p>במשפט אחד, למה הזווית הזאת חזקה דווקא לקהל שלך?</p>
+    <textarea class="cosmic-textarea" id="va-angle-why" style="min-height:90px"
+      placeholder="למשל: הן באמת מאמינות שתעודה מספיקה, ואף אחת לא אומרת להן אחרת">${state.angleWhy ? escapeHtml(state.angleWhy) : ''}</textarea>
+    <div class="cosmic-btn-row">
+      <button type="button" class="cosmic-btn" id="va-angle-chat-btn">לבדוק את הזווית בצ'אט</button>
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-angle-next-btn">הזווית מחזיקה, ממשיכים</button>
+    </div>
+  `);
+  const why = () => document.getElementById('va-angle-why').value.trim();
+  document.getElementById('va-angle-chat-btn').addEventListener('click', () => {
+    /* שומרים לפני היציאה: המסך הזה נעלם כשהצ'אט נפתח, והנימוק שכתבה
+       היה הולך לאיבוד. הסשן של העוזר נשמר ממילא, אז היא חוזרת לכאן. */
+    state = { ...state, angleWhy: why() || null };
+    saveSession(state);
+    const idea = state.ideaDescription || state.hook || '';
+    startIdeaChatWithExistingIdea({ title: `זווית: ${state.angle} | ${idea}`.trim(), text: why() });
+  });
+  document.getElementById('va-angle-next-btn').addEventListener('click', () => {
+    dispatch({ type: 'ANGLE_CONFIRMED', why: why() });
+  });
+}
+
 function renderScratchIntro() {
   const stepsHtml = SCRIPT_STRUCTURE.map((s) => `
     <li><span class="cosmic-summary-num">${s.step}</span><div><strong>${escapeHtml(s.name)}</strong><br>${escapeHtml(s.description)}</div></li>
@@ -1323,6 +1398,8 @@ function render() {
   if (state.screen === 'her-words') return renderHerWords();
   if (state.screen === 'prompt2') return renderPrompt2();
   if (state.screen === 'read-aloud') return renderReadAloud();
+  if (state.screen === 'scratch-angle') return renderScratchAngle();
+  if (state.screen === 'scratch-angle-check') return renderScratchAngleCheck();
   if (state.screen === 'scratch-intro') return renderScratchIntro();
   if (state.screen === 'scratch-dump') return renderScratchDump();
   if (state.screen === 'scratch-hook') return renderScratchHook();

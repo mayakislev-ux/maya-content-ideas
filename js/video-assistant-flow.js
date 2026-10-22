@@ -26,6 +26,13 @@ export const INITIAL_STATE = {
   // קטע-מצולם ספציפי עברה (דיבור, או ויזואלי-רגע/מסר/סיפור) - מסך
   // הסיכום לא יכול להיות קונקרטי בלעדיהם.
   footageKind: null, footageOutcome: null,
+  /* 22/10/2026 (מאיה: "להכניס את זווית ההגשה לרעיון ולא סתם שיכתבו רעיון,
+     קודם כל לוודא שיש זווית הגשה חזקה"): עד היום מסלול הכתיבה מאפס התחיל
+     משפיכת תוכן והמשיך להוק. זווית ההגשה הייתה חומר עזר בלבד, ולכן אפשר
+     היה לכתוב תסריט שלם על רעיון בלי שום זווית. עכשיו היא השלב הראשון,
+     ו-angleWhy הוא המשפט שבו היא מנמקת למה הזווית הזאת מחזיקה - זה מה
+     שהצ'אט "בדיקת רעיון" לוחץ עליו במסך שאחריו. */
+  angle: null, angleWhy: null,
 };
 
 function withoutHistory(state) {
@@ -146,7 +153,7 @@ function step(state, action) {
     case 'CHOOSE_REVERSE_DUPLICATION':
       return { ...state, screen: 'transcribe', branch: 'idea-search' };
     case 'CHOOSE_FROM_SCRATCH':
-      return { ...state, screen: 'scratch-intro', branch: 'scratch' };
+      return { ...state, screen: 'scratch-angle', branch: 'scratch' };
 
     // ===== הצינור המשותף: תמלול → [פרומפט 1 → המילים שלה] או [המילים שלה
     // → פרומפט 1] → פרומפט 2 → קריאה בקול → סיכום. הסדר בין פרומפט 1
@@ -181,7 +188,18 @@ function step(state, action) {
 
     // ===== מסלול "כתיבה מאפס" - 4 הפרומפטים האמיתיים מתוך המסמך שלה =====
     // שלב 1 (אופציונלי, רק למי שתקועה): פרומפט חילוץ תוכן, או כתיבה חופשית
+    // שלב 0 (חדש, 22/10): זווית ההגשה. בלי זווית אין מה לכתוב.
+    case 'ANGLE_CHOSEN':
+      return { ...state, screen: 'scratch-angle-check', angle: action.angle };
+    // הנימוק נשמר גם כשהיא מדלגת על הצ'אט, כי הוא נכנס לפרומפטים הבאים
+    case 'ANGLE_CONFIRMED':
+      return { ...state, screen: 'scratch-intro', angleWhy: action.why || null };
+
     case 'SCRATCH_START_DUMP':
+      /* הזווית היא תנאי ולא המלצה. בלי השורה הזאת אפשר היה לקפוץ ישר
+         לכתיבה דרך כל קריאה שלא עברה במסך הזווית, וזה בדיוק מה שמאיה
+         ביקשה למנוע: "קודם כל לוודא שיש זווית הגשה חזקה". */
+      if (!state.angle) throw new Error('SCRATCH_START_DUMP before an angle was chosen');
       return { ...state, screen: 'scratch-dump' };
     case 'SCRATCH_DUMP_READY':
       return { ...state, screen: 'scratch-hook', rawDump: action.text };
