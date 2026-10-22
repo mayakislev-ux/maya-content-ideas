@@ -1092,6 +1092,11 @@ function renderScratchAngle() {
 function renderScratchAngleCheck() {
   const angle = ANGLES.find((a) => a.name === state.angle)
     || { name: state.angle || '', description: '', example: '' };
+  /* 22/10/2026: העוזר ליצירת סרטון כלול במנוי הרפרנסים (tab-refs-only),
+     אבל הצ'אט "בדיקת רעיון" לא. בלי התנאי הזה מנוית רפרנסים הייתה מקבלת
+     כפתור שמוביל לכלי שהמנוי שלה לא כולל, ונתקלת בסירוב מהשרת. כפתור
+     שלא עושה כלום גרוע מכפתור שלא קיים. */
+  const refsOnly = document.body.dataset.plan === 'refs';
   cosmicCard(`
     <h2>הזווית שבחרת</h2>
     <div class="cosmic-context-box">
@@ -1103,12 +1108,12 @@ function renderScratchAngleCheck() {
     <textarea class="cosmic-textarea" id="va-angle-why" style="min-height:90px"
       placeholder="למשל: הן באמת מאמינות שתעודה מספיקה, ואף אחת לא אומרת להן אחרת">${state.angleWhy ? escapeHtml(state.angleWhy) : ''}</textarea>
     <div class="cosmic-btn-row">
-      <button type="button" class="cosmic-btn" id="va-angle-chat-btn">לבדוק את הזווית בצ'אט</button>
+      ${refsOnly ? '' : `<button type="button" class="cosmic-btn" id="va-angle-chat-btn">לבדוק את הזווית בצ'אט</button>`}
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-angle-next-btn">הזווית מחזיקה, ממשיכים</button>
     </div>
   `);
   const why = () => document.getElementById('va-angle-why').value.trim();
-  document.getElementById('va-angle-chat-btn').addEventListener('click', () => {
+  if (!refsOnly) document.getElementById('va-angle-chat-btn').addEventListener('click', () => {
     /* שומרים לפני היציאה: המסך הזה נעלם כשהצ'אט נפתח, והנימוק שכתבה
        היה הולך לאיבוד. הסשן של העוזר נשמר ממילא, אז היא חוזרת לכאן. */
     state = { ...state, angleWhy: why() || null };

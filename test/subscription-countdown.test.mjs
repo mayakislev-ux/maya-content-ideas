@@ -150,3 +150,21 @@ test('תצוגת לקוחה לא כותבת כלום למסד', () => {
 test('תצוגת לקוחה פתוחה רק למאיה', () => {
   assert.ok(src.includes('user.email === ADMIN_EMAIL'), 'התצוגה לא מוגבלת למנהלת');
 });
+
+/* 22/10/2026: העוזר ליצירת סרטון כלול במנוי הרפרנסים, הצ'אט "בדיקת רעיון"
+   לא. כפתור שמוביל לכלי שהמנוי לא כולל הוא כפתור שבור. */
+test("מנוית רפרנסים לא מקבלת כפתור לצ'אט שהמנוי שלה לא כולל", () => {
+  const va = readFileSync(join(ROOT, 'js', 'video-assistant.js'), 'utf8');
+  const from = va.indexOf('function renderScratchAngleCheck()');
+  const to = va.indexOf('function renderScratchIntro()', from);
+  const block = va.slice(from, to);
+  assert.ok(from > 0 && to > from, 'מסך בדיקת הזווית לא נמצא');
+  assert.ok(block.includes("document.body.dataset.plan === 'refs'"), 'אין בדיקת סוג מנוי');
+  assert.ok(block.includes('${refsOnly ?'), 'הכפתור לא מותנה בסוג המנוי');
+  assert.ok(block.includes('if (!refsOnly) document.getElementById'), 'ההאזנה לכפתור לא מותנית');
+});
+
+test("הצ'אט אכן חסום למנוי רפרנסים, ולכן התנאי הזה נחוץ", () => {
+  const css = readFileSync(join(ROOT, 'css', 'style.css'), 'utf8');
+  assert.match(css, /body\[data-plan="refs"\] #tab-chat/);
+});
