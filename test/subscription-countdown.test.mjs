@@ -124,3 +124,29 @@ test('loadAccess מחזירה את שני השדות שהשעון צריך, בכ
 test('השעון באמת נקרא אחרי ההתחברות', () => {
   assert.match(src, /showSubscriptionCountdown\(access\);/);
 });
+
+/* 22/10/2026: תצוגת "כמו שהלקוחה רואה" לפי הנתונים האמיתיים שלה.
+   היא קריאה בלבד, ולכן הבדיקה מוודאת שאין שם שום כתיבה למסד. */
+const previewBlock = () => {
+  const from = src.indexOf('if (previewRefs) {');
+  const to = src.indexOf("document.getElementById('login-screen')", from);
+  return src.slice(from, to);
+};
+
+test('תצוגת לקוחה קוראת את הרשומה של המייל שב-as', () => {
+  const block = previewBlock();
+  assert.ok(block.includes("get('as')"), 'לא נקרא הפרמטר as');
+  assert.ok(block.includes("getDoc(doc(db, 'allowlist', asEmail))"), 'לא נקראת הרשומה של הלקוחה');
+  assert.ok(block.includes('showSubscriptionCountdown('), 'השעון לא מדומה בתצוגה');
+});
+
+test('תצוגת לקוחה לא כותבת כלום למסד', () => {
+  const block = previewBlock();
+  for (const write of ['setDoc(', 'updateDoc(', 'deleteDoc(', 'addDoc(']) {
+    assert.ok(!block.includes(write), `תצוגה בלבד מכילה כתיבה: ${write}`);
+  }
+});
+
+test('תצוגת לקוחה פתוחה רק למאיה', () => {
+  assert.ok(src.includes('user.email === ADMIN_EMAIL'), 'התצוגה לא מוגבלת למנהלת');
+});

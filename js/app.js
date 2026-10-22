@@ -657,11 +657,31 @@ onAuthChange(async (user) => {
     && user.email === ADMIN_EMAIL;
   if (previewRefs) {
     document.body.dataset.plan = 'refs';
+    /* 22/10/2026 (מאיה: "אני רוצה להתחבר למשתמש שלה"): אי אפשר ולא נכון
+       להיכנס לחשבון הגוגל של לקוחה. במקום זה אפשר לראות את המסך שלה לפי
+       הנתונים האמיתיים שלה: ?preview=refs&as=<המייל שלה> קורא את הרשומה
+       שלה ומדמה גם את שעון המנוי, ולא רק את מבנה המסך. קריאה בלבד. */
+    const asEmail = (new URLSearchParams(window.location.search).get('as') || '').trim().toLowerCase();
     const bar = document.createElement('div');
     bar.className = 'preview-bar';
-    bar.innerHTML = '<span>תצוגת לקוחה · מנוי רפרנסים בלבד. רק אצלך על המסך, שום דבר לא השתנה במערכת.</span>'
+    bar.innerHTML = '<span>תצוגת לקוחה · מנוי רפרנסים בלבד'
+      + (asEmail ? ' · ' + asEmail : '')
+      + '. רק אצלך על המסך, שום דבר לא השתנה במערכת.</span>'
       + '<a href="' + window.location.pathname + '">חזרה לתצוגה שלי</a>';
     document.body.prepend(bar);
+    if (asEmail) {
+      try {
+        const snap = await getDoc(doc(db, 'allowlist', asEmail));
+        const d = snap.exists() ? (snap.data() || {}) : {};
+        showSubscriptionCountdown({
+          showCountdown: d.showCountdown === true,
+          paidUntil: d.paidUntil?.toDate ? d.paidUntil.toDate() : null,
+        });
+      } catch (err) {
+        console.error('preview as failed:', err);
+        showToast('לא הצלחתי לקרוא את הנתונים של ' + asEmail + '. המסך מוצג בלי שעון המנוי.');
+      }
+    }
   }
 
   document.getElementById('login-screen').hidden = true;
