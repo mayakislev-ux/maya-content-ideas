@@ -218,16 +218,41 @@ function onIdeasChanged(ideas) {
    הגישה מעצמו, בלי שמישהו יצטרך לזכור לכבות אותה.
    ההסתרה בממשק היא נוחות בלבד. האכיפה האמיתית היא ב-firestore.rules
    וב-enforceAllowlist בשרת. */
+/* שעון ספירה לאחור למנוי שנגמר ולא מתחדש (22/10/2026).
+   מופיע רק למי שסומנה showCountdown, כלומר מנוי לחודש בודד.
+   ללקוחה עם הוראת קבע זה היה רעש מלחיץ ולא מידע. */
+function showSubscriptionCountdown(access) {
+  if (!access || !access.showCountdown || !access.paidUntil) return;
+  if (document.querySelector('.sub-countdown')) return;
+
+  const MS_DAY = 24 * 60 * 60 * 1000;
+  const days = Math.ceil((access.paidUntil.getTime() - Date.now()) / MS_DAY);
+  if (days < 0) return;
+
+  const date = access.paidUntil.toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' });
+  const left = days === 0 ? 'היום' : days === 1 ? 'מחר' : `בעוד ${days} ימים`;
+
+  const bar = document.createElement('div');
+  bar.className = 'sub-countdown' + (days <= 3 ? ' is-urgent' : '');
+  bar.setAttribute('role', 'status');
+  bar.innerHTML = `<span>המנוי שלך למאגר הרפרנסים נגמר ${left} <b>(${date})</b></span>`;
+  document.body.prepend(bar);
+}
+
 async function loadAccess(email) {
-  if (email === ADMIN_EMAIL) return { allowed: true, refsOnly: false, expired: false };
+  if (email === ADMIN_EMAIL) return { allowed: true, refsOnly: false, expired: false, paidUntil: null, showCountdown: false };
   const snap = await getDoc(doc(db, 'allowlist', email));
-  if (!snap.exists()) return { allowed: false, refsOnly: false, expired: false };
+  if (!snap.exists()) return { allowed: false, refsOnly: false, expired: false, paidUntil: null, showCountdown: false };
   const data = snap.data() || {};
   const until = data.paidUntil?.toDate ? data.paidUntil.toDate() : null;
   return {
     allowed: true,
     refsOnly: data.plan === 'refs',
     expired: !!until && until.getTime() < Date.now(),
+    paidUntil: until,
+    /* מנוי לחודש בודד בלי הוראת קבע נגמר בלי שום התראה מוקדמת,
+       ולכן מי שעליה רואה כמה ימים נשארו. למנוי מתחדש זה רעש ולא מידע. */
+    showCountdown: data.showCountdown === true,
   };
 }
 
@@ -621,6 +646,8 @@ onAuthChange(async (user) => {
   }
   /* מנוי רפרנסים: הגוף מסומן, וה-CSS מסתיר את כל מה שלא מאגר ההשראה */
   document.body.dataset.plan = access.refsOnly ? 'refs' : 'full';
+
+  showSubscriptionCountdown(access);
 
   /* 08/10/2026 (מאיה: "רוצה לראות פיילוט רגע איך הלקוחה רואה"): תצוגת
      לקוחה למאיה בלבד, דרך ?preview=refs. זו תצוגה בלבד, היא לא נוגעת
