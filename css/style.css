@@ -6310,6 +6310,16 @@ body[data-plan="refs"] .view-tabs-scroll { justify-content: center; }
    כדי שלא תחשוב שהאפליקציה איבדה את הכפתורים שלה. */
 /* שעון המנוי. אותה שפה של preview-bar, אבל זה כן נוגע ללקוחה,
    ולכן הוא מדווח ולא מתנצל. בשלושת הימים האחרונים הוא מחליף צבע. */
+/* 22/10/2026: הצ'אט חי בתוך מסך הזווית בעוזר ליצירת סרטון. .chat-messages
+   נבנה למסך מלא ונמתח לכל הגובה, ולכן בתוך כרטיס הוא צריך תקרה משלו,
+   אחרת הכרטיס גדל בלי סוף וכפתור ההמשך נדחף אל מחוץ למסך. */
+.va-angle-chat { margin-top: 14px; }
+.va-angle-chat .chat-messages {
+  max-height: 40vh; min-height: 140px; overflow-y: auto;
+  border: 1px solid var(--border-color); border-radius: 12px; padding: 10px;
+}
+.va-angle-chat .chat-input-row { margin-top: 8px; }
+
 .sub-countdown {
   position: sticky; top: 0; z-index: 9999;
   display: flex; align-items: center; justify-content: center; gap: 10px;

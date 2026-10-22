@@ -160,8 +160,10 @@ test("מנוית רפרנסים לא מקבלת כפתור לצ'אט שהמנו�
   const block = va.slice(from, to);
   assert.ok(from > 0 && to > from, 'מסך בדיקת הזווית לא נמצא');
   assert.ok(block.includes("document.body.dataset.plan === 'refs'"), 'אין בדיקת סוג מנוי');
-  assert.ok(block.includes('${refsOnly ?'), 'הכפתור לא מותנה בסוג המנוי');
-  assert.ok(block.includes('if (!refsOnly) document.getElementById'), 'ההאזנה לכפתור לא מותנית');
+  assert.ok(block.includes('${refsOnly ?'), "הצ'אט לא מותנה בסוג המנוי");
+  assert.ok(block.includes('if (refsOnly) return;'), "הקוד של הצ'אט רץ גם למנוי שלא כולל אותו");
+  assert.ok(block.includes('streamCheckIdea('), "הצ'אט לא מריץ את המנוע האמיתי");
+  assert.ok(!block.includes('showView('), "הצ'אט עדיין מקפיץ ללשונית אחרת במקום לרוץ במקום");
 });
 
 test("הצ'אט אכן חסום למנוי רפרנסים, ולכן התנאי הזה נחוץ", () => {

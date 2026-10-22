@@ -22,7 +22,8 @@ import {
 } from './video-assistant-content.js';
 // 22/10/2026: הצ'אט "בדיקת רעיון" הקיים, ולא עותק שלו. הוא כבר מכיר את
 // הסימון "זווית: X" בכותרת הרעיון, אותו סימון שתכנית התוכן סומכת עליו.
-import { startIdeaChatWithExistingIdea } from './idea-chat.js';
+import { streamCheckIdea } from './idea-chat.js';
+import { addBubble, addThinkingBubble, setBubbleText } from './chat-ui.js';
 import { playReroll, playSuccess, setMuted, getMuted } from './video-assistant-sound.js';
 import { embedUrlFor, embedShape } from './video-preview.js';
 import { languageName } from './inspiration-readability.js';
@@ -1093,9 +1094,9 @@ function renderScratchAngleCheck() {
   const angle = ANGLES.find((a) => a.name === state.angle)
     || { name: state.angle || '', description: '', example: '' };
   /* 22/10/2026: העוזר ליצירת סרטון כלול במנוי הרפרנסים (tab-refs-only),
-     אבל הצ'אט "בדיקת רעיון" לא. בלי התנאי הזה מנוית רפרנסים הייתה מקבלת
-     כפתור שמוביל לכלי שהמנוי שלה לא כולל, ונתקלת בסירוב מהשרת. כפתור
-     שלא עושה כלום גרוע מכפתור שלא קיים. */
+     אבל הצ'אט "בדיקת רעיון" לא, גם בעיצוב וגם ב-enforceAllowlist בשרת.
+     מנוית רפרנסים תקבל כאן את שדה הנימוק בלבד, בלי הצ'אט, כדי שלא תיתקל
+     בסירוב מהשרת על כלי שהמנוי שלה לא כולל. */
   const refsOnly = document.body.dataset.plan === 'refs';
   cosmicCard(`
     <h2>הזווית שבחרת</h2>
@@ -1107,23 +1108,73 @@ function renderScratchAngleCheck() {
     <p>במשפט אחד, למה הזווית הזאת חזקה דווקא לקהל שלך?</p>
     <textarea class="cosmic-textarea" id="va-angle-why" style="min-height:90px"
       placeholder="למשל: הן באמת מאמינות שתעודה מספיקה, ואף אחת לא אומרת להן אחרת">${state.angleWhy ? escapeHtml(state.angleWhy) : ''}</textarea>
+    ${refsOnly ? '' : `
+      <div class="va-angle-chat">
+        <div class="chat-messages" id="va-chat-messages" role="log" aria-live="polite"></div>
+        <form class="chat-input-row" id="va-chat-form">
+          <textarea id="va-chat-input" enterkeyhint="send" placeholder="לענות לו כאן..." aria-label="הודעה לבדיקת הזווית"></textarea>
+          <button type="submit" class="cosmic-btn">שליחה</button>
+        </form>
+      </div>`}
     <div class="cosmic-btn-row">
-      ${refsOnly ? '' : `<button type="button" class="cosmic-btn" id="va-angle-chat-btn">לבדוק את הזווית בצ'אט</button>`}
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-angle-next-btn">הזווית מחזיקה, ממשיכים</button>
     </div>
   `);
+
   const why = () => document.getElementById('va-angle-why').value.trim();
-  if (!refsOnly) document.getElementById('va-angle-chat-btn').addEventListener('click', () => {
-    /* שומרים לפני היציאה: המסך הזה נעלם כשהצ'אט נפתח, והנימוק שכתבה
-       היה הולך לאיבוד. הסשן של העוזר נשמר ממילא, אז היא חוזרת לכאן. */
-    state = { ...state, angleWhy: why() || null };
-    saveSession(state);
-    const idea = state.ideaDescription || state.hook || '';
-    startIdeaChatWithExistingIdea({ title: `זווית: ${state.angle} | ${idea}`.trim(), text: why() });
-  });
   document.getElementById('va-angle-next-btn').addEventListener('click', () => {
     dispatch({ type: 'ANGLE_CONFIRMED', why: why() });
   });
+  if (refsOnly) return;
+
+  /* הצ'אט חי כאן בתוך המסך, ומריץ את אותו streamCheckIdea של "בדיקת
+     רעיון". אין כאן מנוע שני ואין קפיצה ללשונית אחרת: אותו שרת, אותו
+     זרם, אותה התנהגות - רק בתוך הזרימה, במקום שבו היא באמת צריכה אותו. */
+  const messagesEl = document.getElementById('va-chat-messages');
+  const history = [];
+  let busy = false;
+
+  async function ask(text) {
+    if (busy) return;
+    busy = true;
+    history.push({ role: 'user', content: text });
+    const thinking = addThinkingBubble(messagesEl);
+    try {
+      const profile = await getProfile();
+      const live = { value: '' };
+      const reply = await streamCheckIdea(history, profile, (delta) => {
+        live.value += delta;
+        setBubbleText(thinking, live.value);
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+      });
+      setBubbleText(thinking, reply || live.value);
+      history.push({ role: 'assistant', content: reply || live.value });
+    } catch (err) {
+      console.error('angle chat failed:', err);
+      setBubbleText(thinking, 'לא הצלחתי להתחבר כרגע. אפשר לנסות שוב, או פשוט להמשיך - הזווית כבר נשמרה.');
+    } finally {
+      busy = false;
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+  }
+
+  document.getElementById('va-chat-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const input = document.getElementById('va-chat-input');
+    const text = input.value.trim();
+    if (!text) return;
+    addBubble(messagesEl, text, 'user');
+    input.value = '';
+    ask(text);
+  });
+
+  // פתיחה אוטומטית: הוא מתחיל ללחוץ על הזווית בלי שהיא תצטרך לנסח בקשה
+  const idea = state.ideaDescription || state.hook || '';
+  ask(`אני עובדת על סרטון. הזווית שבחרתי: "${state.angle}". `
+    + (idea ? `הרעיון: "${idea}". ` : '')
+    + (state.angleWhy ? `למה לדעתי היא חזקה: "${state.angleWhy}". ` : '')
+    + 'תלחץ/י על הזווית הזאת: האם היא באמת חדה לקהל שלי, או שהיא רחבה מדי? '
+    + 'אם היא חלשה, תגיד/י לי במה בדיוק, ותציע/י ניסוח חד יותר.');
 }
 
 function renderScratchIntro() {
