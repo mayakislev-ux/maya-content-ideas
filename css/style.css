@@ -6374,12 +6374,22 @@ body[data-plan="refs"] .view-tabs-scroll { justify-content: center; }
 /* 13/10/2026: "העוזר שלך ליצירת סרטון" - כיוון "מסע קוסמי" שאושר ב-
    brainstorm session (docs/superpowers/specs/2026-10-13-video-creation-assistant-design.md).
    דארק-פירסט במכוון, גם במצב light של המכשיר - זו חוויה, לא מסמך לקריאה. */
+/* 23/10/2026 (מאיה: "במובייל המסך של העוזר ליצירת סרטון לא נוח, כל הזמן
+   המסך יורד למטה באוטומט וכל פעם צריך להקטין אותו עם האצבעות, הוא זז
+   מוזר ולא מקובע למסך", "ה-UI UX באייפון ממש לא נוח", "יש מלא שטח מת
+   במסך מתחת לחלק שבונים את הסרטון").
+
+   הסיבה היא 100vh. באייפון זה גובה המסך כולל סרגל הדפדפן, והסרגל נעלם
+   ומופיע תוך כדי גלילה - ולכן הגובה משתנה כל הזמן, המסך "קופץ", ובתחתית
+   נשאר שטח ריק בגודל הסרגל. svh הוא הגובה הקטן והיציב, בדיוק מה שצריך
+   כאן. 100vh נשאר קודם, כדפדפן ישן שלא מכיר svh. */
 .cosmic-theme {
   background: linear-gradient(160deg, #0b0f2e 0%, #1c2f82 55%, #2a1850 100%);
   color: #fff;
   min-height: 100vh;
+  min-height: 100svh;
   position: relative;
-  overflow: hidden;
+  overflow-x: hidden;
   padding: 24px 16px;
 }
 .cosmic-theme::before {
@@ -6410,6 +6420,20 @@ body[data-plan="refs"] .view-tabs-scroll { justify-content: center; }
   box-shadow: 0 0 40px rgba(255,46,168,.3);
   animation: cosmic-fade-in .25s ease-out;
 }
+
+/* במסך טלפון 40 פיקסל למעלה ולמטה הם כמעט חמישית מהמסך, ואין להם שום
+   תפקיד שם: הכרטיס ממילא מרוכז. */
+@media (max-width: 600px) {
+  .cosmic-theme { padding: 12px 12px; }
+  .cosmic-card { margin: 12px auto; padding: 20px 16px; }
+  /* אייפון מגדיל אוטומטית כל שדה שהגופן בו קטן מ-16 פיקסל, ואחרי
+     ההגדלה הוא לא חוזר לבד - בדיוק ה"צריך להקטין עם האצבעות". 16
+     פיקסל מבטלים את ההתנהגות הזאת לגמרי. */
+  .cosmic-textarea,
+  .cosmic-textarea::placeholder,
+  #va-chat-input { font-size: 16px; }
+}
+
 @keyframes cosmic-fade-in {
   from { opacity: 0; transform: scale(.96); }
   to { opacity: 1; transform: scale(1); }

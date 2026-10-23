@@ -52,18 +52,20 @@ test('footage, visual clip, found a moment -> extraction guidance -> summary', (
   assert.equal(s.screen, 'summary');
 });
 
-test('footage, visual clip, no moment found -> reframe into message/story only (18/10: objection removed) -> summary', () => {
+/* 23/10/2026: מסר או סיפור הם התחלה של בנייה, לא סוף. משם ממשיכים
+   לרעיון, לפורמט ולשאלת התסריט, כמו בבנייה מאפס. */
+test('footage, visual clip, no moment found -> reframe into message/story -> building', () => {
   const base = { ...INITIAL_STATE, screen: 'footage-visual-scan', branch: 'footage' };
   let s = nextStep(base, { type: 'FOOTAGE_VISUAL_NO_MOMENT' });
   assert.equal(s.screen, 'footage-visual-reframe');
 
   let msg = nextStep(s, { type: 'FOOTAGE_VISUAL_FOUND_MESSAGE' });
   assert.equal(msg.screen, 'footage-visual-message');
-  assert.equal(nextStep(msg, { type: 'FOOTAGE_VISUAL_READY' }).screen, 'summary');
+  assert.equal(nextStep(msg, { type: 'FOOTAGE_VISUAL_READY' }).screen, 'type-idea');
 
   let story = nextStep(s, { type: 'FOOTAGE_VISUAL_FOUND_STORY' });
   assert.equal(story.screen, 'footage-visual-story');
-  assert.equal(nextStep(story, { type: 'FOOTAGE_VISUAL_READY' }).screen, 'summary');
+  assert.equal(nextStep(story, { type: 'FOOTAGE_VISUAL_READY' }).screen, 'type-idea');
 });
 
 test('footage branch records which path was actually taken, for a concrete summary (18/10)', () => {
@@ -386,4 +388,22 @@ test('הזווית נשמרת עד הסוף גם כשעוברים דרך הפו�
   assert.equal(s.screen, 'scratch-dump');
   assert.equal(s.angle, 'מיתוס / אמונה מגבילה');
   assert.equal(s.angleWhy, 'הן מאמינות שתעודה מספיקה');
+});
+
+test('קטע מצולם: אחרי המסר שואלים רעיון, ואז פורמט, ואז אם צריך תסריט', () => {
+  let s = { ...INITIAL_STATE, screen: 'footage-visual-message', branch: 'footage' };
+  s = nextStep(s, { type: 'FOOTAGE_VISUAL_READY' });
+  assert.equal(s.screen, 'type-idea');
+  s = nextStep(s, { type: 'IDEA_TYPED', text: 'המסר שאני רוצה להעביר' });
+  // אין בדיקת רלוונטיות ואין זווית: הקטע כבר צולם
+  assert.equal(s.screen, 'format-choice');
+  assert.equal(s.ideaDescription, 'המסר שאני רוצה להעביר');
+  s = nextStep(s, { type: 'FORMAT_SELECTED', format: 'מסך חצוי' });
+  assert.equal(s.screen, 'needs-script-check');
+  assert.equal(nextStep(s, { type: 'NEEDS_SCRIPT_NO' }).screen, 'summary');
+});
+
+test('רעיון רגיל עדיין עובר בבדיקת רלוונטיות ובזווית', () => {
+  const s = nextStep({ ...INITIAL_STATE, screen: 'type-idea' }, { type: 'IDEA_TYPED', text: 'רעיון' });
+  assert.equal(s.screen, 'relevance-check');
 });

@@ -84,6 +84,13 @@ function step(state, action) {
     case 'CHOOSE_TYPE_IDEA':
       return { ...state, screen: 'type-idea' };
     case 'IDEA_TYPED':
+      /* 23/10/2026: בקטע שכבר צולם אין מה לבדוק רלוונטיות ואין מה לבחור
+         זווית, הוא כבר קיים. משם ממשיכים ישר לפורמט, כמו שמאיה ביקשה:
+         "צריך לשאול קודם כל מה הרעיון/מסר שתרצה להעביר, ואז לבקש לבחור
+         פורמט הנגשה, ואז לשאול אם צריך תסריט". */
+      if (state.branch === 'footage') {
+        return { ...state, screen: 'format-choice', formatFor: 'idea', ideaDescription: action.text };
+      }
       return { ...state, screen: 'relevance-check', ideaDescription: action.text };
     case 'CHOOSE_PULL_IDEA':
       return { ...state, screen: 'pulled-idea' };
@@ -143,7 +150,10 @@ function step(state, action) {
     case 'FOOTAGE_VISUAL_FOUND_STORY':
       return { ...state, screen: 'footage-visual-story', footageOutcome: 'story' };
     case 'FOOTAGE_VISUAL_READY':
-      return { ...state, screen: 'summary' };
+      /* 23/10/2026 (מאיה: "נגיד שלוחצים על מצאתי מסר או סיפור, בתכלס זה
+         סוג של בניית סרטון מ-0"). עד כאן זה קפץ ישר לסיכום, כלומר היא
+         ידעה סביב מה לבנות אבל לא קיבלה שום ליווי בבנייה עצמה. */
+      return { ...state, screen: 'type-idea' };
 
     // ===== בחירת פורמט הנגשה - פופאפ אמיתי, בחירה אמיתית (16/10) - מסלול
     // "רעיון מ-0" בלבד; קטע מצולם עבר למסלול הייעודי שלו למעלה =====
