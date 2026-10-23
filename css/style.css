@@ -6322,16 +6322,86 @@ body[data-plan="refs"] .view-tabs-scroll { justify-content: center; }
   max-height: 46vh; overflow-y: auto; margin-top: 12px;
 }
 .va-angle-chat { margin-top: 14px; }
-/* 23/10/2026 (מאיה: "הוא קופץ חלקית לא ברור יש שם באג טכני"): vh באייפון
-   משתנה ברגע שסרגל הדפדפן נעלם או שהמקלדת נפתחת, ולכן גובה החלונית השתנה
-   תוך כדי שימוש והתוכן קפץ. svh הוא הגובה הקטן והיציב. */
-.va-angle-chat .chat-messages {
+/* ===================================================================
+   הצ'אט בתוך מסך הזווית.
+
+   23/10/2026 (מאיה: "למה בצאט הכתב לבן על לבן, ולמה הצאט מרגיש מוזר
+   ולא כמו הצאט הרגיל").
+
+   השתלתי כאן את ה-HTML של הצ'אט הרגיל, אבל ה-CSS שלו נכתב למסך מלא
+   ובהיר. בתוך כרטיס כהה יצאו מזה שלושה דברים שבורים, וכל אחד מהם
+   מתוקן למטה בנפרד:
+
+   1. .chat-input-row היא position: fixed שמוצמדת לתחתית חלון הדפדפן.
+      לכן שורת הכתיבה התנתקה מהצ'אט וריחפה כפס לבן מעל הכרטיס. זאת
+      ה"מוזרות" - היא לא הייתה חלק מהחלונית בכלל.
+   2. הבועות והשדה לא מגדירים צבע טקסט, ולכן ירשו color: #fff
+      מ-.cosmic-card וישבו על רקע בהיר. זה הלבן על לבן.
+   3. כפתור השליחה הוא .cosmic-btn, כלומר לבן שקוף על לבן, ולכן נעלם.
+
+   המטרה כאן היא לא צ'אט אחר: אותן בועות, אותו מרווח, אותה תחושה של
+   הצ'אט הרגיל, רק בצבעים של הכרטיס הכהה.
+   =================================================================== */
+
+/* vh באייפון משתנה ברגע שסרגל הדפדפן נעלם או שהמקלדת נפתחת, ולכן גובה
+   החלונית השתנה תוך כדי שימוש והתוכן קפץ. svh הוא הגובה היציב. */
+/* .va-angle-chat.va-angle-chat (חזרה על המחלקה) מעלה את הספציפיות
+   מעל .chat-input-row.chat-input-row ו-.chat-messages.chat-messages
+   שכבר קיימים בקובץ הזה באותה שיטה. בלי זה שני הכללים שווים בספציפיות,
+   וההכרעה תלויה בסדר השורות בלבד - בדיוק סוג הבאג שכבר תועד כאן פעמיים. */
+.va-angle-chat.va-angle-chat .chat-messages {
   max-height: 40vh;
   max-height: 40svh;
   min-height: 140px; overflow-y: auto;
-  border: 1px solid var(--border-color); border-radius: 12px; padding: 10px;
+  border: 1px solid rgba(255,255,255,.22); border-radius: 12px;
+  padding: 10px;
+  background: rgba(0,0,0,.25);
+  gap: 0.6rem;
+  text-align: right;
 }
-.va-angle-chat .chat-input-row { margin-top: 8px; }
+
+/* (1) מחזירים את שורת הכתיבה לתוך הזרימה של הכרטיס */
+.va-angle-chat.va-angle-chat .chat-input-row {
+  position: static;
+  transform: none;
+  left: auto;
+  bottom: auto;
+  width: 100%;
+  max-width: none;
+  margin-top: 8px;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+  z-index: auto;
+  align-items: stretch;
+}
+
+/* (2) הבועות בצבעי הכרטיס. בועת המשתמשת נשארת בגרדיאנט המקורי, שהוא
+   ממילא כהה עם טקסט לבן וקריא כאן בדיוק כמו בצ'אט הרגיל. */
+.va-angle-chat.va-angle-chat .chat-bubble { max-width: 90%; box-shadow: none; font-size: 14px; }
+.va-angle-chat.va-angle-chat .chat-bubble-assistant {
+  background: rgba(255,255,255,.1);
+  border: 1px solid rgba(255,255,255,.18);
+  color: #fff;
+}
+
+.va-angle-chat.va-angle-chat .chat-input-row textarea {
+  min-height: 48px;
+  border: 1px solid rgba(255,255,255,.3);
+  background: rgba(255,255,255,.06);
+  color: #fff;
+  border-radius: 12px;
+}
+.va-angle-chat.va-angle-chat .chat-input-row textarea::placeholder { color: rgba(255,255,255,.45); }
+
+/* (3) כפתור השליחה חייב להיראות על רקע כהה */
+.va-angle-chat.va-angle-chat .chat-input-row .cosmic-btn {
+  flex-shrink: 0;
+  padding: 0 18px;
+  background: rgba(255,255,255,.18);
+  border: 1px solid rgba(255,255,255,.4);
+  color: #fff;
+}
 
 .sub-countdown {
   position: sticky; top: 0; z-index: 9999;

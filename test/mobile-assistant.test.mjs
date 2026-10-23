@@ -101,3 +101,59 @@ test('חלונית הצ\'אט במסך הזווית נמדדת ב-svh', () => {
   assert.ok(b.indexOf('40vh') < b.indexOf('40svh'), 'ה-fallback חייב לבוא לפני svh');
   assert.match(b, /overflow-y:\s*auto/, 'בלי גלילה פנימית הצ\'אט דוחף את כל הדף');
 });
+
+/* 23/10/2026 (מאיה: "למה בצאט הכתב לבן על לבן, ולמה הצאט מרגיש מוזר
+   ולא כמו הצאט הרגיל").
+
+   ה-HTML של הצ'אט הרגיל הושתל בתוך כרטיס כהה, אבל ה-CSS שלו נכתב למסך
+   מלא ובהיר. שלושה כללים שם שוברים אותו כאן, וכל אחד מהם נבדק בנפרד -
+   כי כל אחד מהם לבדו מספיק כדי שהיא תראה מסך שבור. */
+
+/** הכלל שמתקן את הצ'אט בתוך הכרטיס, לפי הסלקטור שלו */
+function angleChatRule(selector) {
+  /* המחלקה כפולה בכוונה, כדי לנצח כללים כמו .chat-input-row.chat-input-row
+     שכבר קיימים בקובץ באותה ספציפיות. */
+  const head = '.va-angle-chat.va-angle-chat ' + selector + ' {';
+  const i = css.indexOf(head);
+  assert.ok(i >= 0, `אין כלל כהה ל-${selector} בתוך מסך הזווית`);
+  return css.slice(i, css.indexOf('}', i));
+}
+
+/** כלל ברמה העליונה של הקובץ, כלומר לא מקונן בתוך מדיה-קוורי */
+function topLevelRule(selector) {
+  const i = css.indexOf(String.fromCharCode(10) + selector + ' {');
+  assert.ok(i >= 0, `לא נמצא הכלל הבסיסי ${selector}`);
+  return css.slice(i, css.indexOf('}', i));
+}
+
+test('שורת הכתיבה יושבת בתוך הכרטיס ולא מרחפת מעליו', () => {
+  /* .chat-input-row היא position: fixed שמוצמדת לתחתית חלון הדפדפן,
+     ולכן בתוך הכרטיס היא התנתקה מהצ'אט וריחפה כפס לבן. */
+  assert.match(topLevelRule('.chat-input-row'), /position:\s*fixed/,
+    'הכלל הבסיסי השתנה, וצריך לבדוק מחדש אם ההחזרה לזרימה עדיין נחוצה');
+
+  const r = angleChatRule('.chat-input-row');
+  assert.match(r, /position:\s*static/, 'שורת הכתיבה עדיין מרחפת מעל הכרטיס');
+  assert.match(r, /transform:\s*none/, 'ה-translateX מזיז אותה מהמקום');
+  assert.match(r, /background:\s*transparent/, 'הרקע הבהיר יוצר פס לבן על הכרטיס');
+});
+
+test('אין טקסט לבן על רקע בהיר באף חלק של הצ\'אט', () => {
+  /* הבועות והשדה לא מגדירים color, ולכן יורשים #fff מ-.cosmic-card.
+     כל מה שיושב על רקע בהיר חייב להגדיר צבע בעצמו. */
+  const bubble = angleChatRule('.chat-bubble-assistant');
+  assert.match(bubble, /color:\s*#fff/, 'בועת התשובה יורשת לבן בלי לקבוע רקע כהה');
+  assert.match(bubble, /background:\s*rgba\(255,255,255,\.1\)/, 'הבועה נשארת על הרקע הבהיר');
+
+  const ta = angleChatRule('.chat-input-row textarea');
+  assert.match(ta, /color:\s*#fff/, 'הטקסט בשדה הכתיבה אינו לבן');
+  assert.match(ta, /background:\s*rgba\(255,255,255,\.06\)/, 'השדה נשאר לבן');
+  assert.ok(css.includes('.va-angle-chat.va-angle-chat .chat-input-row textarea::placeholder'),
+    'הטקסט המנחה בשדה נשאר לבן על לבן');
+});
+
+test('כפתור השליחה נראה על הרקע הכהה', () => {
+  const r = angleChatRule('.chat-input-row .cosmic-btn');
+  assert.match(r, /color:\s*#fff/, 'הכפתור בלי צבע טקסט מוגדר');
+  assert.match(r, /border:\s*1px solid rgba\(255,255,255,/, 'בלי מסגרת הכפתור נבלע');
+});
