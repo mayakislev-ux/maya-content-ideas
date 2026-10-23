@@ -218,16 +218,41 @@ function onIdeasChanged(ideas) {
    הגישה מעצמו, בלי שמישהו יצטרך לזכור לכבות אותה.
    ההסתרה בממשק היא נוחות בלבד. האכיפה האמיתית היא ב-firestore.rules
    וב-enforceAllowlist בשרת. */
+/* שעון ספירה לאחור למנוי שנגמר ולא מתחדש (22/10/2026).
+   מופיע רק למי שסומנה showCountdown, כלומר מנוי לחודש בודד.
+   ללקוחה עם הוראת קבע זה היה רעש מלחיץ ולא מידע. */
+function showSubscriptionCountdown(access) {
+  if (!access || !access.showCountdown || !access.paidUntil) return;
+  if (document.querySelector('.sub-countdown')) return;
+
+  const MS_DAY = 24 * 60 * 60 * 1000;
+  const days = Math.ceil((access.paidUntil.getTime() - Date.now()) / MS_DAY);
+  if (days < 0) return;
+
+  const date = access.paidUntil.toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' });
+  const left = days === 0 ? 'היום' : days === 1 ? 'מחר' : `בעוד ${days} ימים`;
+
+  const bar = document.createElement('div');
+  bar.className = 'sub-countdown' + (days <= 3 ? ' is-urgent' : '');
+  bar.setAttribute('role', 'status');
+  bar.innerHTML = `<span>המנוי שלך למאגר הרפרנסים נגמר ${left} <b>(${date})</b></span>`;
+  document.body.prepend(bar);
+}
+
 async function loadAccess(email) {
-  if (email === ADMIN_EMAIL) return { allowed: true, refsOnly: false, expired: false };
+  if (email === ADMIN_EMAIL) return { allowed: true, refsOnly: false, expired: false, paidUntil: null, showCountdown: false };
   const snap = await getDoc(doc(db, 'allowlist', email));
-  if (!snap.exists()) return { allowed: false, refsOnly: false, expired: false };
+  if (!snap.exists()) return { allowed: false, refsOnly: false, expired: false, paidUntil: null, showCountdown: false };
   const data = snap.data() || {};
   const until = data.paidUntil?.toDate ? data.paidUntil.toDate() : null;
   return {
     allowed: true,
     refsOnly: data.plan === 'refs',
     expired: !!until && until.getTime() < Date.now(),
+    paidUntil: until,
+    /* מנוי לחודש בודד בלי הוראת קבע נגמר בלי שום התראה מוקדמת,
+       ולכן מי שעליה רואה כמה ימים נשארו. למנוי מתחדש זה רעש ולא מידע. */
+    showCountdown: data.showCountdown === true,
   };
 }
 
@@ -594,15 +619,13 @@ onAuthChange(async (user) => {
     console.error('loadAccess check failed:', err);
     const transient = String(err && err.code) !== 'permission-denied';
     if (transient) {
-      /* 23/10/2026 (מאיה: "פשוט תקוע ככה גם במחשב גם במובייל... זה חמור
-         ביותר ושלא יקרה לעולם").
+      /* 23/10/2026 (מאיה: "פשוט תקוע ככה גם במחשב גם במובייל"): עד כאן
+         המסלול הזה הסתיר את מסך הפתיחה ואז יצא בלי להציג שום דבר - לא
+         את האפליקציה ולא את מסך ההתחברות. התוצאה היא רקע כהה עם לוגו
+         ובלי שום דרך לצאת, גם לא ברענון, כי התקלה חוזרת.
 
-         המסלול הזה הסתיר את מסך הפתיחה והחזיר, בלי להציג שום דבר: לא את
-         האפליקציה ולא את מסך ההתחברות. נשאר רקע כהה עם לוגו, הטוסט נעלם
-         אחרי תשע שניות, ואז אין על מה ללחוץ. רענון לא עוזר כי אותו כשל
-         חוזר, וזה נראה בדיוק כמו "האפליקציה לא נפתחת".
-
-         כלל: כל מסלול שמסתיר את מסך הפתיחה חייב להשאיר מסך אמיתי. */
+         טוסט הוא לא מסך. כשלון זמני חייב להשאיר משהו שאפשר ללחוץ עליו,
+         ולכן מעכשיו מוצג מסך ההתחברות עם ההסבר וכפתור ניסיון חוזר. */
       showToast('לא הצלחנו לבדוק את ההרשאה כרגע. זאת תקלה אצלנו ולא אצלך, כדאי לנסות שוב בעוד רגע.', { duration: 9000 });
       document.getElementById('login-screen').hidden = false;
       document.getElementById('app-screen').hidden = true;
@@ -638,6 +661,8 @@ onAuthChange(async (user) => {
   /* מנוי רפרנסים: הגוף מסומן, וה-CSS מסתיר את כל מה שלא מאגר ההשראה */
   document.body.dataset.plan = access.refsOnly ? 'refs' : 'full';
 
+  showSubscriptionCountdown(access);
+
   /* 08/10/2026 (מאיה: "רוצה לראות פיילוט רגע איך הלקוחה רואה"): תצוגת
      לקוחה למאיה בלבד, דרך ?preview=refs. זו תצוגה בלבד, היא לא נוגעת
      במסד ולא משנה למי יש גישה למה. הכרזה למעלה קיימת כדי שלא תחשוב
@@ -646,11 +671,31 @@ onAuthChange(async (user) => {
     && user.email === ADMIN_EMAIL;
   if (previewRefs) {
     document.body.dataset.plan = 'refs';
+    /* 22/10/2026 (מאיה: "אני רוצה להתחבר למשתמש שלה"): אי אפשר ולא נכון
+       להיכנס לחשבון הגוגל של לקוחה. במקום זה אפשר לראות את המסך שלה לפי
+       הנתונים האמיתיים שלה: ?preview=refs&as=<המייל שלה> קורא את הרשומה
+       שלה ומדמה גם את שעון המנוי, ולא רק את מבנה המסך. קריאה בלבד. */
+    const asEmail = (new URLSearchParams(window.location.search).get('as') || '').trim().toLowerCase();
     const bar = document.createElement('div');
     bar.className = 'preview-bar';
-    bar.innerHTML = '<span>תצוגת לקוחה · מנוי רפרנסים בלבד. רק אצלך על המסך, שום דבר לא השתנה במערכת.</span>'
+    bar.innerHTML = '<span>תצוגת לקוחה · מנוי רפרנסים בלבד'
+      + (asEmail ? ' · ' + asEmail : '')
+      + '. רק אצלך על המסך, שום דבר לא השתנה במערכת.</span>'
       + '<a href="' + window.location.pathname + '">חזרה לתצוגה שלי</a>';
     document.body.prepend(bar);
+    if (asEmail) {
+      try {
+        const snap = await getDoc(doc(db, 'allowlist', asEmail));
+        const d = snap.exists() ? (snap.data() || {}) : {};
+        showSubscriptionCountdown({
+          showCountdown: d.showCountdown === true,
+          paidUntil: d.paidUntil?.toDate ? d.paidUntil.toDate() : null,
+        });
+      } catch (err) {
+        console.error('preview as failed:', err);
+        showToast('לא הצלחתי לקרוא את הנתונים של ' + asEmail + '. המסך מוצג בלי שעון המנוי.');
+      }
+    }
   }
 
   document.getElementById('login-screen').hidden = true;
