@@ -31,7 +31,7 @@ import {
   fetchIdeas, fetchInspirationBank, getSavedDomain, guessDomain, saveDomain, saveSession, loadSession,
   extractOpeningHook,
 } from './video-assistant-store.js';
-import { getProfile } from './user-profile.js';
+import { getProfile, saveProfile } from './user-profile.js';
 import { showToast } from './toast.js';
 import {
   pickEncouragement, domainTheme, formatElapsed, dnaSteps,
@@ -242,7 +242,62 @@ function closeModal() {
 // ===== מסך פתיחה: שלושת מסלולי הפתיחה, ניסוח מדויק של מאיה (16/10) =====
 // 17/10/2026 (מאיה: "תעיפי את האתגר, לא אהבתי") - רעיון #8 ("אתגר היום")
 // הוסר מהמסך הזה.
-function renderOpening() {
+/* 23/10/2026 (מאיה: "שיהיה מקום שימלאו את התחום שלהן והקהל יעד העיקרי
+   והמשניים שלהן - פעם אחת", ו"הבנות שקיבלו גישה רק לרפרנסים, הוא צריך
+   להבין תחום וקהל יעד מסודר").
+
+   התחום והקהל נשמרים בפרופיל מאז האונבורדינג של "בדיקת רעיון", אבל
+   הצ'אט הזה חסום למנוי רפרנסים, ולכן הן מעולם לא מילאו אותו - וכל
+   הפרומפטים יצאו להן בלי הקשר. כאן הן ממלאות אותו פעם אחת, מתוך הכלי
+   שכן פתוח להן. מי שכבר מילאה לא רואה את המסך הזה בכלל. */
+async function renderProfileSetup(onDone) {
+  const profile = (await getProfile()) || {};
+  cosmicCard(`
+    <h2>רגע לפני שמתחילים</h2>
+    <p>שתי שורות שנמלא פעם אחת, והן ייכנסו לבד לכל פרומפט שהכלי יכין. בלעדיהן ChatGPT מנחש מאיזה עולם מדובר.</p>
+    <div class="cosmic-field">
+      <label for="va-pf-domain">התחום שלי</label>
+      <input type="text" class="cosmic-textarea" id="va-pf-domain" style="min-height:auto"
+        placeholder="למשל: עיצוב גבות, שיווק, קוסמטיקה" value="${profile.business ? escapeHtml(profile.business) : ''}">
+    </div>
+    <div class="cosmic-field">
+      <label for="va-pf-aud1">קהל היעד העיקרי</label>
+      <input type="text" class="cosmic-textarea" id="va-pf-aud1" style="min-height:auto"
+        placeholder="למשל: נשים 25-40 שמחפשות מעצבת גבות קבועה" value="${profile.primaryAudience ? escapeHtml(profile.primaryAudience) : ''}">
+    </div>
+    <div class="cosmic-field">
+      <label for="va-pf-aud2">קהל יעד משני (רשות)</label>
+      <input type="text" class="cosmic-textarea" id="va-pf-aud2" style="min-height:auto"
+        placeholder="אם יש עוד קהל שאתן פונות אליו" value="${profile.secondaryAudience ? escapeHtml(profile.secondaryAudience) : ''}">
+    </div>
+    <div class="cosmic-btn-row">
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-pf-save-btn">שמירה והמשך</button>
+    </div>
+  `, { showProgress: false });
+  document.getElementById('va-pf-save-btn').addEventListener('click', async () => {
+    const business = document.getElementById('va-pf-domain').value.trim();
+    const primaryAudience = document.getElementById('va-pf-aud1').value.trim();
+    const secondaryAudience = document.getElementById('va-pf-aud2').value.trim();
+    if (!business || !primaryAudience) {
+      showToast('צריך למלא את התחום ואת קהל היעד העיקרי');
+      return;
+    }
+    await saveProfile({ business, primaryAudience, secondaryAudience: secondaryAudience || null });
+    playSuccess();
+    onDone();
+  });
+}
+
+/** האם חסר מה שכל פרומפט צריך. מיוצא בעקיפין דרך המסך בלבד. */
+function profileIncomplete(profile) {
+  return !profile || !String(profile.business || '').trim() || !String(profile.primaryAudience || '').trim();
+}
+
+async function renderOpening() {
+  if (profileIncomplete(await getProfile())) {
+    renderProfileSetup(() => render());
+    return;
+  }
   cosmicCard(`
     <h2>✨ בואו ניצור סרטון</h2>
     <p>מאיפה מתחילים הפעם?</p>
@@ -287,12 +342,12 @@ function renderIdeaSourceChoice() {
     <h2>מאיפה הרעיון?</h2>
     <div class="cosmic-btn-row">
       <button type="button" class="cosmic-btn" id="va-type-idea-btn">יש לי רעיון</button>
-      ${refsPlan() ? '' : '<button type="button" class="cosmic-btn" id="va-pull-idea-btn">תמצאו לי רעיון</button>'}
+      <button type="button" class="cosmic-btn" id="va-pull-idea-btn">תמצאו לי רעיון</button>
     </div>
   `);
   document.getElementById('va-type-idea-btn').addEventListener('click', () => dispatch({ type: 'CHOOSE_TYPE_IDEA' }));
-  /* 20/10/2026: במנוי הרפרנסים אין בנק רעיונות, ולכן אין "תמצא לי רעיון" */
-  if (refsPlan()) return;
+  /* 23/10/2026: בנק הרעיונות נפתח גם למנוי רפרנסים, ולכן הכפתור חוזר
+     לכולן. מי שאין לה עדיין רעיונות מקבלת את מסך "אין עדיין רעיונות". */
   document.getElementById('va-pull-idea-btn').addEventListener('click', async () => {
     if (!ideasCache) ideasCache = await fetchIdeas();
     const picked = pickIdea(ideasCache, null);

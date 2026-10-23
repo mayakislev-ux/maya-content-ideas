@@ -6277,15 +6277,12 @@ body { max-width: 100%; }
    ב-firestore.rules וב-enforceAllowlist בשרת.
    =================================================================== */
 body[data-plan="refs"] #tab-home,
-body[data-plan="refs"] #tab-archive,
 body[data-plan="refs"] #tab-chat,
 body[data-plan="refs"] #tab-guide,
 body[data-plan="refs"] #tab-feedback,
 body[data-plan="refs"] #bottomnav-home,
-body[data-plan="refs"] #bottomnav-archive,
 body[data-plan="refs"] #bottomnav-chat,
 body[data-plan="refs"] #bottomnav-more,
-body[data-plan="refs"] #add-idea-fab,
 body[data-plan="refs"] #random-idea-btn,
 body[data-plan="refs"] #home-progress-widget,
 body[data-plan="refs"] #install-app-btn,
@@ -6313,6 +6310,13 @@ body[data-plan="refs"] .view-tabs-scroll { justify-content: center; }
 /* 22/10/2026: הצ'אט חי בתוך מסך הזווית בעוזר ליצירת סרטון. .chat-messages
    נבנה למסך מלא ונמתח לכל הגובה, ולכן בתוך כרטיס הוא צריך תקרה משלו,
    אחרת הכרטיס גדל בלי סוף וכפתור ההמשך נדחף אל מחוץ למסך. */
+/* שדות מסך ההגדרות בעוזר ליצירת סרטון */
+.cosmic-field { text-align: right; margin-bottom: 12px; }
+.cosmic-field label {
+  display: block; font-size: 0.86rem; font-weight: 700;
+  margin-bottom: 5px; opacity: 0.9;
+}
+
 .va-read-script {
   white-space: pre-wrap; text-align: right; line-height: 1.75;
   max-height: 46vh; overflow-y: auto; margin-top: 12px;

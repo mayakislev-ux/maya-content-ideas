@@ -82,8 +82,11 @@ test('העוזר ליצירת סרטון פתוח גם למנוי רפרנסים
   assert.ok(block('videoAssistantSessions').includes('(isFull() || (isAllowed() && notExpired())) && request.auth.uid == uid'));
 });
 
+/* 23/10/2026: בנק הרעיונות נפתח במכוון גם למנוי רפרנסים (מאיה: "אולי
+   הייתי מוסיפה גם לשונית של רעיונות לתוכן שיוכלו להוסיף לשם"). שאר
+   אוספי התוכן נשארים למנוי המלא בלבד, וזאת עדיין הבדיקה שמגנה עליהם. */
 test('אוספי התוכן דורשים מנוי מלא', () => {
-  for (const name of ['ideas', 'warmingPlans', 'contentPlans', 'storyTables']) {
+  for (const name of ['warmingPlans', 'contentPlans', 'storyTables']) {
     const b = block(name);
     assert.ok(b.length > 0, name + ' קיים');
     assert.ok(b.includes('isFull()'), name + ' דורש מנוי מלא');
@@ -130,8 +133,22 @@ test('ו-refs עדיין חסום', () => {
   assert.match(fn.slice(0, fn.indexOf('}')), /planOf\(\) != 'refs'/);
 });
 
-test('שלושת האוספים שנחסמו מוגנים ב-isFull ולא נפתחו בטעות', () => {
-  ['ideas', 'warmingPlans', 'storyTables'].forEach((name) => {
+test('האוספים שנחסמו מוגנים ב-isFull ולא נפתחו בטעות', () => {
+  ['warmingPlans', 'storyTables'].forEach((name) => {
     assert.match(block(name), /isFull\(\)/, `${name} כבר לא מוגן ב-isFull`);
   });
+});
+
+/* הרעיונות הם של הלקוחה עצמה, ולכן התנאי הוא גישה בתוקף ובעלות, ולא
+   סוג המנוי. בלי ownerUid כל מנויה הייתה רואה את הרעיונות של כולן. */
+test('בנק הרעיונות פתוח למנוי בתוקף, ותמיד מוגבל לבעלים', () => {
+  const b = block('ideas');
+  assert.match(b, /isAllowed\(\)/, 'הרעיונות לא דורשים גישה תקפה');
+  assert.match(b, /notExpired\(\)/, 'הרעיונות לא נסגרים כשהמנוי נגמר');
+  const allowLines = b.split(String.fromCharCode(10)).filter((l) => l.includes('allow '));
+  assert.ok(allowLines.length > 0, 'אין שורות allow באוסף הרעיונות');
+  assert.ok(
+    allowLines.every((l) => l.includes('ownerUid')),
+    'יש שורת allow בלי הגבלת בעלות'
+  );
 });
