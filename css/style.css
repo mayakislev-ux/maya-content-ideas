@@ -6277,15 +6277,12 @@ body { max-width: 100%; }
    ב-firestore.rules וב-enforceAllowlist בשרת.
    =================================================================== */
 body[data-plan="refs"] #tab-home,
-body[data-plan="refs"] #tab-archive,
 body[data-plan="refs"] #tab-chat,
 body[data-plan="refs"] #tab-guide,
 body[data-plan="refs"] #tab-feedback,
 body[data-plan="refs"] #bottomnav-home,
-body[data-plan="refs"] #bottomnav-archive,
 body[data-plan="refs"] #bottomnav-chat,
 body[data-plan="refs"] #bottomnav-more,
-body[data-plan="refs"] #add-idea-fab,
 body[data-plan="refs"] #random-idea-btn,
 body[data-plan="refs"] #home-progress-widget,
 body[data-plan="refs"] #install-app-btn,
@@ -6308,6 +6305,40 @@ body[data-plan="refs"] .view-tabs-scroll { justify-content: center; }
 
 /* הכרזת תצוגת הלקוחה (08/10/2026). מופיעה רק למאיה, רק עם preview=refs,
    כדי שלא תחשוב שהאפליקציה איבדה את הכפתורים שלה. */
+/* שעון המנוי. אותה שפה של preview-bar, אבל זה כן נוגע ללקוחה,
+   ולכן הוא מדווח ולא מתנצל. בשלושת הימים האחרונים הוא מחליף צבע. */
+/* 22/10/2026: הצ'אט חי בתוך מסך הזווית בעוזר ליצירת סרטון. .chat-messages
+   נבנה למסך מלא ונמתח לכל הגובה, ולכן בתוך כרטיס הוא צריך תקרה משלו,
+   אחרת הכרטיס גדל בלי סוף וכפתור ההמשך נדחף אל מחוץ למסך. */
+/* שדות מסך ההגדרות בעוזר ליצירת סרטון */
+.cosmic-field { text-align: right; margin-bottom: 12px; }
+.cosmic-field label {
+  display: block; font-size: 0.86rem; font-weight: 700;
+  margin-bottom: 5px; opacity: 0.9;
+}
+
+.va-read-script {
+  white-space: pre-wrap; text-align: right; line-height: 1.75;
+  max-height: 46vh; overflow-y: auto; margin-top: 12px;
+}
+.va-angle-chat { margin-top: 14px; }
+.va-angle-chat .chat-messages {
+  max-height: 40vh; min-height: 140px; overflow-y: auto;
+  border: 1px solid var(--border-color); border-radius: 12px; padding: 10px;
+}
+.va-angle-chat .chat-input-row { margin-top: 8px; }
+
+.sub-countdown {
+  position: sticky; top: 0; z-index: 9999;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  flex-wrap: wrap; padding: 9px 16px;
+  background: linear-gradient(135deg, #7b3799 0%, #531e62 100%);
+  color: #fff; font-size: 0.85rem; font-weight: 600; text-align: center;
+}
+.sub-countdown b { color: #f0d6a3; font-weight: 800; }
+.sub-countdown.is-urgent { background: linear-gradient(135deg, #b3341f 0%, #7d1f12 100%); }
+.sub-countdown.is-urgent b { color: #ffd9c7; }
+
 .preview-bar {
   position: sticky; top: 0; z-index: 9999;
   display: flex; align-items: center; justify-content: center; gap: 14px;
@@ -6343,12 +6374,22 @@ body[data-plan="refs"] .view-tabs-scroll { justify-content: center; }
 /* 13/10/2026: "העוזר שלך ליצירת סרטון" - כיוון "מסע קוסמי" שאושר ב-
    brainstorm session (docs/superpowers/specs/2026-10-13-video-creation-assistant-design.md).
    דארק-פירסט במכוון, גם במצב light של המכשיר - זו חוויה, לא מסמך לקריאה. */
+/* 23/10/2026 (מאיה: "במובייל המסך של העוזר ליצירת סרטון לא נוח, כל הזמן
+   המסך יורד למטה באוטומט וכל פעם צריך להקטין אותו עם האצבעות, הוא זז
+   מוזר ולא מקובע למסך", "ה-UI UX באייפון ממש לא נוח", "יש מלא שטח מת
+   במסך מתחת לחלק שבונים את הסרטון").
+
+   הסיבה היא 100vh. באייפון זה גובה המסך כולל סרגל הדפדפן, והסרגל נעלם
+   ומופיע תוך כדי גלילה - ולכן הגובה משתנה כל הזמן, המסך "קופץ", ובתחתית
+   נשאר שטח ריק בגודל הסרגל. svh הוא הגובה הקטן והיציב, בדיוק מה שצריך
+   כאן. 100vh נשאר קודם, כדפדפן ישן שלא מכיר svh. */
 .cosmic-theme {
   background: linear-gradient(160deg, #0b0f2e 0%, #1c2f82 55%, #2a1850 100%);
   color: #fff;
   min-height: 100vh;
+  min-height: 100svh;
   position: relative;
-  overflow: hidden;
+  overflow-x: hidden;
   padding: 24px 16px;
 }
 .cosmic-theme::before {
@@ -6379,6 +6420,20 @@ body[data-plan="refs"] .view-tabs-scroll { justify-content: center; }
   box-shadow: 0 0 40px rgba(255,46,168,.3);
   animation: cosmic-fade-in .25s ease-out;
 }
+
+/* במסך טלפון 40 פיקסל למעלה ולמטה הם כמעט חמישית מהמסך, ואין להם שום
+   תפקיד שם: הכרטיס ממילא מרוכז. */
+@media (max-width: 600px) {
+  .cosmic-theme { padding: 12px 12px; }
+  .cosmic-card { margin: 12px auto; padding: 20px 16px; }
+  /* אייפון מגדיל אוטומטית כל שדה שהגופן בו קטן מ-16 פיקסל, ואחרי
+     ההגדלה הוא לא חוזר לבד - בדיוק ה"צריך להקטין עם האצבעות". 16
+     פיקסל מבטלים את ההתנהגות הזאת לגמרי. */
+  .cosmic-textarea,
+  .cosmic-textarea::placeholder,
+  #va-chat-input { font-size: 16px; }
+}
+
 @keyframes cosmic-fade-in {
   from { opacity: 0; transform: scale(.96); }
   to { opacity: 1; transform: scale(1); }
@@ -6939,33 +6994,6 @@ body[data-plan="refs"] .view-tabs-scroll { justify-content: center; }
 }
 
 /* ----- #43: פאנל צף - התסריט/הטקסט המצטבר בזמן אמת ----- */
-.cosmic-live-preview {
-  position: fixed;
-  bottom: 16px;
-  right: 16px;
-  max-width: 260px;
-  max-height: 160px;
-  overflow-y: auto;
-  background: rgba(10,10,35,.82);
-  backdrop-filter: blur(6px);
-  border: 1px solid rgba(255,255,255,.2);
-  border-radius: 14px;
-  padding: 10px 12px;
-  z-index: 35;
-  font-size: 11px;
-  line-height: 1.5;
-  color: rgba(255,255,255,.85);
-  text-align: right;
-  box-shadow: 0 4px 20px rgba(0,0,0,.35);
-  animation: cosmic-fade-in .25s ease-out;
-}
-.cosmic-live-preview__title {
-  font-size: 10px;
-  font-weight: 800;
-  opacity: .7;
-  margin-bottom: 4px;
-}
-.cosmic-live-preview strong { color: #ffd23f; }
 
 /* ----- #8: "אתגר היום" - בנר על מסך הפתיחה ----- */
 .cosmic-today-challenge {
