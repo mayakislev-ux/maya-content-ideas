@@ -170,3 +170,13 @@ test("הצ'אט אכן חסום למנוי רפרנסים, ולכן התנאי �
   const css = readFileSync(join(ROOT, 'css', 'style.css'), 'utf8');
   assert.match(css, /body\[data-plan="refs"\] #tab-chat/);
 });
+
+/* 23/10/2026: אחרי שישה דחיפות ברצף שכחתי להעלות את CACHE_NAME ב-sw.js,
+   ומאיה דיווחה "לא נכנס בכלל" - מכשיר שהחזיק app.js ישן מהמטמון מול
+   מודולים חדשים מהרשת. השורה הראשונה בקובץ אומרת את זה במפורש. */
+test('גרסת המטמון של ה-service worker עלתה מעל v82', () => {
+  const sw = readFileSync(join(ROOT, 'sw.js'), 'utf8');
+  const m = sw.match(/CACHE_NAME = 'moach-hashiveki-v(\d+)'/);
+  assert.ok(m, 'לא נמצאה גרסת מטמון ב-sw.js');
+  assert.ok(Number(m[1]) >= 83, `גרסת המטמון היא v${m[1]}, לא עלתה אחרי השינויים`);
+});
