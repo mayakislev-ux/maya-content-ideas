@@ -619,7 +619,21 @@ onAuthChange(async (user) => {
     console.error('loadAccess check failed:', err);
     const transient = String(err && err.code) !== 'permission-denied';
     if (transient) {
+      /* 23/10/2026 (מאיה: "פשוט תקוע ככה גם במחשב גם במובייל"): עד כאן
+         המסלול הזה הסתיר את מסך הפתיחה ואז יצא בלי להציג שום דבר - לא
+         את האפליקציה ולא את מסך ההתחברות. התוצאה היא רקע כהה עם לוגו
+         ובלי שום דרך לצאת, גם לא ברענון, כי התקלה חוזרת.
+
+         טוסט הוא לא מסך. כשלון זמני חייב להשאיר משהו שאפשר ללחוץ עליו,
+         ולכן מעכשיו מוצג מסך ההתחברות עם ההסבר וכפתור ניסיון חוזר. */
       showToast('לא הצלחנו לבדוק את ההרשאה כרגע. זאת תקלה אצלנו ולא אצלך, כדאי לנסות שוב בעוד רגע.', { duration: 9000 });
+      document.getElementById('login-screen').hidden = false;
+      document.getElementById('app-screen').hidden = true;
+      const errEl = document.getElementById('login-error');
+      if (errEl) {
+        errEl.textContent = 'לא הצלחנו לבדוק את ההרשאה כרגע (' + ((err && err.code) || 'שגיאה') + '). זאת תקלה אצלנו, אפשר לנסות שוב.';
+        errEl.hidden = false;
+      }
       return;
     }
     document.getElementById('login-screen').hidden = false;
