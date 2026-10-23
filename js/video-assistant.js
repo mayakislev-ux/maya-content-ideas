@@ -54,7 +54,7 @@ const PHASE_BY_SCREEN = {
   'relevance-check': 1,
   'footage-type-choice': 2, 'format-choice': 2, 'needs-script-check': 2, 'has-idea-choice': 2,
   transcribe: 3, prompt1: 3, 'her-words': 3, prompt2: 3, 'read-aloud': 3,
-  'scratch-angle': 3, 'scratch-angle-check': 3, 'scratch-intro': 3, 'scratch-dump': 3, 'scratch-hook': 3, 'scratch-hook-reinforce': 3, 'scratch-distill': 3,
+  'angle': 1, 'angle-check': 1, 'scratch-intro': 3, 'scratch-dump': 3, 'scratch-hook': 3, 'scratch-hook-reinforce': 3, 'scratch-distill': 3,
   'footage-speech-find': 3, 'footage-speech-shorten': 3, 'footage-speech-sharpen': 3, 'footage-speech-done': 3,
   'footage-visual-scan': 3, 'footage-visual-extract': 3, 'footage-visual-reframe': 3,
   'footage-visual-message': 3, 'footage-visual-story': 3,
@@ -132,7 +132,7 @@ function progressHtml() {
 
 function backButtonHtml() {
   return state.history.length
-    ? `<button type="button" class="cosmic-back-btn" id="va-back-btn" aria-label="חזרה אחורה">→</button>`
+    ? `<button type="button" class="cosmic-back-btn" id="va-back-btn" aria-label="חזרה אחורה">←</button>`
     : '';
 }
 
@@ -501,12 +501,12 @@ function renderFootageSpeechSharpen() {
 // 19/10/2026 (מאיה: "Hook → Point → Proof → End זה באנגלית ולא הבנתי") -
 // הוחלף בהסבר בעברית, בדיוק לפי מה שהיא תיארה: בוחרים את ההוק הכי
 // מסקרן וברור לתחילת הסרטון (גם ויזואלית), מומלץ להוסיף הוק כתוב על
-// המסך כדי שיבינו את ההקשר מיד, ואז מלקטים לפי הוק → הרחבה → פואנטה.
+// המסך כדי שיבינו את ההקשר מיד, ואז מלקטים לפי הוק ← הרחבה ← פואנטה.
 function renderFootageSpeechDone() {
   const card = cosmicCard(`
     <h2>הקטע מוכן</h2>
     <p>עכשיו מלקטים את הקטע שיווקית: בחר/י את ההוק הכי מסקרן וברור לתחילת הסרטון - גם ויזואלית. מומלץ להוסיף הוק כתוב על המסך, כדי שיבינו את ההקשר מיד.</p>
-    <p class="cosmic-prompt-box" style="text-align:center;font-size:17px;font-weight:700">הוק → הרחבת הנושא → פואנטה / סיומת</p>
+    <p class="cosmic-prompt-box" style="text-align:center;font-size:17px;font-weight:700">הוק ← הרחבת הנושא ← פואנטה / סיומת</p>
     <p>כשהקטע בנוי ככה - הוא מוכן.</p>
     <div class="cosmic-btn-row" style="margin-top:14px">
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-speech-done-btn">מוכן/ה</button>
@@ -549,7 +549,7 @@ function renderFootageVisualExtract() {
       <li><span class="cosmic-summary-num">1</span><div>חתוך/י כמה שיותר קרוב לרגע החזק</div></li>
       <li><span class="cosmic-summary-num">2</span><div>השאר/י רק מה שחייבים כדי להבין אותו</div></li>
       <li><span class="cosmic-summary-num">3</span><div>שאל/י: האם צריך משפט על המסך כדי להבין למה זה מעניין?</div></li>
-      <li><span class="cosmic-summary-num">4</span><div>אם כן → כתוב/י הוק קצר</div></li>
+      <li><span class="cosmic-summary-num">4</span><div>אם כן ← כתוב/י הוק קצר</div></li>
       <li><span class="cosmic-summary-num">5</span><div>הוסיפ/י כתוביות</div></li>
       <li><span class="cosmic-summary-num">6</span><div>סיימת</div></li>
     </ul>
@@ -603,11 +603,11 @@ function renderFootageVisualOutcome({ title, body }) {
 }
 
 function renderFootageVisualMessage() {
-  renderFootageVisualOutcome({ title: 'בונים סביב מסר', body: 'הוק → הסבר קצר → הקטעים ממחישים.' });
+  renderFootageVisualOutcome({ title: 'בונים סביב מסר', body: 'הוק ← הסבר קצר ← הקטעים ממחישים.' });
 }
 
 function renderFootageVisualStory() {
-  renderFootageVisualOutcome({ title: 'בונים סביב סיפור', body: 'לפני → מה קרה → תהליך → תוצאה. החומר הופך לווויס-אובר או B-roll.' });
+  renderFootageVisualOutcome({ title: 'בונים סביב סיפור', body: 'לפני ← מה קרה ← תהליך ← תוצאה. החומר הופך לווויס-אובר או B-roll.' });
 }
 
 // 17/10/2026 (מאיה: "תצוגה מקדימה של הפורמט שישר ויזואלית אראה"): אין לי
@@ -1059,7 +1059,7 @@ function renderReadAloud() {
 
    הזווית היא עכשיו המסך הראשון, והיא תנאי: המכונה זורקת אם מנסים להתקדם
    בלעדיה (ראה SCRATCH_START_DUMP ב-video-assistant-flow.js). */
-function renderScratchAngle() {
+function renderAngle() {
   // אותה תבנית אקורדיון של בחירת הפורמט: רשימה ארוכה שנפתחת פריט-פריט,
   // ולא 31 כרטיסים פתוחים שמציפים את המסך.
   const itemsHtml = ANGLES.map((a, i) => `
@@ -1090,7 +1090,7 @@ function renderScratchAngle() {
    לנמק במילה שלה למה הזווית מחזיקה, ולהעביר אותה לצ'אט "בדיקת רעיון"
    הקיים כדי שילחץ עליה. הנימוק נשמר בסטייט גם בלי הצ'אט, כי הוא מה
    שנכנס לפרומפטים הבאים ולמסך הסיכום. */
-function renderScratchAngleCheck() {
+function renderAngleCheck() {
   const angle = ANGLES.find((a) => a.name === state.angle)
     || { name: state.angle || '', description: '', example: '' };
   /* 22/10/2026: העוזר ליצירת סרטון כלול במנוי הרפרנסים (tab-refs-only),
@@ -1363,9 +1363,9 @@ function buildSummarySteps() {
     } else if (state.footageOutcome === 'extract') {
       steps.push('מצאת בקטע רגע חזק שעומד בפני עצמו, וליקטת אותו: חיתוך קרוב לרגע, הוק אם צריך, כתוביות.');
     } else if (state.footageOutcome === 'message') {
-      steps.push('לא היה רגע עצמאי, אז בנית סביב הקטע מסר: הוק → הסבר קצר → הקטע כהמחשה.');
+      steps.push('לא היה רגע עצמאי, אז בנית סביב הקטע מסר: הוק ← הסבר קצר ← הקטע כהמחשה.');
     } else if (state.footageOutcome === 'story') {
-      steps.push('לא היה רגע עצמאי, אז בנית סביב הקטע סיפור: לפני → מה קרה → תהליך → תוצאה.');
+      steps.push('לא היה רגע עצמאי, אז בנית סביב הקטע סיפור: לפני ← מה קרה ← תהליך ← תוצאה.');
     }
     steps.push('עכשיו: לכי/לך לערוך בדיוק לפי מה שסימנת, ואז להעלות.');
   } else if (state.branch === 'reference' || state.branch === 'idea-search') {
@@ -1454,8 +1454,8 @@ function render() {
   if (state.screen === 'her-words') return renderHerWords();
   if (state.screen === 'prompt2') return renderPrompt2();
   if (state.screen === 'read-aloud') return renderReadAloud();
-  if (state.screen === 'scratch-angle') return renderScratchAngle();
-  if (state.screen === 'scratch-angle-check') return renderScratchAngleCheck();
+  if (state.screen === 'angle') return renderAngle();
+  if (state.screen === 'angle-check') return renderAngleCheck();
   if (state.screen === 'scratch-intro') return renderScratchIntro();
   if (state.screen === 'scratch-dump') return renderScratchDump();
   if (state.screen === 'scratch-hook') return renderScratchHook();

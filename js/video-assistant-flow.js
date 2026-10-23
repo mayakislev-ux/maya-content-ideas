@@ -94,7 +94,13 @@ function step(state, action) {
     case 'RELEVANCE_CONFIRMED':
       if (state.branch === 'footage') return { ...state, screen: 'footage-type-choice' };
       if (state.branch === 'reference') return { ...state, screen: 'transcribe' };
-      return { ...state, screen: 'format-choice', formatFor: 'idea' };
+      /* 23/10/2026 (מאיה: "אחרי שבחרתי רעיון לפני פורמט חייב לוודא האם
+         יש זווית הנגשה חזקה לרעיון... ורק אחרי שיש זווית הנגשה בוחרים
+         פורמט הנגשה"). ב-22/10 שמתי את הזווית בתוך מסלול הכתיבה מאפס,
+         כלומר אחרי הפורמט ואחרי "צריך תסריט". זה היה מאוחר מדי: אותו
+         רעיון אפשר להנגיש באלפי דרכים, והפורמט נבחר כשעוד לא ידוע מה
+         בכלל הזווית. */
+      return { ...state, screen: 'angle' };
 
     // ===== מסלול קטע מצולם - "מה צילמת?" (18/10/2026, מאיה: עיצוב מחדש
     // מלא - מחליף את "משתמש/ת בו כמו שהוא / רוצה להמיר לפורמט אחר" בליווי
@@ -153,7 +159,7 @@ function step(state, action) {
     case 'CHOOSE_REVERSE_DUPLICATION':
       return { ...state, screen: 'transcribe', branch: 'idea-search' };
     case 'CHOOSE_FROM_SCRATCH':
-      return { ...state, screen: 'scratch-angle', branch: 'scratch' };
+      return { ...state, screen: 'scratch-intro', branch: 'scratch' };
 
     // ===== הצינור המשותף: תמלול → [פרומפט 1 → המילים שלה] או [המילים שלה
     // → פרומפט 1] → פרומפט 2 → קריאה בקול → סיכום. הסדר בין פרומפט 1
@@ -190,10 +196,10 @@ function step(state, action) {
     // שלב 1 (אופציונלי, רק למי שתקועה): פרומפט חילוץ תוכן, או כתיבה חופשית
     // שלב 0 (חדש, 22/10): זווית ההגשה. בלי זווית אין מה לכתוב.
     case 'ANGLE_CHOSEN':
-      return { ...state, screen: 'scratch-angle-check', angle: action.angle };
+      return { ...state, screen: 'angle-check', angle: action.angle };
     // הנימוק נשמר גם כשהיא מדלגת על הצ'אט, כי הוא נכנס לפרומפטים הבאים
     case 'ANGLE_CONFIRMED':
-      return { ...state, screen: 'scratch-intro', angleWhy: action.why || null };
+      return { ...state, screen: 'format-choice', formatFor: 'idea', angleWhy: action.why || null };
 
     case 'SCRATCH_START_DUMP':
       /* הזווית היא תנאי ולא המלצה. בלי השורה הזאת אפשר היה לקפוץ ישר

@@ -155,7 +155,7 @@ test('תצוגת לקוחה פתוחה רק למאיה', () => {
    לא. כפתור שמוביל לכלי שהמנוי לא כולל הוא כפתור שבור. */
 test("מנוית רפרנסים לא מקבלת כפתור לצ'אט שהמנוי שלה לא כולל", () => {
   const va = readFileSync(join(ROOT, 'js', 'video-assistant.js'), 'utf8');
-  const from = va.indexOf('function renderScratchAngleCheck()');
+  const from = va.indexOf('function renderAngleCheck()');
   const to = va.indexOf('function renderScratchIntro()', from);
   const block = va.slice(from, to);
   assert.ok(from > 0 && to > from, 'מסך בדיקת הזווית לא נמצא');

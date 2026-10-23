@@ -18,6 +18,9 @@ test('footage path: footage -> relevance check -> "what did you film?"', () => {
 test('footage, speech clip: one sequence (find -> shorten -> sharpen -> done), not a choice (18/10)', () => {
   let s = nextStep(INITIAL_STATE, { type: 'CHOOSE_FOOTAGE' });
   s = nextStep(s, { type: 'RELEVANCE_CONFIRMED' });
+  // 23/10/2026: הזווית נבחרת אחרי הרעיון ולפני הפורמט
+  s = nextStep(s, { type: 'ANGLE_CHOSEN', angle: 'טעות נפוצה' });
+  s = nextStep(s, { type: 'ANGLE_CONFIRMED' });
   s = nextStep(s, { type: 'FOOTAGE_IS_SPEECH' });
   assert.equal(s.screen, 'footage-speech-find');
   s = nextStep(s, { type: 'FOOTAGE_SPEECH_NEXT' });
@@ -38,6 +41,9 @@ test('FOOTAGE_SPEECH_NEXT throws from a screen outside the sequence', () => {
 test('footage, visual clip, found a moment -> extraction guidance -> summary', () => {
   let s = nextStep(INITIAL_STATE, { type: 'CHOOSE_FOOTAGE' });
   s = nextStep(s, { type: 'RELEVANCE_CONFIRMED' });
+  // 23/10/2026: הזווית נבחרת אחרי הרעיון ולפני הפורמט
+  s = nextStep(s, { type: 'ANGLE_CHOSEN', angle: 'טעות נפוצה' });
+  s = nextStep(s, { type: 'ANGLE_CONFIRMED' });
   s = nextStep(s, { type: 'FOOTAGE_IS_VISUAL' });
   assert.equal(s.screen, 'footage-visual-scan');
   s = nextStep(s, { type: 'FOOTAGE_VISUAL_FOUND_MOMENT' });
@@ -66,11 +72,17 @@ test('footage branch records which path was actually taken, for a concrete summa
   // באמת קרה במסלול הזה.
   let speech = nextStep(INITIAL_STATE, { type: 'CHOOSE_FOOTAGE' });
   speech = nextStep(speech, { type: 'RELEVANCE_CONFIRMED' });
+  // 23/10/2026: הזווית נבחרת אחרי הרעיון ולפני הפורמט
+  speech = nextStep(speech, { type: 'ANGLE_CHOSEN', angle: 'טעות נפוצה' });
+  speech = nextStep(speech, { type: 'ANGLE_CONFIRMED' });
   speech = nextStep(speech, { type: 'FOOTAGE_IS_SPEECH' });
   assert.equal(speech.footageKind, 'speech');
 
   let visual = nextStep(INITIAL_STATE, { type: 'CHOOSE_FOOTAGE' });
   visual = nextStep(visual, { type: 'RELEVANCE_CONFIRMED' });
+  // 23/10/2026: הזווית נבחרת אחרי הרעיון ולפני הפורמט
+  visual = nextStep(visual, { type: 'ANGLE_CHOSEN', angle: 'טעות נפוצה' });
+  visual = nextStep(visual, { type: 'ANGLE_CONFIRMED' });
   visual = nextStep(visual, { type: 'FOOTAGE_IS_VISUAL' });
   assert.equal(visual.footageKind, 'visual');
 
@@ -115,6 +127,9 @@ test('idea path (typed) -> relevance -> format selection -> needs script yes -> 
   assert.equal(s.screen, 'relevance-check');
   assert.equal(s.ideaDescription, 'הסיפור שלי על בולמיה');
   s = nextStep(s, { type: 'RELEVANCE_CONFIRMED' });
+  // 23/10/2026: הזווית נבחרת אחרי הרעיון ולפני הפורמט
+  s = nextStep(s, { type: 'ANGLE_CHOSEN', angle: 'טעות נפוצה' });
+  s = nextStep(s, { type: 'ANGLE_CONFIRMED' });
   assert.equal(s.screen, 'format-choice');
   assert.equal(s.formatFor, 'idea');
   s = nextStep(s, { type: 'FORMAT_SELECTED', format: 'דיבור למצלמה' });
@@ -131,6 +146,9 @@ test('idea path -> needs script NO ends at the summary without forcing a script'
   s = nextStep(s, { type: 'CHOOSE_TYPE_IDEA' });
   s = nextStep(s, { type: 'IDEA_TYPED', text: 'רעיון' });
   s = nextStep(s, { type: 'RELEVANCE_CONFIRMED' });
+  // 23/10/2026: הזווית נבחרת אחרי הרעיון ולפני הפורמט
+  s = nextStep(s, { type: 'ANGLE_CHOSEN', angle: 'טעות נפוצה' });
+  s = nextStep(s, { type: 'ANGLE_CONFIRMED' });
   s = nextStep(s, { type: 'FORMAT_SELECTED', format: 'דיבור למצלמה' });
   s = nextStep(s, { type: 'NEEDS_SCRIPT_NO' });
   assert.equal(s.screen, 'summary');
@@ -143,6 +161,9 @@ test('idea path from the saved ideas bank also goes through relevance + format +
   s = nextStep(s, { type: 'ACCEPT_PICK' });
   assert.equal(s.screen, 'relevance-check');
   s = nextStep(s, { type: 'RELEVANCE_CONFIRMED' });
+  // 23/10/2026: הזווית נבחרת אחרי הרעיון ולפני הפורמט
+  s = nextStep(s, { type: 'ANGLE_CHOSEN', angle: 'טעות נפוצה' });
+  s = nextStep(s, { type: 'ANGLE_CONFIRMED' });
   assert.equal(s.screen, 'format-choice');
   s = nextStep(s, { type: 'FORMAT_SELECTED', format: 'ראיון / שיחה' });
   assert.equal(s.screen, 'needs-script-check');
@@ -153,54 +174,58 @@ test('has-idea-choice -> from-scratch starts the real 4-prompt chain', () => {
   s = nextStep(s, { type: 'CHOOSE_TYPE_IDEA' });
   s = nextStep(s, { type: 'IDEA_TYPED', text: 'רעיון' });
   s = nextStep(s, { type: 'RELEVANCE_CONFIRMED' });
+  // 23/10/2026: הזווית נבחרת אחרי הרעיון ולפני הפורמט
+  s = nextStep(s, { type: 'ANGLE_CHOSEN', angle: 'טעות נפוצה' });
+  s = nextStep(s, { type: 'ANGLE_CONFIRMED' });
   s = nextStep(s, { type: 'FORMAT_SELECTED', format: 'דיבור למצלמה' });
   s = nextStep(s, { type: 'NEEDS_SCRIPT_YES' });
   s = nextStep(s, { type: 'CHOOSE_FROM_SCRATCH' });
-  // 22/10/2026: המסלול כבר לא מתחיל בהסבר, אלא בזווית ההגשה
-  assert.equal(s.screen, 'scratch-angle');
+  // 23/10/2026: הזווית כבר נבחרה מוקדם יותר, כאן חוזרים להסבר
+  assert.equal(s.screen, 'scratch-intro');
   assert.equal(s.branch, 'scratch');
 });
 
 /* 22/10/2026 (מאיה: "קודם כל לוודא שיש זווית הגשה חזקה"): אי אפשר להגיע
    לכתיבה בלי לעבור בזווית, והנימוק נשמר כדי להיכנס לפרומפטים הבאים. */
 test('זווית הגשה: בלי לבחור זווית אין דרך להגיע לשפיכת התוכן', () => {
-  const s = { ...INITIAL_STATE, screen: 'scratch-angle', branch: 'scratch' };
+  const s = { ...INITIAL_STATE, screen: 'angle', branch: 'scratch' };
   assert.throws(() => nextStep(s, { type: 'SCRATCH_START_DUMP' }));
 });
 
 test('זווית הגשה: בחירה מובילה למסך הבדיקה ושומרת את הזווית', () => {
-  const s = nextStep({ ...INITIAL_STATE, screen: 'scratch-angle', branch: 'scratch' },
+  const s = nextStep({ ...INITIAL_STATE, screen: 'angle', branch: 'scratch' },
     { type: 'ANGLE_CHOSEN', angle: 'טעות נפוצה' });
-  assert.equal(s.screen, 'scratch-angle-check');
+  assert.equal(s.screen, 'angle-check');
   assert.equal(s.angle, 'טעות נפוצה');
 });
 
 test('זווית הגשה: אישור ממשיך למסלול הרגיל ושומר את הנימוק', () => {
-  let s = nextStep({ ...INITIAL_STATE, screen: 'scratch-angle', branch: 'scratch' },
+  let s = nextStep({ ...INITIAL_STATE, screen: 'angle', branch: 'scratch' },
     { type: 'ANGLE_CHOSEN', angle: 'מיתוס / אמונה מגבילה' });
   s = nextStep(s, { type: 'ANGLE_CONFIRMED', why: 'הקהל שלי באמת מאמין בזה' });
-  assert.equal(s.screen, 'scratch-intro');
+  // 23/10/2026: רק אחרי שיש זווית בוחרים פורמט הנגשה
+  assert.equal(s.screen, 'format-choice');
   assert.equal(s.angle, 'מיתוס / אמונה מגבילה');
   assert.equal(s.angleWhy, 'הקהל שלי באמת מאמין בזה');
 });
 
 test('זווית הגשה: אפשר לאשר בלי נימוק, והשדה נשאר ריק ולא undefined', () => {
-  let s = nextStep({ ...INITIAL_STATE, screen: 'scratch-angle', branch: 'scratch' },
+  let s = nextStep({ ...INITIAL_STATE, screen: 'angle', branch: 'scratch' },
     { type: 'ANGLE_CHOSEN', angle: 'ביקורת' });
   s = nextStep(s, { type: 'ANGLE_CONFIRMED' });
-  assert.equal(s.screen, 'scratch-intro');
+  assert.equal(s.screen, 'format-choice');
   assert.equal(s.angleWhy, null);
 });
 
 test('זווית הגשה: כפתור חזרה מחזיר ממסך הבדיקה לבחירת הזווית', () => {
-  let s = nextStep({ ...INITIAL_STATE, screen: 'scratch-angle', branch: 'scratch' },
+  let s = nextStep({ ...INITIAL_STATE, screen: 'angle', branch: 'scratch' },
     { type: 'ANGLE_CHOSEN', angle: 'שאלה נפוצה' });
   s = nextStep(s, { type: 'BACK' });
-  assert.equal(s.screen, 'scratch-angle');
+  assert.equal(s.screen, 'angle');
 });
 
 test('הזווית שורדת עד סוף המסלול ומגיעה לסיכום', () => {
-  let s = nextStep({ ...INITIAL_STATE, screen: 'scratch-angle', branch: 'scratch' },
+  let s = nextStep({ ...INITIAL_STATE, screen: 'angle', branch: 'scratch' },
     { type: 'ANGLE_CHOSEN', angle: 'לשרוף גשרים' });
   s = nextStep(s, { type: 'ANGLE_CONFIRMED', why: 'כי הן שוקלות קורס זול' });
   s = nextStep(s, { type: 'SCRATCH_START_DUMP' });
@@ -329,4 +354,36 @@ test('RESTART resets everything back to INITIAL_STATE', () => {
 
 test('nextStep throws on an unknown action instead of silently no-op-ing', () => {
   assert.throws(() => nextStep(INITIAL_STATE, { type: 'NOT_A_REAL_ACTION' }), /unknown action/i);
+});
+
+/* 23/10/2026 (מאיה: "אחרי שבחרתי רעיון לפני פורמט חייב לוודא האם יש זווית
+   הנגשה חזקה... ורק אחרי שיש זווית הנגשה בוחרים פורמט הנגשה"). */
+test('הזווית יושבת בין הרעיון לפורמט, ולא אחרי', () => {
+  let s = nextStep(INITIAL_STATE, { type: 'CHOOSE_IDEA' });
+  s = nextStep(s, { type: 'CHOOSE_TYPE_IDEA' });
+  s = nextStep(s, { type: 'IDEA_TYPED', text: 'רעיון' });
+  s = nextStep(s, { type: 'RELEVANCE_CONFIRMED' });
+  assert.equal(s.screen, 'angle', 'אחרי הרעיון לא מגיעים לזווית');
+  s = nextStep(s, { type: 'ANGLE_CHOSEN', angle: 'ביקורת' });
+  assert.equal(s.screen, 'angle-check', 'אין מסך בדיקת זווית');
+  s = nextStep(s, { type: 'ANGLE_CONFIRMED', why: 'כי' });
+  assert.equal(s.screen, 'format-choice', 'הפורמט לא בא אחרי הזווית');
+});
+
+test('מסלול קטע מצולם לא עובר בזווית, הוא כבר צולם', () => {
+  const s = nextStep({ ...INITIAL_STATE, screen: 'relevance-check', branch: 'footage' },
+    { type: 'RELEVANCE_CONFIRMED' });
+  assert.equal(s.screen, 'footage-type-choice');
+});
+
+test('הזווית נשמרת עד הסוף גם כשעוברים דרך הפורמט', () => {
+  let s = nextStep({ ...INITIAL_STATE, screen: 'angle' }, { type: 'ANGLE_CHOSEN', angle: 'מיתוס / אמונה מגבילה' });
+  s = nextStep(s, { type: 'ANGLE_CONFIRMED', why: 'הן מאמינות שתעודה מספיקה' });
+  s = nextStep(s, { type: 'FORMAT_SELECTED', format: 'דיבור למצלמה' });
+  s = nextStep(s, { type: 'NEEDS_SCRIPT_YES' });
+  s = nextStep(s, { type: 'CHOOSE_FROM_SCRATCH' });
+  s = nextStep(s, { type: 'SCRATCH_START_DUMP' });
+  assert.equal(s.screen, 'scratch-dump');
+  assert.equal(s.angle, 'מיתוס / אמונה מגבילה');
+  assert.equal(s.angleWhy, 'הן מאמינות שתעודה מספיקה');
 });
