@@ -1035,7 +1035,7 @@ async function renderHerWords() {
   });
 }
 
-function renderPrompt2() {
+async function renderPrompt2() {
   const hook = state.hook || state.transcript || '';
   // 19/10/2026 (מאיה, אחרי אישור מפורש) - שדה "התסריט המקורי" מפורש, לא
   // הסתמכות על ש-ChatGPT "זוכר" אותו מפרומפט 1 באותה שיחה; ראה
@@ -1321,7 +1321,7 @@ async function renderScratchHook() {
   });
 }
 
-function renderScratchHookReinforce() {
+async function renderScratchHookReinforce() {
   const prompt = buildHookReinforcementPrompt({ idea: state.ideaDescription || '', hook: state.hook || '', script: state.rawDump || '', audience: await myAudience(), domain: domainInfo ? domainInfo.domain : '' });
   cosmicCard(`
     <h2>חיזוק ההוק</h2>

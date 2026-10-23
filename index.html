@@ -41,29 +41,70 @@
      ולכן היא תופסת גם קריסה בטעינת המודולים עצמם. -->
 <script>
 (function () {
+  /* 23/10/2026 (מאיה: "כל הלקוחות לא יכולות לעשות את זה, את חייבת לסדר").
+
+     דף איפוס ידני הוא לא פתרון כשהאפליקציה מותקנת אצל כולן. לכן האפליקציה
+     מתקנת את עצמה: אם הטעינה נשברה, או אם מסך הפתיחה עדיין כאן אחרי עשר
+     שניות, היא מנתקת את הרכיב שרץ ברקע, מוחקת כל מטמון, וטוענת את עצמה
+     מחדש. פעם אחת בלבד לכל פתיחה, כדי שלא ייווצר לולאה אינסופית.
+
+     אם גם אחרי הריפוי העצמי זה נשבר, השגיאה מוצגת על המסך במקום להשאיר
+     רקע ריק, כי אז זה כבר לא מטמון וצריך לדעת מה באמת קרה. */
+  var HEAL_KEY = 'moach-self-heal';
   var shown = false;
+
+  function alreadyHealed() {
+    try { return sessionStorage.getItem(HEAL_KEY) === '1'; } catch (e) { return false; }
+  }
+  function markHealed() {
+    try { sessionStorage.setItem(HEAL_KEY, '1'); } catch (e) {}
+  }
+
   function paint(what) {
     if (shown) return;
     shown = true;
     var box = document.getElementById('launch-splash-error');
     if (!box) return;
-    box.textContent = 'התרחשה שגיאה בטעינה: ' + String(what).slice(0, 300);
+    box.textContent = 'לא הצלחנו לטעון: ' + String(what).slice(0, 300);
     box.hidden = false;
   }
+
+  function selfHeal(reason) {
+    if (alreadyHealed()) { paint(reason); return; }
+    markHealed();
+    var box = document.getElementById('launch-splash-error');
+    if (box) { box.textContent = 'מרעננים את האפליקציה...'; box.hidden = false; }
+
+    var jobs = [];
+    try {
+      if ('serviceWorker' in navigator) {
+        jobs.push(navigator.serviceWorker.getRegistrations()
+          .then(function (regs) { return Promise.all(regs.map(function (r) { return r.unregister(); })); })
+          .catch(function () {}));
+      }
+      if (window.caches) {
+        jobs.push(caches.keys()
+          .then(function (keys) { return Promise.all(keys.map(function (k) { return caches.delete(k); })); })
+          .catch(function () {}));
+      }
+    } catch (e) {}
+
+    var reload = function () { window.location.replace(window.location.pathname + '?fresh=' + Date.now()); };
+    /* גם אם הניקוי נתקע, לא משאירים אותה מול מסך שלא זז */
+    setTimeout(reload, 4000);
+    Promise.all(jobs).then(reload).catch(reload);
+  }
+
   window.addEventListener('error', function (e) {
-    paint((e && (e.message || (e.error && e.error.message))) || 'שגיאה לא ידועה');
+    selfHeal((e && (e.message || (e.error && e.error.message))) || 'שגיאה בטעינה');
   });
   window.addEventListener('unhandledrejection', function (e) {
     var r = e && e.reason;
-    paint((r && (r.code || r.message)) || 'בקשה שנכשלה');
+    selfHeal((r && (r.code || r.message)) || 'בקשה שנכשלה');
   });
-  /* אם אחרי עשר שניות עדיין לא נעלם מסך הפתיחה, משהו תקוע בלי לזרוק
-     שגיאה. גם זה מידע, ועדיף להגיד אותו מאשר להשאיר מסך ריק. */
   setTimeout(function () {
     var splash = document.getElementById('launch-splash');
-    if (splash && !splash.hidden) {
-      paint('הטעינה נתקעה. אפשר לרענן, ואם זה חוזר כדאי לשלוח את הצילום הזה.');
-    }
+    if (splash && !splash.hidden) selfHeal('הטעינה נתקעה');
   }, 10000);
 })();
 </script>
