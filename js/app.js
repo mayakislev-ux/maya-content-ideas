@@ -594,7 +594,23 @@ onAuthChange(async (user) => {
     console.error('loadAccess check failed:', err);
     const transient = String(err && err.code) !== 'permission-denied';
     if (transient) {
+      /* 23/10/2026 (מאיה: "פשוט תקוע ככה גם במחשב גם במובייל... זה חמור
+         ביותר ושלא יקרה לעולם").
+
+         המסלול הזה הסתיר את מסך הפתיחה והחזיר, בלי להציג שום דבר: לא את
+         האפליקציה ולא את מסך ההתחברות. נשאר רקע כהה עם לוגו, הטוסט נעלם
+         אחרי תשע שניות, ואז אין על מה ללחוץ. רענון לא עוזר כי אותו כשל
+         חוזר, וזה נראה בדיוק כמו "האפליקציה לא נפתחת".
+
+         כלל: כל מסלול שמסתיר את מסך הפתיחה חייב להשאיר מסך אמיתי. */
       showToast('לא הצלחנו לבדוק את ההרשאה כרגע. זאת תקלה אצלנו ולא אצלך, כדאי לנסות שוב בעוד רגע.', { duration: 9000 });
+      document.getElementById('login-screen').hidden = false;
+      document.getElementById('app-screen').hidden = true;
+      const errEl = document.getElementById('login-error');
+      if (errEl) {
+        errEl.textContent = 'לא הצלחנו לבדוק את ההרשאה כרגע (' + ((err && err.code) || 'שגיאה') + '). זאת תקלה אצלנו, אפשר לנסות שוב.';
+        errEl.hidden = false;
+      }
       return;
     }
     document.getElementById('login-screen').hidden = false;
