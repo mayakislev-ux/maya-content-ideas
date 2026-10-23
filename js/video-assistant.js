@@ -194,11 +194,11 @@ function showSos() {
   btn.type = 'button';
   btn.id = 'va-sos-mascot';
   btn.className = 'cosmic-sos-mascot';
-  btn.textContent = '🆘 תקוע/ה? אני כאן';
+  btn.textContent = '🆘 תקועים? אני כאן';
   btn.addEventListener('click', () => {
     removeSos();
     openModal(`
-      <h2 style="margin-top:0">תקוע/ה רגע?</h2>
+      <h2 style="margin-top:0">תקועים רגע?</h2>
       <p>${escapeHtml(pickEncouragement())} זה בסדר להתקדם לאט - אפשר לחזור צעד אחד אחורה, או להתחיל סרטון אחר.</p>
       <div class="cosmic-btn-row">
         ${state.history.length ? '<button type="button" class="cosmic-btn" id="va-sos-back-btn">חזרה צעד אחד אחורה</button>' : ''}
@@ -244,7 +244,7 @@ function closeModal() {
 // הוסר מהמסך הזה.
 function renderOpening() {
   cosmicCard(`
-    <h2>✨ בוא/י ניצור סרטון</h2>
+    <h2>✨ בואו ניצור סרטון</h2>
     <p>מאיפה מתחילים הפעם?</p>
     <div class="cosmic-btn-row">
       <button type="button" class="cosmic-btn" id="va-reference-btn">שיטת השכפול</button>
@@ -264,7 +264,7 @@ function renderReferenceSourceChoice() {
     <h2>יש לך כבר רפרנס?</h2>
     <div class="cosmic-btn-row">
       <button type="button" class="cosmic-btn" id="va-has-ref-btn">יש לי רפרנס</button>
-      <button type="button" class="cosmic-btn" id="va-pull-ref-btn">אין לי רפרנס, הגרל/י לי אחד</button>
+      <button type="button" class="cosmic-btn" id="va-pull-ref-btn">אין לי רפרנס, להגריל לי אחד</button>
     </div>
   `);
   document.getElementById('va-has-ref-btn').addEventListener('click', () => dispatch({ type: 'CHOOSE_HAS_REFERENCE' }));
@@ -287,7 +287,7 @@ function renderIdeaSourceChoice() {
     <h2>מאיפה הרעיון?</h2>
     <div class="cosmic-btn-row">
       <button type="button" class="cosmic-btn" id="va-type-idea-btn">יש לי רעיון</button>
-      ${refsPlan() ? '' : '<button type="button" class="cosmic-btn" id="va-pull-idea-btn">תמצא/י לי רעיון</button>'}
+      ${refsPlan() ? '' : '<button type="button" class="cosmic-btn" id="va-pull-idea-btn">תמצאו לי רעיון</button>'}
     </div>
   `);
   document.getElementById('va-type-idea-btn').addEventListener('click', () => dispatch({ type: 'CHOOSE_TYPE_IDEA' }));
@@ -299,7 +299,7 @@ function renderIdeaSourceChoice() {
     if (!picked) {
       cosmicCard(`
         <h2>אין עדיין רעיונות שמורים</h2>
-        <p>צריך/ה קודם להוסיף רעיונות ל"בנק הרעיונות" במוח השיווקי, ואז לחזור לכאן.</p>
+        <p>צריך קודם להוסיף רעיונות ל"בנק הרעיונות" במוח השיווקי, ואז לחזור לכאן.</p>
         <div class="cosmic-btn-row">
           <button type="button" class="cosmic-btn" id="va-ideas-back-btn">חזרה</button>
         </div>
@@ -317,13 +317,13 @@ function renderTypeIdea() {
     <h2>מה הרעיון?</h2>
     <textarea class="cosmic-textarea" id="va-type-idea-input" placeholder="כתוב/כתבי את הרעיון כאן..."></textarea>
     <div class="cosmic-btn-row" style="margin-top:14px">
-      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-type-idea-done-btn">המשך/המשיכי</button>
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-type-idea-done-btn">להמשיך</button>
     </div>
   `);
   document.getElementById('va-type-idea-done-btn').addEventListener('click', () => {
     const text = document.getElementById('va-type-idea-input').value.trim();
     if (!text) {
-      showToast('צריך/ה לכתוב את הרעיון קודם');
+      showToast('צריך לכתוב את הרעיון קודם');
       return;
     }
     dispatch({ type: 'IDEA_TYPED', text });
@@ -337,9 +337,9 @@ function renderPulledIdea() {
     <p style="font-size:16px;color:#fff;font-weight:600" id="va-idea-title">${escapeHtml(idea.title)}</p>
     ${idea.hookText ? `<p>${escapeHtml(idea.hookText)}</p>` : ''}
     <div class="cosmic-btn-row">
-      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-accept-idea-btn">אהבתי, בוא/י נמשיך</button>
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-accept-idea-btn">אהבתי, בואו נמשיך</button>
     </div>
-    <button type="button" class="cosmic-reroll-btn" id="va-reroll-idea-btn">לא אהבתי - הגרל/י שוב</button>
+    <button type="button" class="cosmic-reroll-btn" id="va-reroll-idea-btn">לא אהבתי - להגריל שוב</button>
   `);
   // 17/10/2026 (רעיון #12, "הפיכת קלף"): החשיפה הראשונה של הרעיון המוגרל
   // מקבלת רגע הפיכה - לא רק מופיעה.
@@ -413,7 +413,7 @@ function renderFootageTypeChoice() {
 function renderFootageSpeechFind() {
   cosmicCard(`
     <h2>שלב 1: למצוא רגע חזק</h2>
-    <p>חפש/י משפט שיש בו דעה / הפתעה / טעות / תוצאה / ויכוח. סמן/י 20–60 שניות סביבו.</p>
+    <p>לחפש משפט שיש בו דעה / הפתעה / טעות / תוצאה / ויכוח. לסמן 20–60 שניות סביבו.</p>
     <div class="cosmic-btn-row" style="margin-top:14px">
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-speech-find-next-btn">להמשיך</button>
     </div>
@@ -424,7 +424,7 @@ function renderFootageSpeechFind() {
 function renderFootageSpeechShorten() {
   cosmicCard(`
     <h2>שלב 2: לקצר</h2>
-    <p>עבור/י על הצ'קליסט:</p>
+    <p>לעבור על הצ'קליסט:</p>
     <ul style="text-align:right;padding-inline-start:20px">
       <li>האם ההתחלה מעניינת תוך 2 שניות?</li>
       <li>האם אפשר למחוק את המשפט הראשון?</li>
@@ -451,9 +451,9 @@ function renderFootageSpeechSharpen() {
     </ul>
     <p style="font-weight:700;text-align:right;margin-bottom:4px">מה לעשות:</p>
     <ul style="text-align:right;padding-inline-start:20px">
-      <li>הוסיפ/י משפט פתיחה שאומר במפורש את התועלת או הנקודה</li>
-      <li>ודא/י שיש בסוף מסקנה ברורה או קריאה לפעולה</li>
-      <li>הוסיפ/י טקסט על המסך שמדגיש את הנקודה המרכזית</li>
+      <li>להוסיף משפט פתיחה שאומר במפורש את התועלת או הנקודה</li>
+      <li>לוודא שיש בסוף מסקנה ברורה או קריאה לפעולה</li>
+      <li>להוסיף טקסט על המסך שמדגיש את הנקודה המרכזית</li>
     </ul>
     <div class="cosmic-btn-row" style="margin-top:14px">
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-speech-sharpen-next-btn">להמשיך</button>
@@ -469,11 +469,11 @@ function renderFootageSpeechSharpen() {
 function renderFootageSpeechDone() {
   const card = cosmicCard(`
     <h2>הקטע מוכן</h2>
-    <p>עכשיו מלקטים את הקטע שיווקית: בחר/י את ההוק הכי מסקרן וברור לתחילת הסרטון - גם ויזואלית. מומלץ להוסיף הוק כתוב על המסך, כדי שיבינו את ההקשר מיד.</p>
+    <p>עכשיו מלקטים את הקטע שיווקית: לבחור את ההוק הכי מסקרן וברור לתחילת הסרטון - גם ויזואלית. מומלץ להוסיף הוק כתוב על המסך, כדי שיבינו את ההקשר מיד.</p>
     <p class="cosmic-prompt-box" style="text-align:center;font-size:17px;font-weight:700">הוק ← הרחבת הנושא ← פואנטה / סיומת</p>
     <p>כשהקטע בנוי ככה - הוא מוכן.</p>
     <div class="cosmic-btn-row" style="margin-top:14px">
-      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-speech-done-btn">מוכן/ה</button>
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-speech-done-btn">מוכן</button>
     </div>
   `);
   flipReveal(card);
@@ -487,11 +487,11 @@ function renderFootageSpeechDone() {
 function renderFootageVisualScan() {
   cosmicCard(`
     <h2>עוברים על כל הקטע פעם אחת</h2>
-    <p>צפה/י בקטע מההתחלה עד הסוף וחפש/י רגע שיכול להיות מעניין גם בלי כל מה שמסביב.</p>
-    <p style="font-weight:700;text-align:right;margin-bottom:4px">חפש/י אחד מאלה:</p>
+    <p>לצפות בקטע מההתחלה עד הסוף ולחפש רגע שיכול להיות מעניין גם בלי כל מה שמסביב.</p>
+    <p style="font-weight:700;text-align:right;margin-bottom:4px">לחפש אחד מאלה:</p>
     <ul style="text-align:right;padding-inline-start:20px">
       <li>שאלה או תשובה טובה</li>
-      <li>תגובה של לקוח/ה</li>
+      <li>תגובה של לקוח</li>
       <li>רגע מפתיע / מצחיק / מסקרן</li>
       <li>משהו שמוכיח תוצאה</li>
       <li>משהו ששובר התנגדות</li>
@@ -510,11 +510,11 @@ function renderFootageVisualExtract() {
   const card = cosmicCard(`
     <h2>מלקטים את הרגע</h2>
     <ul class="cosmic-summary-list">
-      <li><span class="cosmic-summary-num">1</span><div>חתוך/י כמה שיותר קרוב לרגע החזק</div></li>
-      <li><span class="cosmic-summary-num">2</span><div>השאר/י רק מה שחייבים כדי להבין אותו</div></li>
-      <li><span class="cosmic-summary-num">3</span><div>שאל/י: האם צריך משפט על המסך כדי להבין למה זה מעניין?</div></li>
-      <li><span class="cosmic-summary-num">4</span><div>אם כן ← כתוב/י הוק קצר</div></li>
-      <li><span class="cosmic-summary-num">5</span><div>הוסיפ/י כתוביות</div></li>
+      <li><span class="cosmic-summary-num">1</span><div>לחתוך כמה שיותר קרוב לרגע החזק</div></li>
+      <li><span class="cosmic-summary-num">2</span><div>להשאיר רק מה שחייבים כדי להבין אותו</div></li>
+      <li><span class="cosmic-summary-num">3</span><div>לשאול: האם צריך משפט על המסך כדי להבין למה זה מעניין?</div></li>
+      <li><span class="cosmic-summary-num">4</span><div>אם כן ← לכתוב הוק קצר</div></li>
+      <li><span class="cosmic-summary-num">5</span><div>להוסיף כתוביות</div></li>
       <li><span class="cosmic-summary-num">6</span><div>סיימת</div></li>
     </ul>
     <div class="cosmic-btn-row">
@@ -532,11 +532,11 @@ function renderFootageVisualExtract() {
 // כפתור, והסבר קטן ליד... אבל לא לסגור רק לסיפורי לקוחות, זה יכול להיות
 // גם משהו אישי או משקף תדמות") - צומצם לשני כפתורים בלבד, כל אחד עם
 // ההסבר שלו צמוד בתוכו (כמו תיקון "מה צילמת?"), והניסוח לא מניח יותר
-// שמדובר דווקא בלקוח/ה - גם משהו אישי או כללי נכנס כאן.
+// שמדובר דווקא בלקוח - גם משהו אישי או כללי נכנס כאן.
 function renderFootageVisualReframe() {
   cosmicCard(`
     <h2>מה החומר הזה יכול להמחיש?</h2>
-    <p>עבר/י רגע על הקטע ותשאל/י את עצמך:</p>
+    <p>לעבור רגע על הקטע ותלשאול את עצמך:</p>
     <div class="cosmic-btn-row">
       <button type="button" class="cosmic-btn cosmic-btn--option" id="va-visual-msg-btn">
         <span class="cosmic-btn__title">מצאתי מסר</span>
@@ -544,7 +544,7 @@ function renderFootageVisualReframe() {
       </button>
       <button type="button" class="cosmic-btn cosmic-btn--option" id="va-visual-story-btn">
         <span class="cosmic-btn__title">מצאתי סיפור</span>
-        <span class="cosmic-btn__subtitle">יש סיפור מאחורי מה שמצולם פה? לא חייב להיות לקוח/ה - יכול להיות משהו אישי, שינוי, תהליך, או רגע שמשקף מי את/ה</span>
+        <span class="cosmic-btn__subtitle">יש סיפור מאחורי מה שמצולם פה? לא חייב להיות לקוח - יכול להיות משהו אישי, שינוי, תהליך, או רגע שמשקף מי אתם</span>
       </button>
     </div>
   `);
@@ -557,7 +557,7 @@ function renderFootageVisualOutcome({ title, body }) {
     <h2>${title}</h2>
     <p>${body}</p>
     <div class="cosmic-btn-row" style="margin-top:14px">
-      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-visual-outcome-ready-btn">הבנתי, בונה/ת</button>
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-visual-outcome-ready-btn">הבנתי, בונים</button>
     </div>
   `);
   document.getElementById('va-visual-outcome-ready-btn').addEventListener('click', () => {
@@ -593,13 +593,13 @@ function renderFormatChoice() {
       <summary><span><span class="cosmic-format-icon">${FORMAT_ICONS[f.name] || '🎬'}</span>${escapeHtml(f.name)}</span></summary>
       <div class="cosmic-accordion-body">
         <p style="margin:0">${escapeHtml(f.description)}</p>
-        <button type="button" class="cosmic-pick-btn" data-pick-format="${i}">בוחר/ת את הפורמט הזה</button>
+        <button type="button" class="cosmic-pick-btn" data-pick-format="${i}">הפורמט שלי</button>
       </div>
     </details>
   `).join('');
   cosmicCard(`
     <h2>בוחרים פורמט הנגשה</h2>
-    <p>לכל רעיון יכולים להתאים כמה פורמטים - פתח/י כל אחד לקרוא על מה מדובר, ובחר/י את מה שהכי מרגיש נכון.</p>
+    <p>לכל רעיון יכולים להתאים כמה פורמטים - לפתוח כל אחד לקרוא על מה מדובר, ולבחור את מה שהכי מרגיש נכון.</p>
     ${state.selectedFormat ? `<div class="cosmic-selected-chip">✓ נבחר: ${escapeHtml(state.selectedFormat)}</div>` : ''}
     <div class="cosmic-accordion">${itemsHtml}</div>
   `);
@@ -676,7 +676,7 @@ const DOMAIN_OPTIONS = Object.keys(SUBCATEGORIES_BY_DOMAIN);
 function subCategorySelectHtml(domain, selectedSub) {
   const subs = SUBCATEGORIES_BY_DOMAIN[domain] || [];
   if (!subs.length) return '<p class="muted" style="font-size:13px">(לתחום הזה אין תתי-קטגוריה)</p>';
-  const opts = ['<option value="">בחר/י תת-קטגוריה מדויקת</option>']
+  const opts = ['<option value="">לבחור תת-קטגוריה מדויקת</option>']
     .concat(subs.map((s) => `<option value="${s}" ${s === selectedSub ? 'selected' : ''}>${s}</option>`))
     .join('');
   return `<select id="va-subcategory-select" class="cosmic-textarea" style="min-height:auto;margin-top:10px">${opts}</select>`;
@@ -689,11 +689,11 @@ function renderDomainConfirm(guessedDomain, guessedSub, onConfirmed) {
   ).join('');
   cosmicCard(`
     <h2>התחום המדויק שלך</h2>
-    <p>${guessedDomain ? `ניחשתי לפי הגיליון: ${escapeHtml(guessedDomain)}${guessedSub ? ' › ' + escapeHtml(guessedSub) : ''} - נכון?` : 'לא הצלחתי לנחש מהגיליון - בחר/י בעצמך:'}</p>
+    <p>${guessedDomain ? `ניחשתי לפי הגיליון: ${escapeHtml(guessedDomain)}${guessedSub ? ' › ' + escapeHtml(guessedSub) : ''} - נכון?` : 'לא הצלחתי לנחש מהגיליון - לבחור בעצמך:'}</p>
     <select id="va-domain-select" class="cosmic-textarea" style="min-height:auto">${options}</select>
     <div id="va-subcategory-wrap">${subCategorySelectHtml(initialDomain, guessedSub)}</div>
     <div class="cosmic-btn-row" style="margin-top:14px">
-      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-domain-confirm-btn">מאשר/ת</button>
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-domain-confirm-btn">מאשרים</button>
     </div>
   `, { showProgress: false });
   document.getElementById('va-domain-select').addEventListener('change', (e) => {
@@ -722,7 +722,7 @@ async function renderPulledReference() {
   if (!currentPickId) {
     const picked = pickReference(videosCache, domain, subCategory, null);
     if (!picked) {
-      cosmicCard(`<h2>אין עדיין רפרנסים בתחום הזה</h2><p>בחר/י "יש לי רעיון מ-0" במקום, או חזור/חזרי מאוחר יותר.</p>`);
+      cosmicCard(`<h2>אין עדיין רפרנסים בתחום הזה</h2><p>לבחור "יש לי רעיון מ-0" במקום, או חזור/חזרי מאוחר יותר.</p>`);
       return;
     }
     currentPickId = picked.id;
@@ -734,11 +734,11 @@ async function renderPulledReference() {
       ? `<button type="button" id="va-ref-preview-btn" style="all:unset;cursor:pointer;display:block">
           <img src="${escapeHtml(video.thumbnailUrl)}" alt="תצוגה מקדימה" style="width:100%;border-radius:14px;margin-bottom:14px">
         </button>`
-      : `<button type="button" class="cosmic-btn" id="va-ref-preview-btn" style="margin-bottom:14px">פתח/י תצוגה מקדימה</button>`}
+      : `<button type="button" class="cosmic-btn" id="va-ref-preview-btn" style="margin-bottom:14px">לפתוח תצוגה מקדימה</button>`}
     <div class="cosmic-btn-row">
-      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-accept-ref-btn">אהבתי, בוא/י נמשיך</button>
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-accept-ref-btn">אהבתי, בואו נמשיך</button>
     </div>
-    <button type="button" class="cosmic-reroll-btn" id="va-reroll-ref-btn">לא אהבתי - הגרל/י שוב</button>
+    <button type="button" class="cosmic-reroll-btn" id="va-reroll-ref-btn">לא אהבתי - להגריל שוב</button>
   `);
   flipReveal(card);
   // 17/10/2026 (מאיה: "לא הקשבת לי... שהפרפנסים לדוגמא שנפתחים לא במסך
@@ -819,7 +819,7 @@ function wireCopyButtons(root) {
         await navigator.clipboard.writeText(text);
         showToast('הועתק ✓');
       } catch {
-        showToast('לא הצלחתי להעתיק - סמן/י ידנית');
+        showToast('לא הצלחתי להעתיק - לסמן ידנית');
       }
     });
   });
@@ -827,12 +827,12 @@ function wireCopyButtons(root) {
 
 function renderTranscribe() {
   cosmicCard(`
-    <h2>תמלל/י את הרפרנס</h2>
-    <p>הורד/י את הסרטון, ותמלל/י אותו (לעברית אם צריך) בעזרת ג'מיני - ואז הדבק/י כאן את התמלול</p>
+    <h2>לתמלל את הרפרנס</h2>
+    <p>להוריד את הסרטון, ולתמלל אותו (לעברית אם צריך) בעזרת ג'מיני - ואז להדביק כאן את התמלול</p>
     <input type="url" class="cosmic-textarea" id="va-reference-link" style="min-height:auto"
-      inputmode="url" dir="ltr" placeholder="לינק לסרטון שאת/ה משכפל/ת (רשות)"
+      inputmode="url" dir="ltr" placeholder="לינק לסרטון שמשכפלים (רשות)"
       value="${state.referenceLink ? escapeHtml(state.referenceLink) : ''}">
-    <textarea class="cosmic-textarea" id="va-transcript-input" style="margin-top:8px" placeholder="הדבק/י כאן את התמלול...">${state.transcript ? escapeHtml(state.transcript) : ''}</textarea>
+    <textarea class="cosmic-textarea" id="va-transcript-input" style="margin-top:8px" placeholder="להדביק כאן את התמלול...">${state.transcript ? escapeHtml(state.transcript) : ''}</textarea>
     <div class="cosmic-btn-row" style="margin-top:14px">
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-transcribe-done-btn">✓ עשיתי</button>
     </div>
@@ -842,7 +842,7 @@ function renderTranscribe() {
     // כאן בדיוק היה חסר הוולידציה הזו, היחידה מכל שדות הטקסט שלא נבדקה.
     const text = document.getElementById('va-transcript-input').value.trim();
     if (!text) {
-      showToast('צריך/ה להדביק את התמלול קודם');
+      showToast('צריך להדביק את התמלול קודם');
       return;
     }
     state.transcript = text;
@@ -890,7 +890,7 @@ async function renderPrompt1() {
   // זה כבר קיים ב-state.openingHook. בשכפול רגיל זה עדיין המסך הראשון
   // שמגיע אחרי התמלול, אז מזהים כאן אם עוד לא זוהה.
   if (!state.openingHook) {
-    cosmicCard(`<p>מזהה/ת את ההוק מתוך התמלול...</p>`, { showProgress: false });
+    cosmicCard(`<p>מזהים את ההוק מתוך התמלול...</p>`, { showProgress: false });
     await ensureOpeningHook();
   }
   const hookForPrompt = state.openingHook || state.transcript || '';
@@ -913,19 +913,19 @@ async function renderPrompt1() {
     ${isReverseDup
       ? `<p>ההוק המקורי + התסריט שלך נשלחים ל-ChatGPT - הוא שולף מתוך התסריט שלך הוקים חזקים ומלביש אותם על מנגנון ההוק המקורי, ומביא לך 30 רעיונות.</p>`
       : `<p>רק ההוק הזה נשלח ל-ChatGPT - לא כל התמלול. הוא ישכפל אותו ויביא לך 30 הוקים חדשים באותו מנגנון.</p>`}
-    <p>העתק/י, הדבק/י ב-ChatGPT, וחזור/חזרי עם ההוק שהכי קרץ לך מתוך ה-30</p>
+    <p>להעתיק, להדביק ב-ChatGPT, ולחזור עם ההוק שהכי קרץ לך מתוך ה-30</p>
     <div class="cosmic-prompt-box">${highlightPlaceholders(prompt, highlightValues)}</div>
-    ${copyBtn(prompt, 'העתק/י פרומפט')}
-    <textarea class="cosmic-textarea" id="va-hook-input" placeholder="הדבק/י כאן את ההוק שבחרת..." style="margin-top:14px"></textarea>
+    ${copyBtn(prompt, 'להעתיק פרומפט')}
+    <textarea class="cosmic-textarea" id="va-hook-input" placeholder="להדביק כאן את ההוק שבחרת..." style="margin-top:14px"></textarea>
     <div class="cosmic-btn-row" style="margin-top:14px">
-      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-hook-chosen-btn">המשך/המשיכי</button>
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-hook-chosen-btn">להמשיך</button>
     </div>
   `);
   wireCopyButtons(screenEl());
   document.getElementById('va-hook-chosen-btn').addEventListener('click', () => {
     const hook = document.getElementById('va-hook-input').value.trim();
     if (!hook) {
-      showToast('צריך/ה להדביק את ההוק שבחרת קודם');
+      showToast('צריך להדביק את ההוק שבחרת קודם');
       return;
     }
     dispatch({ type: 'HOOK_CHOSEN', hook });
@@ -951,7 +951,7 @@ async function renderPrompt1() {
 async function renderHerWords() {
   const isPreHookMegillah = state.branch === 'idea-search' && !state.hook;
   if (isPreHookMegillah && !state.openingHook) {
-    cosmicCard(`<p>מזהה/ת את ההוק מתוך התמלול...</p>`, { showProgress: false });
+    cosmicCard(`<p>מזהים את ההוק מתוך התמלול...</p>`, { showProgress: false });
     await ensureOpeningHook();
   }
   const context = isPreHookMegillah ? (state.openingHook || state.ideaDescription || '') : (state.hook || state.ideaDescription || '');
@@ -959,21 +959,21 @@ async function renderHerWords() {
     <h2>${isPreHookMegillah ? 'מגילת אסתר - מה יש לך להגיד?' : 'מה יש לך להגיד?'}</h2>
     ${context ? `<div class="cosmic-context-box"><span>${isPreHookMegillah ? 'ההוק שזיהינו מהרפרנס:' : 'ההוק/הרעיון שבחרת:'}</span>${escapeHtml(context)}</div>` : ''}
     ${isPreHookMegillah
-      ? `<p>עכשיו, לפני שמבקשים הוקים - כתב/י כאן את כל מה שיש לך להגיד על הנושא. לא צריך לנסח יפה: מה את/ה חושב/ת על זה? למה? מה חשוב שהקהל יבין? איזה ניסיון או דוגמה יש לך?</p>`
+      ? `<p>עכשיו, לפני שמבקשים הוקים - לכתוב כאן את כל מה שיש לך להגיד על הנושא. לא צריך לנסח יפה: מה אתם חושבים על זה? למה? מה חשוב שהקהל יבין? איזה ניסיון או דוגמה יש לך?</p>`
       : `<p>עכשיו הזמן להרחיב עליו - סיפור קצר, דוגמא, או דיבור כללי על הנושא, במילים שלך</p>`}
     <div class="cosmic-btn-row" style="margin-bottom:14px">
-      <button type="button" class="cosmic-btn" id="va-herwords-help-btn">נתקעת? קבל/י עזרה 🆘</button>
+      <button type="button" class="cosmic-btn" id="va-herwords-help-btn">נתקעת? לקבל עזרה 🆘</button>
     </div>
     <textarea class="cosmic-textarea" id="va-herwords-input" style="${isPreHookMegillah ? 'min-height:160px' : ''}">${isPreHookMegillah && state.herWords ? escapeHtml(state.herWords) : ''}</textarea>
     <div class="cosmic-btn-row" style="margin-top:14px">
-      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-herwords-done-btn">המשך/המשיכי</button>
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-herwords-done-btn">להמשיך</button>
     </div>
   `);
   document.getElementById('va-herwords-help-btn').addEventListener('click', openExtractionHelperModal);
   document.getElementById('va-herwords-done-btn').addEventListener('click', () => {
     const text = document.getElementById('va-herwords-input').value.trim();
     if (!text) {
-      showToast('צריך/ה לכתוב משהו קודם');
+      showToast('צריך לכתוב משהו קודם');
       return;
     }
     dispatch({ type: 'HER_WORDS_SUBMITTED', text });
@@ -988,10 +988,10 @@ function renderPrompt2() {
   const prompt = buildScriptPrompt({ hook, herWords: state.herWords, originalScript: state.transcript || '', domain: domainInfo ? domainInfo.domain : '', audience: await myAudience() });
   cosmicCard(`
     <h2>הפרומפט השני</h2>
-    <p>העתק/י, הדבק/י ב-ChatGPT, ותקבל/י תסריט מלא</p>
+    <p>להעתיק, להדביק ב-ChatGPT, ותלקבל תסריט מלא</p>
     <div class="cosmic-prompt-box">${highlightPlaceholders(prompt, [hook, state.herWords, state.transcript])}</div>
-    ${copyBtn(prompt, 'העתק/י פרומפט')}
-    <textarea class="cosmic-textarea" id="va-prompt2-script-input" placeholder="הדבק/י כאן את התסריט שקיבלת..." style="margin-top:14px"></textarea>
+    ${copyBtn(prompt, 'להעתיק פרומפט')}
+    <textarea class="cosmic-textarea" id="va-prompt2-script-input" placeholder="להדביק כאן את התסריט שקיבלת..." style="margin-top:14px"></textarea>
     <div class="cosmic-btn-row" style="margin-top:14px">
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-script-ready-btn">יש לי תסריט</button>
     </div>
@@ -1002,7 +1002,7 @@ function renderPrompt2() {
     // עד עכשיו התסריט הסופי שחזרה איתו מ-ChatGPT לא נשמר בכלל.
     const text = document.getElementById('va-prompt2-script-input').value.trim();
     if (!text) {
-      showToast('צריך/ה להדביק את התסריט קודם');
+      showToast('צריך להדביק את התסריט קודם');
       return;
     }
     celebrate();
@@ -1019,14 +1019,14 @@ function renderPrompt2() {
 function renderReadAloud() {
   const script = state.finalScript || state.draftScript || '';
   cosmicCard(`
-    <h2>קרא/י בקול את התסריט</h2>
-    <p>בדוק/בדקי שהכל מתחבר, שאין פספוסים, ושהאורך מרגיש נכון</p>
+    <h2>להקריא בקול את התסריט</h2>
+    <p>לבדוק שהכל מתחבר, שאין פספוסים, ושהאורך מרגיש נכון</p>
     <p class="cosmic-context-box">נא לבדוק את האורך של התסריט, שהוא לא ארוך משמעותית מאורך הסרטון המשוכפל</p>
     ${script
       ? `<div class="cosmic-prompt-box va-read-script">${escapeHtml(script)}</div>`
       : '<p style="opacity:.75">התסריט לא נשמר בשלב הקודם, אפשר לחזור אחורה ולהדביק אותו</p>'}
     <div class="cosmic-btn-row">
-      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-read-done-btn">✓ מוכן/ה לעריכה</button>
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-read-done-btn">✓ מוכן לעריכה</button>
     </div>
   `);
   document.getElementById('va-read-done-btn').addEventListener('click', () => {
@@ -1159,8 +1159,8 @@ function renderAngleCheck() {
   ask(`אני עובדת על סרטון. הזווית שבחרתי: "${state.angle}". `
     + (idea ? `הרעיון: "${idea}". ` : '')
     + (state.angleWhy ? `למה לדעתי היא חזקה: "${state.angleWhy}". ` : '')
-    + 'תלחץ/י על הזווית הזאת: האם היא באמת חדה לקהל שלי, או שהיא רחבה מדי? '
-    + 'אם היא חלשה, תגיד/י לי במה בדיוק, ותציע/י ניסוח חד יותר.');
+    + 'ללחוץ על הזווית הזאת: האם היא באמת חדה לקהל שלי, או שהיא רחבה מדי? '
+    + 'אם היא חלשה, להגיד לי במה בדיוק, ולהציע ניסוח חד יותר.');
 }
 
 function renderScratchIntro() {
@@ -1172,7 +1172,7 @@ function renderScratchIntro() {
     <p>הדרך שדורשת הכי הרבה הבנה שיווקית - אבל נלווה אותך צעד-צעד. ככה בנוי תסריט טוב:</p>
     <ul class="cosmic-summary-list">${stepsHtml}</ul>
     <div class="cosmic-btn-row">
-      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-scratch-start-btn">בוא/י נתחיל</button>
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-scratch-start-btn">מתחילים</button>
     </div>
   `);
   document.getElementById('va-scratch-start-btn').addEventListener('click', () => dispatch({ type: 'SCRATCH_START_DUMP' }));
@@ -1195,7 +1195,7 @@ function openExtractionHelperModal() {
     <input type="text" class="cosmic-textarea" id="va-ext-startpoint" style="min-height:auto;margin-top:8px" placeholder="נקודת יציאה (סיפור אישי / סיפור לקוח / כללי)">
     <input type="text" class="cosmic-textarea" id="va-ext-audience" style="min-height:auto;margin-top:8px" placeholder="קהל היעד">
     <div class="cosmic-btn-row" style="margin-top:14px">
-      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-ext-generate-btn">בנה/י לי את הפרומפט</button>
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-ext-generate-btn">לבנות את הפרומפט</button>
     </div>
     <div id="va-ext-result"></div>
   `);
@@ -1211,8 +1211,8 @@ function openExtractionHelperModal() {
     const resultEl = overlay.querySelector('#va-ext-result');
     resultEl.innerHTML = `
       <div class="cosmic-prompt-box" style="margin-top:14px">${highlightPlaceholders(prompt, [idea, contentType, startingPoint, audience])}</div>
-      ${copyBtn(prompt, 'העתק/י פרומפט')}
-      <p style="font-size:12px;opacity:.75;margin-top:10px;margin-bottom:0">עכשיו: הדביקי/הדבק את זה בשיחה חדשה ב-ChatGPT, תעני/תענה על השאלות שלו, ואז תחזרי/תחזור לכאן ותדביקי/תדביק את מה שעלה בתיבת הטקסט הגדולה.</p>
+      ${copyBtn(prompt, 'להעתיק פרומפט')}
+      <p style="font-size:12px;opacity:.75;margin-top:10px;margin-bottom:0">עכשיו: להדביק את זה בשיחה חדשה ב-ChatGPT, לענות על השאלות שלו, ואז לחזור לכאן ולהדביק את מה שעלה בתיבת הטקסט הגדולה.</p>
     `;
     wireCopyButtons(resultEl);
   });
@@ -1220,21 +1220,21 @@ function openExtractionHelperModal() {
 
 function renderScratchDump() {
   cosmicCard(`
-    <h2>שפכ/י את כל מה שיש לך להגיד</h2>
+    <h2>שפיכה את כל מה שיש לך להגיד</h2>
     <p>בלי לערוך, בלי לדאוג לניסוח - כל מה שעולה לך בראש על הרעיון. נזקק את זה אחר כך.</p>
     <div class="cosmic-btn-row" style="margin-bottom:14px">
-      <button type="button" class="cosmic-btn" id="va-scratch-help-btn">קשה למצוא מה להגיד? קבל/י עזרה 🆘</button>
+      <button type="button" class="cosmic-btn" id="va-scratch-help-btn">קשה למצוא מה להגיד? לקבל עזרה 🆘</button>
     </div>
     <textarea class="cosmic-textarea" id="va-scratch-dump-input" style="min-height:160px" placeholder="כל מה שיש לך להגיד...">${state.rawDump ? escapeHtml(state.rawDump) : ''}</textarea>
     <div class="cosmic-btn-row" style="margin-top:14px">
-      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-scratch-dump-done-btn">המשך/המשיכי</button>
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-scratch-dump-done-btn">להמשיך</button>
     </div>
   `);
   document.getElementById('va-scratch-help-btn').addEventListener('click', openExtractionHelperModal);
   document.getElementById('va-scratch-dump-done-btn').addEventListener('click', () => {
     const text = document.getElementById('va-scratch-dump-input').value.trim();
     if (!text) {
-      showToast('צריך/ה לכתוב משהו קודם');
+      showToast('צריך לכתוב משהו קודם');
       return;
     }
     dispatch({ type: 'SCRATCH_DUMP_READY', text });
@@ -1247,19 +1247,19 @@ async function renderScratchHook() {
   const prompt = buildHookFindingPrompt({ idea: state.ideaDescription || '', script: state.rawDump || '', audience, domain: domainInfo ? domainInfo.domain : '' });
   cosmicCard(`
     <h2>מציאת הוק</h2>
-    <p>הפרומפט כולל בנק הוקים אמיתי מוטמע - ChatGPT יתאים לך ממנו הוק מדויק. העתק/י, הדבק/י, וחזור/חזרי עם ההוק שבחרת.</p>
+    <p>הפרומפט כולל בנק הוקים אמיתי מוטמע - ChatGPT יתאים לך ממנו הוק מדויק. להעתיק, להדביק, ולחזור עם ההוק שבחרת.</p>
     <div class="cosmic-prompt-box">${highlightPlaceholders(prompt, [state.ideaDescription, state.rawDump, audience])}</div>
-    ${copyBtn(prompt, 'העתק/י פרומפט')}
-    <textarea class="cosmic-textarea" id="va-scratch-hook-input" placeholder="הדבק/י כאן את ההוק שבחרת..." style="margin-top:14px"></textarea>
+    ${copyBtn(prompt, 'להעתיק פרומפט')}
+    <textarea class="cosmic-textarea" id="va-scratch-hook-input" placeholder="להדביק כאן את ההוק שבחרת..." style="margin-top:14px"></textarea>
     <div class="cosmic-btn-row" style="margin-top:14px">
-      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-scratch-hook-done-btn">המשך/המשיכי</button>
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-scratch-hook-done-btn">להמשיך</button>
     </div>
   `);
   wireCopyButtons(screenEl());
   document.getElementById('va-scratch-hook-done-btn').addEventListener('click', () => {
     const hook = document.getElementById('va-scratch-hook-input').value.trim();
     if (!hook) {
-      showToast('צריך/ה להדביק את ההוק שבחרת קודם');
+      showToast('צריך להדביק את ההוק שבחרת קודם');
       return;
     }
     dispatch({ type: 'SCRATCH_HOOK_CHOSEN', hook });
@@ -1270,19 +1270,19 @@ function renderScratchHookReinforce() {
   const prompt = buildHookReinforcementPrompt({ idea: state.ideaDescription || '', hook: state.hook || '', script: state.rawDump || '', audience: await myAudience(), domain: domainInfo ? domainInfo.domain : '' });
   cosmicCard(`
     <h2>חיזוק ההוק</h2>
-    <p>המשפט השני, שנותן סיבה ברורה להישאר. העתק/י, הדבק/י, וחזור/חזרי עם החיזוק שבחרת.</p>
+    <p>המשפט השני, שנותן סיבה ברורה להישאר. להעתיק, להדביק, ולחזור עם החיזוק שבחרת.</p>
     <div class="cosmic-prompt-box">${highlightPlaceholders(prompt, [state.ideaDescription, state.hook, state.rawDump])}</div>
-    ${copyBtn(prompt, 'העתק/י פרומפט')}
-    <textarea class="cosmic-textarea" id="va-scratch-reinforce-input" placeholder="הדבק/י כאן את חיזוק ההוק שבחרת..." style="margin-top:14px"></textarea>
+    ${copyBtn(prompt, 'להעתיק פרומפט')}
+    <textarea class="cosmic-textarea" id="va-scratch-reinforce-input" placeholder="להדביק כאן את חיזוק ההוק שבחרת..." style="margin-top:14px"></textarea>
     <div class="cosmic-btn-row" style="margin-top:14px">
-      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-scratch-reinforce-done-btn">המשך/המשיכי</button>
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-scratch-reinforce-done-btn">להמשיך</button>
     </div>
   `);
   wireCopyButtons(screenEl());
   document.getElementById('va-scratch-reinforce-done-btn').addEventListener('click', () => {
     const text = document.getElementById('va-scratch-reinforce-input').value.trim();
     if (!text) {
-      showToast('צריך/ה להדביק את חיזוק ההוק קודם');
+      showToast('צריך להדביק את חיזוק ההוק קודם');
       return;
     }
     dispatch({ type: 'SCRATCH_REINFORCEMENT_CHOSEN', text });
@@ -1307,7 +1307,7 @@ function renderScratchDistill() {
     <p>איזו הנעה לפעולה הכי מתאימה?</p>
     <select id="va-scratch-cta-select" class="cosmic-textarea" style="min-height:auto">${ctaOptions}</select>
     <div id="va-scratch-distill-prompt-wrap" style="margin-top:14px"></div>
-    <textarea class="cosmic-textarea" id="va-scratch-script-input" placeholder="הדבק/י כאן את התסריט הסופי שקיבלת..." style="margin-top:14px"></textarea>
+    <textarea class="cosmic-textarea" id="va-scratch-script-input" placeholder="להדביק כאן את התסריט הסופי שקיבלת..." style="margin-top:14px"></textarea>
     <div class="cosmic-btn-row" style="margin-top:14px">
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-scratch-script-done-btn">סיימתי, יש לי תסריט</button>
     </div>
@@ -1317,7 +1317,7 @@ function renderScratchDistill() {
     const cta = document.getElementById('va-scratch-cta-select').value;
     const prompt = buildPrompt(cta);
     const values = [state.ideaDescription, state.hook, state.hookReinforcement, state.rawDump, cta];
-    wrap.innerHTML = `<div class="cosmic-prompt-box">${highlightPlaceholders(prompt, values)}</div>${copyBtn(prompt, 'העתק/י פרומפט')}`;
+    wrap.innerHTML = `<div class="cosmic-prompt-box">${highlightPlaceholders(prompt, values)}</div>${copyBtn(prompt, 'להעתיק פרומפט')}`;
     wireCopyButtons(wrap);
   }
   document.getElementById('va-scratch-cta-select').addEventListener('change', refreshPrompt);
@@ -1325,7 +1325,7 @@ function renderScratchDistill() {
   document.getElementById('va-scratch-script-done-btn').addEventListener('click', () => {
     const text = document.getElementById('va-scratch-script-input').value.trim();
     if (!text) {
-      showToast('צריך/ה להדביק את התסריט קודם');
+      showToast('צריך להדביק את התסריט קודם');
       return;
     }
     celebrate();
@@ -1353,20 +1353,20 @@ function buildSummarySteps() {
     } else if (state.footageOutcome === 'story') {
       steps.push('לא היה רגע עצמאי, אז בנית סביב הקטע סיפור: לפני ← מה קרה ← תהליך ← תוצאה.');
     }
-    steps.push('עכשיו: לכי/לך לערוך בדיוק לפי מה שסימנת, ואז להעלות.');
+    steps.push('עכשיו: ללכת לערוך בדיוק לפי מה שסימנת, ואז להעלות.');
   } else if (state.branch === 'reference' || state.branch === 'idea-search') {
     steps.push(state.branch === 'reference' ? 'מצאת רפרנס מוכן במאגר שלך.' : 'מצאת רפרנס בעצמך לפי מילות החיפוש שקיבלת.');
     steps.push('תימללת את הרפרנס.');
     steps.push(`בחרת הוק: "${state.hook || ''}".`);
     steps.push('הוספת את המילים שלך לתסריט.');
     steps.push('קראת את התסריט בקול וידעת שהוא מוכן.');
-    steps.push('עכשיו: לכי/לך לצלם לפי התסריט למטה, ואז לערוך.');
+    steps.push('עכשיו: ללכת לצלם לפי התסריט למטה, ואז לערוך.');
   } else if (state.branch === 'scratch') {
     steps.push(`הרעיון שלך: "${state.ideaDescription || ''}".`);
     steps.push(`בחרת הוק: "${state.hook || ''}".`);
     steps.push(`חיזקת את ההוק: "${state.hookReinforcement || ''}".`);
     steps.push('קיבלת תסריט סופי מזוקק.');
-    steps.push('עכשיו: לכי/לך לצלם לפי התסריט למטה, ואז לערוך.');
+    steps.push('עכשיו: ללכת לצלם לפי התסריט למטה, ואז לערוך.');
   } else if (state.branch === 'idea') {
     steps.push(`הרעיון שלך: "${state.ideaDescription || state.hook || ''}", ווידאת שהוא רלוונטי.`);
     if (state.selectedFormat) steps.push(`בחרת פורמט הנגשה: "${state.selectedFormat}".`);
@@ -1399,11 +1399,11 @@ function renderSummary() {
   const elapsed = elapsedSinceStart();
   const card = cosmicCard(`
     <h2>🎬 מוכן! הנה בדיוק מה קרה</h2>
-    ${elapsed ? `<div class="cosmic-today-challenge"><div class="cosmic-today-challenge__icon">⏱️</div><div>בנית/בנית את זה תוך <strong>${elapsed}</strong>!</div></div>` : ''}
+    ${elapsed ? `<div class="cosmic-today-challenge"><div class="cosmic-today-challenge__icon">⏱️</div><div>בנית את זה תוך <strong>${elapsed}</strong>!</div></div>` : ''}
     <ul class="cosmic-summary-list">${stepsHtml}</ul>
     ${script ? `<p style="font-weight:700;text-align:right;margin-bottom:8px">הטקסט/תסריט הסופי שלך:</p>
       <div class="cosmic-prompt-box">${escapeHtml(script)}</div>
-      ${copyBtn(script, 'העתק/י את הטקסט')}` : ''}
+      ${copyBtn(script, 'להעתיק את הטקסט')}` : ''}
     ${state.referenceLink ? `<p style="font-weight:700;text-align:right;margin:14px 0 6px">הסרטון ששוכפל:</p>
       <p class="cosmic-context-box" dir="ltr" style="text-align:left;word-break:break-all">
         <a href="${escapeHtml(state.referenceLink)}" target="_blank" rel="noopener">${escapeHtml(state.referenceLink)}</a>
