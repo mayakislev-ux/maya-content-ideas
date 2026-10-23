@@ -95,7 +95,14 @@ async function runPool(items, job, limit) {
       const i = next;
       next += 1;
       if (i >= items.length) return;
-      out[i] = await job(items[i], i);
+      try {
+        out[i] = await job(items[i], i);
+      } catch (err) {
+        /* כשל בצילום אחד לא מפיל את הסריקה כולה. בלי זה שגיאה בתמונה
+           אחת מוחקת גם אחת עשרה קריאות שכבר הצליחו ושולם עליהן. */
+        console.error('runPool: job threw', err?.message);
+        out[i] = { index: i, ok: false, error: 'לא הצלחנו לקרוא את הצילום הזה' };
+      }
     }
   });
   await Promise.all(workers);
@@ -107,27 +114,8 @@ function cleanNumber(v) {
   return null;
 }
 
-/** מה חסר, ואיזה מסך ישלים אותו */
-function whatIsMissing(values) {
-  const missing = [];
-  if (values.reach === null && values.views === null) {
-    missing.push({ field: 'reach', hint: 'מסך הסיכום של ה-Reel, שבו מופיעים החשיפה והצפיות.' });
-  }
-  if (values.lengthSec === null) {
-    missing.push({ field: 'lengthSec', hint: 'אורך הסרטון. אפשר לראות אותו על הסרטון עצמו.' });
-  }
-  if (values.avgWatchSec === null && values.retention3s === null) {
-    missing.push({
-      field: 'watch',
-      hint: 'מסך הצפייה, שבו מופיעים זמן הצפייה הממוצע או גרף הנשירה. בלעדיו אפשר לאבחן רק חלקית.',
-    });
-  }
-  return missing;
-}
-
 /* מיוצאים לבדיקה: אלה החלקים שאפשר לבדוק בלי רשת ובלי מודל */
 exports.cleanNumber = cleanNumber;
-exports.whatIsMissing = whatIsMissing;
 exports.FIELDS = FIELDS;
 exports.PROMPT = PROMPT;
 exports.runPool = runPool;
@@ -222,7 +210,6 @@ exports.readInsights = onCall(
         seen: parsed?.seen && typeof parsed.seen === 'object' ? parsed.seen : {},
         screen: typeof parsed?.screen === 'string' ? parsed.screen : 'other',
         notes: typeof parsed?.notes === 'string' ? parsed.notes.slice(0, 200) : '',
-        missing: whatIsMissing(values),
       };
     }
 

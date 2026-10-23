@@ -155,7 +155,6 @@ function cosmicCard(innerHtml, { showProgress = true } = {}) {
   if (backBtn) backBtn.addEventListener('click', () => dispatch({ type: 'BACK' }));
   const startOverBtn = document.getElementById('va-start-over-btn');
   if (startOverBtn) startOverBtn.addEventListener('click', () => restart());
-  updateLivePreview();
   resetIdleTimer();
   return document.getElementById('va-card');
 }
@@ -221,40 +220,6 @@ function resetIdleTimer() {
 }
 
 // ===== #43: פאנל צף שמראה את התסריט/הטקסט המצטבר, בזמן אמת =====
-function removeLivePreview() {
-  const panel = document.getElementById('va-live-preview');
-  if (panel) panel.remove();
-}
-
-function updateLivePreview() {
-  if (state.screen === 'opening' || state.screen === 'summary') {
-    removeLivePreview();
-    return;
-  }
-  const parts = [];
-  if (state.ideaDescription) parts.push(['רעיון', state.ideaDescription]);
-  if (state.transcript) parts.push(['תמלול', state.transcript]);
-  if (state.hook) parts.push(['הוק', state.hook]);
-  if (state.hookReinforcement) parts.push(['חיזוק ההוק', state.hookReinforcement]);
-  if (state.herWords) parts.push(['המילים שלך', state.herWords]);
-  if (state.rawDump) parts.push(['שפכ/י', state.rawDump]);
-  if (state.draftScript) parts.push(['תסריט', state.draftScript]);
-  if (state.finalScript) parts.push(['תסריט', state.finalScript]);
-  if (!parts.length) {
-    removeLivePreview();
-    return;
-  }
-  const [label, text] = parts[parts.length - 1];
-  let panel = document.getElementById('va-live-preview');
-  if (!panel) {
-    panel = document.createElement('div');
-    panel.className = 'cosmic-live-preview';
-    panel.id = 'va-live-preview';
-    document.body.appendChild(panel);
-  }
-  panel.innerHTML = `<div class="cosmic-live-preview__title">📝 הסרטון שלך נוצר...</div><strong>${escapeHtml(label)}:</strong> ${escapeHtml(text).slice(0, 220)}`;
-}
-
 function openModal(innerHtml) {
   const overlay = document.createElement('div');
   overlay.className = 'cosmic-modal-overlay';
@@ -278,7 +243,6 @@ function closeModal() {
 // 17/10/2026 (מאיה: "תעיפי את האתגר, לא אהבתי") - רעיון #8 ("אתגר היום")
 // הוסר מהמסך הזה.
 function renderOpening() {
-  removeLivePreview();
   cosmicCard(`
     <h2>✨ בוא/י ניצור סרטון</h2>
     <p>מאיפה מתחילים הפעם?</p>
@@ -865,7 +829,10 @@ function renderTranscribe() {
   cosmicCard(`
     <h2>תמלל/י את הרפרנס</h2>
     <p>הורד/י את הסרטון, ותמלל/י אותו (לעברית אם צריך) בעזרת ג'מיני - ואז הדבק/י כאן את התמלול</p>
-    <textarea class="cosmic-textarea" id="va-transcript-input" placeholder="הדבק/י כאן את התמלול..."></textarea>
+    <input type="url" class="cosmic-textarea" id="va-reference-link" style="min-height:auto"
+      inputmode="url" dir="ltr" placeholder="לינק לסרטון שאת/ה משכפל/ת (רשות)"
+      value="${state.referenceLink ? escapeHtml(state.referenceLink) : ''}">
+    <textarea class="cosmic-textarea" id="va-transcript-input" style="margin-top:8px" placeholder="הדבק/י כאן את התמלול...">${state.transcript ? escapeHtml(state.transcript) : ''}</textarea>
     <div class="cosmic-btn-row" style="margin-top:14px">
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-transcribe-done-btn">✓ עשיתי</button>
     </div>
@@ -879,6 +846,7 @@ function renderTranscribe() {
       return;
     }
     state.transcript = text;
+    state.referenceLink = document.getElementById('va-reference-link').value.trim() || null;
     dispatch({ type: 'CONFIRM_DONE' });
   });
 }
@@ -1042,10 +1010,21 @@ function renderPrompt2() {
   });
 }
 
+/* 23/10/2026 (מאיה: "בחלק של קרא בקול את התסריט - התסריט צריך להיות
+   מוקרן על המסך הזה", ו"אשמח שתהיה תוספת בכותרת: נא לבדוק את האורך של
+   התסריט שהוא לא ארוך משמעותית מאורך הסרטון המשוכפל").
+
+   עד כאן המסך ביקש להקריא תסריט שלא הופיע בו, ולכן היה צריך לחזור אחורה
+   או לפתוח את ChatGPT שוב רק כדי לראות מה להקריא. */
 function renderReadAloud() {
+  const script = state.finalScript || state.draftScript || '';
   cosmicCard(`
     <h2>קרא/י בקול את התסריט</h2>
     <p>בדוק/בדקי שהכל מתחבר, שאין פספוסים, ושהאורך מרגיש נכון</p>
+    <p class="cosmic-context-box">נא לבדוק את האורך של התסריט, שהוא לא ארוך משמעותית מאורך הסרטון המשוכפל</p>
+    ${script
+      ? `<div class="cosmic-prompt-box va-read-script">${escapeHtml(script)}</div>`
+      : '<p style="opacity:.75">התסריט לא נשמר בשלב הקודם, אפשר לחזור אחורה ולהדביק אותו</p>'}
     <div class="cosmic-btn-row">
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-read-done-btn">✓ מוכן/ה לעריכה</button>
     </div>
@@ -1425,6 +1404,14 @@ function renderSummary() {
     ${script ? `<p style="font-weight:700;text-align:right;margin-bottom:8px">הטקסט/תסריט הסופי שלך:</p>
       <div class="cosmic-prompt-box">${escapeHtml(script)}</div>
       ${copyBtn(script, 'העתק/י את הטקסט')}` : ''}
+    ${state.referenceLink ? `<p style="font-weight:700;text-align:right;margin:14px 0 6px">הסרטון ששוכפל:</p>
+      <p class="cosmic-context-box" dir="ltr" style="text-align:left;word-break:break-all">
+        <a href="${escapeHtml(state.referenceLink)}" target="_blank" rel="noopener">${escapeHtml(state.referenceLink)}</a>
+      </p>` : ''}
+    ${state.transcript ? `<details class="cosmic-accordion-item" style="margin-top:10px">
+        <summary><span>התמלול של הרפרנס</span></summary>
+        <div class="cosmic-accordion-body"><div class="va-read-script">${escapeHtml(state.transcript)}</div></div>
+      </details>` : ''}
     <div class="cosmic-btn-row" style="margin-top:14px">
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-restart-btn">ליצור סרטון נוסף</button>
     </div>

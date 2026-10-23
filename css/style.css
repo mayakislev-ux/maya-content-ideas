@@ -6313,6 +6313,10 @@ body[data-plan="refs"] .view-tabs-scroll { justify-content: center; }
 /* 22/10/2026: הצ'אט חי בתוך מסך הזווית בעוזר ליצירת סרטון. .chat-messages
    נבנה למסך מלא ונמתח לכל הגובה, ולכן בתוך כרטיס הוא צריך תקרה משלו,
    אחרת הכרטיס גדל בלי סוף וכפתור ההמשך נדחף אל מחוץ למסך. */
+.va-read-script {
+  white-space: pre-wrap; text-align: right; line-height: 1.75;
+  max-height: 46vh; overflow-y: auto; margin-top: 12px;
+}
 .va-angle-chat { margin-top: 14px; }
 .va-angle-chat .chat-messages {
   max-height: 40vh; min-height: 140px; overflow-y: auto;
@@ -6962,33 +6966,6 @@ body[data-plan="refs"] .view-tabs-scroll { justify-content: center; }
 }
 
 /* ----- #43: פאנל צף - התסריט/הטקסט המצטבר בזמן אמת ----- */
-.cosmic-live-preview {
-  position: fixed;
-  bottom: 16px;
-  right: 16px;
-  max-width: 260px;
-  max-height: 160px;
-  overflow-y: auto;
-  background: rgba(10,10,35,.82);
-  backdrop-filter: blur(6px);
-  border: 1px solid rgba(255,255,255,.2);
-  border-radius: 14px;
-  padding: 10px 12px;
-  z-index: 35;
-  font-size: 11px;
-  line-height: 1.5;
-  color: rgba(255,255,255,.85);
-  text-align: right;
-  box-shadow: 0 4px 20px rgba(0,0,0,.35);
-  animation: cosmic-fade-in .25s ease-out;
-}
-.cosmic-live-preview__title {
-  font-size: 10px;
-  font-weight: 800;
-  opacity: .7;
-  margin-bottom: 4px;
-}
-.cosmic-live-preview strong { color: #ffd23f; }
 
 /* ----- #8: "אתגר היום" - בנר על מסך הפתיחה ----- */
 .cosmic-today-challenge {

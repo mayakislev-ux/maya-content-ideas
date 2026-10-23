@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { cleanNumber, whatIsMissing, FIELDS, PROMPT } = require('./readInsights');
+const { cleanNumber, FIELDS, PROMPT, runPool, CONCURRENCY } = require('./readInsights');
 
 /**
  * 09/10/2026 (מאיה): "שיעשה סריקה מדויקת, אין מה לטעות יותר מדי".
@@ -44,40 +44,72 @@ test('כל שדה שהמנוע צריך מופיע בפרומפט', () => {
   });
 });
 
-/* ---------------- מה חסר, ואיזה מסך ישלים ---------------- */
+/* ---------------- הקריאות במקביל ---------------- */
 
-const empty = Object.fromEntries(FIELDS.map(([k]) => [k, null]));
+/**
+ * 09/10/2026: מסך הנתונים של Reel ארוך, והמדדים מפוזרים בשני חלקים שלו.
+ * לכן כל סרטון מגיע בשני צילומים, ובקשה אחת יכולה להכיל שנים עשר. בטור
+ * זה היה חורג מהזמן, ולכן ארבע קריאות במקביל.
+ *
+ * מה שנבדק כאן הוא הדבר שהיה נשבר בשקט: שהתוצאות חוזרות בסדר המקורי.
+ * ההתאמה בין צילום לסרטון נשענת על המקום, ולכן ערבוב סדר היה משייך
+ * מספרים לסרטון הלא נכון בלי שאף אחד יראה שגיאה.
+ */
 
-test('כשאין כלום, אומרים בדיוק איזה מסך לצלם', () => {
-  const missing = whatIsMissing(empty);
-  const fields = missing.map((m) => m.field);
-  assert.deepEqual(fields, ['reach', 'lengthSec', 'watch']);
-  missing.forEach((m) => assert.match(m.hint, /[֐-׿]/, 'ההסבר בעברית'));
+test('התוצאות חוזרות בסדר המקורי גם כשהן מסתיימות בסדר אחר', async () => {
+  const items = [40, 5, 30, 1, 20, 2];
+  const out = await runPool(items, async (v, i) => {
+    await new Promise((r) => setTimeout(r, v));
+    return { index: i, value: v };
+  }, 4);
+  assert.deepEqual(out.map((o) => o.value), items);
+  assert.deepEqual(out.map((o) => o.index), [0, 1, 2, 3, 4, 5]);
 });
 
-test('צפיות לבדן מספיקות במקום חשיפה, ולא מבקשים שוב', () => {
-  const missing = whatIsMissing({ ...empty, views: 9000, lengthSec: 20, avgWatchSec: 11 });
-  assert.deepEqual(missing, []);
+test('לא רצות יותר קריאות במקביל מהמותר', async () => {
+  let now = 0;
+  let peak = 0;
+  await runPool(new Array(12).fill(0), async () => {
+    now += 1;
+    peak = Math.max(peak, now);
+    await new Promise((r) => setTimeout(r, 5));
+    now -= 1;
+  }, CONCURRENCY);
+  assert.ok(peak <= CONCURRENCY, `רצו ${peak} במקביל, המותר הוא ${CONCURRENCY}`);
+  assert.equal(peak, CONCURRENCY, 'לא נוצל המקביליות המותרת');
 });
 
-test('בלי נתוני צפייה אומרים שאפשר לאבחן רק חלקית', () => {
-  const missing = whatIsMissing({ ...empty, reach: 9000, lengthSec: 20 });
-  const watch = missing.find((m) => m.field === 'watch');
-  assert.ok(watch, 'חסר הסעיף על מסך הצפייה');
-  assert.match(watch.hint, /אפשר לאבחן רק חלקית/);
+test('כל פריט מטופל בדיוק פעם אחת', async () => {
+  const seen = [];
+  await runPool([1, 2, 3, 4, 5, 6, 7], async (v) => { seen.push(v); }, 3);
+  assert.deepEqual(seen.sort((a, b) => a - b), [1, 2, 3, 4, 5, 6, 7]);
 });
 
-test('גרף הנשירה לבדו מספיק, בלי זמן צפייה ממוצע', () => {
-  const missing = whatIsMissing({ ...empty, reach: 9000, lengthSec: 20, retention3s: 61 });
-  assert.equal(missing.find((m) => m.field === 'watch'), undefined);
+test('רשימה ריקה לא תוקעת כלום', async () => {
+  assert.deepEqual(await runPool([], async () => 1, 4), []);
 });
 
-test('כשהכל נקרא, לא מבקשים שום דבר נוסף', () => {
-  const full = Object.fromEntries(FIELDS.map(([k]) => [k, 10]));
-  assert.deepEqual(whatIsMissing(full), []);
+test('ופחות פריטים מהמותר לא פותח עובדים מיותרים', async () => {
+  const out = await runPool([1, 2], async (v) => v * 2, 8);
+  assert.deepEqual(out, [2, 4]);
 });
 
-test('whatIsMissing לא מפיל על קלט חלקי או ריק', () => {
-  assert.doesNotThrow(() => whatIsMissing({}));
-  assert.doesNotThrow(() => whatIsMissing({ reach: null }));
+test('כשל של צילום אחד לא מוחק את השאר', async () => {
+  /* זה היה הסיכון: job שזורק דוחה את Promise.all, והפונקציה הייתה
+     מחזירה שגיאה ומאבדת גם אחת עשרה קריאות שכבר הצליחו. */
+  const out = await runPool([1, 2, 3, 4], async (v, i) => {
+    if (v === 2) throw new Error('boom');
+    return { index: i, ok: true, value: v };
+  }, 2);
+  assert.equal(out.length, 4);
+  assert.equal(out[1].ok, false);
+  assert.match(out[1].error, /[\u0590-\u05ff]/);
+  assert.deepEqual(out.filter((o) => o.ok).map((o) => o.value), [1, 3, 4]);
+  assert.deepEqual(out.map((o) => o.index), [0, 1, 2, 3]);
+});
+
+test('התשובה נושאת screen, כדי שאפשר יהיה לזהות שני צילומים מאותו חלק', () => {
+  assert.match(PROMPT, /"screen"/);
+  assert.match(PROMPT, /overview/);
+  assert.match(PROMPT, /retention/);
 });
