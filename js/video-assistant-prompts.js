@@ -1,4 +1,3 @@
-import { contextHeader } from './video-assistant-content.js';
 // 13/10/2026: שני הפרומפטים ל-ChatGPT מתוך "העוזר שלך ליצירת סרטון",
 // מילה במילה מהניסוח של מאיה (docs/superpowers/specs/2026-10-13-video-creation-assistant-design.md)
 // - אסור לשנות את הניסוח, רק למלא את המשתנים.
@@ -51,12 +50,8 @@ ${script}
 // 19/10/2026, המשך (מאיה: "פרטים קריטיים... שלא בהכרח הם הכי ג'וסים אבל
 // הם קריטיים... ותשמור על השפה והמילים שלי") - נוסף סעיף 9: לא להתמקד
 // רק בג'וסי על חשבון פרט קריטי פחות "מסקרן", ולשמור על ניסוח המילים שלה.
-/* 23/10/2026 (מאיה: "בחלק של שכפול תוכן, בפרומט השני של כתיבת תסריט
-   מלא, הייתי כותבת למעלה שוב: התחום שלי הוא: הקהל יעד שלי:").
-   הפרומפט הראשון בשכפול כבר קיבל אותם, השני לא, ולכן ChatGPT איבד
-   את ההקשר בדיוק בשלב שבו נכתב התסריט עצמו. */
-export function buildScriptPrompt({ hook, herWords, originalScript, domain, audience }) {
-  return `${contextHeader({ domain, audience })}התסריט המקורי: ${originalScript}
+export function buildScriptPrompt({ hook, herWords, originalScript }) {
+  return `התסריט המקורי: ${originalScript}
 זה ההוק שבחרתי: ${hook}
 זה מה שיש לי להגיד: ${herWords}
 אני רוצה עכשיו שתקח את ההוק שלי תלביש אותו בתסריט המקורי יחד עם כל מה

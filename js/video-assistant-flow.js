@@ -26,17 +26,6 @@ export const INITIAL_STATE = {
   // קטע-מצולם ספציפי עברה (דיבור, או ויזואלי-רגע/מסר/סיפור) - מסך
   // הסיכום לא יכול להיות קונקרטי בלעדיהם.
   footageKind: null, footageOutcome: null,
-  /* 22/10/2026 (מאיה: "להכניס את זווית ההגשה לרעיון ולא סתם שיכתבו רעיון,
-     קודם כל לוודא שיש זווית הגשה חזקה"): עד היום מסלול הכתיבה מאפס התחיל
-     משפיכת תוכן והמשיך להוק. זווית ההגשה הייתה חומר עזר בלבד, ולכן אפשר
-     היה לכתוב תסריט שלם על רעיון בלי שום זווית. עכשיו היא השלב הראשון,
-     ו-angleWhy הוא המשפט שבו היא מנמקת למה הזווית הזאת מחזיקה - זה מה
-     שהצ'אט "בדיקת רעיון" לוחץ עליו במסך שאחריו. */
-  angle: null, angleWhy: null,
-  /* 23/10/2026 (מאיה: "תוסיפי גם מקום לשים לינק לסרטון וגם להוסיף
-     תמלול, כדי שבסיכום האחרון יהיה לי הכל מסודר"). התמלול כבר נשמר,
-     הלינק לא, ולכן בסוף התהליך לא היה זכר לסרטון שהיא משכפלת. */
-  referenceLink: null,
 };
 
 function withoutHistory(state) {
@@ -84,13 +73,6 @@ function step(state, action) {
     case 'CHOOSE_TYPE_IDEA':
       return { ...state, screen: 'type-idea' };
     case 'IDEA_TYPED':
-      /* 23/10/2026: בקטע שכבר צולם אין מה לבדוק רלוונטיות ואין מה לבחור
-         זווית, הוא כבר קיים. משם ממשיכים ישר לפורמט, כמו שמאיה ביקשה:
-         "צריך לשאול קודם כל מה הרעיון/מסר שתרצה להעביר, ואז לבקש לבחור
-         פורמט הנגשה, ואז לשאול אם צריך תסריט". */
-      if (state.branch === 'footage') {
-        return { ...state, screen: 'format-choice', formatFor: 'idea', ideaDescription: action.text };
-      }
       return { ...state, screen: 'relevance-check', ideaDescription: action.text };
     case 'CHOOSE_PULL_IDEA':
       return { ...state, screen: 'pulled-idea' };
@@ -105,13 +87,7 @@ function step(state, action) {
     case 'RELEVANCE_CONFIRMED':
       if (state.branch === 'footage') return { ...state, screen: 'footage-type-choice' };
       if (state.branch === 'reference') return { ...state, screen: 'transcribe' };
-      /* 23/10/2026 (מאיה: "אחרי שבחרתי רעיון לפני פורמט חייב לוודא האם
-         יש זווית הנגשה חזקה לרעיון... ורק אחרי שיש זווית הנגשה בוחרים
-         פורמט הנגשה"). ב-22/10 שמתי את הזווית בתוך מסלול הכתיבה מאפס,
-         כלומר אחרי הפורמט ואחרי "צריך תסריט". זה היה מאוחר מדי: אותו
-         רעיון אפשר להנגיש באלפי דרכים, והפורמט נבחר כשעוד לא ידוע מה
-         בכלל הזווית. */
-      return { ...state, screen: 'angle' };
+      return { ...state, screen: 'format-choice', formatFor: 'idea' };
 
     // ===== מסלול קטע מצולם - "מה צילמת?" (18/10/2026, מאיה: עיצוב מחדש
     // מלא - מחליף את "משתמש/ת בו כמו שהוא / רוצה להמיר לפורמט אחר" בליווי
@@ -150,10 +126,7 @@ function step(state, action) {
     case 'FOOTAGE_VISUAL_FOUND_STORY':
       return { ...state, screen: 'footage-visual-story', footageOutcome: 'story' };
     case 'FOOTAGE_VISUAL_READY':
-      /* 23/10/2026 (מאיה: "נגיד שלוחצים על מצאתי מסר או סיפור, בתכלס זה
-         סוג של בניית סרטון מ-0"). עד כאן זה קפץ ישר לסיכום, כלומר היא
-         ידעה סביב מה לבנות אבל לא קיבלה שום ליווי בבנייה עצמה. */
-      return { ...state, screen: 'type-idea' };
+      return { ...state, screen: 'summary' };
 
     // ===== בחירת פורמט הנגשה - פופאפ אמיתי, בחירה אמיתית (16/10) - מסלול
     // "רעיון מ-0" בלבד; קטע מצולם עבר למסלול הייעודי שלו למעלה =====
@@ -208,18 +181,7 @@ function step(state, action) {
 
     // ===== מסלול "כתיבה מאפס" - 4 הפרומפטים האמיתיים מתוך המסמך שלה =====
     // שלב 1 (אופציונלי, רק למי שתקועה): פרומפט חילוץ תוכן, או כתיבה חופשית
-    // שלב 0 (חדש, 22/10): זווית ההגשה. בלי זווית אין מה לכתוב.
-    case 'ANGLE_CHOSEN':
-      return { ...state, screen: 'angle-check', angle: action.angle };
-    // הנימוק נשמר גם כשהיא מדלגת על הצ'אט, כי הוא נכנס לפרומפטים הבאים
-    case 'ANGLE_CONFIRMED':
-      return { ...state, screen: 'format-choice', formatFor: 'idea', angleWhy: action.why || null };
-
     case 'SCRATCH_START_DUMP':
-      /* הזווית היא תנאי ולא המלצה. בלי השורה הזאת אפשר היה לקפוץ ישר
-         לכתיבה דרך כל קריאה שלא עברה במסך הזווית, וזה בדיוק מה שמאיה
-         ביקשה למנוע: "קודם כל לוודא שיש זווית הגשה חזקה". */
-      if (!state.angle) throw new Error('SCRATCH_START_DUMP before an angle was chosen');
       return { ...state, screen: 'scratch-dump' };
     case 'SCRATCH_DUMP_READY':
       return { ...state, screen: 'scratch-hook', rawDump: action.text };

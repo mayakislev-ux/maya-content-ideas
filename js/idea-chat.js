@@ -51,10 +51,7 @@ function parseSSEChunk(buffer, chunkText) {
 // (which may differ slightly from the concatenated deltas if a corrective
 // Hebrew rewrite ran server-side - the caller should use the resolved value,
 // not its own concatenation, for anything beyond live display).
-// 22/10/2026 (מאיה: "איפה הצ'אט AI בלייב?"): מיוצא כדי שהעוזר ליצירת
-// סרטון יוכל להריץ את אותו צ'אט בתוך המסך שלו, ולא לקפוץ ללשונית אחרת
-// ולא לשכפל מנוע שני. אותו שרת, אותו זרם, אותה התנהגות.
-export async function streamCheckIdea(messages, ideaProfile, onDelta) {
+async function streamCheckIdea(messages, ideaProfile, onDelta) {
   // withTimeout (למעלה) כבר קיימת בדיוק בשביל "חיבור שנתקע בלי לפתור ובלי
   // לדחות" - אבל היא מעולם לא עטפה את הקריאה הזו. חיבור stream שנתקע (לא
   // סגור, פשוט שקט) לא היה נופל אף פעם, כי אין timeout על reader.read()

@@ -35,16 +35,9 @@ service cloud.firestore {
         || get(/databases/$(database)/documents/allowlist/$(request.auth.token.email)).data.paidUntil > request.time;
     }
 
-    /* 23/10/2026 (מאיה: "לאלה שאין להן את המנוי המלא אולי הייתי מוסיפה
-       גם לשונית של רעיונות לתוכן שיוכלו להוסיף לשם, כי אז בעוזר האישי
-       שיוצר תוכן הוא בעצם שולף משם").
-
-       בנק הרעיונות היה חלק מהמנוי המלא בלבד, ולכן מנוית רפרנסים הגיעה
-       לעוזר ליצירת סרטון בלי שום רעיון לשלוף ממנו. הרעיונות הם שלה
-       ממילא (ownerUid), ולכן התנאי הוא גישה בתוקף, לא סוג המנוי. */
     match /ideas/{ideaId} {
-      allow read, update, delete: if isAllowed() && notExpired() && request.auth.uid == resource.data.ownerUid;
-      allow create: if isAllowed() && notExpired() && request.auth.uid == request.resource.data.ownerUid;
+      allow read, update, delete: if isFull() && request.auth.uid == resource.data.ownerUid;
+      allow create: if isFull() && request.auth.uid == request.resource.data.ownerUid;
     }
     match /profiles/{uid} {
       allow read, write: if isAllowed() && request.auth.uid == uid;
