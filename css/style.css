@@ -6322,8 +6322,13 @@ body[data-plan="refs"] .view-tabs-scroll { justify-content: center; }
   max-height: 46vh; overflow-y: auto; margin-top: 12px;
 }
 .va-angle-chat { margin-top: 14px; }
+/* 23/10/2026 (מאיה: "הוא קופץ חלקית לא ברור יש שם באג טכני"): vh באייפון
+   משתנה ברגע שסרגל הדפדפן נעלם או שהמקלדת נפתחת, ולכן גובה החלונית השתנה
+   תוך כדי שימוש והתוכן קפץ. svh הוא הגובה הקטן והיציב. */
 .va-angle-chat .chat-messages {
-  max-height: 40vh; min-height: 140px; overflow-y: auto;
+  max-height: 40vh;
+  max-height: 40svh;
+  min-height: 140px; overflow-y: auto;
   border: 1px solid var(--border-color); border-radius: 12px; padding: 10px;
 }
 .va-angle-chat .chat-input-row { margin-top: 8px; }
@@ -6426,6 +6431,23 @@ body[data-plan="refs"] .view-tabs-scroll { justify-content: center; }
 @media (max-width: 600px) {
   .cosmic-theme { padding: 12px 12px; }
   .cosmic-card { margin: 12px auto; padding: 20px 16px; }
+
+  /* 23/10/2026 (מאיה: "במובייל גם במסך של יצירת סרטון יש מלא שטח מת
+     במסך מתחת לחלק שבונים את הסרטון עצמו").
+
+     הרקע גבוה כגובה המסך, הכרטיס נצמד למעלה, וכל מה שנשאר מתחתיו הוא
+     גרדיאנט ריק. בכרטיס קצר, כמו מסך של שתי אפשרויות, זה חצי מסך של
+     כלום.
+
+     margin: auto על פריט flex בולע רק שטח פנוי חיובי: בכרטיס קצר הוא
+     ממרכז אותו אנכית, ובכרטיס ארוך מהמסך השוליים מתאפסים מעצמם ושום
+     דבר לא נחתך. זאת הסיבה שזה ולא justify-content: center. */
+  .cosmic-theme { display: flex; flex-direction: column; }
+  /* כל כלל display גובר על התכונה hidden. בלי השורה הזאת מסך העוזר היה
+     מופיע בכל מסך אחר בטלפון, כי הוא מוסתר דרך hidden ולא דרך CSS. */
+  .cosmic-theme[hidden] { display: none !important; }
+  #video-assistant-screen { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; }
+  #video-assistant-screen > .cosmic-card { margin: auto; width: 100%; }
   /* אייפון מגדיל אוטומטית כל שדה שהגופן בו קטן מ-16 פיקסל, ואחרי
      ההגדלה הוא לא חוזר לבד - בדיוק ה"צריך להקטין עם האצבעות". 16
      פיקסל מבטלים את ההתנהגות הזאת לגמרי. */

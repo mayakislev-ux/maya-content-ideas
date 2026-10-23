@@ -139,6 +139,27 @@ function backButtonHtml() {
 // 17/10/2026 (מאיה, רעיון #7): מסקוט קוסמי קבוע שמגיב רגשית לפי המסך -
 // חי בכל cosmicCard, לא רק במסכים ספציפיים. מחזיר את אלמנט הכרטיס עצמו
 // כדי שפעולות כמו flipReveal (#12) יוכלו להפעיל עליו אנימציה.
+/* 23/10/2026 (מאיה: "במובייל המסך של העוזר כל הזמן יורד למטה באוטומט",
+   "ה-UI UX באייפון ממש ממש לא נוח, כל רגע המסך קופץ").
+
+   זה לא היה קוד שגולל, אלא קוד שלא גלל: הכפתור שמעביר מסך יושב בתחתית
+   הכרטיס, ולכן בזמן הלחיצה הדף כבר גלול למטה. המסך מתחלף, הדפדפן שומר
+   את מצב הגלילה, והמסך החדש נפתח באמצעו או בתחתיתו. מבחוץ זה נראה
+   בדיוק כמו "המסך ירד למטה מעצמו", וצריך לגלול למעלה כדי למצוא את
+   הכותרת.
+
+   instant ולא smooth: גלילה מונפשת בזמן שהתוכן התחלף היא בדיוק
+   ה"קפיצה" שהיא מתארת. */
+function scrollToCardTop() {
+  const view = document.getElementById('video-assistant-view');
+  if (view && view.scrollTop) view.scrollTop = 0;
+  try {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  } catch (err) {
+    window.scrollTo(0, 0);   /* דפדפן שלא מכיר behavior: instant */
+  }
+}
+
 function cosmicCard(innerHtml, { showProgress = true } = {}) {
   const mood = mascotMood(state.screen);
   screenEl().innerHTML = `<div class="cosmic-card" id="va-card">
@@ -155,6 +176,7 @@ function cosmicCard(innerHtml, { showProgress = true } = {}) {
   if (backBtn) backBtn.addEventListener('click', () => dispatch({ type: 'BACK' }));
   const startOverBtn = document.getElementById('va-start-over-btn');
   if (startOverBtn) startOverBtn.addEventListener('click', () => restart());
+  scrollToCardTop();
   resetIdleTimer();
   return document.getElementById('va-card');
 }
@@ -370,7 +392,7 @@ function renderIdeaSourceChoice() {
 function renderTypeIdea() {
   cosmicCard(`
     <h2>מה הרעיון?</h2>
-    <textarea class="cosmic-textarea" id="va-type-idea-input" placeholder="כתוב/כתבי את הרעיון כאן..."></textarea>
+    <textarea class="cosmic-textarea" id="va-type-idea-input" placeholder="לכתוב כאן את הרעיון..."></textarea>
     <div class="cosmic-btn-row" style="margin-top:14px">
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-type-idea-done-btn">להמשיך</button>
     </div>
@@ -777,7 +799,7 @@ async function renderPulledReference() {
   if (!currentPickId) {
     const picked = pickReference(videosCache, domain, subCategory, null);
     if (!picked) {
-      cosmicCard(`<h2>אין עדיין רפרנסים בתחום הזה</h2><p>לבחור "יש לי רעיון מ-0" במקום, או חזור/חזרי מאוחר יותר.</p>`);
+      cosmicCard(`<h2>אין עדיין רפרנסים בתחום הזה</h2><p>לבחור "יש לי רעיון מ-0" במקום, או לחזור מאוחר יותר.</p>`);
       return;
     }
     currentPickId = picked.id;
@@ -1115,7 +1137,7 @@ function renderAngle() {
   `).join('');
   cosmicCard(`
     <h2>קודם כל, מה הזווית?</h2>
-    <p>רעיון בלי זווית הגשה הוא נושא, לא סרטון. בחרי את הזווית שממנה את ניגשת לרעיון, ורק אחר כך נכתוב.</p>
+    <p>רעיון בלי זווית הגשה הוא נושא, לא סרטון. לבחור את הזווית שממנה ניגשים לרעיון, ורק אחר כך נכתוב.</p>
     ${state.angle ? `<div class="cosmic-selected-chip">✓ נבחרה: ${escapeHtml(state.angle)}</div>` : ''}
     <div class="cosmic-accordion">${itemsHtml}</div>
   `);
@@ -1245,7 +1267,7 @@ function openExtractionHelperModal() {
   const idea = state.ideaDescription || state.hook || '';
   const overlay = openModal(`
     <h2 style="margin-top:0">קשה למצוא מה להגיד?</h2>
-    <p style="font-size:13px">זה בנאי פרומפט בלבד: ממלאים כאן, מקבלים פרומפט מוכן, מעתיקים אותו ושולחים ל-ChatGPT - הוא ישאל שאלות שיוציאו ממך בדיוק מה להגיד. את התשובות שתקבלי מ-ChatGPT מדביקים חזרה בתיבת הטקסט הגדולה (לא כאן במודאל).</p>
+    <p style="font-size:13px">זה בנאי פרומפט בלבד: ממלאים כאן, מקבלים פרומפט מוכן, מעתיקים אותו ושולחים ל-ChatGPT - הוא ישאל שאלות שיוציאו ממך בדיוק מה להגיד. את התשובות שמתקבלות מ-ChatGPT מדביקים חזרה בתיבת הטקסט הגדולה (לא כאן במודאל).</p>
     <input type="text" class="cosmic-textarea" id="va-ext-contenttype" style="min-height:auto" placeholder="סוג תוכן (מכירתי / בעל ערך / בידורי / אישי)">
     <input type="text" class="cosmic-textarea" id="va-ext-startpoint" style="min-height:auto;margin-top:8px" placeholder="נקודת יציאה (סיפור אישי / סיפור לקוח / כללי)">
     <input type="text" class="cosmic-textarea" id="va-ext-audience" style="min-height:auto;margin-top:8px" placeholder="קהל היעד">
@@ -1426,7 +1448,7 @@ function buildSummarySteps() {
     steps.push(`הרעיון שלך: "${state.ideaDescription || state.hook || ''}", ווידאת שהוא רלוונטי.`);
     if (state.selectedFormat) steps.push(`בחרת פורמט הנגשה: "${state.selectedFormat}".`);
     steps.push('קבעת שהתוכן הזה לא צריך תסריט כתוב.');
-    steps.push('עכשיו: פתחי/פתח מצלמה וצלמי/צלם - ישירות, ספונטני או ויזואלי, לפי הרעיון למעלה.');
+    steps.push('עכשיו: לפתוח מצלמה ולצלם - ישירות, ספונטני או ויזואלי, לפי הרעיון למעלה.');
   }
   return steps;
 }
