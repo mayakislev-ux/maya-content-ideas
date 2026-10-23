@@ -221,14 +221,29 @@ export const SCRIPT_STRUCTURE = [
   { step: 5, name: 'הנעה לפעולה', description: 'מניע את הצופה לעשות פעולה - 80%-90% מהתוכן צריך הנעה לפעולה.' },
 ];
 
+/* 23/10/2026 (מאיה: "בפורמטים להוקים או יצירת תסריטים שהוא מכין ל-chat
+   הוא שוכח למלא בצהוב את התחום שלי, למשל שיווק או עיצוב גבות, תלוי
+   בתחום - חשוב").
+
+   התחום והקהל יושבים בפרופיל שלה מאז האונבורדינג של "בדיקת רעיון", אבל
+   אף פרומפט לא קיבל את התחום, ולכן ChatGPT ניחש מאיזה עולם היא מדברת.
+   הבלוק הזה נוסף בראש כל פרומפט, ורק אם יש מה למלא: פרומפט עם שורה
+   ריקה "התחום שלי הוא:" גרוע מפרומפט בלי השורה. */
+export function contextHeader({ domain, audience } = {}) {
+  const lines = [];
+  if (String(domain || '').trim()) lines.push(`התחום שלי הוא: ${String(domain).trim()}`);
+  if (String(audience || '').trim()) lines.push(`הקהל יעד שלי: ${String(audience).trim()}`);
+  return lines.length ? `${lines.join('\n')}\n\n` : '';
+}
+
 function fillBracket(value, placeholder) {
   const v = value && value.trim();
   return v ? v : placeholder;
 }
 
 // פרומפט 1 מתוך "כתיבה מאפס": חילוץ תוכן (מגילת אסתר), למי שתקועה
-export function buildExtractionPrompt({ idea, contentType, startingPoint, audience }) {
-  return `אתה מומחה ללהוציא תוכן מדויק מאנשים לרילסים, להיכנס להם למוח ולהוציא מהם בדיוק את מה שהם רוצים להגיד
+export function buildExtractionPrompt({ idea, contentType, startingPoint, audience, domain }) {
+  return `${contextHeader({ domain, audience })}אתה מומחה ללהוציא תוכן מדויק מאנשים לרילסים, להיכנס להם למוח ולהוציא מהם בדיוק את מה שהם רוצים להגיד
 
 אני מצרפת:
 רעיון של התוכן
@@ -278,8 +293,8 @@ export function buildExtractionPrompt({ idea, contentType, startingPoint, audien
 // המסמך האמיתי שלה, שהחסירה בדיוק את הפירוט שגורם למודל להבין נכון
 // (ההסבר על 3 סוגי ההוק, דוגמת ה"סיסמתיים" הפסולים, ושלב השאלות המלא
 // כשאין מספיק נתונים בתסריט) - הוחלפה במלואה במסמך המקורי, מילה במילה.
-export function buildHookFindingPrompt({ idea, script, audience }) {
-  return `למי שתקוע בלמצוא משפט פתיחה חזק - עוצר גלילה
+export function buildHookFindingPrompt({ idea, script, audience, domain }) {
+  return `${contextHeader({ domain, audience })}למי שתקוע בלמצוא משפט פתיחה חזק - עוצר גלילה
 ריכזתי לכם כאן בחוברת כמויות של הוקים שאתם יכולים לשכפל ולהשתמש בסרטונים שלכם, כמובן אתם לא חייבים - ברגע שהבנתם את הפואנטה אתם יכולים גם לחשוב לבד על הוק או יותר מזה? תשכפלו הוקים מהרשת!!!!
 אם ראיתם סרטון שהתפוצץ(לא שלכם) , אתם לגמרי יכולים להעתיק אחד לאחד את ההוק של אותו יוצר, כמובן לא את שאר התוכן, כי אם לו זה עבד כנראה שזה יעבוד גם לכם.
 
@@ -418,8 +433,8 @@ ${HOOK_TEMPLATES.join('\n')}
 // הוחלף במלואו במסמך המקורי שלה - הגרסה הקודמת תמצתה את 3 המנגנונים
 // בלי הדוגמאות שממחישות כל אחד מהם, בלי "🎯 המטרה"/"📥 הקלט", ובלי כל
 // חוק הטון המלא (שלב 6/7) - בדיוק הפירוט שעוזר למודל "להבין את ההיגיון".
-export function buildHookReinforcementPrompt({ idea, hook, script }) {
-  return `למי שתקוע בלמצוא את המשפט שמגיע אחרי ההוק שמטרתו להדביק את הצופה למסך
+export function buildHookReinforcementPrompt({ idea, hook, script, audience, domain }) {
+  return `${contextHeader({ domain, audience })}למי שתקוע בלמצוא את המשפט שמגיע אחרי ההוק שמטרתו להדביק את הצופה למסך
 המשימה שלך היא ביצוע בלבד.
 אין לנתח את הפרומפט.
 אין לתת חוות דעת על ההוראות.
@@ -577,8 +592,8 @@ export function buildHookReinforcementPrompt({ idea, hook, script }) {
 // הוחלף במלואו במסמך המקורי שלה - הגרסה הקודמת תמצתה כל שלב לשורה אחת
 // והחסירה שלם את פירוט 4 סוגי ההנעה לפעולה (מטרה/מתי להשתמש/אחוז
 // מהתוכן לכל סוג) - בלעדיו למודל אין בכלל לפי מה לבחור הנעה לפעולה.
-export function buildScriptDistillationPrompt({ idea, hook, hookReinforcement, rawScript, ctaType }) {
-  return `אחרי שיש לכם מגילת אסתר + הוק + חיזוק - הפרומט הזה עוזר לכם לזקק את זה לתסריט שעובד לפי מבנה נכון של סרטון(חוסך לכם זמן לעשות את זה לבד)
+export function buildScriptDistillationPrompt({ idea, hook, hookReinforcement, rawScript, ctaType, audience, domain }) {
+  return `${contextHeader({ domain, audience })}אחרי שיש לכם מגילת אסתר + הוק + חיזוק - הפרומט הזה עוזר לכם לזקק את זה לתסריט שעובד לפי מבנה נכון של סרטון(חוסך לכם זמן לעשות את זה לבד)
 אתה מומחה בזיקוק ועריכת תסריטי רילס חדים, דרמטיים ומדויקים.
 המטרה שלך:
 להפוך תסריט גולמי לתסריט סופי קצר, זורם, מסקרן ובנוי לפי מבנה נכון –

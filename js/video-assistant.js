@@ -904,6 +904,13 @@ async function ensureOpeningHook() {
   saveSession(state).catch((err) => console.error('saveSession failed:', err));
 }
 
+/* קהל היעד יושב בפרופיל, וכל בונה פרומפט צריך אותו. פעם אחת כאן,
+   במקום להעתיק את אותו תנאי בכל מסך מחדש. */
+async function myAudience() {
+  const profile = await getProfile();
+  return profile && profile.primaryAudience ? profile.primaryAudience : '';
+}
+
 async function renderPrompt1() {
   const profile = await getProfile();
   const audience = profile && profile.primaryAudience ? profile.primaryAudience : '';
@@ -1010,7 +1017,7 @@ function renderPrompt2() {
   // 19/10/2026 (מאיה, אחרי אישור מפורש) - שדה "התסריט המקורי" מפורש, לא
   // הסתמכות על ש-ChatGPT "זוכר" אותו מפרומפט 1 באותה שיחה; ראה
   // video-assistant-prompts.js, buildScriptPrompt.
-  const prompt = buildScriptPrompt({ hook, herWords: state.herWords, originalScript: state.transcript || '' });
+  const prompt = buildScriptPrompt({ hook, herWords: state.herWords, originalScript: state.transcript || '', domain: domainInfo ? domainInfo.domain : '', audience: await myAudience() });
   cosmicCard(`
     <h2>הפרומפט השני</h2>
     <p>העתק/י, הדבק/י ב-ChatGPT, ותקבל/י תסריט מלא</p>
@@ -1221,7 +1228,7 @@ function openExtractionHelperModal() {
     const contentType = overlay.querySelector('#va-ext-contenttype').value.trim();
     const startingPoint = overlay.querySelector('#va-ext-startpoint').value.trim();
     const audience = overlay.querySelector('#va-ext-audience').value.trim();
-    const prompt = buildExtractionPrompt({ idea, contentType, startingPoint, audience });
+    const prompt = buildExtractionPrompt({ idea, contentType, startingPoint, audience, domain: domainInfo ? domainInfo.domain : '' });
     const resultEl = overlay.querySelector('#va-ext-result');
     resultEl.innerHTML = `
       <div class="cosmic-prompt-box" style="margin-top:14px">${highlightPlaceholders(prompt, [idea, contentType, startingPoint, audience])}</div>
@@ -1258,7 +1265,7 @@ function renderScratchDump() {
 async function renderScratchHook() {
   const profile = await getProfile();
   const audience = profile && profile.primaryAudience ? profile.primaryAudience : '';
-  const prompt = buildHookFindingPrompt({ idea: state.ideaDescription || '', script: state.rawDump || '', audience });
+  const prompt = buildHookFindingPrompt({ idea: state.ideaDescription || '', script: state.rawDump || '', audience, domain: domainInfo ? domainInfo.domain : '' });
   cosmicCard(`
     <h2>מציאת הוק</h2>
     <p>הפרומפט כולל בנק הוקים אמיתי מוטמע - ChatGPT יתאים לך ממנו הוק מדויק. העתק/י, הדבק/י, וחזור/חזרי עם ההוק שבחרת.</p>
@@ -1281,7 +1288,7 @@ async function renderScratchHook() {
 }
 
 function renderScratchHookReinforce() {
-  const prompt = buildHookReinforcementPrompt({ idea: state.ideaDescription || '', hook: state.hook || '', script: state.rawDump || '' });
+  const prompt = buildHookReinforcementPrompt({ idea: state.ideaDescription || '', hook: state.hook || '', script: state.rawDump || '', audience: await myAudience(), domain: domainInfo ? domainInfo.domain : '' });
   cosmicCard(`
     <h2>חיזוק ההוק</h2>
     <p>המשפט השני, שנותן סיבה ברורה להישאר. העתק/י, הדבק/י, וחזור/חזרי עם החיזוק שבחרת.</p>

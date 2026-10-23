@@ -126,3 +126,43 @@ if (existsSync(DOC)) {
     assert.deepEqual(missing, [], 'תבניות הוקים מהמסמך שחסרות בכלי');
   });
 }
+
+/* 23/10/2026 (מאיה: "הוא שוכח למלא בצהוב את התחום שלי"). התחום והקהל
+   נוספים בראש כל פרומפט, אבל רק כשיש מה למלא - שורה ריקה "התחום שלי
+   הוא:" גרועה מהיעדר השורה. */
+const { contextHeader, buildExtractionPrompt, buildHookFindingPrompt,
+  buildHookReinforcementPrompt, buildScriptDistillationPrompt } =
+  await import('../js/video-assistant-content.js');
+const { buildScriptPrompt } = await import('../js/video-assistant-prompts.js');
+
+test('בלי תחום ובלי קהל אין בכלל בלוק הקשר', () => {
+  assert.equal(contextHeader({}), '');
+  assert.equal(contextHeader({ domain: '  ', audience: '' }), '');
+});
+
+test('תחום בלבד, קהל בלבד, ושניהם', () => {
+  assert.equal(contextHeader({ domain: 'עיצוב גבות' }), 'התחום שלי הוא: עיצוב גבות\n\n');
+  assert.equal(contextHeader({ audience: 'כלות' }), 'הקהל יעד שלי: כלות\n\n');
+  assert.equal(contextHeader({ domain: 'שיווק', audience: 'בעלות עסקים' }),
+    'התחום שלי הוא: שיווק\nהקהל יעד שלי: בעלות עסקים\n\n');
+});
+
+test('כל חמשת הפרומפטים פותחים בתחום ובקהל', () => {
+  const ctx = { domain: 'עיצוב גבות', audience: 'כלות' };
+  const built = [
+    buildExtractionPrompt({ ...ctx, idea: 'רעיון' }),
+    buildHookFindingPrompt({ ...ctx, idea: 'רעיון', script: 'תסריט' }),
+    buildHookReinforcementPrompt({ ...ctx, idea: 'רעיון', hook: 'הוק', script: 'תסריט' }),
+    buildScriptDistillationPrompt({ ...ctx, idea: 'רעיון', hook: 'הוק', hookReinforcement: 'חיזוק', rawScript: 'גולמי' }),
+    buildScriptPrompt({ ...ctx, hook: 'הוק', herWords: 'מילים', originalScript: 'מקורי' }),
+  ];
+  for (const p of built) {
+    assert.match(p, /^התחום שלי הוא: עיצוב גבות\nהקהל יעד שלי: כלות\n\n/);
+  }
+});
+
+test('בלי פרופיל הפרומפטים נשארים בדיוק כמו המסמך', () => {
+  const withCtx = buildHookFindingPrompt({ idea: 'רעיון', script: 'תסריט' });
+  assert.ok(!withCtx.startsWith('התחום שלי'), 'נוספה שורת הקשר ריקה');
+  assert.ok(withCtx.startsWith('למי שתקוע בלמצוא משפט פתיחה חזק'), 'הפרומפט לא מתחיל כמו במסמך');
+});
