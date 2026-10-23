@@ -1,5 +1,5 @@
 // שינוי כאן גורם לכל מי שפתוחה על גרסה ישנה לקבל את הודעת "גרסה חדשה מוכנה" (18/09: הכנסת update-check.js)
-const CACHE_NAME = 'moach-hashiveki-v88';
+const CACHE_NAME = 'moach-hashiveki-v89';
 const APP_SHELL = ['./', './index.html', './css/style.css', './js/app.js', './manifest.json', './assets/favicon.png'];
 
 self.addEventListener('install', (event) => {
@@ -43,6 +43,9 @@ function isImmutableAsset(url) {
 // cache, which can quietly serve a stale response even though this is
 // "network-first" from the service worker's point of view. Re-issuing the
 // fetch with { cache: 'no-store' } bypasses that layer for real.
+/* 23/10/2026: reset.html הוא דף החירום. הוא חייב להגיע מהרשת תמיד
+   ובלי שום מעורבות של הרכיב הזה, אחרת רכיב שבור יכול לתקוע גם את
+   הדרך לתקן אותו. */
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
@@ -71,6 +74,8 @@ self.addEventListener('fetch', (event) => {
         .catch((err) => console.warn('sw: cache put failed', err && err.name))
     );
   };
+
+  if (/\/reset\.html(?:\?|$)/.test(event.request.url)) return;
 
   if (isImmutableAsset(event.request.url)) {
     event.respondWith(
