@@ -1389,10 +1389,20 @@ const CTA_TYPES = [
   { value: 'מכירה', label: 'מכירה' },
 ];
 
-function renderScratchDistill() {
+/* 26/10/2026 (מאיה: "הפרומפטים לא מדויקים בעליל, בטוח העתקת
+   מהקובץ דוקס בול?"). הנוסח אכן הועתק מילה במילה. מה שלא
+   הועבר הוא המילוי: הפרומפט האחרון, זה שכותב בפועל את התסריט,
+   יצא בלי התחום ובלי קהל היעד. שלושת הפרומפטים שלפניו כן שלחו אותם,
+   ולכן השיחה התחילה מדויקת והסתיימה כללית.
+   זה בדיוק מה שהיא ביקשה ב-23/10 למסלול השכפול ("בפרומט השני של
+   כתיבת תסריט מלא, הייתי כותבת למעלה שוב: התחום שלי הוא:"), ותוקן
+   שם בלבד. אותו באג בדיוק, במסלול השני. */
+async function renderScratchDistill() {
+  const audience = await myAudience();
   const buildPrompt = (ctaType) => buildScriptDistillationPrompt({
     idea: state.ideaDescription || '', hook: state.hook || '', hookReinforcement: state.hookReinforcement || '',
     rawScript: state.rawDump || '', ctaType,
+    audience, domain: domainInfo ? domainInfo.domain : '',
   });
   const ctaOptions = CTA_TYPES.map((c) => `<option value="${c.value}">${escapeHtml(c.label)}</option>`).join('');
   cosmicCard(`
@@ -1409,7 +1419,9 @@ function renderScratchDistill() {
   function refreshPrompt() {
     const cta = document.getElementById('va-scratch-cta-select').value;
     const prompt = buildPrompt(cta);
-    const values = [state.ideaDescription, state.hook, state.hookReinforcement, state.rawDump, cta];
+    /* הצהוב מסמן מה מולא לבד, ולכן התחום והקהל שייכים לשם גם הם. */
+    const values = [state.ideaDescription, state.hook, state.hookReinforcement, state.rawDump, cta,
+      audience, domainInfo ? domainInfo.domain : ''];
     wrap.innerHTML = `<div class="cosmic-prompt-box">${highlightPlaceholders(prompt, values)}</div>${copyBtn(prompt, 'להעתיק פרומפט')}`;
     wireCopyButtons(wrap);
   }

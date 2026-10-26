@@ -166,3 +166,34 @@ test('בלי פרופיל הפרומפטים נשארים בדיוק כמו המ
   assert.ok(!withCtx.startsWith('התחום שלי'), 'נוספה שורת הקשר ריקה');
   assert.ok(withCtx.startsWith('למי שתקוע בלמצוא משפט פתיחה חזק'), 'הפרומפט לא מתחיל כמו במסמך');
 });
+
+/* 26/10/2026 (מאיה: "הפרומפטים לא מדויקים בעליל, בטוח העתקת מהקובץ
+   דוקס בול?"). הנוסח כן הועתק מילה במילה - זה נבדק למעלה, שורה אחר
+   שורה ובשני הכיוונים. מה שלא הועבר הוא המילוי: renderScratchDistill
+   קרא ל-buildScriptDistillationPrompt בלי audience ובלי domain, ולכן
+   הפרומפט האחרון במסלול "כתיבה מאפס" - זה שכותב בפועל את התסריט - יצא
+   בלי התחום ובלי קהל היעד, בעוד ששלושת הפרומפטים שלפניו כן שלחו אותם.
+
+   הבדיקה "כל חמשת הפרומפטים פותחים בתחום ובקהל" לא תפסה את זה, כי היא
+   בודקת את הבנאים ומעבירה להם את ההקשר בעצמה. הבאג חי באתר הקריאה. */
+const APP = readFileSync(join(ROOT, 'js', 'video-assistant.js'), 'utf8');
+
+function callArgs(src, fnName) {
+  const at = src.indexOf(`${fnName}({`);
+  assert.ok(at > 0, `לא נמצאה קריאה ל-${fnName}`);
+  let depth = 0;
+  for (let i = src.indexOf('{', at); i < src.length; i += 1) {
+    if (src[i] === '{') depth += 1;
+    if (src[i] === '}') { depth -= 1; if (depth === 0) return src.slice(at, i + 1); }
+  }
+  throw new Error(`לא נסגרה הקריאה ל-${fnName}`);
+}
+
+for (const fn of ['buildExtractionPrompt', 'buildHookFindingPrompt',
+  'buildHookReinforcementPrompt', 'buildScriptDistillationPrompt']) {
+  test(`הקריאה ל-${fn} מעבירה תחום וקהל`, () => {
+    const args = callArgs(APP, fn);
+    assert.match(args, /\baudience\b/, `${fn} נקרא בלי קהל היעד`);
+    assert.match(args, /\bdomain\s*:/, `${fn} נקרא בלי התחום`);
+  });
+}
