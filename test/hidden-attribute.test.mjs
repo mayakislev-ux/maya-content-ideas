@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 
 // 30/09/2026: מאיה פתחה את המסך וראתה טופס שהקוד הסתיר.
 //
@@ -70,12 +70,22 @@ function hiddenElements(html) {
   return out;
 }
 
+/* 26/10/2026: הבדיקה סרקה רק את index.html, ולכן אלמנט שנוצר מתוך
+   תבנית ב-JS לא נבדק כלל. זה בדיוק מה שקרה ב-va-angle-chat במסך חידוד
+   הרעיון: הוא נכתב עם hidden, היה לו display משלו, ולכן הוא נפתח לבד.
+   אותה תקלה בדיוק שבגללה הבדיקה הזאת נכתבה מלכתחילה, רק בקובץ אחר. */
+const JS_SOURCES = ['video-assistant.js', 'story-table.js', 'warming.js', 'content-plan.js', 'inspiration-view.js']
+  .map((f) => new URL(`../js/${f}`, import.meta.url))
+  .filter((u) => existsSync(u))
+  .map((u) => readFileSync(u, 'utf8'))
+  .join('\n');
+
 test('כל אלמנט מוסתר באמת נעלם, ולא רק מתיימר', () => {
   const withDisplay = classesWithDisplay(CSS);
   const guarded = classesGuarded(CSS);
   const broken = [];
 
-  for (const el of hiddenElements(HTML)) {
+  for (const el of [...hiddenElements(HTML), ...hiddenElements(JS_SOURCES)]) {
     const offenders = el.classes.filter((c) => withDisplay.has(c) && !guarded.has(c));
     if (offenders.length) broken.push(`#${el.id || el.tag} · ${offenders.join(', ')}`);
   }

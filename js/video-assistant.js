@@ -50,12 +50,19 @@ const SUBCATEGORIES_BY_DOMAIN = {
 };
 
 const PHASES = ['התחלה', 'בדיקת התאמה', 'פורמט ושיטה', 'בניית התוכן', 'סיום'];
+/* 26/10/2026 (מאיה, צילום מסך): הכותרת אמרה "שלב 2 מתוך 5: בדיקת התאמה"
+   בזמן שעל המסך היה כתוב "בוא נדייק את הרעיון". שם הפאזה מתאים לכמה
+   מסכים, ולכן מסך שצריך שם משלו מקבל אותו כאן. */
+const SCREEN_LABEL = {
+  'idea-sharpen': 'חידוד הרעיון',
+  'content-basics': 'נקודת יציאה וסוג תוכן',
+};
 const PHASE_BY_SCREEN = {
   opening: 0, 'reference-source-choice': 0, 'idea-source-choice': 0, 'type-idea': 0, 'pulled-idea': 0, 'pulled-reference': 0,
   'relevance-check': 1,
-  'footage-type-choice': 2, 'format-choice': 2, 'needs-script-check': 2, 'has-idea-choice': 2,
+  'content-basics': 2, 'footage-type-choice': 2, 'format-choice': 2, 'needs-script-check': 2, 'has-idea-choice': 2,
   transcribe: 3, prompt1: 3, 'her-words': 3, prompt2: 3, 'read-aloud': 3,
-  'idea-sharpen': 1, 'content-basics': 1, 'scratch-intro': 3, 'scratch-dump': 3, 'scratch-hook': 3, 'scratch-hook-reinforce': 3, 'scratch-distill': 3,
+  'idea-sharpen': 1, 'scratch-intro': 3, 'scratch-dump': 3, 'scratch-hook': 3, 'scratch-hook-reinforce': 3, 'scratch-distill': 3,
   'footage-speech-find': 3, 'footage-speech-shorten': 3, 'footage-speech-sharpen': 3, 'footage-speech-done': 3,
   'footage-visual-scan': 3, 'footage-visual-extract': 3, 'footage-visual-reframe': 3,
   'footage-visual-message': 3, 'footage-visual-story': 3,
@@ -131,7 +138,7 @@ function progressHtml() {
     ${i < steps.length - 1 ? `<div class="cosmic-dna-step__line ${s.status === 'done' ? 'is-done' : ''}"></div>` : ''}
   `).join('');
   return `
-    <div class="cosmic-progress__label">שלב ${current + 1} מתוך ${PHASES.length}: ${PHASES[current]}</div>
+    <div class="cosmic-progress__label">שלב ${current + 1} מתוך ${PHASES.length}: ${escapeHtml(SCREEN_LABEL[state.screen] || PHASES[current])}</div>
     <div class="cosmic-liquid-bar"><div class="cosmic-liquid-fill" style="width:${pct}%"></div></div>
     <div class="cosmic-dna-chain">${dnaHtml}</div>`;
 }
@@ -1142,39 +1149,60 @@ function renderReadAloud() {
      כישלון רשת הציג הודעה בלי שום דרך לנסות שוב */
 function renderIdeaSharpen() {
   const refsOnly = document.body.dataset.plan === 'refs';
-  const idea = state.ideaDescription || '';
+  /* הטיוטה גוברת על המצב, כי היא החדשה מבין השתיים. בלי זה התיבה
+     הציגה את הרעיון הישן בעוד שהצ'אט דיבר על מה שהוקלד - בדיוק
+     ה"לא קולט את הרעיון שלי" שמאיה דיווחה עליו. */
+  const draft = (state.drafts || {})['idea-sharpen|va-idea-sharp'];
+  const idea = (draft !== undefined ? draft : (state.ideaDescription || ''));
+
   cosmicCard(`
-    <h2>בוא נדייק את הרעיון</h2>
-    <p>רעיון מדויק הוא ההבדל בין סרטון שמדבר למישהי לבין סרטון שמדבר לכולן. ${refsOnly ? 'אפשר לחדד כאן את הניסוח ולהמשיך.' : 'תעני לו, ותעדכני למטה את הרעיון המדויק שיצא.'}</p>
-    <label class="cosmic-field-label" for="va-idea-sharp">הרעיון שממשיך הלאה</label>
-    <textarea class="cosmic-textarea" id="va-idea-sharp" style="min-height:90px">${escapeHtml(idea)}</textarea>
-    ${refsOnly ? '<p style="font-size:12.5px;opacity:.75;margin:10px 0 0">הצ\'אט לחידוד רעיון אינו כלול במנוי הרפרנסים.</p>' : `
-      <div class="va-angle-chat">
+    <h2>הרעיון שלך, במשפט אחד</h2>
+    <p class="cosmic-lede">רעיון מדויק הוא ההבדל בין סרטון שמדבר למישהי אחת לבין סרטון שמדבר לכולן ולא לאף אחת.</p>
+    <ol class="cosmic-howto">
+      <li>לכתוב בתיבה את הרעיון כמו שהוא עכשיו, גם אם הוא גולמי.</li>
+      ${refsOnly ? '' : '<li>ללחוץ על "לחדד את הרעיון" והוא ילחץ עליו ויציע ניסוח חד יותר.</li><li>ניסוח שמוצא חן, לחיצה אחת מעבירה אותו לתיבה.</li>'}
+    </ol>
+
+    <label class="cosmic-field-label" for="va-idea-sharp">הרעיון שלי</label>
+    <textarea class="cosmic-textarea" id="va-idea-sharp" style="min-height:96px"
+      placeholder="למשל: למה החלקה שורפת את השיער, ומה עושים במקום">${escapeHtml(idea)}</textarea>
+    <p class="cosmic-hint">זה הרעיון שימשיך לכל השלבים הבאים. מה שכתוב כאן הוא מה שקובע.</p>
+
+    ${refsOnly ? '<p class="cosmic-hint">הצ\'אט לחידוד רעיון אינו כלול במנוי הרפרנסים.</p>' : `
+      <div class="cosmic-btn-row" style="margin-top:4px">
+        <button type="button" class="cosmic-btn" id="va-sharpen-ask">✨ לחדד את הרעיון</button>
+      </div>
+      <div class="va-angle-chat" id="va-chat-wrap" hidden>
         <div class="chat-messages" id="va-chat-messages" role="log" aria-live="polite"></div>
         <form class="chat-input-row" id="va-chat-form">
           <textarea id="va-chat-input" enterkeyhint="send" placeholder="לענות לו כאן..." aria-label="הודעה לחידוד הרעיון"></textarea>
           <button type="submit" class="cosmic-btn" id="va-chat-send">שליחה</button>
         </form>
       </div>`}
-    <div class="cosmic-btn-row">
-      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-idea-next-btn">הרעיון מדויק, ממשיכים</button>
+
+    <div class="cosmic-btn-row" style="margin-top:16px">
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-idea-next-btn">הרעיון מדויק, ממשיכים ←</button>
     </div>
   `);
 
+  const box = document.getElementById('va-idea-sharp');
   document.getElementById('va-idea-next-btn').addEventListener('click', () => {
-    const text = document.getElementById('va-idea-sharp').value.trim();
+    const text = box.value.trim();
     if (!text) {
-      showToast('צריך רעיון אחד כתוב כדי להמשיך');
+      showToast('קודם לכתוב את הרעיון בתיבה');
+      box.focus();
       return;
     }
     dispatch({ type: 'IDEA_SHARPENED', idea: text });
   });
   if (refsOnly) return;
 
+  const wrap = document.getElementById('va-chat-wrap');
   const messagesEl = document.getElementById('va-chat-messages');
   const form = document.getElementById('va-chat-form');
   const input = document.getElementById('va-chat-input');
   const sendBtn = document.getElementById('va-chat-send');
+  const askBtn = document.getElementById('va-sharpen-ask');
   const history = [];
   let busy = false;
   let lastAsked = '';
@@ -1183,9 +1211,27 @@ function renderIdeaSharpen() {
      מסבירה למה נקראת כמו מסך שבור. */
   function setBusy(on) {
     busy = on;
-    if (!sendBtn) return;
-    sendBtn.disabled = on;
-    sendBtn.textContent = on ? 'עונה...' : 'שליחה';
+    if (sendBtn) { sendBtn.disabled = on; sendBtn.textContent = on ? 'עונה...' : 'שליחה'; }
+    if (askBtn) askBtn.disabled = on;
+  }
+
+  /* הוא מתבקש לסיים בשורה אחת בפורמט קבוע, וממנה נבנה הכפתור שמעביר
+     את הניסוח לתיבה. בלי זה היא הייתה צריכה להעתיק ביד מתוך פסקה. */
+  function offerSuggestion(bubble, text) {
+    const m = String(text || '').match(/הניסוח המדויק:\s*(.+)/);
+    const picked = m && m[1] ? m[1].trim().replace(/^["'“”]|["'“”]$/g, '') : '';
+    if (!picked) return;
+    const use = document.createElement('button');
+    use.type = 'button';
+    use.className = 'cosmic-btn va-chat-use';
+    use.textContent = '✓ להשתמש בניסוח הזה';
+    use.addEventListener('click', () => {
+      box.value = picked;
+      box.dispatchEvent(new Event('input', { bubbles: true }));
+      box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      showToast('הרעיון עודכן בתיבה');
+    });
+    bubble.appendChild(use);
   }
 
   async function ask(text) {
@@ -1202,13 +1248,14 @@ function renderIdeaSharpen() {
         setBubbleText(thinking, live.value);
         messagesEl.scrollTop = messagesEl.scrollHeight;
       });
-      setBubbleText(thinking, reply || live.value);
-      history.push({ role: 'assistant', content: reply || live.value });
+      const full = reply || live.value;
+      setBubbleText(thinking, full);
+      history.push({ role: 'assistant', content: full });
+      offerSuggestion(thinking, full);
     } catch (err) {
       console.error('idea chat failed:', err);
       /* ההודעה הקודמת אמרה "אפשר לנסות שוב" בלי שום דרך לנסות שוב,
-         וגם השאירה את השאלה בהיסטוריה - כך שניסיון חוזר היה שולח
-         אותה פעמיים. */
+         וגם השאירה את השאלה בהיסטוריה - כך שניסיון חוזר שלח אותה פעמיים. */
       history.pop();
       setBubbleText(thinking, 'לא הצלחתי להתחבר כרגע.');
       const retry = document.createElement('button');
@@ -1223,25 +1270,46 @@ function renderIdeaSharpen() {
     }
   }
 
+  /* הצ'אט תמיד מדבר על מה שכתוב בתיבה ברגע הלחיצה, ולא על ערך שנתפס
+     כשהמסך צויר. זו הייתה התקלה: הוא שאל על רעיון אחד בזמן שבתיבה
+     כבר היה רעיון אחר. */
+  function currentIdea() { return box.value.trim(); }
+
+  const ASK_TAIL = ' ללחוץ על הרעיון הזה ולדייק אותו: האם הוא חד מספיק לקהל שלי, או רחב מדי? '
+    + 'אם הוא רחב, להגיד לי במה בדיוק. '
+    + 'ולסיים תמיד בשורה אחרונה אחת בפורמט המדויק הזה, בלי שום תוספת אחריה: '
+    + 'הניסוח המדויק: <הרעיון מנוסח מחדש במשפט אחד>';
+
+  function openChat() {
+    const idea0 = currentIdea();
+    if (idea0.length < 8) {
+      showToast('לכתוב קודם את הרעיון במשפט, כדי שיהיה על מה ללחוץ');
+      box.focus();
+      return;
+    }
+    wrap.hidden = false;
+    askBtn.textContent = '✨ לחדד שוב מההתחלה';
+    messagesEl.innerHTML = '';
+    history.length = 0;
+    ask(`הרעיון שלי לסרטון: "${idea0}".${ASK_TAIL}`);
+  }
+
   function send() {
     const text = input.value.trim();
     if (!text || busy) return;
     addBubble(messagesEl, text, 'user');
     input.value = '';
-    ask(text);
+    /* הרעיון שבתיבה נוסע עם כל הודעה, כדי שהוא לא יאבד אותו תוך כדי. */
+    ask(`${text}\n\n(הרעיון שבתיבה שלי כרגע: "${currentIdea()}")`);
   }
 
+  askBtn.addEventListener('click', openChat);
   form.addEventListener('submit', (e) => { e.preventDefault(); send(); });
   /* המקלדת בטלפון מציגה "שליחה" בגלל enterkeyhint, ועד היום היא פשוט
      ירדה שורה. Shift+Enter נשאר שורה חדשה, כמו בכל צ'אט. */
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
   });
-
-  // פתיחה אוטומטית: הוא מתחיל ללחוץ על הרעיון בלי שהיא תצטרך לנסח בקשה
-  ask(`אני עובדת על סרטון. הרעיון שלי: "${idea}". `
-    + 'ללחוץ על הרעיון הזה ולדייק אותו: האם הוא חד מספיק לקהל שלי, או שהוא רחב מדי? '
-    + 'אם הוא רחב, להגיד לי במה בדיוק, ולהציע לי ניסוח אחד חד יותר שאוכל להעתיק.');
 }
 
 /* שלבים 2 ו-3 במסמך "סיכום כתיבת תסריטים": נקודת יציאה וסוג תוכן.
@@ -1253,8 +1321,8 @@ function renderContentBasics() {
     <button type="button" class="cosmic-btn cosmic-chip-btn${picked === x ? ' cosmic-chip-btn--on' : ''}" ${attr}="${escapeHtml(x)}">${escapeHtml(x)}</button>
   `).join('');
   cosmicCard(`
-    <h2>שני דברים לפני הפורמט</h2>
-    <p>אלה שלבים 2 ו-3 בשיטה, והם נכנסים אחר כך לפרומפטים לבד.</p>
+    <h2>שני דברים על הסרטון הזה</h2>
+    <p class="cosmic-lede">בחירה אחת לכל שורה. שתיהן נכנסות אחר כך לפרומפטים לבד, בלי שתקלידי אותן שוב.</p>
     <p class="cosmic-field-label">מאיפה הסרטון יוצא?</p>
     <div class="cosmic-chip-row" id="va-start-row">${opts(STARTING_POINTS, state.startingPoint, 'data-start')}</div>
     <p class="cosmic-field-label" style="margin-top:14px">איזה סוג תוכן זה?</p>
