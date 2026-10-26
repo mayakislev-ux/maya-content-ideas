@@ -18,7 +18,7 @@ import { INITIAL_STATE, nextStep } from './video-assistant-flow.js';
 import { pickIdea, pickReference } from './video-assistant-picker.js';
 import { buildDuplicationPrompt, buildReverseDuplicationPrompt, buildScriptPrompt } from './video-assistant-prompts.js';
 import {
-  FORMATS, SCRIPT_STRUCTURE, ANGLES,
+  FORMATS, SCRIPT_STRUCTURE, STARTING_POINTS, CONTENT_TYPES,
   buildExtractionPrompt, buildHookFindingPrompt, buildHookReinforcementPrompt, buildScriptDistillationPrompt,
 } from './video-assistant-content.js';
 // 22/10/2026: הצ'אט "בדיקת רעיון" הקיים, ולא עותק שלו. הוא כבר מכיר את
@@ -55,7 +55,7 @@ const PHASE_BY_SCREEN = {
   'relevance-check': 1,
   'footage-type-choice': 2, 'format-choice': 2, 'needs-script-check': 2, 'has-idea-choice': 2,
   transcribe: 3, prompt1: 3, 'her-words': 3, prompt2: 3, 'read-aloud': 3,
-  'angle': 1, 'angle-check': 1, 'scratch-intro': 3, 'scratch-dump': 3, 'scratch-hook': 3, 'scratch-hook-reinforce': 3, 'scratch-distill': 3,
+  'idea-sharpen': 1, 'content-basics': 1, 'scratch-intro': 3, 'scratch-dump': 3, 'scratch-hook': 3, 'scratch-hook-reinforce': 3, 'scratch-distill': 3,
   'footage-speech-find': 3, 'footage-speech-shorten': 3, 'footage-speech-sharpen': 3, 'footage-speech-done': 3,
   'footage-visual-scan': 3, 'footage-visual-extract': 3, 'footage-visual-reframe': 3,
   'footage-visual-message': 3, 'footage-visual-story': 3,
@@ -1129,93 +1129,69 @@ function renderReadAloud() {
 }
 
 // ===== מסלול "כתיבה מאפס" - 4 הפרומפטים האמיתיים (16/10) =====
-/* 22/10/2026 (מאיה: "להכניס את זווית ההגשה לרעיון ולא סתם שיכתבו רעיון,
-   קודם כל לוודא שיש זווית הגשה חזקה").
+/* 26/10/2026 (מאיה): "בחלק של כתיבת תסריט מ-0 יש שם תקלה חמורה, שאת
+   שואלת אותם מה הזווית הנגשה, אבל זה טעות. אמור להיות רק צ'אט שמדייק
+   את הרעיון, שעובד וברור בלי תקלות UI UX".
 
-   עד היום מסלול הכתיבה מאפס פתח בהסבר והמשיך לשפיכת תוכן. בנק 31 הזוויות
-   היה קיים בכלי אבל רק כחומר עזר, ולכן אפשר היה לכתוב תסריט שלם על רעיון
-   בלי שום זווית - וזה בדיוק הרעיון השטוח שהיא לא רוצה לקבל.
+   ירד: מסך בחירת זווית מתוך 31, ומסך "הזווית שבחרת" עם שדה נימוק.
+   נשאר: צ'אט אחד שמדייק את הרעיון, והרעיון שיוצא ממנו הוא זה שממשיך.
 
-   הזווית היא עכשיו המסך הראשון, והיא תנאי: המכונה זורקת אם מנסים להתקדם
-   בלעדיה (ראה SCRATCH_START_DUMP ב-video-assistant-flow.js). */
-function renderAngle() {
-  // אותה תבנית אקורדיון של בחירת הפורמט: רשימה ארוכה שנפתחת פריט-פריט,
-  // ולא 31 כרטיסים פתוחים שמציפים את המסך.
-  const itemsHtml = ANGLES.map((a, i) => `
-    <details class="cosmic-accordion-item" ${state.angle === a.name ? 'open' : ''}>
-      <summary><span>${escapeHtml(a.name)}</span></summary>
-      <div class="cosmic-accordion-body">
-        <p style="margin:0">${escapeHtml(a.description)}</p>
-        ${a.example ? `<p style="margin:6px 0 0;opacity:.8">לדוגמה: ${escapeHtml(a.example)}</p>` : ''}
-        <button type="button" class="cosmic-pick-btn" data-pick-angle="${i}">הזווית שלי</button>
-      </div>
-    </details>
-  `).join('');
-  cosmicCard(`
-    <h2>קודם כל, מה הזווית?</h2>
-    <p>רעיון בלי זווית הגשה הוא נושא, לא סרטון. לבחור את הזווית שממנה ניגשים לרעיון, ורק אחר כך נכתוב.</p>
-    ${state.angle ? `<div class="cosmic-selected-chip">✓ נבחרה: ${escapeHtml(state.angle)}</div>` : ''}
-    <div class="cosmic-accordion">${itemsHtml}</div>
-  `);
-  document.querySelectorAll('[data-pick-angle]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      playSuccess();
-      dispatch({ type: 'ANGLE_CHOSEN', angle: ANGLES[Number(btn.dataset.pickAngle)].name });
-    });
-  });
-}
-
-/* מסך הלחיצה על הזווית. שני דברים קורים כאן:
-   לנמק במילה שלה למה הזווית מחזיקה, ולהעביר אותה לצ'אט "בדיקת רעיון"
-   הקיים כדי שילחץ עליה. הנימוק נשמר בסטייט גם בלי הצ'אט, כי הוא מה
-   שנכנס לפרומפטים הבאים ולמסך הסיכום. */
-function renderAngleCheck() {
-  const angle = ANGLES.find((a) => a.name === state.angle)
-    || { name: state.angle || '', description: '', example: '' };
-  /* 22/10/2026: העוזר ליצירת סרטון כלול במנוי הרפרנסים (tab-refs-only),
-     אבל הצ'אט "בדיקת רעיון" לא, גם בעיצוב וגם ב-enforceAllowlist בשרת.
-     מנוית רפרנסים תקבל כאן את שדה הנימוק בלבד, בלי הצ'אט, כדי שלא תיתקל
-     בסירוב מהשרת על כלי שהמנוי שלה לא כולל. */
+   מה שתוקן בצ'אט עצמו, כי שלושת אלה היו תקלות אמיתיות:
+     לחיצה על "שליחה" בזמן שהוא עונה לא עשתה כלום ולא אמרה כלום
+     Enter בתיבה הוסיף שורה במקום לשלוח, גם כשהמקלדת הציגה "שליחה"
+     כישלון רשת הציג הודעה בלי שום דרך לנסות שוב */
+function renderIdeaSharpen() {
   const refsOnly = document.body.dataset.plan === 'refs';
+  const idea = state.ideaDescription || '';
   cosmicCard(`
-    <h2>הזווית שבחרת</h2>
-    <div class="cosmic-context-box">
-      <strong>${escapeHtml(angle.name)}</strong>
-      <p style="margin:6px 0 0">${escapeHtml(angle.description)}</p>
-      ${angle.example ? `<p style="margin:6px 0 0;opacity:.8">לדוגמה: ${escapeHtml(angle.example)}</p>` : ''}
-    </div>
-    <p>במשפט אחד, למה הזווית הזאת חזקה דווקא לקהל שלך?</p>
-    <textarea class="cosmic-textarea" id="va-angle-why" style="min-height:90px"
-      placeholder="למשל: הן באמת מאמינות שתעודה מספיקה, ואף אחת לא אומרת להן אחרת">${state.angleWhy ? escapeHtml(state.angleWhy) : ''}</textarea>
-    ${refsOnly ? '' : `
+    <h2>בוא נדייק את הרעיון</h2>
+    <p>רעיון מדויק הוא ההבדל בין סרטון שמדבר למישהי לבין סרטון שמדבר לכולן. ${refsOnly ? 'אפשר לחדד כאן את הניסוח ולהמשיך.' : 'תעני לו, ותעדכני למטה את הרעיון המדויק שיצא.'}</p>
+    <label class="cosmic-field-label" for="va-idea-sharp">הרעיון שממשיך הלאה</label>
+    <textarea class="cosmic-textarea" id="va-idea-sharp" style="min-height:90px">${escapeHtml(idea)}</textarea>
+    ${refsOnly ? '<p style="font-size:12.5px;opacity:.75;margin:10px 0 0">הצ\'אט לחידוד רעיון אינו כלול במנוי הרפרנסים.</p>' : `
       <div class="va-angle-chat">
         <div class="chat-messages" id="va-chat-messages" role="log" aria-live="polite"></div>
         <form class="chat-input-row" id="va-chat-form">
-          <textarea id="va-chat-input" enterkeyhint="send" placeholder="לענות לו כאן..." aria-label="הודעה לבדיקת הזווית"></textarea>
-          <button type="submit" class="cosmic-btn">שליחה</button>
+          <textarea id="va-chat-input" enterkeyhint="send" placeholder="לענות לו כאן..." aria-label="הודעה לחידוד הרעיון"></textarea>
+          <button type="submit" class="cosmic-btn" id="va-chat-send">שליחה</button>
         </form>
       </div>`}
     <div class="cosmic-btn-row">
-      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-angle-next-btn">הזווית מחזיקה, ממשיכים</button>
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-idea-next-btn">הרעיון מדויק, ממשיכים</button>
     </div>
   `);
 
-  const why = () => document.getElementById('va-angle-why').value.trim();
-  document.getElementById('va-angle-next-btn').addEventListener('click', () => {
-    dispatch({ type: 'ANGLE_CONFIRMED', why: why() });
+  document.getElementById('va-idea-next-btn').addEventListener('click', () => {
+    const text = document.getElementById('va-idea-sharp').value.trim();
+    if (!text) {
+      showToast('צריך רעיון אחד כתוב כדי להמשיך');
+      return;
+    }
+    dispatch({ type: 'IDEA_SHARPENED', idea: text });
   });
   if (refsOnly) return;
 
-  /* הצ'אט חי כאן בתוך המסך, ומריץ את אותו streamCheckIdea של "בדיקת
-     רעיון". אין כאן מנוע שני ואין קפיצה ללשונית אחרת: אותו שרת, אותו
-     זרם, אותה התנהגות - רק בתוך הזרימה, במקום שבו היא באמת צריכה אותו. */
   const messagesEl = document.getElementById('va-chat-messages');
+  const form = document.getElementById('va-chat-form');
+  const input = document.getElementById('va-chat-input');
+  const sendBtn = document.getElementById('va-chat-send');
   const history = [];
   let busy = false;
+  let lastAsked = '';
+
+  /* כפתור שלא ניתן ללחוץ עליו אומר את זה. לחיצה שלא עושה כלום ולא
+     מסבירה למה נקראת כמו מסך שבור. */
+  function setBusy(on) {
+    busy = on;
+    if (!sendBtn) return;
+    sendBtn.disabled = on;
+    sendBtn.textContent = on ? 'עונה...' : 'שליחה';
+  }
 
   async function ask(text) {
     if (busy) return;
-    busy = true;
+    setBusy(true);
+    lastAsked = text;
     history.push({ role: 'user', content: text });
     const thinking = addThinkingBubble(messagesEl);
     try {
@@ -1229,31 +1205,82 @@ function renderAngleCheck() {
       setBubbleText(thinking, reply || live.value);
       history.push({ role: 'assistant', content: reply || live.value });
     } catch (err) {
-      console.error('angle chat failed:', err);
-      setBubbleText(thinking, 'לא הצלחתי להתחבר כרגע. אפשר לנסות שוב, או פשוט להמשיך - הזווית כבר נשמרה.');
+      console.error('idea chat failed:', err);
+      /* ההודעה הקודמת אמרה "אפשר לנסות שוב" בלי שום דרך לנסות שוב,
+         וגם השאירה את השאלה בהיסטוריה - כך שניסיון חוזר היה שולח
+         אותה פעמיים. */
+      history.pop();
+      setBubbleText(thinking, 'לא הצלחתי להתחבר כרגע.');
+      const retry = document.createElement('button');
+      retry.type = 'button';
+      retry.className = 'cosmic-btn va-chat-retry';
+      retry.textContent = 'לנסות שוב';
+      retry.addEventListener('click', () => { retry.remove(); ask(lastAsked); });
+      thinking.appendChild(retry);
     } finally {
-      busy = false;
+      setBusy(false);
       messagesEl.scrollTop = messagesEl.scrollHeight;
     }
   }
 
-  document.getElementById('va-chat-form').addEventListener('submit', (e) => {
-    e.preventDefault();
-    const input = document.getElementById('va-chat-input');
+  function send() {
     const text = input.value.trim();
-    if (!text) return;
+    if (!text || busy) return;
     addBubble(messagesEl, text, 'user');
     input.value = '';
     ask(text);
+  }
+
+  form.addEventListener('submit', (e) => { e.preventDefault(); send(); });
+  /* המקלדת בטלפון מציגה "שליחה" בגלל enterkeyhint, ועד היום היא פשוט
+     ירדה שורה. Shift+Enter נשאר שורה חדשה, כמו בכל צ'אט. */
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
   });
 
-  // פתיחה אוטומטית: הוא מתחיל ללחוץ על הזווית בלי שהיא תצטרך לנסח בקשה
-  const idea = state.ideaDescription || state.hook || '';
-  ask(`אני עובדת על סרטון. הזווית שבחרתי: "${state.angle}". `
-    + (idea ? `הרעיון: "${idea}". ` : '')
-    + (state.angleWhy ? `למה לדעתי היא חזקה: "${state.angleWhy}". ` : '')
-    + 'ללחוץ על הזווית הזאת: האם היא באמת חדה לקהל שלי, או שהיא רחבה מדי? '
-    + 'אם היא חלשה, להגיד לי במה בדיוק, ולהציע ניסוח חד יותר.');
+  // פתיחה אוטומטית: הוא מתחיל ללחוץ על הרעיון בלי שהיא תצטרך לנסח בקשה
+  ask(`אני עובדת על סרטון. הרעיון שלי: "${idea}". `
+    + 'ללחוץ על הרעיון הזה ולדייק אותו: האם הוא חד מספיק לקהל שלי, או שהוא רחב מדי? '
+    + 'אם הוא רחב, להגיד לי במה בדיוק, ולהציע לי ניסוח אחד חד יותר שאוכל להעתיק.');
+}
+
+/* שלבים 2 ו-3 במסמך "סיכום כתיבת תסריטים": נקודת יציאה וסוג תוכן.
+   היו שתי תיבות טקסט ריקות בתוך פופאפ אופציונלי, ולכן פרומפט חילוץ
+   התוכן יצא בלעדיהם ברוב המקרים. כאן הם בחירה אמיתית, פעם אחת, והם
+   נכנסים לפרומפט לבד. */
+function renderContentBasics() {
+  const opts = (list, picked, attr) => list.map((x) => `
+    <button type="button" class="cosmic-btn cosmic-chip-btn${picked === x ? ' cosmic-chip-btn--on' : ''}" ${attr}="${escapeHtml(x)}">${escapeHtml(x)}</button>
+  `).join('');
+  cosmicCard(`
+    <h2>שני דברים לפני הפורמט</h2>
+    <p>אלה שלבים 2 ו-3 בשיטה, והם נכנסים אחר כך לפרומפטים לבד.</p>
+    <p class="cosmic-field-label">מאיפה הסרטון יוצא?</p>
+    <div class="cosmic-chip-row" id="va-start-row">${opts(STARTING_POINTS, state.startingPoint, 'data-start')}</div>
+    <p class="cosmic-field-label" style="margin-top:14px">איזה סוג תוכן זה?</p>
+    <div class="cosmic-chip-row" id="va-type-row">${opts(CONTENT_TYPES, state.contentType, 'data-type')}</div>
+    <div class="cosmic-btn-row" style="margin-top:16px">
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-basics-next-btn">ממשיכים</button>
+    </div>
+  `);
+  let startingPoint = state.startingPoint;
+  let contentType = state.contentType;
+  function wire(sel, attr, set) {
+    document.querySelectorAll(sel).forEach((b) => b.addEventListener('click', () => {
+      document.querySelectorAll(sel).forEach((o) => o.classList.remove('cosmic-chip-btn--on'));
+      b.classList.add('cosmic-chip-btn--on');
+      set(b.getAttribute(attr));
+    }));
+  }
+  wire('[data-start]', 'data-start', (v) => { startingPoint = v; });
+  wire('[data-type]', 'data-type', (v) => { contentType = v; });
+  document.getElementById('va-basics-next-btn').addEventListener('click', () => {
+    if (!startingPoint || !contentType) {
+      showToast('לבחור נקודת יציאה וסוג תוכן');
+      return;
+    }
+    dispatch({ type: 'BASICS_CONFIRMED', startingPoint, contentType });
+  });
 }
 
 function renderScratchIntro() {
@@ -1284,8 +1311,8 @@ function openExtractionHelperModal() {
   const overlay = openModal(`
     <h2 style="margin-top:0">קשה למצוא מה להגיד?</h2>
     <p style="font-size:13px">זה בנאי פרומפט בלבד: ממלאים כאן, מקבלים פרומפט מוכן, מעתיקים אותו ושולחים ל-ChatGPT - הוא ישאל שאלות שיוציאו ממך בדיוק מה להגיד. את התשובות שמתקבלות מ-ChatGPT מדביקים חזרה בתיבת הטקסט הגדולה (לא כאן במודאל).</p>
-    <input type="text" class="cosmic-textarea" id="va-ext-contenttype" style="min-height:auto" placeholder="סוג תוכן (מכירתי / בעל ערך / בידורי / אישי)">
-    <input type="text" class="cosmic-textarea" id="va-ext-startpoint" style="min-height:auto;margin-top:8px" placeholder="נקודת יציאה (סיפור אישי / סיפור לקוח / כללי)">
+    <input type="text" class="cosmic-textarea" id="va-ext-contenttype" style="min-height:auto" placeholder="סוג תוכן (מכירתי / בעל ערך / בידורי / אישי)" value="${escapeHtml(state.contentType || '')}">
+    <input type="text" class="cosmic-textarea" id="va-ext-startpoint" style="min-height:auto;margin-top:8px" placeholder="נקודת יציאה (סיפור אישי / סיפור לקוח / כללי)" value="${escapeHtml(state.startingPoint || '')}">
     <input type="text" class="cosmic-textarea" id="va-ext-audience" style="min-height:auto;margin-top:8px" placeholder="קהל היעד">
     <div class="cosmic-btn-row" style="margin-top:14px">
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-ext-generate-btn">לבנות את הפרומפט</button>
@@ -1553,8 +1580,8 @@ function render() {
   if (state.screen === 'her-words') return renderHerWords();
   if (state.screen === 'prompt2') return renderPrompt2();
   if (state.screen === 'read-aloud') return renderReadAloud();
-  if (state.screen === 'angle') return renderAngle();
-  if (state.screen === 'angle-check') return renderAngleCheck();
+  if (state.screen === 'idea-sharpen') return renderIdeaSharpen();
+  if (state.screen === 'content-basics') return renderContentBasics();
   if (state.screen === 'scratch-intro') return renderScratchIntro();
   if (state.screen === 'scratch-dump') return renderScratchDump();
   if (state.screen === 'scratch-hook') return renderScratchHook();

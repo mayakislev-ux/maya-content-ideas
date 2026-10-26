@@ -151,14 +151,15 @@ test('תצוגת לקוחה פתוחה רק למאיה', () => {
   assert.ok(src.includes('user.email === ADMIN_EMAIL'), 'התצוגה לא מוגבלת למנהלת');
 });
 
-/* 22/10/2026: העוזר ליצירת סרטון כלול במנוי הרפרנסים, הצ'אט "בדיקת רעיון"
-   לא. כפתור שמוביל לכלי שהמנוי לא כולל הוא כפתור שבור. */
+/* 22/10/2026: העוזר ליצירת סרטון כלול במנוי הרפרנסים, הצ'אט לא.
+   כפתור שמוביל לכלי שהמנוי לא כולל הוא כפתור שבור.
+   26/10/2026: המסך שינה שם מ-renderAngleCheck ל-renderIdeaSharpen. */
 test("מנוית רפרנסים לא מקבלת כפתור לצ'אט שהמנוי שלה לא כולל", () => {
   const va = readFileSync(join(ROOT, 'js', 'video-assistant.js'), 'utf8');
-  const from = va.indexOf('function renderAngleCheck()');
-  const to = va.indexOf('function renderScratchIntro()', from);
+  const from = va.indexOf('function renderIdeaSharpen()');
+  const to = va.indexOf('function renderContentBasics()', from);
   const block = va.slice(from, to);
-  assert.ok(from > 0 && to > from, 'מסך בדיקת הזווית לא נמצא');
+  assert.ok(from > 0 && to > from, 'מסך חידוד הרעיון לא נמצא');
   assert.ok(block.includes("document.body.dataset.plan === 'refs'"), 'אין בדיקת סוג מנוי');
   assert.ok(block.includes('${refsOnly ?'), "הצ'אט לא מותנה בסוג המנוי");
   assert.ok(block.includes('if (refsOnly) return;'), "הקוד של הצ'אט רץ גם למנוי שלא כולל אותו");

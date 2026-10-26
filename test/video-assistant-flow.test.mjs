@@ -18,9 +18,9 @@ test('footage path: footage -> relevance check -> "what did you film?"', () => {
 test('footage, speech clip: one sequence (find -> shorten -> sharpen -> done), not a choice (18/10)', () => {
   let s = nextStep(INITIAL_STATE, { type: 'CHOOSE_FOOTAGE' });
   s = nextStep(s, { type: 'RELEVANCE_CONFIRMED' });
-  // 23/10/2026: הזווית נבחרת אחרי הרעיון ולפני הפורמט
-  s = nextStep(s, { type: 'ANGLE_CHOSEN', angle: 'טעות נפוצה' });
-  s = nextStep(s, { type: 'ANGLE_CONFIRMED' });
+  // 26/10/2026: צ'אט שמדייק את הרעיון, ואז נקודת יציאה וסוג תוכן
+  s = nextStep(s, { type: 'IDEA_SHARPENED', idea: 'טעות נפוצה בהסרת שיער' });
+  s = nextStep(s, { type: 'BASICS_CONFIRMED', startingPoint: 'כללי', contentType: 'בעל ערך' });
   s = nextStep(s, { type: 'FOOTAGE_IS_SPEECH' });
   assert.equal(s.screen, 'footage-speech-find');
   s = nextStep(s, { type: 'FOOTAGE_SPEECH_NEXT' });
@@ -41,9 +41,9 @@ test('FOOTAGE_SPEECH_NEXT throws from a screen outside the sequence', () => {
 test('footage, visual clip, found a moment -> extraction guidance -> summary', () => {
   let s = nextStep(INITIAL_STATE, { type: 'CHOOSE_FOOTAGE' });
   s = nextStep(s, { type: 'RELEVANCE_CONFIRMED' });
-  // 23/10/2026: הזווית נבחרת אחרי הרעיון ולפני הפורמט
-  s = nextStep(s, { type: 'ANGLE_CHOSEN', angle: 'טעות נפוצה' });
-  s = nextStep(s, { type: 'ANGLE_CONFIRMED' });
+  // 26/10/2026: צ'אט שמדייק את הרעיון, ואז נקודת יציאה וסוג תוכן
+  s = nextStep(s, { type: 'IDEA_SHARPENED', idea: 'טעות נפוצה בהסרת שיער' });
+  s = nextStep(s, { type: 'BASICS_CONFIRMED', startingPoint: 'כללי', contentType: 'בעל ערך' });
   s = nextStep(s, { type: 'FOOTAGE_IS_VISUAL' });
   assert.equal(s.screen, 'footage-visual-scan');
   s = nextStep(s, { type: 'FOOTAGE_VISUAL_FOUND_MOMENT' });
@@ -75,16 +75,16 @@ test('footage branch records which path was actually taken, for a concrete summa
   let speech = nextStep(INITIAL_STATE, { type: 'CHOOSE_FOOTAGE' });
   speech = nextStep(speech, { type: 'RELEVANCE_CONFIRMED' });
   // 23/10/2026: הזווית נבחרת אחרי הרעיון ולפני הפורמט
-  speech = nextStep(speech, { type: 'ANGLE_CHOSEN', angle: 'טעות נפוצה' });
-  speech = nextStep(speech, { type: 'ANGLE_CONFIRMED' });
+  speech = nextStep(speech, { type: 'IDEA_SHARPENED', idea: 'טעות נפוצה' });
+  speech = nextStep(speech, { type: 'BASICS_CONFIRMED', startingPoint: 'כללי', contentType: 'בעל ערך' });
   speech = nextStep(speech, { type: 'FOOTAGE_IS_SPEECH' });
   assert.equal(speech.footageKind, 'speech');
 
   let visual = nextStep(INITIAL_STATE, { type: 'CHOOSE_FOOTAGE' });
   visual = nextStep(visual, { type: 'RELEVANCE_CONFIRMED' });
   // 23/10/2026: הזווית נבחרת אחרי הרעיון ולפני הפורמט
-  visual = nextStep(visual, { type: 'ANGLE_CHOSEN', angle: 'טעות נפוצה' });
-  visual = nextStep(visual, { type: 'ANGLE_CONFIRMED' });
+  visual = nextStep(visual, { type: 'IDEA_SHARPENED', idea: 'טעות נפוצה' });
+  visual = nextStep(visual, { type: 'BASICS_CONFIRMED', startingPoint: 'כללי', contentType: 'בעל ערך' });
   visual = nextStep(visual, { type: 'FOOTAGE_IS_VISUAL' });
   assert.equal(visual.footageKind, 'visual');
 
@@ -129,9 +129,9 @@ test('idea path (typed) -> relevance -> format selection -> needs script yes -> 
   assert.equal(s.screen, 'relevance-check');
   assert.equal(s.ideaDescription, 'הסיפור שלי על בולמיה');
   s = nextStep(s, { type: 'RELEVANCE_CONFIRMED' });
-  // 23/10/2026: הזווית נבחרת אחרי הרעיון ולפני הפורמט
-  s = nextStep(s, { type: 'ANGLE_CHOSEN', angle: 'טעות נפוצה' });
-  s = nextStep(s, { type: 'ANGLE_CONFIRMED' });
+  // 26/10/2026: צ'אט שמדייק את הרעיון, ואז נקודת יציאה וסוג תוכן
+  s = nextStep(s, { type: 'IDEA_SHARPENED', idea: 'טעות נפוצה בהסרת שיער' });
+  s = nextStep(s, { type: 'BASICS_CONFIRMED', startingPoint: 'כללי', contentType: 'בעל ערך' });
   assert.equal(s.screen, 'format-choice');
   assert.equal(s.formatFor, 'idea');
   s = nextStep(s, { type: 'FORMAT_SELECTED', format: 'דיבור למצלמה' });
@@ -148,9 +148,9 @@ test('idea path -> needs script NO ends at the summary without forcing a script'
   s = nextStep(s, { type: 'CHOOSE_TYPE_IDEA' });
   s = nextStep(s, { type: 'IDEA_TYPED', text: 'רעיון' });
   s = nextStep(s, { type: 'RELEVANCE_CONFIRMED' });
-  // 23/10/2026: הזווית נבחרת אחרי הרעיון ולפני הפורמט
-  s = nextStep(s, { type: 'ANGLE_CHOSEN', angle: 'טעות נפוצה' });
-  s = nextStep(s, { type: 'ANGLE_CONFIRMED' });
+  // 26/10/2026: צ'אט שמדייק את הרעיון, ואז נקודת יציאה וסוג תוכן
+  s = nextStep(s, { type: 'IDEA_SHARPENED', idea: 'טעות נפוצה בהסרת שיער' });
+  s = nextStep(s, { type: 'BASICS_CONFIRMED', startingPoint: 'כללי', contentType: 'בעל ערך' });
   s = nextStep(s, { type: 'FORMAT_SELECTED', format: 'דיבור למצלמה' });
   s = nextStep(s, { type: 'NEEDS_SCRIPT_NO' });
   assert.equal(s.screen, 'summary');
@@ -163,9 +163,9 @@ test('idea path from the saved ideas bank also goes through relevance + format +
   s = nextStep(s, { type: 'ACCEPT_PICK' });
   assert.equal(s.screen, 'relevance-check');
   s = nextStep(s, { type: 'RELEVANCE_CONFIRMED' });
-  // 23/10/2026: הזווית נבחרת אחרי הרעיון ולפני הפורמט
-  s = nextStep(s, { type: 'ANGLE_CHOSEN', angle: 'טעות נפוצה' });
-  s = nextStep(s, { type: 'ANGLE_CONFIRMED' });
+  // 26/10/2026: צ'אט שמדייק את הרעיון, ואז נקודת יציאה וסוג תוכן
+  s = nextStep(s, { type: 'IDEA_SHARPENED', idea: 'טעות נפוצה בהסרת שיער' });
+  s = nextStep(s, { type: 'BASICS_CONFIRMED', startingPoint: 'כללי', contentType: 'בעל ערך' });
   assert.equal(s.screen, 'format-choice');
   s = nextStep(s, { type: 'FORMAT_SELECTED', format: 'ראיון / שיחה' });
   assert.equal(s.screen, 'needs-script-check');
@@ -176,9 +176,9 @@ test('has-idea-choice -> from-scratch starts the real 4-prompt chain', () => {
   s = nextStep(s, { type: 'CHOOSE_TYPE_IDEA' });
   s = nextStep(s, { type: 'IDEA_TYPED', text: 'רעיון' });
   s = nextStep(s, { type: 'RELEVANCE_CONFIRMED' });
-  // 23/10/2026: הזווית נבחרת אחרי הרעיון ולפני הפורמט
-  s = nextStep(s, { type: 'ANGLE_CHOSEN', angle: 'טעות נפוצה' });
-  s = nextStep(s, { type: 'ANGLE_CONFIRMED' });
+  // 26/10/2026: צ'אט שמדייק את הרעיון, ואז נקודת יציאה וסוג תוכן
+  s = nextStep(s, { type: 'IDEA_SHARPENED', idea: 'טעות נפוצה בהסרת שיער' });
+  s = nextStep(s, { type: 'BASICS_CONFIRMED', startingPoint: 'כללי', contentType: 'בעל ערך' });
   s = nextStep(s, { type: 'FORMAT_SELECTED', format: 'דיבור למצלמה' });
   s = nextStep(s, { type: 'NEEDS_SCRIPT_YES' });
   s = nextStep(s, { type: 'CHOOSE_FROM_SCRATCH' });
@@ -187,69 +187,72 @@ test('has-idea-choice -> from-scratch starts the real 4-prompt chain', () => {
   assert.equal(s.branch, 'scratch');
 });
 
-/* 22/10/2026 (מאיה: "קודם כל לוודא שיש זווית הגשה חזקה"): אי אפשר להגיע
-   לכתיבה בלי לעבור בזווית, והנימוק נשמר כדי להיכנס לפרומפטים הבאים. */
-test('זווית הגשה: בלי לבחור זווית אין דרך להגיע לשפיכת התוכן', () => {
-  const s = { ...INITIAL_STATE, screen: 'angle', branch: 'scratch' };
+/* 26/10/2026 (מאיה): "בחלק של כתיבת תסריט מ-0 יש שם תקלה חמורה, שאת
+   שואלת אותם מה הזווית הנגשה, אבל זה טעות. אמור להיות רק צ'אט שמדייק
+   את הרעיון". מסך בחירת הזווית ירד, ובמקומו חידוד הרעיון עצמו. */
+test('חידוד רעיון: בלי רעיון אין דרך להגיע לשפיכת התוכן', () => {
+  const s = { ...INITIAL_STATE, screen: 'idea-sharpen', branch: 'scratch' };
   assert.throws(() => nextStep(s, { type: 'SCRATCH_START_DUMP' }));
 });
 
-test('זווית הגשה: בחירה מובילה למסך הבדיקה ושומרת את הזווית', () => {
-  const s = nextStep({ ...INITIAL_STATE, screen: 'angle', branch: 'scratch' },
-    { type: 'ANGLE_CHOSEN', angle: 'טעות נפוצה' });
-  assert.equal(s.screen, 'angle-check');
-  assert.equal(s.angle, 'טעות נפוצה');
+test('חידוד רעיון: הרעיון המחודד מחליף את הישן וממשיך לשני השלבים', () => {
+  const s = nextStep({ ...INITIAL_STATE, screen: 'idea-sharpen', ideaDescription: 'גבות' },
+    { type: 'IDEA_SHARPENED', idea: 'למה גבות דקות מזקינות את הפנים' });
+  assert.equal(s.screen, 'content-basics');
+  assert.equal(s.ideaDescription, 'למה גבות דקות מזקינות את הפנים');
 });
 
-test('זווית הגשה: אישור ממשיך למסלול הרגיל ושומר את הנימוק', () => {
-  let s = nextStep({ ...INITIAL_STATE, screen: 'angle', branch: 'scratch' },
-    { type: 'ANGLE_CHOSEN', angle: 'מיתוס / אמונה מגבילה' });
-  s = nextStep(s, { type: 'ANGLE_CONFIRMED', why: 'הקהל שלי באמת מאמין בזה' });
-  // 23/10/2026: רק אחרי שיש זווית בוחרים פורמט הנגשה
+/* צ'אט שלא משנה כלום הוא קישוט, אבל גם אסור שהוא ימחק רעיון קיים. */
+test('חידוד רעיון: רעיון ריק לא מוחק את מה שכבר היה', () => {
+  const s = nextStep({ ...INITIAL_STATE, screen: 'idea-sharpen', ideaDescription: 'גבות' },
+    { type: 'IDEA_SHARPENED', idea: '   ' });
+  assert.equal(s.ideaDescription, 'גבות');
+});
+
+/* שלבים 2 ו-3 במסמך "סיכום כתיבת תסריטים". עד 26/10 הם היו שתי תיבות
+   ריקות בפופאפ אופציונלי, ולכן פרומפט חילוץ התוכן יצא בלעדיהם. */
+test('נקודת יציאה וסוג תוכן נשמרים, ורק אז בוחרים פורמט', () => {
+  let s = nextStep({ ...INITIAL_STATE, screen: 'idea-sharpen', ideaDescription: 'גבות' },
+    { type: 'IDEA_SHARPENED', idea: 'גבות דקות' });
+  s = nextStep(s, { type: 'BASICS_CONFIRMED', startingPoint: 'סיפור לקוח', contentType: 'מכירתי' });
   assert.equal(s.screen, 'format-choice');
-  assert.equal(s.angle, 'מיתוס / אמונה מגבילה');
-  assert.equal(s.angleWhy, 'הקהל שלי באמת מאמין בזה');
+  assert.equal(s.formatFor, 'idea');
+  assert.equal(s.startingPoint, 'סיפור לקוח');
+  assert.equal(s.contentType, 'מכירתי');
 });
 
-test('זווית הגשה: אפשר לאשר בלי נימוק, והשדה נשאר ריק ולא undefined', () => {
-  let s = nextStep({ ...INITIAL_STATE, screen: 'angle', branch: 'scratch' },
-    { type: 'ANGLE_CHOSEN', angle: 'ביקורת' });
-  s = nextStep(s, { type: 'ANGLE_CONFIRMED' });
-  assert.equal(s.screen, 'format-choice');
-  assert.equal(s.angleWhy, null);
-});
-
-test('זווית הגשה: כפתור חזרה מחזיר ממסך הבדיקה לבחירת הזווית', () => {
-  let s = nextStep({ ...INITIAL_STATE, screen: 'angle', branch: 'scratch' },
-    { type: 'ANGLE_CHOSEN', angle: 'שאלה נפוצה' });
+test('כפתור חזרה מחזיר משני השלבים אל הצאט', () => {
+  let s = nextStep({ ...INITIAL_STATE, screen: 'idea-sharpen', ideaDescription: 'גבות' },
+    { type: 'IDEA_SHARPENED', idea: 'גבות דקות' });
   s = nextStep(s, { type: 'BACK' });
-  assert.equal(s.screen, 'angle');
+  assert.equal(s.screen, 'idea-sharpen');
 });
 
-test('הזווית שורדת עד סוף המסלול ומגיעה לסיכום', () => {
-  let s = nextStep({ ...INITIAL_STATE, screen: 'angle', branch: 'scratch' },
-    { type: 'ANGLE_CHOSEN', angle: 'לשרוף גשרים' });
-  s = nextStep(s, { type: 'ANGLE_CONFIRMED', why: 'כי הן שוקלות קורס זול' });
+test('שני השלבים שורדים עד הסיכום', () => {
+  let s = nextStep({ ...INITIAL_STATE, screen: 'idea-sharpen', branch: 'scratch', ideaDescription: 'גבות' },
+    { type: 'IDEA_SHARPENED', idea: 'גבות דקות מזקינות' });
+  s = nextStep(s, { type: 'BASICS_CONFIRMED', startingPoint: 'סיפור אישי', contentType: 'אישי' });
   s = nextStep(s, { type: 'SCRATCH_START_DUMP' });
   s = nextStep(s, { type: 'SCRATCH_DUMP_READY', text: 'הכל' });
   s = nextStep(s, { type: 'SCRATCH_HOOK_CHOSEN', hook: 'הוק' });
   s = nextStep(s, { type: 'SCRATCH_REINFORCEMENT_CHOSEN', text: 'חיזוק' });
   s = nextStep(s, { type: 'SCRATCH_SCRIPT_READY', text: 'תסריט' });
   assert.equal(s.screen, 'summary');
-  assert.equal(s.angle, 'לשרוף גשרים');
-  assert.equal(s.angleWhy, 'כי הן שוקלות קורס זול');
+  assert.equal(s.ideaDescription, 'גבות דקות מזקינות');
+  assert.equal(s.startingPoint, 'סיפור אישי');
+  assert.equal(s.contentType, 'אישי');
 });
 
-test('התחלה מחדש מנקה גם את הזווית', () => {
-  const s = nextStep({ ...INITIAL_STATE, screen: 'summary', angle: 'ביקורת', angleWhy: 'כי' },
+test('התחלה מחדש מנקה גם את נקודת היציאה וסוג התוכן', () => {
+  const s = nextStep({ ...INITIAL_STATE, screen: 'summary', startingPoint: 'כללי', contentType: 'בידורי' },
     { type: 'RESTART' });
-  assert.equal(s.angle, null);
-  assert.equal(s.angleWhy, null);
+  assert.equal(s.startingPoint, null);
+  assert.equal(s.contentType, null);
 });
 
 test('from-scratch: full 4-prompt chain (dump -> hook -> reinforcement -> distilled script) ends at summary', () => {
-  // 22/10/2026: המסלול הזה מתחיל אחרי שכבר נבחרה זווית, ולכן היא בסטייט
-  const base = { ...INITIAL_STATE, screen: 'scratch-intro', branch: 'scratch', angle: 'טעות נפוצה' };
+  // 26/10/2026: המסלול מתחיל אחרי שהרעיון כבר חודד, ולכן הוא בסטייט
+  const base = { ...INITIAL_STATE, screen: 'scratch-intro', branch: 'scratch', ideaDescription: 'טעות נפוצה' };
   let s = nextStep(base, { type: 'SCRATCH_START_DUMP' });
   assert.equal(s.screen, 'scratch-dump');
   s = nextStep(s, { type: 'SCRATCH_DUMP_READY', text: 'כל מה שיש לי להגיד' });
@@ -360,34 +363,32 @@ test('nextStep throws on an unknown action instead of silently no-op-ing', () =>
 
 /* 23/10/2026 (מאיה: "אחרי שבחרתי רעיון לפני פורמט חייב לוודא האם יש זווית
    הנגשה חזקה... ורק אחרי שיש זווית הנגשה בוחרים פורמט הנגשה"). */
-test('הזווית יושבת בין הרעיון לפורמט, ולא אחרי', () => {
+test('חידוד הרעיון יושב בין הרעיון לפורמט, ולא אחרי', () => {
   let s = nextStep(INITIAL_STATE, { type: 'CHOOSE_IDEA' });
   s = nextStep(s, { type: 'CHOOSE_TYPE_IDEA' });
   s = nextStep(s, { type: 'IDEA_TYPED', text: 'רעיון' });
   s = nextStep(s, { type: 'RELEVANCE_CONFIRMED' });
-  assert.equal(s.screen, 'angle', 'אחרי הרעיון לא מגיעים לזווית');
-  s = nextStep(s, { type: 'ANGLE_CHOSEN', angle: 'ביקורת' });
-  assert.equal(s.screen, 'angle-check', 'אין מסך בדיקת זווית');
-  s = nextStep(s, { type: 'ANGLE_CONFIRMED', why: 'כי' });
-  assert.equal(s.screen, 'format-choice', 'הפורמט לא בא אחרי הזווית');
+  assert.equal(s.screen, 'idea-sharpen', 'אחרי הרעיון לא מגיעים לחידוד');
+  s = nextStep(s, { type: 'IDEA_SHARPENED', idea: 'ביקורת על קורסים זולים' });
+  assert.equal(s.screen, 'content-basics', 'אין מסך נקודת יציאה וסוג תוכן');
+  s = nextStep(s, { type: 'BASICS_CONFIRMED', startingPoint: 'כללי', contentType: 'בעל ערך' });
+  assert.equal(s.screen, 'format-choice', 'הפורמט לא בא אחרי חידוד הרעיון');
 });
 
-test('מסלול קטע מצולם לא עובר בזווית, הוא כבר צולם', () => {
+test('מסלול קטע מצולם לא עובר בחידוד רעיון, הוא כבר צולם', () => {
   const s = nextStep({ ...INITIAL_STATE, screen: 'relevance-check', branch: 'footage' },
     { type: 'RELEVANCE_CONFIRMED' });
   assert.equal(s.screen, 'footage-type-choice');
 });
 
 test('הזווית נשמרת עד הסוף גם כשעוברים דרך הפורמט', () => {
-  let s = nextStep({ ...INITIAL_STATE, screen: 'angle' }, { type: 'ANGLE_CHOSEN', angle: 'מיתוס / אמונה מגבילה' });
-  s = nextStep(s, { type: 'ANGLE_CONFIRMED', why: 'הן מאמינות שתעודה מספיקה' });
+  let s = nextStep({ ...INITIAL_STATE, screen: 'idea-sharpen', ideaDescription: 'תעודה' }, { type: 'IDEA_SHARPENED', idea: 'מיתוס שתעודה מספיקה' });
   s = nextStep(s, { type: 'FORMAT_SELECTED', format: 'דיבור למצלמה' });
   s = nextStep(s, { type: 'NEEDS_SCRIPT_YES' });
   s = nextStep(s, { type: 'CHOOSE_FROM_SCRATCH' });
   s = nextStep(s, { type: 'SCRATCH_START_DUMP' });
   assert.equal(s.screen, 'scratch-dump');
-  assert.equal(s.angle, 'מיתוס / אמונה מגבילה');
-  assert.equal(s.angleWhy, 'הן מאמינות שתעודה מספיקה');
+  assert.equal(s.ideaDescription, 'מיתוס שתעודה מספיקה');
 });
 
 test('קטע מצולם: אחרי המסר שואלים רעיון, ואז פורמט, ואז אם צריך תסריט', () => {
