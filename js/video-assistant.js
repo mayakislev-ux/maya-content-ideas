@@ -24,7 +24,10 @@ import {
 // 22/10/2026: הצ'אט "בדיקת רעיון" הקיים, ולא עותק שלו. הוא כבר מכיר את
 // הסימון "זווית: X" בכותרת הרעיון, אותו סימון שתכנית התוכן סומכת עליו.
 import { streamCheckIdea } from './idea-chat.js';
+/* אותו פענוח תשובה שהלשונית מריצה, מאותו קובץ. */
+import { extractIdeaSummary, RECOGNIZED_MARKER } from './idea-reply.js';
 import { addBubble, addThinkingBubble, setBubbleText } from './chat-ui.js';
+import { wireVoiceInput } from './voice-input.js';
 import { playReroll, playSuccess, setMuted, getMuted } from './video-assistant-sound.js';
 import { embedUrlFor, embedShape } from './video-preview.js';
 import { languageName } from './inspiration-readability.js';
@@ -1176,6 +1179,7 @@ function renderIdeaSharpen() {
         <div class="chat-messages" id="va-chat-messages" role="log" aria-live="polite"></div>
         <form class="chat-input-row" id="va-chat-form">
           <textarea id="va-chat-input" enterkeyhint="send" placeholder="לענות לו כאן..." aria-label="הודעה לחידוד הרעיון"></textarea>
+          <button type="button" class="mic-btn" id="va-chat-mic" aria-label="הקלטה קולית" hidden>🎤</button>
           <button type="submit" class="cosmic-btn" id="va-chat-send">שליחה</button>
         </form>
       </div>`}
@@ -1218,8 +1222,13 @@ function renderIdeaSharpen() {
   /* הוא מתבקש לסיים בשורה אחת בפורמט קבוע, וממנה נבנה הכפתור שמעביר
      את הניסוח לתיבה. בלי זה היא הייתה צריכה להעתיק ביד מתוך פסקה. */
   function offerSuggestion(bubble, text) {
-    const m = String(text || '').match(/הניסוח המדויק:\s*(.+)/);
-    const picked = m && m[1] ? m[1].trim().replace(/^["'“”]|["'“”]$/g, '') : '';
+    const raw = String(text || '');
+    /* שני מקורות, לפי סדר אמינות: הרעיון שהשרת ניסח במרקר, ואם הוא עוד
+       לא הגיע - השורה שביקשנו ממנו בפתיחה. */
+    const m = raw.match(/הניסוח המדויק:\s*(.+)/);
+    const fromLine = m && m[1] ? m[1].trim() : '';
+    const picked = (raw.includes('\n') || raw.length > 180 ? fromLine : (fromLine || raw.trim()))
+      .replace(/^["'“”]|["'“”]$/g, '').trim();
     if (!picked) return;
     const use = document.createElement('button');
     use.type = 'button';
@@ -1248,10 +1257,18 @@ function renderIdeaSharpen() {
         setBubbleText(thinking, live.value);
         messagesEl.scrollTop = messagesEl.scrollHeight;
       });
-      const full = reply || live.value;
-      setBubbleText(thinking, full);
+      let full = reply || live.value;
       history.push({ role: 'assistant', content: full });
-      offerSuggestion(thinking, full);
+      /* מכאן ועד setBubbleText - בדיוק מה שהלשונית עושה עם אותה תשובה.
+         בלי זה המרקר הטכני והשורה שאחריו הוצגו למשתמשת כטקסט. */
+      if (full.startsWith(RECOGNIZED_MARKER)) {
+        full = full.slice(RECOGNIZED_MARKER.length).trimStart();
+        thinking.classList.add('chat-bubble-excellent');
+      }
+      const { visibleReply, idea: finalIdea } = extractIdeaSummary(full);
+      setBubbleText(thinking, visibleReply);
+      /* הרעיון המנוסח שהשרת כבר מחזיר במרקר עדיף על כל חילוץ משלי. */
+      offerSuggestion(thinking, finalIdea || visibleReply);
     } catch (err) {
       console.error('idea chat failed:', err);
       /* ההודעה הקודמת אמרה "אפשר לנסות שוב" בלי שום דרך לנסות שוב,
@@ -1302,6 +1319,10 @@ function renderIdeaSharpen() {
     /* הרעיון שבתיבה נוסע עם כל הודעה, כדי שהוא לא יאבד אותו תוך כדי. */
     ask(`${text}\n\n(הרעיון שבתיבה שלי כרגע: "${currentIdea()}")`);
   }
+
+  /* אותו מיקרופון של הלשונית, אותה פונקציה. בטלפון זה ההבדל בין לענות
+     לבין לוותר. */
+  wireVoiceInput({ buttonId: 'va-chat-mic', textareaId: 'va-chat-input' });
 
   askBtn.addEventListener('click', openChat);
   form.addEventListener('submit', (e) => { e.preventDefault(); send(); });

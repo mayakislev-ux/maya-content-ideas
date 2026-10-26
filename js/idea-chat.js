@@ -7,6 +7,9 @@ import { findSimilarIdea } from './ideas-logic.js';
 import { showWelcomeTour } from './welcome-tour.js';
 import { addBubble, addThinkingBubble, addChoiceBubble, setBubbleText, playSuccessSound } from './chat-ui.js';
 import { wireVoiceInput } from './voice-input.js';
+/* 26/10/2026: פענוח התשובה חי במקום אחד, והעוזר ליצירת סרטון
+   מייבא מאותו קובץ - אחרת הוא הציג את השורה הטכנית למשתמשת. */
+import { extractIdeaSummary, RECOGNIZED_MARKER } from './idea-reply.js';
 import { burstConfetti } from './confetti.js';
 import { confirmDialog } from './confirm-dialog.js';
 import { updateIdea } from './ideas-store.js';
@@ -173,8 +176,6 @@ let editingIdeaId = null;
 // startIdeaChatWithExistingIdea, consumed by greetAndAskForIdea.
 let pendingIdeaToCheck = null;
 
-const RECOGNIZED_MARKER = '[[RECOGNIZED_EXCELLENT]]';
-const SUMMARY_MARKER = '[[IDEA_SUMMARY]]';
 const ROADMAP_URL = 'https://mayakislev-ux.github.io/lehiyot-brand/מפת-דרכים-ליצירת-תוכן.html';
 
 function messagesEl() {
@@ -192,27 +193,6 @@ function withTimeout(promise, ms) {
     promise,
     new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms)),
   ]);
-}
-
-function extractIdeaSummary(reply) {
-  const markerIndex = reply.indexOf(SUMMARY_MARKER);
-  if (markerIndex === -1) return { visibleReply: reply, summary: null };
-
-  const visibleReply = reply.slice(0, markerIndex).trim();
-  // Take everything after the marker to the end of the message, not just the
-  // first line - the marker is always the last thing in the reply, and
-  // truncating at the first "\n" would silently corrupt the result if a
-  // field (e.g. the story summary) ever contains an embedded line break.
-  const rawTail = reply.slice(markerIndex + SUMMARY_MARKER.length).trim();
-  const [idea, angle, story] = rawTail.split('||').map((part) => (part || '').trim());
-
-  if (!idea) return { visibleReply, summary: null };
-
-  let composedTitle = idea;
-  if (angle) composedTitle += ` | זווית: ${angle}`;
-  if (story) composedTitle += ` | סיפור: ${story}`;
-
-  return { visibleReply, summary: composedTitle, idea, angle, story };
 }
 
 async function saveFinalIdea(finalizedText) {

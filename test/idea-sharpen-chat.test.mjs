@@ -18,6 +18,7 @@ import { fileURLToPath } from 'node:url';
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const VA = readFileSync(join(ROOT, 'js', 'video-assistant.js'), 'utf8');
 const CSS = readFileSync(join(ROOT, 'css', 'style.css'), 'utf8');
+const IDEA_CHAT = readFileSync(join(ROOT, 'js', 'idea-chat.js'), 'utf8');
 
 function fnBody(name, nextName) {
   const from = VA.indexOf(`function ${name}(`);
@@ -185,4 +186,66 @@ describe('הכותרת תואמת את המסך', () => {
   test('נקודת יציאה וסוג תוכן יושבים בשלב הפורמט, לא בבדיקת ההתאמה', () => {
     assert.match(VA, /'content-basics': 2/, 'השלב שגוי');
   });
+});
+
+/* 26/10/2026 (מאיה): "הצ'אט שם זה בול אותו צ'אט כמו בסרגל למעלה, פשוט
+   מושתל נכון, בול?"
+
+   המנוע כן היה זהה מהיום הראשון: streamCheckIdea מיוצא מ-idea-chat.js
+   בדיוק בשביל זה, אותו שרת ואותו זרם. אבל הטיפול בתשובה לא היה זהה,
+   ושם זה נשבר: השרת מנחה את המודל לסיים בשורה טכנית
+   [[IDEA_SUMMARY]]רעיון||זווית||סיפור, והלשונית מורידה אותה מהבועה.
+   המושתל הציג אותה למשתמשת כטקסט. */
+describe('אותו צ\'אט בדיוק, גם בטיפול בתשובה', () => {
+  test('אותו מנוע, ולא עותק שני', async () => {
+    assert.match(IDEA_CHAT, /export async function streamCheckIdea/, 'המנוע לא מיוצא');
+    assert.match(SHARPEN, /streamCheckIdea\(/, 'המושתל לא מריץ את המנוע');
+    assert.ok(!/fetch\(/.test(SHARPEN), 'המושתל פונה לשרת בעצמו במקום דרך המנוע');
+  });
+
+  test('השורה הטכנית יורדת מהבועה, כמו בלשונית', async () => {
+    const { extractIdeaSummary } = await import('../js/idea-reply.js');
+    const reply = 'הרעיון שלך רחב מדי.\n[[IDEA_SUMMARY]]למה החלקה שורפת את השיער||טעות נפוצה||';
+    const out = extractIdeaSummary(reply);
+    assert.equal(out.visibleReply, 'הרעיון שלך רחב מדי.');
+    assert.equal(out.idea, 'למה החלקה שורפת את השיער');
+    assert.ok(!out.visibleReply.includes('[['), 'המרקר נשאר על המסך');
+    assert.ok(!out.visibleReply.includes('||'), 'המפרידים נשארו על המסך');
+  });
+
+  test('תשובה בלי מרקר נשארת שלמה', async () => {
+    const { extractIdeaSummary } = await import('../js/idea-reply.js');
+    const out = extractIdeaSummary('סתם תשובה רגילה');
+    assert.equal(out.visibleReply, 'סתם תשובה רגילה');
+    assert.equal(out.summary, null);
+  });
+
+  test('המושתל באמת מריץ את אותו טיפול', () => {
+    assert.match(SHARPEN, /extractIdeaSummary\(/, 'המרקר לא מוסר במושתל');
+    assert.match(SHARPEN, /RECOGNIZED_MARKER/, 'סימון "רעיון חזק" לא מטופל');
+    assert.match(SHARPEN, /chat-bubble-excellent/, 'הבועה לא מסומנת כמו בלשונית');
+  });
+
+  /* הרעיון שהשרת כבר ניסח במרקר עדיף על כל חילוץ מקומי. */
+  test('ההצעה שמועברת לתיבה באה קודם כל מהשרת', () => {
+    assert.match(SHARPEN, /offerSuggestion\(thinking, finalIdea \|\| visibleReply\)/, 'ההצעה לא מהמרקר');
+  });
+
+  test('אותו מיקרופון של הלשונית, אותה פונקציה', () => {
+    assert.match(SHARPEN, /wireVoiceInput\(\{ buttonId: 'va-chat-mic'/, 'אין מיקרופון');
+    assert.match(VA, /class="mic-btn" id="va-chat-mic"/, 'המיקרופון לא במחלקה של הלשונית');
+    assert.match(CSS, /\.mic-btn\[hidden\]/, 'כפתור המיקרופון לא באמת מוסתר כשאין תמיכה');
+  });
+});
+
+/* הפענוח חי במקום אחד, ושני הצדדים מייבאים ממנו. זה מה שהופך את "אותו
+   צ'אט בול" לנכון מבנית, ולא להצהרה שאפשר לסחוף ממנה. */
+test('אין שתי גרסאות של פענוח התשובה', () => {
+  const reply = readFileSync(join(ROOT, 'js', 'idea-reply.js'), 'utf8');
+  assert.match(reply, /export function extractIdeaSummary/, 'הפענוח לא במודול המשותף');
+  for (const [name, src] of [['idea-chat.js', IDEA_CHAT], ['video-assistant.js', VA]]) {
+    assert.match(src, /from '\.\/idea-reply\.js'/, `${name} לא מייבא מהמודול המשותף`);
+    assert.ok(!/function extractIdeaSummary/.test(src), `${name} מחזיק עותק משלו`);
+    assert.ok(!/const SUMMARY_MARKER =/.test(src), `${name} מחזיק עותק של המרקר`);
+  }
 });
