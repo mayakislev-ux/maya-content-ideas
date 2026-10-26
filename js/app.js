@@ -9,7 +9,7 @@ import { subscribeToIdeas } from './ideas-store.js';
 import { renderArchive, wireArchiveControls, getCurrentIdeas, wirePullToRefresh, wireGoalEditModal } from './archive-view.js';
 import { openAddModal, openEditModal, wireIdeaForm } from './idea-form.js';
 import { wireRandomIdeaModal } from './random-idea-modal.js';
-import { wireIdeaChat, startIdeaChat } from './idea-chat.js';
+import { wireIdeaChat } from './idea-chat.js';
 import { wireFeedbackForm } from './feedback.js';
 import { wireContentPlanView, refreshGate as refreshContentPlanGate } from './content-plan.js';
 import { wireConfirmDialog } from './confirm-dialog.js';
@@ -29,7 +29,6 @@ import {
 } from './push-notifications.js';
 import { showIosInstallOverlayIfNeeded } from './ios-install-overlay.js';
 
-// notification-admin.js / client-usage.js are real code, not stubs - they're
 // imported (and fetched over the network) only once we know the signed-in
 // user is the admin, since sendNotification stays admin-only
 // (see ADMIN_EMAIL checks in these files and in functions/index.js). For
@@ -39,17 +38,6 @@ import { showIosInstallOverlayIfNeeded } from './ios-install-overlay.js';
 // feature for every signed-in user (see hub-link-warming wiring below), so
 // it's imported statically at the top of this file like every other
 // everyday feature instead.
-let adminModulesPromise = null;
-function loadAdminModules() {
-  if (!adminModulesPromise) {
-    adminModulesPromise = Promise.all([
-      import('./notification-admin.js'),
-      import('./client-usage.js'),
-      import('./biduri-migration.js'),
-    ]);
-  }
-  return adminModulesPromise;
-}
 
 // Proactive check on load - see js/inapp-browser.js for the full picture,
 // including the reactive check in auth.js that catches what this misses.
@@ -181,7 +169,6 @@ if ('serviceWorker' in navigator) {
 
 const ADMIN_EMAIL = 'mayakislev@gmail.com';
 let unsubscribeIdeas = null;
-let adminModulesWired = false;
 
 const offlineBanner = document.getElementById('offline-banner');
 function updateOnlineStatus() {
@@ -357,10 +344,6 @@ document.getElementById('tab-home').addEventListener('click', () => showView('ho
 document.getElementById('tab-archive').addEventListener('click', () => showView('archive'));
 document.getElementById('home-progress-widget').addEventListener('click', () => showView('progress'));
 document.getElementById('progress-back-btn').addEventListener('click', () => showView('home'));
-document.getElementById('tab-chat').addEventListener('click', () => {
-  showView('chat');
-  startIdeaChat();
-});
 document.getElementById('tab-guide').addEventListener('click', () => showView('guide'));
 document.getElementById('tab-inspiration').addEventListener('click', () => {
   showView('inspiration');
@@ -373,10 +356,6 @@ document.getElementById('home-see-all-btn').addEventListener('click', () => show
 // "תכנית תוכן" collided in name with the separate AI content-plan-builder FAB.
 document.getElementById('open-roadmap-link-btn').addEventListener('click', () => showView('roadmap'));
 document.getElementById('open-content-plan-link-btn').addEventListener('click', () => showView('content-plan'));
-document.getElementById('hub-link-chat').addEventListener('click', () => {
-  showView('chat');
-  startIdeaChat();
-});
 document.getElementById('tab-feedback').addEventListener('click', () => showView('feedback'));
 // confirmed the signed-in user is the admin and the lazy-loaded module is
 // ready - see loadAdminModules() above. hub-link-warming is wired below,
@@ -410,9 +389,6 @@ document.getElementById('hub-link-content-plan-guide').addEventListener('click',
 // stays hidden (its own visibility is tied to the now-secondary embedded
 // guide view), this just fires the same click handler directly from the
 // hub's tools section.
-document.getElementById('hub-link-content-plan').addEventListener('click', () => {
-  document.getElementById('content-plan-open-builder-btn').click();
-});
 
 const viewTabsNav = document.getElementById('view-tabs');
 const menuOverlay = document.getElementById('menu-overlay');
@@ -457,10 +433,6 @@ viewTabsNav.querySelectorAll('.tab-btn').forEach((btn) => btn.addEventListener('
 
 document.getElementById('bottomnav-home').addEventListener('click', () => showView('home'));
 document.getElementById('bottomnav-archive').addEventListener('click', () => showView('archive'));
-document.getElementById('bottomnav-chat').addEventListener('click', () => {
-  showView('chat');
-  startIdeaChat();
-});
 document.getElementById('bottomnav-more').addEventListener('click', () => {
   const isOpen = viewTabsNav.classList.toggle('open');
   menuOverlay.hidden = !isOpen;
@@ -552,6 +524,20 @@ let portalHandoffPending = Boolean(portalHandoff);
 if (portalHandoff) {
   const splashText = document.getElementById('launch-splash-text');
   if (splashText) splashText.hidden = false;
+  /* 26/10/2026: ההבטחה הזאת הייתה היחידה בקובץ בלי catch. זריקה בתוך
+     המעבר מהפורטל השאירה את מסך הפתיחה על המסך ללא סוף ובלי מסך
+     התחברות - בדיוק התקלה שהבדיקה הזאת נכתבה בשבילה. */
+  const handoffFailed = () => {
+    portalHandoffPending = false;
+    if (auth.currentUser) return;
+    document.getElementById('launch-splash').hidden = true;
+    document.getElementById('login-screen').hidden = false;
+    const errorEl = document.getElementById('login-error');
+    errorEl.textContent = 'המעבר מהפורטל לא הצליח. אפשר להתחבר כאן עם גוגל, או לחזור לפורטל ולנסות שוב';
+    errorEl.hidden = false;
+    const back = document.getElementById('login-portal-back');
+    if (back) back.hidden = false;
+  };
   portalHandoff.then((result) => {
     portalHandoffPending = false;
     if (!result.ok && !auth.currentUser) {
@@ -564,6 +550,9 @@ if (portalHandoff) {
       const back = document.getElementById('login-portal-back');
       if (back) back.hidden = false;
     }
+  }).catch((err) => {
+    console.error('portalHandoff failed:', err);
+    handoffFailed();
   });
 }
 
@@ -725,38 +714,16 @@ onAuthChange(async (user) => {
      השיווקי אין צורך בכלל". התכונה היתה כבויה מאז 14/09 ועכשיו הוסרה
      לגמרי: המסך, הכפתור, js/script-chat.js, functions/script-system-prompt.js
      והפונקציה writeScript. לא היו תסריטים שמורים, ולכן לא אבד שום מידע. */
-  document.getElementById('send-notification-btn').hidden = !isAdmin;
+  /* 26/10/2026 (מאיה): "יש לי למטה בפורטל יותר מדי כפתורים". ירדו
+     שליחת התראה (קיימת באפליקציה השנייה), מעקב לקוחות (שם גם הוא),
+     והתאמת רעיונות "בידורי" (הרצה חד-פעמית שכבר רצה). נשארו שימוש
+     ב-AI וחוות דעת שהתקבלו. */
   document.getElementById('token-usage-btn').hidden = !isAdmin;
   document.getElementById('view-feedback-btn').hidden = !isAdmin;
-  document.getElementById('client-usage-btn').hidden = !isAdmin;
-  document.getElementById('biduri-migrate-btn').hidden = !isAdmin;
 
-  // onAuthChange can in principle fire more than once for the same
-  // signed-in session - the adminModulesWired guard keeps this a true
-  // one-time wire-up instead of risking duplicate event listeners on a
-  // second firing. Deliberately not awaited - this runs in the background
-  // so loading these admin-only modules never delays the view-restoration
-  // logic below, even for the admin's own account.
-  if (isAdmin && !adminModulesWired) {
-    adminModulesWired = true;
-    loadAdminModules().then(([notificationAdminModule, clientUsageModule, biduriModule]) => {
-      notificationAdminModule.wireNotificationAdmin();
-      clientUsageModule.wireClientUsageView();
-      document.getElementById('client-usage-btn').addEventListener('click', () => {
-        showView('client-usage');
-        clientUsageModule.loadClientUsage();
-      });
-      document.getElementById('client-usage-back-btn').addEventListener('click', () => showView('home'));
-      /* אחרון בכוונה: מסך זמני. אם משהו בו ייפול, התכונות הקבועות של
-         המנהלת כבר חוברו ולא יאבדו את המאזינים שלהן. */
-      biduriModule.wireBiduriMigration();
-    }).catch((err) => {
-      /* 03/10/2026 (בדיקה): בלי זה, ייבוא שנכשל הפך ל-unhandled rejection
-         בלי שום סימן, והדגל שנקבע למעלה מנע ניסיון נוסף. */
-      adminModulesWired = false;
-      console.error('loadAdminModules failed:', err);
-    });
-  }
+  /* 26/10/2026: שלושת הכפתורים שהמודולים האלה שירתו ירדו לבקשתה, ולכן
+     אין יותר מה לחבר כאן. המודולים עצמם נשארו בריפו ולא נמחקו, כדי
+     שאפשר יהיה להחזיר כפתור בלי לשחזר קוד. */
 
   const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent);
   const isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
@@ -781,9 +748,6 @@ onAuthChange(async (user) => {
   } else if (params.get('action') === 'add') {
     showView('archive');
     openAddModal();
-  } else if (params.get('view') === 'chat') {
-    showView('chat');
-    startIdeaChat();
   } else {
     const restorableViews = ['guide', 'inspiration', 'feedback', 'roadmap', 'content-plan', 'archive'];
     const lastView = getLastView();

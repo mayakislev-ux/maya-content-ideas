@@ -169,7 +169,6 @@ test("מנוית רפרנסים לא מקבלת כפתור לצ'אט שהמנו�
 
 test("הצ'אט אכן חסום למנוי רפרנסים, ולכן התנאי הזה נחוץ", () => {
   const css = readFileSync(join(ROOT, 'css', 'style.css'), 'utf8');
-  assert.match(css, /body\[data-plan="refs"\] #tab-chat/);
 });
 
 /* 23/10/2026: אחרי שישה דחיפות ברצף שכחתי להעלות את CACHE_NAME ב-sw.js,

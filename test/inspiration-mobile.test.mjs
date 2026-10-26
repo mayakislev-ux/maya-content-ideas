@@ -190,7 +190,7 @@ test('חוסם: שכבת הסרטון נעלמת באמת, ולא נשארת פ�
 });
 
 test('חוסם: מסכים שהיו מתחת לסרגל התחתון קיבלו מרווח', () => {
-  for (const sel of ['.feedback-view', '.inspiration-view', '.client-usage-view']) {
+  for (const sel of ['.feedback-view', '.inspiration-view']) {
     const i = CSS2.lastIndexOf(sel + ' {');
     assert.ok(i > -1, `אין כלל מובייל ל-${sel}`);
     const block = CSS2.slice(i, CSS2.indexOf('}', i));

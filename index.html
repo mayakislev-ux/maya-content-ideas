@@ -168,10 +168,6 @@
             <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
             <span>הרעיונות שלי</span>
           </button>
-          <button id="tab-chat" class="tab-btn">
-            <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-            <span>בדיקת רעיון</span>
-          </button>
           <button id="tab-guide" class="tab-btn">
             <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polygon points="15 9 13 13 9 15 11 11 15 9"/></svg>
             <span>מרכז למידה</span>
@@ -209,10 +205,6 @@
     <button type="button" id="bottomnav-archive" class="bottom-nav-btn" aria-label="הרעיונות שלי">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
       <span>רעיונות</span>
-    </button>
-    <button type="button" id="bottomnav-chat" class="bottom-nav-btn" aria-label="בדיקת רעיון">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-      <span>בדיקת רעיון</span>
     </button>
     <button type="button" id="bottomnav-more" class="bottom-nav-btn" aria-label="עוד">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
@@ -338,24 +330,7 @@
     <div class="stat-scroll" id="stat-scroll"></div>
   </main>
 
-  <main id="client-usage-view" class="view client-usage-view" hidden>
-    <button type="button" id="client-usage-back-btn" class="hub-back-btn">‹ חזרה</button>
-    <div class="client-usage-header-row">
-      <h2>👥 מעקב לקוחות</h2>
-      <button type="button" id="client-usage-refresh-btn" class="btn-text">🔄 רענון</button>
-    </div>
-    <p id="client-usage-status" class="client-usage-status"></p>
-    <div class="client-usage-controls">
-      <input type="search" id="client-usage-search" class="client-usage-search" placeholder="חיפוש לפי אימייל..." aria-label="חיפוש לקוחות לפי אימייל">
-      <div class="client-usage-sort-toggle">
-        <button type="button" id="client-usage-sort-oldest" class="client-usage-sort-btn client-usage-sort-active">מי לא התחברה מזמן</button>
-        <button type="button" id="client-usage-sort-recent" class="client-usage-sort-btn">התחברו לאחרונה</button>
-      </div>
-    </div>
-    <ul id="client-usage-list" class="client-usage-list"></ul>
-  </main>
-
-  <main id="chat-view" class="view" hidden>
+    <main id="chat-view" class="view" hidden>
     <div class="chat-toolbar">
       <h2 class="chat-view-title">🔍 בדיקת רעיון</h2>
       <button id="new-idea-btn" class="btn-text">🔄 רעיון חדש</button>
@@ -377,16 +352,6 @@
     <section class="hub-section">
       <h3 class="hub-section-title">🛠️ כלי עבודה</h3>
       <div class="hub-action-grid">
-        <button type="button" id="hub-link-chat" class="hub-action-card">
-          <span class="hub-action-icon">🔍</span>
-          <span class="hub-action-label">בדיקת רעיון</span>
-          <span class="hub-action-desc">בדקו אם הרעיון מספיק חזק</span>
-        </button>
-        <button type="button" id="hub-link-content-plan" class="hub-action-card">
-          <span class="hub-action-icon">📅</span>
-          <span class="hub-action-label">תוכנית תוכן</span>
-          <span class="hub-action-desc">בנו תכנית חודשית עם AI</span>
-        </button>
         <button type="button" id="hub-link-warming" class="hub-action-card">
           <span class="hub-action-icon">🔥</span>
           <span class="hub-action-label">חימום בסטורי</span>
@@ -716,7 +681,6 @@
 
   <button id="add-idea-fab" class="fab">+ הוסיפו רעיון</button>
   <button id="embed-back-btn" class="fab embed-back-btn" hidden>חזרה לאפליקציה</button>
-  <button id="content-plan-open-builder-btn" class="fab content-plan-open-builder-btn" hidden>בניית תכנית תוכן (AI)</button>
   <button id="scroll-top-btn" class="scroll-top-btn" hidden aria-label="חזרה לראש הרשימה">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg>
   </button>
@@ -725,11 +689,8 @@
     <button type="button" id="install-app-btn" class="btn-text install-app-btn" hidden>להתקין את האפליקציה</button>
     <p id="ios-install-hint" class="ios-install-hint" hidden>באייפון: כדי לקבל התראות צריך קודם להוסיף את האפליקציה למסך הבית - לחצי/לחץ על כפתור השיתוף בספארי, ואז "הוספה למסך הבית"</p>
     <button type="button" id="enable-notifications-btn" class="btn-text" hidden>הפעלת התראות</button>
-    <button type="button" id="send-notification-btn" class="btn-text" hidden>שליחת התראה (מנהלת)</button>
     <button type="button" id="token-usage-btn" class="btn-text" hidden>שימוש ב-AI (מנהלת)</button>
     <button type="button" id="view-feedback-btn" class="btn-text" hidden>חוות דעת שהתקבלו (מנהלת)</button>
-    <button type="button" id="client-usage-btn" class="btn-text" hidden>מעקב לקוחות (מנהלת)</button>
-    <button type="button" id="biduri-migrate-btn" class="btn-text" hidden>התאמת רעיונות "בידורי" (מנהלת)</button>
     <button type="button" id="open-policy-btn-app" class="btn-text policy-link">מדיניות פרטיות</button>
     <!-- 05/10/2026 (מאיה: "במובייל שום דבר לא התעדכן, לא יודעת"):
          בלי חותמת גלויה אי אפשר לדעת איזו גרסה פתוחה במכשיר, ושאלה
@@ -1029,60 +990,10 @@
   </div>
 </div>
 
-<div id="notification-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="notification-modal-title">
-  <div class="modal-content">
-    <h2 id="notification-modal-title">📣 שליחת התראה</h2>
-    <form id="notification-form">
-      <label>כותרת ההתראה
-        <input id="notification-title" type="text" required maxlength="60">
-      </label>
-      <label>תוכן ההודעה
-        <textarea id="notification-body" rows="3" required></textarea>
-      </label>
-      <label>למי לשלוח?
-        <select id="notification-target">
-          <option value="all">לכל המשתמשות שהפעילו התראות</option>
-          <option value="one">למייל ספציפי</option>
-        </select>
-      </label>
-      <label id="notification-email-row" hidden>מייל הלקוחה
-        <input id="notification-email" type="email">
-      </label>
-      <p id="notification-error" class="error-text" role="alert" hidden></p>
-      <p id="notification-success" class="feedback-success" hidden></p>
-      <div class="modal-actions">
-        <button type="button" id="notification-cancel-btn" class="btn-text">ביטול</button>
-        <button type="submit" class="btn-primary" id="notification-send-btn">שליחה</button>
-      </div>
-    </form>
-  </div>
-</div>
-
 <!-- 09/10/2026 (מאיה: "בעצם לכל הלקוחות להעיף בריעונות סינון לפי בידורי
      ופשוט להתאים לשאר סוגי התוכן"): הקטגוריה ירדה מהשיטה, והרעיונות שכבר
      מתויגים בה נשארו בלי לשונית סינון. המסך מתאים אותם, קודם כדוח ואחר כך
      בפועל. גלוי למאיה בלבד, כמו שאר כפתורי המנהלת. -->
-<div id="biduri-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="biduri-modal-title">
-  <div class="modal-content">
-    <h2 id="biduri-modal-title">🎭 התאמת רעיונות "בידורי"</h2>
-    <p class="field-subhint">הקטגוריה ירדה מהשיטה. כאן מתאימים את הרעיונות שכבר מתויגים בה לאחת משלוש הקטגוריות, דרך אותו מסווג שמסווג רעיון חדש.</p>
-    <div class="modal-actions biduri-actions">
-      <button type="button" id="biduri-report-btn" class="btn-primary">להציג דוח</button>
-      <button type="button" id="biduri-apply-btn" class="btn-primary" hidden>להחיל את ההתאמה</button>
-    </div>
-    <p id="biduri-status" class="field-subhint" role="status"></p>
-    <p id="biduri-summary" class="biduri-summary"></p>
-    <div id="biduri-list-wrap" hidden>
-      <ul id="biduri-list" class="biduri-list"></ul>
-    </div>
-    <p id="biduri-error" class="error-text" role="alert" hidden></p>
-    <div class="modal-actions">
-      <button type="button" id="biduri-undo-btn" class="btn-text">להחזיר אחורה</button>
-      <button type="button" id="biduri-close-btn" class="btn-text">סגירה</button>
-    </div>
-  </div>
-</div>
-
 <script type="module" src="js/app.js"></script>
 </body>
 </html>

@@ -1134,13 +1134,10 @@ export function wireContentPlanView() {
     }
   }
 
-  document.getElementById('content-plan-open-builder-btn').addEventListener('click', async () => {
-    pinnedIdeaIds = new Set();
-    updatePickIdeasBtnLabel();
-    refreshGate();
-    modal.hidden = false;
-    await refreshAudienceGate();
-  });
+  /* 26/10/2026 (מאיה): "תעיפי לגמרי את הכפתור של בניית תכנית תוכן AI,
+     זה לא מדויק ויש בלגן". הכפתור ירד מה-HTML, ולכן אין למה להאזין.
+     הלוגיקה נשארת בקובץ בכוונה: המדריך התיאורטי של תכנית תוכן נשאר
+     במרכז למידה, והחלון עצמו עדיין נפתח מכל מקום אחר שיקרא לו. */
 
   pickIdeasBtn.addEventListener('click', () => {
     resetPickIdeasFilters();

@@ -4,7 +4,6 @@ import { addQuickIdea, markIdeaCompleted, uncompleteIdea, deleteIdea, restoreIde
 import { showToast } from './toast.js';
 import { animateCountUp } from './count-up.js';
 import { burstConfetti } from './confetti.js';
-import { startIdeaChatWithExistingIdea } from './idea-chat.js';
 import { getProfile } from './user-profile.js';
 import { showView } from './view-router.js';
 
@@ -504,22 +503,6 @@ function renderItem(idea, onItemClick, index = 0) {
     });
   });
 
-  // Sends this exact idea straight into the "בדיקת רעיון" chat instead of
-  // needing to retype/copy-paste it there manually - and remembers which
-  // idea it came from, so finishing the chat updates this one directly
-  // instead of guessing by fuzzy title matching.
-  const recheckBtn = document.createElement('button');
-  recheckBtn.type = 'button';
-  recheckBtn.className = 'recheck-idea-btn';
-  recheckBtn.innerHTML = `${RECHECK_ICON_SVG}<span>זווית הנגשה</span>`;
-  recheckBtn.setAttribute('aria-label', 'מציאת זווית הנגשה לרעיון הזה בצ\'אט');
-  recheckBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    // showView('chat') moved inside startIdeaChatWithExistingIdea itself -
-    // it now confirms first when the idea already has a strong angle, and
-    // must NOT switch views if she cancels that confirmation.
-    startIdeaChatWithExistingIdea(idea);
-  });
 
   // Three genuinely different axes (what kind of idea / how strong / who
   // it's for) were all rendered as interchangeable pills - the rating had
@@ -576,7 +559,6 @@ function renderItem(idea, onItemClick, index = 0) {
   const actionsGroup = document.createElement('div');
   actionsGroup.className = 'archive-item-actions';
   actionsGroup.appendChild(copyBtn);
-  actionsGroup.appendChild(recheckBtn);
 
   if (idea.completedAt) {
     const undoBtn = document.createElement('button');

@@ -6277,11 +6277,9 @@ body { max-width: 100%; }
    ב-firestore.rules וב-enforceAllowlist בשרת.
    =================================================================== */
 body[data-plan="refs"] #tab-home,
-body[data-plan="refs"] #tab-chat,
 body[data-plan="refs"] #tab-guide,
 body[data-plan="refs"] #tab-feedback,
 body[data-plan="refs"] #bottomnav-home,
-body[data-plan="refs"] #bottomnav-chat,
 body[data-plan="refs"] #bottomnav-more,
 body[data-plan="refs"] #random-idea-btn,
 body[data-plan="refs"] #home-progress-widget,

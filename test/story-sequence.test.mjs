@@ -866,8 +866,15 @@ test('המטמון לא שומר תשובה שגויה, וכתיבה שנכשל�
 
 test('ההבטחות ב-app.js מוגנות', () => {
   const app = readFileSync(new URL('../js/app.js', import.meta.url), 'utf8');
-  assert.match(app, /loadAdminModules\(\)[\s\S]{0,2000}?\}\)\.catch\(/);
-  assert.match(app, /adminModulesWired = false;/, 'כישלון מאפשר ניסיון נוסף');
+  /* 26/10/2026: שלושת מודולי המנהלת שהטעינה העצלה שירתה הוסרו לבקשת
+     מאיה ("יש לי למטה בפורטל יותר מדי כפתורים"), ואיתם הטעינה עצמה.
+     מה שנשאר מהבדיקה הזאת הוא הכלל עצמו: אין ב-app.js הבטחה בלי catch. */
+  const unguarded = [...app.matchAll(/\.then\(/g)].filter((m) => {
+    const after = app.slice(m.index, m.index + 2500);
+    return !/\.catch\(/.test(after);
+  });
+  assert.deepEqual(unguarded.map((m) => app.slice(m.index - 40, m.index + 10)), [],
+    'יש ב-app.js הבטחה בלי catch');
   assert.match(app, /tourDone = await hasCompletedTour\(\);/);
   assert.match(app, /console\.error\('hasCompletedTour failed:'/);
 });
