@@ -7101,3 +7101,29 @@ body[data-plan="refs"] .view-tabs-scroll { justify-content: center; }
   font-size: 13px;
 }
 .cosmic-today-challenge__icon { font-size: 20px; flex: 0 0 auto; }
+
+/* 26/10/2026 (מאיה, בשם הבנות): "התסריטים לא נשמרים אוטומטית, צריך
+   להוסיף לשם כפתור נוח". השורה הזאת יושבת בתחתית כל מסך שיש בו תיבת
+   טקסט: היא אומרת מתי נשמר, ויש בה כפתור שמירה מיידי. שמירה שקטה בלי
+   שורה כזאת היא בדיוק מה שגרם להן לא להאמין שזה נשמר. */
+.va-save-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255,255,255,.14);
+}
+.va-save-bar__state {
+  font-size: 13.5px;
+  color: rgba(255,255,255,.72);
+  flex: 1;
+  min-width: 140px;
+}
+.va-save-bar__btn {
+  padding: 8px 16px;
+  font-size: 13.5px;
+  border-radius: 12px;
+}

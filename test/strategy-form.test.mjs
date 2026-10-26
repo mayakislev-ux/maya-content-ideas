@@ -14,10 +14,14 @@ const SRC = readFileSync(new URL('../functions/strategy-form.js', import.meta.ur
 test('השמירה קודמת לשליחות', () => {
   const save = SRC.indexOf("collection('strategyForms').add");
   const mail = SRC.indexOf('sendMail');
-  const wa = SRC.indexOf('notifyWhatsApp(');
+  /* 26/10/2026: הבדיקה חיפשה את שם הפונקציה ומצאה את ההגדרה שלה,
+     שיושבת למעלה בקובץ, ולכן נכשלה תמיד אף שהסדר בקוד תקין.
+     שער שנכשל מהסיבה הלא נכונה מלמד להתעלם ממנו. */
+  const wa = SRC.indexOf('await notifyWhatsApp(');
   assert.ok(save > 0 && mail > 0, 'שני השלבים קיימים');
   assert.ok(save < mail, 'שומרים לפני ששולחים מייל');
-  assert.ok(save < SRC.indexOf('notifyWhatsApp(\n') || save < wa, 'שומרים לפני הוואטסאפ');
+  assert.ok(wa > 0, 'הוואטסאפ אכן נשלח');
+  assert.ok(save < wa, 'שומרים לפני הוואטסאפ');
 });
 
 test('כישלון במייל לא מפיל את ההגשה', () => {

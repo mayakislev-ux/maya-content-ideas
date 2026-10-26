@@ -13,6 +13,7 @@
 // בפרומפטים, תיקון הפונט (900 היה כבד מדי לטקסט רץ), ניסוח בגוף פונה
 // לנשים וגברים, ומסך סיכום ברור בסוף שמראה בדיוק מה נעשה ומה נשאר.
 
+import { mountDrafts, clearScreenDrafts } from './video-assistant-drafts.js';
 import { INITIAL_STATE, nextStep } from './video-assistant-flow.js';
 import { pickIdea, pickReference } from './video-assistant-picker.js';
 import { buildDuplicationPrompt, buildReverseDuplicationPrompt, buildScriptPrompt } from './video-assistant-prompts.js';
@@ -78,7 +79,12 @@ function screenEl() {
 
 function dispatch(action) {
   resumedNotice = false;
+  const leaving = state.screen;
+  const drafts = state.drafts || {};
   state = nextStep(state, action);
+  /* מה שהוקלד במסך שעזבנו כבר הפך לסטייט אמיתי, ולכן הטיוטה שלו מיותרת.
+     אם היא תישאר, היא עלולה למלא מחדש תיבה שנוקתה בכוונה. */
+  state.drafts = state.screen === leaving ? drafts : clearScreenDrafts(drafts, leaving);
   saveSession(state).catch((err) => console.error('saveSession failed:', err));
   // 17/10/2026 (מאיה: "המעבר בין המסכים עושה סחרחורת"): מעבר הפורטל (#32)
   // הוסר - render ישיר, בלי אנימציית scale/blur בין מסכים.
@@ -178,7 +184,17 @@ function cosmicCard(innerHtml, { showProgress = true } = {}) {
   if (startOverBtn) startOverBtn.addEventListener('click', () => restart());
   scrollToCardTop();
   resetIdleTimer();
-  return document.getElementById('va-card');
+  const card = document.getElementById('va-card');
+  /* 26/10/2026: כל תיבת טקסט בכרטיס נשמרת תוך כדי כתיבה, חוזרת לעצמה
+     כשהמסך מצויר מחדש, ויש שורה שאומרת מתי נשמר. עד כאן הסשן נשמר רק
+     במעבר מסך, ולכן רענון באמצע כתיבה מחק את התסריט. */
+  mountDrafts(card, {
+    screen: state.screen,
+    getDrafts: () => state.drafts || {},
+    setDrafts: (d) => { state.drafts = d; },
+    save: () => saveSession(state),
+  });
+  return card;
 }
 
 function restart() {
