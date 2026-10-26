@@ -748,6 +748,10 @@ onAuthChange(async (user) => {
   } else if (params.get('action') === 'add') {
     showView('archive');
     openAddModal();
+  /* 26/10/2026: מפת הדרכים ליצירת תוכן מפנה לכאן מתוך השלבים עצמם,
+     ולכן צריך קישור ישיר שנוחת על העוזר ולא על מסך הבית. */
+  } else if (params.get('view') === 'video-assistant') {
+    showView('video-assistant');
   } else {
     const restorableViews = ['guide', 'inspiration', 'feedback', 'roadmap', 'content-plan', 'archive'];
     const lastView = getLastView();
