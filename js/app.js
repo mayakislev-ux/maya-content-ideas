@@ -28,6 +28,7 @@ import {
   showNotificationNudgeIfNeeded,
 } from './push-notifications.js';
 import { showIosInstallOverlayIfNeeded } from './ios-install-overlay.js';
+import { deepLinkView } from './deep-link.js';
 
 // imported (and fetched over the network) only once we know the signed-in
 // user is the admin, since sendNotification stays admin-only
@@ -749,9 +750,14 @@ onAuthChange(async (user) => {
     showView('archive');
     openAddModal();
   /* 26/10/2026: מפת הדרכים ליצירת תוכן מפנה לכאן מתוך השלבים עצמם,
-     ולכן צריך קישור ישיר שנוחת על העוזר ולא על מסך הבית. */
-  } else if (params.get('view') === 'video-assistant') {
-    showView('video-assistant');
+     ולכן צריך קישור ישיר שנוחת על העוזר ולא על מסך הבית.
+     27/10/2026: גם ה-SOS בפורטל עונה עכשיו "איפה העוזר/המאגר" בכפתור אחד,
+     ולכן הרשימה פתוחה גם למאגר ולמרכז הלמידה. רשימה סגורה ולא כל מסך,
+     כדי שקישור לא יפתח מסך שאין לה. */
+  } else if (deepLinkView(window.location.search)) {
+    const view = deepLinkView(window.location.search);
+    showView(view);
+    if (view === 'inspiration') openInspirationView();
   } else {
     const restorableViews = ['guide', 'inspiration', 'feedback', 'roadmap', 'content-plan', 'archive'];
     const lastView = getLastView();
