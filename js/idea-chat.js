@@ -9,7 +9,7 @@ import { addBubble, addThinkingBubble, addChoiceBubble, setBubbleText, playSucce
 import { wireVoiceInput } from './voice-input.js';
 /* 26/10/2026: פענוח התשובה חי במקום אחד, והעוזר ליצירת סרטון
    מייבא מאותו קובץ - אחרת הוא הציג את השורה הטכנית למשתמשת. */
-import { extractIdeaSummary, RECOGNIZED_MARKER } from './idea-reply.js';
+import { extractIdeaSummary, ideaTextOnly, RECOGNIZED_MARKER } from './idea-reply.js';
 import { burstConfetti } from './confetti.js';
 import { confirmDialog } from './confirm-dialog.js';
 import { updateIdea } from './ideas-store.js';
@@ -57,7 +57,7 @@ function parseSSEChunk(buffer, chunkText) {
 // 22/10/2026 (מאיה: "איפה הצ'אט AI בלייב?"): מיוצא כדי שהעוזר ליצירת
 // סרטון יוכל להריץ את אותו צ'אט בתוך המסך שלו, ולא לקפוץ ללשונית אחרת
 // ולא לשכפל מנוע שני. אותו שרת, אותו זרם, אותה התנהגות.
-export async function streamCheckIdea(messages, ideaProfile, onDelta) {
+export async function streamCheckIdea(messages, ideaProfile, onDelta, ideaContext = null) {
   // withTimeout (למעלה) כבר קיימת בדיוק בשביל "חיבור שנתקע בלי לפתור ובלי
   // לדחות" - אבל היא מעולם לא עטפה את הקריאה הזו. חיבור stream שנתקע (לא
   // סגור, פשוט שקט) לא היה נופל אף פעם, כי אין timeout על reader.read()
@@ -95,7 +95,7 @@ export async function streamCheckIdea(messages, ideaProfile, onDelta) {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${idToken}`,
       },
-      body: JSON.stringify({ messages, profile: ideaProfile }),
+      body: JSON.stringify({ messages, profile: ideaProfile, ideaContext }),
       signal: controller.signal,
     });
   } catch (err) {
@@ -171,6 +171,9 @@ let lastIdeaSummary = null;
 // relying on fuzzy title-matching (or asking via a confirm() dialog) to
 // guess which idea the finished chat belongs to.
 let editingIdeaId = null;
+/* 27/10/2026: הקטגוריה, שלב השכנוע ופילוח הקהל של הרעיון שנפתח מהמאגר.
+   עד היום נשלחה רק הכותרת, והצ'אט ניחש מאפס אם זה תוכן אישי או עסקי. */
+let pendingIdeaContext = null;
 // The idea text to auto-send as the first message once the chat is ready
 // (profile loaded, onboarding done if needed) - set by
 // startIdeaChatWithExistingIdea, consumed by greetAndAskForIdea.
@@ -245,6 +248,8 @@ function resetChat() {
   lastIdeaSummary = null;
   editingIdeaId = null;
   pendingIdeaToCheck = null;
+  // ההקשר שייך לרעיון שנפתח מהמאגר בלבד, ולא נגרר לשיחה הבאה
+  pendingIdeaContext = null;
   messagesEl().innerHTML = '';
   greetAndAskForIdea();
 }
@@ -292,7 +297,10 @@ function greetAndAskForIdea() {
     sendIdeaMessage(text);
     return;
   }
-  const registerVerb = profile.pronoun === 'אתה' ? 'רשום' : 'רשמי';
+  /* 27/10/2026: ברירת המחדל כאן הייתה נקבה, ולכן המשפט הראשון שגבר בלי
+     פרופיל ראה היה בלשון נקבה - בדיוק מה שתוקן בצד השרת. כשלא ידוע,
+     צורה כפולה. */
+  const registerVerb = profile.pronoun === 'אתה' ? 'רשום' : (profile.pronoun === 'את' ? 'רשמי' : 'רשמ/י');
   addBubble(
     messagesEl(),
     `${profile.name ? `${profile.name}, ` : ''}${registerVerb} לי מה הרעיון שלך ואדייק אותך.\n\n💡 טיפ: אם קשה לך להמציא רעיון מ-0 (וזה רוב האנשים!) - הכי מומלץ להתחיל משכפול רעיון וזווית הנגשה שראית ברשת ומצאו חן בעיניך. ככה לא צריך לשבור את הראש על רעיון חדש, לא צריך לחשוב לבד איך לצלם כי הפורמט כבר מוכח, וזה גם עוזר לפתח הבנה שיווקית של מה עובד. מדריך מלא לשכפול תוכן: https://docs.google.com/document/d/16E3UA0ukElNLcxHT_5C84XrWUZJ3iN0AVPD4BiNphx8/edit?tab=t.0`,
@@ -349,7 +357,7 @@ async function sendIdeaMessage(text) {
         // clearing it immediately would blank that out before anything
         // has even started streaming.
         if (attempt > 1) setBubbleText(thinkingBubble, '');
-        finalReply = await streamCheckIdea(history, profile, onDelta(liveTextRef));
+        finalReply = await streamCheckIdea(history, profile, onDelta(liveTextRef), pendingIdeaContext);
         break;
       } catch (err) {
         const hasHebrewText = /[֐-׿]/.test(err.message || '');
@@ -468,7 +476,11 @@ export async function startIdeaChatWithExistingIdea(idea) {
   // קודם עובדה (מה הזווית הקיימת, ושהיא כן נחשבת חזקה) ורק אז שואלים -
   // לא קופצים ישר ל"בטוח/ה?" בלי הקשר, כי לחיצה על הכפתור לא הייתה בטעות
   // אלא החלטה מודעת שצריך מידע כדי להעריך.
-  const angleMatch = (idea.title || '').match(/זווית:\s*([^|]+)/);
+  //
+  // 27/10/2026: הביטוי חיפש "זווית:" בלבד, והמשתמשות כותבות ביד "זווית
+  // הנגשה:". בנתונים האמיתיים זה 59 רעיונות מול 250: ל-250 הדיאלוג הזה
+  // לא קפץ מעולם, והכותרת נשלחה לצ'אט כמו שהיא כולל שורות הפורמט והזווית.
+  const angleMatch = (idea.title || '').match(/זווית(?:\s*הנגשה)?\s*:\s*([^|\n]+)/);
   const angleText = angleMatch ? angleMatch[1].trim() : '';
   if (angleText) {
     const proceed = await confirmDialog(
@@ -485,7 +497,14 @@ export async function startIdeaChatWithExistingIdea(idea) {
   history = [];
   lastIdeaSummary = null;
   editingIdeaId = idea.id;
-  pendingIdeaToCheck = idea.title;
+  pendingIdeaToCheck = ideaTextOnly(idea.title);
+  /* הקטגוריה כבר מתויגת על הרעיון. בלי לשלוח אותה, רעיון אישי נבדק
+     כאילו הוא תוכן בעל ערך ונשאל "מה הבעיה שזה פותר". */
+  pendingIdeaContext = {
+    category: idea.category || '',
+    persuasionStage: idea.persuasionStage || '',
+    audienceScope: idea.audienceScope || '',
+  };
   messagesEl().innerHTML = '';
 
   if (started && profile) {
@@ -519,6 +538,12 @@ export function wireIdeaChat() {
   document.getElementById('edit-profile-btn').addEventListener('click', () => {
     messagesEl().innerHTML = '';
     draftProfile = {};
+    /* המסך מתנקה, ולכן גם מה שמאחוריו: בלי זה ההקשר של הרעיון הקודם
+       (והעריכה שלו) נגרר לשיחה שנראית חדשה לגמרי. */
+    history = [];
+    editingIdeaId = null;
+    pendingIdeaContext = null;
+    lastIdeaSummary = null;
     startOnboarding();
   });
 

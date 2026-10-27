@@ -12,6 +12,9 @@ import {
   CATEGORY_DEFINITIONS,
   PERSUASION_STAGE_DEFINITIONS,
   categoryColorVar,
+  categoryIcon,
+  canonicalAngle,
+  ANGLE_NAMES,
   filterIdeas,
   validateIdea,
   pickRandomIdea,
@@ -29,13 +32,55 @@ test('CATEGORIES are the three the plan is built from', () => {
 });
 
 test('a legacy בידורי idea is still valid, so nothing disappears', () => {
-  assert.deepEqual(LEGACY_CATEGORIES, ['בידורי']);
-  assert.deepEqual(ALL_CATEGORIES, ['בעל ערך', 'אישי', 'מכירתי', 'בידורי']);
+  assert.deepEqual(LEGACY_CATEGORIES, ['בידורי', 'ערכי']);
+  assert.deepEqual(ALL_CATEGORIES, ['בעל ערך', 'אישי', 'מכירתי', 'בידורי', 'ערכי']);
   const errors = validateIdea({
     title: 'רעיון ישן', category: 'בידורי',
     rating: '🔥 חייב לצלם', audienceScope: 'עיקרי',
   });
   assert.deepEqual(errors, [], 'a saved בידורי idea can no longer be edited');
+});
+
+/* 27/10/2026: 15 רעיונות אמיתיים במאגר מתויגים 'ערכי', קטגוריה שלא הייתה
+   קיימת בקוד. הם נפלו באימות, ונפלו מכל סינון ומכל ספירה. */
+test('גם קטגוריית ערכי ההיסטורית עוברת אימות ומקבלת צבע ואייקון', () => {
+  const errors = validateIdea({
+    title: 'רעיון ישן', category: 'ערכי',
+    rating: '🔥 חייב לצלם', audienceScope: 'עיקרי',
+  });
+  assert.deepEqual(errors, []);
+  assert.ok(categoryIcon('ערכי'), 'בלי אייקון היא נראית שבורה בטבלה');
+  assert.doesNotMatch(categoryColorVar('ערכי'), /default/, 'בלי צבע היא נבלעת');
+});
+
+/* 27/10/2026: שם הזווית נשמר על הרעיון בלי שאיש יבדוק שהוא קיים בבנק.
+   כל הדוגמאות כאן הן מהמאגר האמיתי. */
+test('שם זווית מתוקן לשם שבבנק, ומה שלא קיים לא מומצא', () => {
+  assert.equal(ANGLE_NAMES.length, 31);
+  assert.equal(canonicalAngle('אתגר קושי שעברתי'), 'אתגר/קושי שעברתי');
+  assert.equal(canonicalAngle('הצגת השירות'), 'הצגת השירות/המוצר');
+  assert.equal(canonicalAngle('הומור '), 'הומור על הנישה');
+  assert.equal(canonicalAngle('טעות נפוצה'), 'טעות נפוצה');
+  assert.equal(canonicalAngle('שיחה'), null, 'זווית שלא קיימת לא מתורגמת בכוח');
+  assert.equal(canonicalAngle(''), null);
+});
+
+/* הצורות האלה הן בדיוק איך שהזוויות כתובות בבנק השלישי שבקוד
+   (js/video-assistant-content.js), כלומר הדרך הכי סבירה שהמודל יכתוב. */
+test('גם לוכסן עם רווחים ומקף עברי מתאימים לבנק', () => {
+  assert.equal(canonicalAngle('מיתוס / אמונה מגבילה'), 'מיתוס/אמונה מגבילה');
+  assert.equal(canonicalAngle('עדות / המלצה'), 'עדות/המלצה');
+  assert.equal(canonicalAngle('ערך / עיקרון אישי'), 'ערך/עיקרון אישי');
+  assert.equal(canonicalAngle('תובנה מהיום־יום'), 'תובנה מהיום-יום');
+});
+
+/* ההתאמה החלקית נשמרת על הרעיון של המשתמשת והיא רואה אותה, ולכן ניחוש
+   לא חד-משמעי גרוע מלהשאיר את מה שנכתב. */
+test('התאמה חלקית מעורפלת לא הופכת לזווית אחרת', () => {
+  assert.equal(canonicalAngle('סיפור'), null, 'סיפור לקוח או סיפור אישי?');
+  assert.equal(canonicalAngle('טעות'), null, 'טעות נפוצה או טעות בבחירת פתרון?');
+  assert.equal(canonicalAngle('ב'), null);
+  assert.equal(canonicalAngle('ה'), null);
 });
 
 test('PERSUASION_STAGES has the 3 expected stages', () => {

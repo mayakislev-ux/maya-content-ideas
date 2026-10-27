@@ -364,7 +364,10 @@ function checkBankGaps(readyIdeas) {
 function checkAngleCoverage(readyIdeas) {
   const total = readyIdeas.length;
   if (!total) return null;
-  const withAngle = readyIdeas.filter((idea) => (idea.title || '').includes('זווית:')).length;
+  /* 27/10/2026: הספירה חיפשה "זווית:" בלבד. הצ'אט אכן כותב כך, אבל
+     המשתמשות כותבות ביד "זווית הנגשה:" - ובנתונים האמיתיים זה 59 מול
+     250, כלומר הניקוד הציג בערך 5% במקום בערך 27%. */
+  const withAngle = readyIdeas.filter((idea) => /זווית(?:\s*הנגשה)?\s*:/.test(idea.title || '')).length;
   const actual = pct(withAngle, total);
   return { label: `כיסוי זווית הנגשה במאגר: ${Math.round(actual * 100)}%`, ok: actual >= 0.5 };
 }

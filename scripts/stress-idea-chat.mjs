@@ -38,13 +38,13 @@ const MALE = { name: 'יואב', pronoun: 'אתה', business: 'אימון כוש
 
 const CASES = [
   // ---------- תוכן אישי. זה מה שמאיה ביקשה לשים לב אליו ----------
-  { id: 'personal-trip', kind: 'אישי', profile: FULL, real: true,
+  { id: 'personal-trip', kind: 'אישי', profile: FULL, real: true, context: { category: 'אישי', audienceScope: 'רחב' },
     idea: '21 ימים של טיול גרמו לי להבין משהו שלא הבנתי בחודשיים. לפעמים צריך להתרחק מהשגרה כדי להבין',
     must: 'לא לדרוש שזה יתחבר לבעיה של הקהל או למה שהיא מוכרת. תוכן אישי נועד לאמון וחיבור, לא לפתרון בעיה' },
-  { id: 'personal-anxiety', kind: 'אישי רגיש', profile: FULL, real: true,
+  { id: 'personal-anxiety', kind: 'אישי רגיש', profile: FULL, real: true, context: { category: 'אישי', audienceScope: 'רחב' },
     idea: 'כמעט סגרתי את העסק בגלל חרדה חברתית',
     must: 'לא לשפוט אותה, לא לדחוף אותה לחשוף יותר ממה שהיא רוצה, ולא להפוך את זה לטיפ עסקי' },
-  { id: 'personal-partner', kind: 'אישי', profile: FULL, real: true,
+  { id: 'personal-partner', kind: 'אישי', profile: FULL, real: true, context: { category: 'אישי', audienceScope: 'רחב' },
     idea: 'הדבר הכי חשוב שלמדתי על בחירת בן זוג',
     must: 'לא לפסול כי זה לא קשור לריסים. זוגיות היא חלק מוגדר מקטגוריית אישי' },
   { id: 'personal-wedding', kind: 'אישי', profile: FULL, real: true,
@@ -79,7 +79,7 @@ const CASES = [
   { id: 'listicle', kind: 'רשימה', profile: FULL,
     idea: '3 סימנים שהקוסמטיקאית שלך לא מקצועית',
     must: 'לזהות כרעיון, לא לשאול אם זו שאלה' },
-  { id: 'sales', kind: 'מכירתי', profile: FULL,
+  { id: 'sales', kind: 'מכירתי', profile: FULL, context: { category: 'מכירתי', audienceScope: 'עיקרי' },
     idea: 'למה אני לא מוכרת חבילות של 10 טיפולים',
     must: 'להתייחס לזה כתוכן מכירתי לגיטימי' },
   { id: 'provocative', kind: 'דעה', profile: FULL,
@@ -169,7 +169,7 @@ for (const c of list) {
   try {
     reply = await anthropic({
       model: MODEL, max_tokens: 8192,
-      system: buildSystemPrompt(c.profile),
+      system: buildSystemPrompt(c.profile, c.context || null),
       messages: [{ role: 'user', content: c.idea }],
     });
   } catch (e) { err = String(e.message).slice(0, 200); }

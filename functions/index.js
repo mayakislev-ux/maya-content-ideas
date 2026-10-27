@@ -23,7 +23,9 @@ const { buildContentPlanPrompt } = require('./content-plan-system-prompt');
 const { buildStorySequencePrompt, checkSequence } = require('./story-sequence-prompt');
 const { parseSequence } = require('./story-sequence-parse');
 const { fetchExtraContentLinks, fetchSheetTabs, sheetsServiceAccountKey } = require('./sheets-content');
-const { CATEGORIES, PERSUASION_STAGES, CATEGORY_DEFINITIONS, PERSUASION_STAGE_DEFINITIONS } = require('./ideas-constants');
+const {
+  CATEGORIES, LEGACY_CATEGORIES, PERSUASION_STAGES, CATEGORY_DEFINITIONS, PERSUASION_STAGE_DEFINITIONS,
+} = require('./ideas-constants');
 const { buildDomainGuessPrompt, parseDomainGuess } = require('./video-assistant-domain-prompt');
 const {
   FORMAT_TAGS, FORMAT_TAG_DEFINITIONS,
@@ -156,16 +158,49 @@ async function incrementRateLimit(uid, fnName) {
   });
 }
 
+/* 27/10/2026: הסימן ל"כבר הצענו זוויות" היה קיומם של "1." ו-"2." ו-"3."
+   בתשובה. אבל הפרומפט עצמו מורה, כשמשתמשת תקועה, לתת לה 2-3 ניחושים
+   ממוספרים - כלומר ההודעה שנועדה לעזור לה אפסה את המונה, ומכסת שתי
+   שאלות ההבהרה יכלה להישבר בלי סוף. שלב ב' הוא תמיד חמש זוויות, ולכן
+   הסימן הוא פריט מספר 5, או אחד המרקרים של סוף התהליך. */
+/* ההקשר של רעיון שנפתח מהמאגר, אחרי סינון. שלושת השדות הם רשימות
+   סגורות שהמערכת עצמה כותבת, וכל ערך אחר נזרק: הם נכנסים ישירות לפרומפט
+   המערכת, ובדיקת האורך של השיחה לא מודדת אותם. */
+const AUDIENCE_SCOPES = ['עיקרי', 'משני', 'רחב'];
+function pickIdeaContext(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const pick = (value, allowed) => (allowed.includes(value) ? value : '');
+  const out = {
+    category: pick(raw.category, [...CATEGORIES, ...LEGACY_CATEGORIES]),
+    persuasionStage: pick(raw.persuasionStage, PERSUASION_STAGES),
+    audienceScope: pick(raw.audienceScope, AUDIENCE_SCOPES),
+  };
+  return out.category || out.persuasionStage || out.audienceScope ? out : null;
+}
+
 function countClarifyingRepliesSinceLastAngles(messages) {
   let count = 0;
   for (let i = messages.length - 1; i >= 0; i--) {
     const msg = messages[i];
     if (msg.role !== 'assistant') continue;
     const content = msg.content || '';
+    /* ספירת פריטי רשימה אמיתיים. הסימן הקודם ("1." וגם "2." וגם "3."
+       בטקסט) לא פספס אף פעם אבל תפס גם 2-3 ניחושים ממוספרים, והסימן
+       שבא במקומו חייב לא לפספס: אם שלב ב' לא מזוהה, ההנחיה הדחופה
+       "עברי עכשיו ל-5 זוויות" נדחפת גם בשלב ג' ו-ד', אחרי שכבר נבחרה
+       זווית. לכן כאן כל צורות הכתיבה: 1. / 1) / **1.** / ### 1. /
+       1️⃣ / - 1. */
+    const numbered = new Set();
+    for (const line of content.split('\n')) {
+      const m = /^\s*(?:[-*#>\s]*)(?:\*\*)?\s*([1-5])\s*(?:[.)⃣]|️⃣)/.exec(line);
+      if (m) numbered.add(m[1]);
+    }
+    const fiveNumbered = numbered.size >= 4 && numbered.has('5');
     const reachedStageBOrLater =
       content.includes('[[RECOGNIZED_EXCELLENT]]') ||
+      content.includes('[[IDEA_SUMMARY]]') ||
       content.includes('מפת-דרכים-ליצירת-תוכן') ||
-      (content.includes('1.') && content.includes('2.') && content.includes('3.'));
+      fiveNumbered;
     if (reachedStageBOrLater) break;
     count++;
   }
@@ -807,7 +842,12 @@ exports.checkIdea = onRequest(
     }
 
     const profile = (req.body && req.body.profile) || null;
-    let systemPrompt = buildSystemPrompt(profile);
+    /* הרעיון נפתח מתוך המאגר: הקטגוריה, שלב השכנוע ופילוח הקהל כבר
+       מתויגים עליו, ועד היום נשלחה רק הכותרת והם נזרקו.
+       שלושתם רשימות סגורות, ומה שלא בהן נזרק: הערכים האלה נכנסים ישר
+       לפרומפט המערכת, ו-assertMessagesWithinLimit מודד רק את ההודעות. */
+    const ideaContext = pickIdeaContext(req.body && req.body.ideaContext);
+    let systemPrompt = buildSystemPrompt(profile, ideaContext);
 
     if (countClarifyingRepliesSinceLastAngles(messages) >= 2) {
       systemPrompt += '\n\n⚠️ הנחיה דחופה: כבר נשלחו 2 הודעות הבהרה או יותר על הרעיון הנוכחי בשיחה הזו. אסור לשאול שום שאלת הבהרה נוספת - חובה לעבור עכשיו, בהודעה הזו, ישירות לשלב ב\' (5 זוויות הנגשה) על סמך מה שכבר ידוע, גם אם זה לא מושלם. אם הרעיון כבר ברור מספיק, אפשר גם [[RECOGNIZED_EXCELLENT]] אם זה מתאים.';

@@ -12,9 +12,11 @@
  * לא רק מסדר - זה מה שהופך את "אותו צ'אט בול" לנכון מבנית ולא להצהרה:
  * אין שתי גרסאות שאפשר לסחוף אחת מהשנייה.
  *
- * בלי שום ייבוא בכוונה, כדי שאפשר יהיה להריץ את זה ישירות בבדיקות -
- * idea-chat.js מייבא מ-CDN ולכן לא ניתן לייבוא ב-node.
+ * הייבוא היחיד כאן הוא ideas-logic.js, שהוא קבועים ופונקציות טהורות
+ * ונטען כבר היום ישירות בבדיקות node. idea-chat.js, לעומת זאת, מייבא
+ * מ-CDN ולכן עדיין לא ניתן לייבוא כאן.
  */
+import { canonicalAngle } from './ideas-logic.js';
 
 export const SUMMARY_MARKER = '[[IDEA_SUMMARY]]';
 export const RECOGNIZED_MARKER = '[[RECOGNIZED_EXCELLENT]]';
@@ -32,9 +34,15 @@ export function extractIdeaSummary(reply) {
   // תמיד הדבר האחרון בתשובה, וחיתוך ב-"\n" הראשון היה משבש בשקט שדה
   // שמכיל ירידת שורה (למשל תמצית הסיפור).
   const rawTail = reply.slice(markerIndex + SUMMARY_MARKER.length).trim();
-  const [idea, angle, story] = rawTail.split('||').map((part) => (part || '').trim());
+  const [idea, rawAngle, story] = rawTail.split('||').map((part) => (part || '').trim());
 
   if (!idea) return { visibleReply, summary: null };
+
+  /* 27/10/2026: שם הזווית נשמר על הרעיון בלי שאף אחד יבדוק שהוא בכלל
+     קיים בבנק ה-31. בנתונים אמיתיים יש "אתגר קושי שעברתי" בלי הלוכסן,
+     "הצגת השירות" בלי "/המוצר", ואפילו "שיחה" שלא קיימת. כשיש התאמה
+     לבנק נשמר השם המדויק, וכשאין - נשמר מה שנכתב, בלי להמציא. */
+  const angle = rawAngle ? (canonicalAngle(rawAngle) || rawAngle) : rawAngle;
 
   let composedTitle = idea;
   if (angle) composedTitle += ` | זווית: ${angle}`;
@@ -49,4 +57,29 @@ export function stripRecognized(reply) {
   return text.startsWith(RECOGNIZED_MARKER)
     ? { text: text.slice(RECOGNIZED_MARKER.length).trimStart(), recognized: true }
     : { text, recognized: false };
+}
+
+/* הטקסט של הרעיון בלבד, בלי השורות הטכניות שנכתבות על הכותרת.
+   בנתונים אמיתיים כותרת נראית כך:
+     "למחוק את זה vs לפרסם את זה\nפורמט:דיבור למצלמה\nזווית הנגשה:השוואה"
+   ועד היום כל הבלוק הזה נשלח לצ'אט כאילו הוא הרעיון, כולל שם הזווית
+   שכבר נבחרה - בדיוק מה שהצ'אט אמור למצוא עכשיו מחדש. */
+export function ideaTextOnly(title) {
+  const raw = String(title || '');
+  const text = raw
+    /* קו אנכי צמוד לשורה טכנית הוא מפריד ("רעיון|זווית: השוואה"), אבל קו
+       אנכי בתוך הטקסט עצמו הוא טקסט - במאגר יש "תקועה בהכנסות|בפניות
+       כבר שנה". לכן רק קו שאחריו מילת מפתח הופך למפריד. */
+    .replace(/\s*\|\s*(?=(?:\*\s*)?(?:זווית|פורמט|סיפור)(?:\s*הנגשה)?\s*:)/g, '\n')
+    .split(/\n/)
+    .filter((part) => !/^\s*(?:\*\s*)?(?:זווית(?:\s*הנגשה)?|פורמט(?:\s*הנגשה)?|סיפור)\s*:/.test(part))
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .join('\n')
+    .trim();
+  /* כותרת שכולה שורה טכנית ("זווית הנגשה:השוואה" ותו לא) הייתה מתרוקנת,
+     והצ'אט היה נפתח בלי הרעיון בכלל בזמן ש-editingIdeaId כבר מצביע על
+     הרעיון הזה - כלומר ההודעה הבאה של המשתמשת הייתה דורסת לו את הכותרת.
+     במקרה כזה עדיף לשלוח את הכותרת כמו שהיא. */
+  return text || raw.trim();
 }
