@@ -745,6 +745,10 @@ exports.getClientUsageStats = onCall({ region: 'us-central1', timeoutSeconds: 60
 // לא-קשורות שחיות באותו ריפו/functions - ראו grow-payment-webhook.js וכו').
 // לכן האימות כאן ידני (verifyIdToken) במקום האימות האוטומטי של onCall, וה-
 // CORS מוגבל במפורש למקור האמיתי שהאפליקציה מוגשת ממנו.
+// תקציב החשיבה הפנימית של הצ'אט. 1024 הוא המינימום שה-API מקבל, וזה בדיוק
+// מה שרצוי כאן: די כדי לעבור על 31 הזוויות, בלי עשרים שניות של מסך ריק.
+const CHECK_IDEA_THINKING_BUDGET = 1024;
+
 exports.checkIdea = onRequest(
   // ללא timeoutSeconds מפורש זה נופל לברירת המחדל (60 שניות) - אישור אמיתי
   // מלוגים (2026-08-05): "Truncated response body... request timed out"
@@ -815,23 +819,50 @@ exports.checkIdea = onRequest(
     let firstTextMs = null;
     let stopReason = null;
 
+    /* 27/10/2026 (מאיה): "הצ'אט של דיוק זווית ההגשה לרעיון קצת איטי, יש דרך
+       למהר אותו?". הלוגים של אותה שיחה עצמה אומרים בדיוק לאן הולך הזמן:
+
+         fullTextChars 1058 | outputTokens 2384 | firstThinkingMs 692 |
+         firstTextMs 22294  | streamMs 34382
+
+       כלומר בלוק החשיבה נפתח אחרי 0.7 שניות, והאות הראשונה שמאיה ראתה על
+       המסך הגיעה רק אחרי 22. מתוך 2384 טוקנים של פלט, הטקסט שהיא ראתה הוא
+       בערך 350 - כל השאר חשיבה פנימית שאף אחד לא רואה. בהודעה קצרה בלי
+       חשיבה (אותו לוג, 161 טוקנים) האות הראשונה הגיעה אחרי 717 אלפיות.
+
+       לכן תקציב חשיבה קטן: מספיק כדי לבחור זוויות, בלי 20 שניות של מסך
+       ריק. הסטרימינג כבר קיים, אז ברגע שהטקסט מתחיל הוא נראה מיד.
+
+       הנפילה לאחור קיימת כי אי אפשר היה לבדוק את הקריאה הזו מול ה-API
+       מהמחשב של מאיה (המפתח הוא secret): אם הפרמטר לא מתקבל, הבקשה
+       נשלחת שוב בלעדיו ונשארת ההתנהגות של היום במקום צ'אט שבור. */
+    const requestBody = (thinkingBudget) => JSON.stringify({
+      model: 'claude-sonnet-5',
+      max_tokens: 8192,
+      ...(thinkingBudget ? { thinking: { type: 'enabled', budget_tokens: thinkingBudget } } : {}),
+      system: cachedText(systemPrompt),
+      messages: withCacheControl(messages),
+      stream: true,
+    });
+
+    const callAnthropicStream = (body) => fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': anthropicApiKey.value(),
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+      },
+      body,
+    });
+
     let anthropicResponse;
     try {
-      anthropicResponse = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'x-api-key': anthropicApiKey.value(),
-          'anthropic-version': '2023-06-01',
-          'content-type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'claude-sonnet-5',
-          max_tokens: 8192,
-          system: cachedText(systemPrompt),
-          messages: withCacheControl(messages),
-          stream: true,
-        }),
-      });
+      anthropicResponse = await callAnthropicStream(requestBody(CHECK_IDEA_THINKING_BUDGET));
+      if (anthropicResponse.status === 400) {
+        const errText = await anthropicResponse.text().catch(() => '');
+        console.warn('checkIdea: thinking budget rejected, retrying without it:', errText);
+        anthropicResponse = await callAnthropicStream(requestBody(null));
+      }
     } catch (err) {
       console.error('checkIdea: network error calling Anthropic API:', err);
       res.set('Content-Type', 'text/event-stream');
