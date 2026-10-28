@@ -424,3 +424,11 @@ test('רעיון רגיל עדיין עובר בבדיקת רלוונטיות ו
   const s = nextStep({ ...INITIAL_STATE, screen: 'type-idea' }, { type: 'IDEA_TYPED', text: 'רעיון' });
   assert.equal(s.screen, 'relevance-check');
 });
+
+test('28/10: הנושא והפואנטה נשמרים בנפרד, והפואנטה היא הרעיון שממשיך', () => {
+  const s = nextStep({ ...INITIAL_STATE, screen: 'idea-sharpen', branch: 'scratch', ideaDescription: 'החלקה' },
+    { type: 'IDEA_SHARPENED', idea: 'החלקה שורפת מבפנים', topic: 'החלקה', punchline: 'החלקה שורפת מבפנים' });
+  assert.equal(s.ideaDescription, 'החלקה שורפת מבפנים');
+  assert.equal(s.ideaTopic, 'החלקה');
+  assert.equal(s.ideaPunchline, 'החלקה שורפת מבפנים');
+});

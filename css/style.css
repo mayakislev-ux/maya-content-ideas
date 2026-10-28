@@ -7251,3 +7251,15 @@ body[data-plan="refs"] .view-tabs-scroll { justify-content: center; }
   color: #ffd23f;
 }
 .va-megillah-meter--ok { color: #7dffb0; }
+
+/* 28/10/2026 (מאיה): הפואנטה היא "הסעיף הכי קריטי" במסך הרעיון, ולכן
+   היא נראית כזו: תווית מלאה במקום חצי שקופה, ומסגרת בצבע הזוהר של המסך. */
+.va-punch-label {
+  opacity: 1;
+  font-size: 15px;
+  margin-top: 14px;
+}
+.va-punch-box {
+  border: 2px solid var(--cosmic-glow, #ff2ea8);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--cosmic-glow, #ff2ea8) 35%, transparent);
+}

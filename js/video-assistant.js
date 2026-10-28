@@ -1260,7 +1260,9 @@ function renderIdeaSharpen() {
      הציגה את הרעיון הישן בעוד שהצ'אט דיבר על מה שהוקלד - בדיוק
      ה"לא קולט את הרעיון שלי" שמאיה דיווחה עליו. */
   const draft = (state.drafts || {})['idea-sharpen|va-idea-sharp'];
-  const idea = (draft !== undefined ? draft : (state.ideaDescription || ''));
+  const idea = (draft !== undefined ? draft : (state.ideaTopic || state.ideaDescription || ''));
+  const punchDraft = (state.drafts || {})['idea-sharpen|va-idea-punch'];
+  const punch = (punchDraft !== undefined ? punchDraft : (state.ideaPunchline || ''));
   /* 28/10/2026: אותו מסך משרת עכשיו גם קטע שצולם. שם זה לא "רעיון
      לסרטון" אלא המסר שבונים סביב חומר שכבר קיים, ולכן הכותרת והדוגמה
      מדברות על הקטע. אותו צ'אט, אותו מנוע. */
@@ -1272,14 +1274,19 @@ function renderIdeaSharpen() {
       ? 'הקטע כבר צולם, אבל מה שאומרים סביבו נכתב רק עכשיו. משפט מדויק כאן הוא מה שהופך חומר גלם לסרטון שמישהי עוצרת בשבילו.'
       : 'רעיון מדויק הוא ההבדל בין סרטון שמדבר למישהי אחת לבין סרטון שמדבר לכולן ולא לאף אחת.'}</p>
     <ol class="cosmic-howto">
-      <li>${forFootage ? 'לכתוב בתיבה מה המסר של הקטע כמו שהוא עכשיו, גם אם הוא גולמי.' : 'לכתוב בתיבה את הרעיון כמו שהוא עכשיו, גם אם הוא גולמי.'}</li>
+      <li>${forFootage ? 'לכתוב בתיבה מה המסר של הקטע כמו שהוא עכשיו, גם אם הוא גולמי.' : 'לכתוב על מה הסרטון, ומתחת את הפואנטה: מה הם צריכים לצאת איתו.'}</li>
       ${refsOnly ? '' : '<li>ללחוץ על "לחדד את הרעיון" והוא ילחץ עליו ויציע ניסוח חד יותר.</li><li>ניסוח שמוצא חן, לחיצה אחת מעבירה אותו לתיבה.</li>'}
     </ol>
 
-    <label class="cosmic-field-label" for="va-idea-sharp">${forFootage ? 'המסר שלי' : 'הרעיון שלי'}</label>
-    <textarea class="cosmic-textarea" id="va-idea-sharp" style="min-height:96px"
-      placeholder="${forFootage ? 'למשל: למה אני עובדת עם מכשיר אחד ולא עם שלושה' : 'למשל: למה החלקה שורפת את השיער, ומה עושים במקום'}">${escapeHtml(idea)}</textarea>
-    <p class="cosmic-hint">זה ${forFootage ? 'המסר' : 'הרעיון'} שימשיך לכל השלבים הבאים. מה שכתוב כאן הוא מה שקובע.</p>
+    <label class="cosmic-field-label" for="va-idea-sharp">${forFootage ? 'המסר שלי' : 'על מה הסרטון'}</label>
+    <textarea class="cosmic-textarea" id="va-idea-sharp" style="min-height:${forFootage ? 96 : 64}px"
+      placeholder="${forFootage ? 'למשל: למה אני עובדת עם מכשיר אחד ולא עם שלושה' : 'למשל: החלקה לשיער'}">${escapeHtml(idea)}</textarea>
+    ${forFootage
+      ? '<p class="cosmic-hint">זה המסר שימשיך לכל השלבים הבאים. מה שכתוב כאן הוא מה שקובע.</p>'
+      : `<label class="cosmic-field-label va-punch-label" for="va-idea-punch">⭐ הפואנטה: מה המסר? עם מה הם יוצאים מהסרטון?</label>
+    <textarea class="cosmic-textarea va-punch-box" id="va-idea-punch" style="min-height:96px"
+      placeholder="למשל: החלקה שורפת את השיער מבפנים גם כשהוא נראה מבריק, ויש דרך להחליק בלי לשלם על זה">${escapeHtml(punch)}</textarea>
+    <p class="cosmic-hint">זה החלק הכי חשוב. סרטון בלי פואנטה הוא נושא, לא סרטון. הפואנטה היא מה שממשיך לכל השלבים הבאים.</p>`}
 
     ${refsOnly ? '<p class="cosmic-hint">הצ\'אט לחידוד רעיון אינו כלול במנוי הרפרנסים.</p>' : `
       <div class="cosmic-btn-row" style="margin-top:4px">
@@ -1300,14 +1307,34 @@ function renderIdeaSharpen() {
   `);
 
   const box = document.getElementById('va-idea-sharp');
+  /* 28/10/2026 (מאיה): "חייב עוד סעיף שהוא הכי קריטי - מה הפואנטה של
+     הסרטון? מה המסר? ואז הפואנטה הופכת להיות הרעיון, ורק אז הצ'אט".
+     בלי מסך נוסף: הפואנטה יושבת באותו מסך, מתחת לנושא. היא חובה, הצ'אט
+     מחדד אותה, והניסוח שלו נכנס לתיבה שלה. מה שממשיך הלאה הוא הפואנטה,
+     עם הנושא לצידה רק אם היא לא מזכירה אותו בעצמה. */
+  const punchBox = forFootage ? null : document.getElementById('va-idea-punch');
+  const targetBox = punchBox || box;
+  function mainIdea() {
+    const topic = box.value.trim();
+    if (!punchBox) return topic;
+    const p = punchBox.value.trim();
+    return topic && !p.includes(topic) ? `${p}. נושא הסרטון: ${topic}` : p;
+  }
   document.getElementById('va-idea-next-btn').addEventListener('click', () => {
-    const text = box.value.trim();
+    if (punchBox && !punchBox.value.trim()) {
+      showToast('חסרה הפואנטה: מה הם צריכים לצאת איתו מהסרטון?');
+      punchBox.focus();
+      return;
+    }
+    const text = mainIdea();
     if (!text) {
       showToast(forFootage ? 'קודם לכתוב את המסר בתיבה' : 'קודם לכתוב את הרעיון בתיבה');
       box.focus();
       return;
     }
-    dispatch({ type: 'IDEA_SHARPENED', idea: text });
+    dispatch(punchBox
+      ? { type: 'IDEA_SHARPENED', idea: text, topic: box.value.trim(), punchline: punchBox.value.trim() }
+      : { type: 'IDEA_SHARPENED', idea: text });
   });
   if (refsOnly) return;
 
@@ -1345,10 +1372,10 @@ function renderIdeaSharpen() {
     use.className = 'cosmic-btn va-chat-use';
     use.textContent = '✓ להשתמש בניסוח הזה';
     use.addEventListener('click', () => {
-      box.value = picked;
-      box.dispatchEvent(new Event('input', { bubbles: true }));
-      box.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      showToast('הרעיון עודכן בתיבה');
+      targetBox.value = picked;
+      targetBox.dispatchEvent(new Event('input', { bubbles: true }));
+      targetBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      showToast(punchBox ? 'הפואנטה עודכנה בתיבה' : 'הרעיון עודכן בתיבה');
     });
     bubble.appendChild(use);
   }
@@ -1400,15 +1427,28 @@ function renderIdeaSharpen() {
   /* הצ'אט תמיד מדבר על מה שכתוב בתיבה ברגע הלחיצה, ולא על ערך שנתפס
      כשהמסך צויר. זו הייתה התקלה: הוא שאל על רעיון אחד בזמן שבתיבה
      כבר היה רעיון אחר. */
-  function currentIdea() { return box.value.trim(); }
+  function currentIdea() {
+    if (!punchBox) return box.value.trim();
+    return `הנושא: ${box.value.trim()} | הפואנטה: ${punchBox.value.trim()}`;
+  }
 
   const ASK_TAIL = ' ללחוץ על הרעיון הזה ולדייק אותו: האם הוא חד מספיק לקהל שלי, או רחב מדי? '
     + 'אם הוא רחב, להגיד לי במה בדיוק. '
     + 'ולסיים תמיד בשורה אחרונה אחת בפורמט המדויק הזה, בלי שום תוספת אחריה: '
     + 'הניסוח המדויק: <הרעיון מנוסח מחדש במשפט אחד>';
+  /* הפואנטה היא הלב, ולכן הניסוח שחוזר הוא המסר עצמו ולא כותרת של נושא. */
+  const PUNCH_TAIL = ' הפואנטה היא הלב של הסרטון: לבדוק קודם כל אותה. האם יש בה מסר אחד ברור שהצופה יוצא איתו, או שזה עדיין נושא כללי בלי עמדה? '
+    + 'אם אין בה מסר, להגיד לי מה חסר ולהציע מסר חד. '
+    + 'ולסיים תמיד בשורה אחרונה אחת בפורמט המדויק הזה, בלי שום תוספת אחריה: '
+    + 'הניסוח המדויק: <הפואנטה מנוסחת מחדש במשפט אחד, כולל הנושא, כמסר שהצופה יוצא איתו>';
 
   function openChat() {
-    const idea0 = currentIdea();
+    if (punchBox && punchBox.value.trim().length < 8) {
+      showToast('קודם לכתוב את הפואנטה: מה הם צריכים לצאת איתו מהסרטון?');
+      punchBox.focus();
+      return;
+    }
+    const idea0 = punchBox ? punchBox.value.trim() : currentIdea();
     if (idea0.length < 8) {
       showToast(forFootage
         ? 'לכתוב קודם את המסר במשפט, כדי שיהיה על מה ללחוץ'
@@ -1424,7 +1464,7 @@ function renderIdeaSharpen() {
        מציע לצלם מחדש או לשנות נושא - עצה שאין מה לעשות איתה. */
     ask(forFootage
       ? `יש לי קטע שכבר צילמתי, והמסר שאני רוצה לבנות סביבו: "${idea0}". החומר כבר קיים ואי אפשר לצלם אותו מחדש, לכן הדיוק הוא בניסוח של המסר ולא בצילום.${ASK_TAIL}`
-      : `הרעיון שלי לסרטון: "${idea0}".${ASK_TAIL}`);
+      : `הנושא של הסרטון: "${box.value.trim()}". הפואנטה, מה שהצופה צריך לצאת איתו: "${idea0}".${PUNCH_TAIL}`);
   }
 
   function send() {
@@ -1433,7 +1473,7 @@ function renderIdeaSharpen() {
     addBubble(messagesEl, text, 'user');
     input.value = '';
     /* הרעיון שבתיבה נוסע עם כל הודעה, כדי שהוא לא יאבד אותו תוך כדי. */
-    ask(`${text}\n\n(הרעיון שבתיבה שלי כרגע: "${currentIdea()}")`);
+    ask(`${text}\n\n(${punchBox ? 'מה שבתיבות שלי כרגע' : 'הרעיון שבתיבה שלי כרגע'}: "${currentIdea()}")`);
   }
 
   /* אותו מיקרופון של הלשונית, אותה פונקציה. בטלפון זה ההבדל בין לענות

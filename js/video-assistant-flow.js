@@ -225,7 +225,13 @@ function step(state, action) {
       if (state.branch === 'footage') {
         return { ...state, screen: 'format-choice', formatFor: 'idea', ideaDescription: sharpened };
       }
-      return { ...state, screen: 'content-basics', ideaDescription: sharpened };
+      /* 28/10/2026: הנושא והפואנטה נשמרים גם בנפרד, כדי שחזרה למסך
+         תציג כל אחד בתיבה שלו ולא את המשפט המשולב בתיבת הנושא. */
+      return {
+        ...state, screen: 'content-basics', ideaDescription: sharpened,
+        ideaTopic: action.topic ?? state.ideaTopic ?? null,
+        ideaPunchline: action.punchline ?? state.ideaPunchline ?? null,
+      };
     }
     /* שלבים 2 ו-3 במסמך: נקודת היציאה וסוג התוכן. שניהם נכנסים לפרומפט
        חילוץ התוכן, ולכן הם נשמרים במצב ולא נכתבים מחדש ביד בכל פעם. */

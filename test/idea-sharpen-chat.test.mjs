@@ -125,7 +125,7 @@ describe('הערכים זהים למסמך', () => {
 describe('הצ׳אט מדבר על מה שכתוב בתיבה, ורק עליו', () => {
   test('הצ׳אט קורא את התיבה ברגע הלחיצה, ולא ערך שנתפס מראש', () => {
     assert.match(SHARPEN, /function currentIdea\(\)/, 'אין קריאה חיה של התיבה');
-    assert.match(SHARPEN, /`הרעיון שלי לסרטון: "\$\{idea0\}"/, 'השאלה הפותחת לא מהתיבה');
+    assert.match(SHARPEN, /הפואנטה, מה שהצופה צריך לצאת איתו: "\$\{idea0\}"/, 'השאלה הפותחת לא מהתיבה');
     /* 28/10/2026: אותו מסך משרת גם קטע שצולם, ושם הפתיחה אחרת - אבל
        גם היא חייבת לקרוא את התיבה החיה ולא ערך קפוא. */
     assert.match(SHARPEN, /המסר שאני רוצה לבנות סביבו: "\$\{idea0\}"/, 'בקטע שצולם הפתיחה לא מהתיבה');
@@ -160,15 +160,15 @@ describe('אותו מסך, שני מסלולים', () => {
   const tplTo = SHARPEN.indexOf('\n  `);', tplFrom);
   const render = (forFootage) => {
     assert.ok(tplTo > tplFrom, 'לא נמצאה תבנית המסך');
-    const build = new Function('forFootage', 'refsOnly', 'escapeHtml', 'idea',
+    const build = new Function('forFootage', 'refsOnly', 'escapeHtml', 'idea', 'punch',
       'return `' + SHARPEN.slice(tplFrom, tplTo) + '`');
-    return build(forFootage, false, (s) => s, 'הרעיון הגולמי שלי');
+    return build(forFootage, false, (s) => s, 'הרעיון הגולמי שלי', 'הפואנטה הגולמית שלי');
   };
 
   test('רעיון מ-0: הכותרת, התווית והדוגמה על הרעיון', () => {
     const html = render(false);
     assert.match(html, /<h2>הרעיון שלך, במשפט אחד<\/h2>/);
-    assert.match(html, /placeholder="למשל: למה החלקה שורפת/);
+    assert.match(html, /placeholder="למשל: החלקה שורפת/);
     assert.ok(html.includes('הרעיון הגולמי שלי'), 'הרעיון לא נכנס לתיבה');
     assert.ok(!html.includes('${'), 'נשארה אינטרפולציה לא פתורה');
   });
@@ -193,7 +193,7 @@ describe('אותו מסך, שני מסלולים', () => {
 describe('ברור מה עושים כאן', () => {
   test('יש שלושה צעדים כתובים בראש המסך', () => {
     assert.match(SHARPEN, /cosmic-howto/, 'אין הסבר מה עושים');
-    assert.match(SHARPEN, /לכתוב בתיבה את הרעיון/, 'הצעד הראשון לא כתוב');
+    assert.match(SHARPEN, /לכתוב על מה הסרטון, ומתחת את הפואנטה/, 'הצעד הראשון לא כתוב');
   });
 
   test('כתוב במפורש שהתיבה היא מה שקובע', () => {
@@ -203,7 +203,7 @@ describe('ברור מה עושים כאן', () => {
   test('לתיבה יש תווית ודוגמה', () => {
     assert.match(SHARPEN, /cosmic-field-label/, 'לתיבה אין תווית');
     /* שתי דוגמאות: אחת לרעיון מ-0, ואחת למסר של קטע שצולם. */
-    assert.match(SHARPEN, /'למשל: למה החלקה שורפת/, 'לתיבה אין דוגמה');
+    assert.match(SHARPEN, /placeholder="למשל: החלקה שורפת/, 'לפואנטה אין דוגמה');
     assert.match(SHARPEN, /'למשל: למה אני עובדת עם מכשיר אחד/, 'לקטע שצולם אין דוגמה משלו');
   });
 
@@ -292,4 +292,35 @@ test('אין שתי גרסאות של פענוח התשובה', () => {
     assert.ok(!/function extractIdeaSummary/.test(src), `${name} מחזיק עותק משלו`);
     assert.ok(!/const SUMMARY_MARKER =/.test(src), `${name} מחזיק עותק של המרקר`);
   }
+});
+
+/* 28/10/2026 (מאיה): "חייב עוד סעיף שהוא הכי קריטי - מה הפואנטה של
+   הסרטון? מה המסר? ואז הפואנטה הופכת להיות הרעיון, ורק אז הצ'אט".
+   "מפחדת שזה עומס של שלבים" - ולכן זה שדה באותו מסך, לא מסך חדש. */
+describe('הפואנטה: הסעיף הכי קריטי', () => {
+  const tplFrom = SHARPEN.indexOf('cosmicCard(`') + 'cosmicCard(`'.length;
+  const tplTo = SHARPEN.indexOf('\n  `);', tplFrom);
+  const render = (forFootage) => new Function('forFootage', 'refsOnly', 'escapeHtml', 'idea', 'punch',
+    'return `' + SHARPEN.slice(tplFrom, tplTo) + '`')(forFootage, false, (s) => s, 'נושא', 'הפואנטה שלי');
+
+  test('ברעיון מ-0 יש שדה פואנטה באותו מסך, ובקטע שצולם אין', () => {
+    assert.ok(render(false).includes('id="va-idea-punch"'), 'אין שדה פואנטה');
+    assert.ok(render(false).includes('הפואנטה שלי'), 'הפואנטה לא חוזרת לתיבה');
+    assert.ok(!render(true).includes('va-idea-punch'), 'בקטע שצולם המסר כבר קיים, אין צורך בשדה נוסף');
+  });
+
+  test('בלי פואנטה לא ממשיכים ולא פותחים צ׳אט', () => {
+    assert.match(SHARPEN, /חסרה הפואנטה/, 'אפשר להמשיך בלי פואנטה');
+    assert.match(SHARPEN, /punchBox\.value\.trim\(\)\.length < 8/, 'הצ׳אט נפתח בלי פואנטה');
+  });
+
+  test('הניסוח מהצ׳אט נכנס לתיבת הפואנטה, והיא מה שממשיך', () => {
+    assert.match(SHARPEN, /const targetBox = punchBox \|\| box/);
+    assert.match(SHARPEN, /targetBox\.value = picked/);
+    assert.match(SHARPEN, /IDEA_SHARPENED', idea: text, topic: /);
+  });
+
+  test('לפואנטה יש עיצוב שמבליט אותה', () => {
+    assert.match(CSS, /\.va-punch-box\s*\{/);
+  });
 });
