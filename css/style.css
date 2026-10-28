@@ -7338,3 +7338,44 @@ body[data-plan="refs"] .view-tabs-scroll { justify-content: center; }
 .va-more summary::-webkit-details-marker { display: none; }
 .va-more summary::after { content: '▾'; text-decoration: none; display: inline-block; }
 .va-more[open] summary::after { content: '▴'; }
+
+/* 28/10/2026 (מאיה: "אני אוהבת הכי את מה שיש עכשיו, רק לשנות קצת את
+   הנוחות ושיהיה ברור יותר"). אותו עיצוב קוסמי, בלי שינוי צבעים או מבנה.
+   מה שמשתנה הוא הקריאות:
+   - הכל היה ממורכז, כולל תוויות מעל תיבות שנכתבות מימין. עכשיו הכרטיס
+     קורא מימין לשמאל, ורק הכותרת והשורה שמתחתיה במרכז.
+   - טקסט ותוויות היו 12.5-14 פיקסל בשקיפות 65%-85% על רקע כהה. עכשיו
+     הם גדולים ובהירים מספיק לקריאה בטלפון.
+   - כפתור ההעתקה הוא הפעולה העיקרית בכל מסך של פרומפט, ונראה כמו כל
+     כפתור משני. עכשיו הוא בולט, עם אייקון, ואומר על עצמו שהועתק.
+   - רשימת הפורמטים נגללה בתוך הדף שנגלל. גלילה אחת מספיקה. */
+.cosmic-card { text-align: right; }
+.cosmic-card h2 { text-align: center; }
+.cosmic-card h2 + p,
+.cosmic-card h2 + .cosmic-lede { text-align: center; }
+.cosmic-card p,
+.cosmic-lede { font-size: 15.5px; opacity: .92; line-height: 1.6; }
+.cosmic-field-label { font-size: 15px; font-weight: 700; opacity: 1; margin-top: 18px; }
+.cosmic-progress__label { font-size: 13px; opacity: .85; }
+.cosmic-hint { font-size: 13.5px; opacity: .82; }
+.cosmic-textarea::placeholder { color: rgba(255,255,255,.55); }
+.cosmic-chip-row { justify-content: flex-start; }
+.va-more summary { justify-content: flex-start; }
+.cosmic-accordion { max-height: none; overflow: visible; }
+.va-copy-btn {
+  width: 100%;
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 16px;
+  background: rgba(255,255,255,.1);
+  border: 1.5px solid var(--cosmic-glow, #ff2ea8);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--cosmic-glow, #ff2ea8) 35%, transparent);
+}
+.va-copy-btn.is-copied {
+  background: #1f8f5a;
+  border-color: #1f8f5a;
+  box-shadow: none;
+}

@@ -38,3 +38,12 @@ test('השורות שנפתחות וקישור ההגרלה בגובה אצבע'
   assert.match(CSS, /\.va-text-link \{ min-height: 44px/);
   assert.match(CSS, /\.va-more summary \{ min-height: 44px/);
 });
+
+// 28/10/2026 (מאיה: "אוהבת את מה שיש עכשיו, רק נוח וברור יותר")
+test('אותו עיצוב, קריא יותר: יישור לימין, טקסט גדול, כפתור העתקה בולט', () => {
+  assert.match(CSS, /\.cosmic-card \{ text-align: right; \}/);
+  assert.match(CSS, /\.cosmic-field-label \{ font-size: 15px; font-weight: 700; opacity: 1;/);
+  assert.match(CSS, /\.va-copy-btn \{/);
+  assert.match(SRC, /class="cosmic-btn va-copy-btn"/);
+  assert.match(SRC, /הועתק ✓ עכשיו להדביק/);
+});

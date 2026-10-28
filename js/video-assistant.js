@@ -863,7 +863,7 @@ function promptPeek(html) {
 }
 
 function copyBtn(text, label) {
-  return `<button type="button" class="cosmic-btn" data-copy-text="${encodeURIComponent(text)}">${label}</button>`;
+  return `<button type="button" class="cosmic-btn va-copy-btn" data-copy-text="${encodeURIComponent(text)}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"></rect><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"></path></svg><span>${label}</span></button>`;
 }
 
 function wireCopyButtons(root) {
@@ -873,6 +873,15 @@ function wireCopyButtons(root) {
       try {
         await navigator.clipboard.writeText(text);
         showToast('הועתק ✓');
+        /* 28/10/2026: הטוסט נעלם מהר ולא תמיד נראה בטלפון. הכפתור עצמו
+           אומר שהועתק, ואז חוזר לעצמו, כדי שיהיה ברור שאפשר להדביק. */
+        const span = btn.querySelector('span');
+        if (span && !btn.classList.contains('is-copied')) {
+          const label = span.textContent;
+          btn.classList.add('is-copied');
+          span.textContent = 'הועתק ✓ עכשיו להדביק';
+          setTimeout(() => { btn.classList.remove('is-copied'); span.textContent = label; }, 2200);
+        }
       } catch {
         showToast('לא הצלחתי להעתיק - לסמן ידנית');
       }
