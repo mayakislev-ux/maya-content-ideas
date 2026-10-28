@@ -7321,3 +7321,20 @@ body[data-plan="refs"] .view-tabs-scroll { justify-content: center; }
 }
 .va-more[open] summary { margin-bottom: 8px; }
 .va-prompt-peek { margin: 10px 0 4px; }
+
+/* 28/10/2026, בדיקת מובייל אחרי הפישוט:
+   - שרשרת ה-DNA נתנה את הרווח שמתחת לפס. בלעדיה הכותרת נצמדה לפס.
+   - שורת השלב נמתחת לכל הרוחב, וכפתור החזרה (36 פיקסל בפינה) יושב
+     בדיוק בגובה שלה. בטלפון צר שלב ארוך נכנס מתחתיו.
+   - קישור ההגרלה ושורות "לראות את הפרומפט" / "יש סרטון שעבד?" היו
+     בגובה 22-25 פיקסל. אצבע צריכה 44. */
+.cosmic-liquid-bar { margin-bottom: 18px; }
+.cosmic-progress__label { padding: 0 44px; }
+.va-text-link { min-height: 44px; padding: 0; }
+.va-more summary { min-height: 44px; display: flex; align-items: center; justify-content: center; padding: 0; }
+/* display:flex מעלים את המשולש של details בכרום, ובספארי הוא נשאר.
+   סימן אחיד משלנו, כדי שבכל טלפון יהיה ברור שהשורה נפתחת. */
+.va-more summary { list-style: none; gap: 6px; }
+.va-more summary::-webkit-details-marker { display: none; }
+.va-more summary::after { content: '▾'; text-decoration: none; display: inline-block; }
+.va-more[open] summary::after { content: '▴'; }

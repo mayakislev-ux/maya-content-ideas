@@ -28,3 +28,13 @@ test('הפרומפטים סגורים מאחורי שורה אחת, וכפתור
   assert.ok(!/<div class="cosmic-prompt-box"[^>]*>\$\{highlightPlaceholders/.test(SRC), 'נשאר פרומפט פתוח');
   assert.ok((SRC.match(/promptPeek\(/g) || []).length >= 7, 'לא כל הפרומפטים עברו');
 });
+
+// בדיקת מובייל אחרי הפישוט (28/10/2026)
+const CSS = readFileSync(join(ROOT, 'css', 'style.css'), 'utf8');
+test('חזרה מצביעה ימינה, כי "ממשיכים ←" מצביע שמאלה (RTL)', () => {
+  assert.match(SRC, /aria-label="חזרה אחורה">→<\/button>/);
+});
+test('השורות שנפתחות וקישור ההגרלה בגובה אצבע', () => {
+  assert.match(CSS, /\.va-text-link \{ min-height: 44px/);
+  assert.match(CSS, /\.va-more summary \{ min-height: 44px/);
+});

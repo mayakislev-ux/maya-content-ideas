@@ -139,7 +139,7 @@ function progressHtml() {
 
 function backButtonHtml() {
   return state.history.length
-    ? `<button type="button" class="cosmic-back-btn" id="va-back-btn" aria-label="חזרה אחורה">←</button>`
+    ? `<button type="button" class="cosmic-back-btn" id="va-back-btn" aria-label="חזרה אחורה">→</button>`
     : '';
 }
 
