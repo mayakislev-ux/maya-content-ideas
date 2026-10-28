@@ -227,20 +227,30 @@ function step(state, action) {
     // שלב 0 (חדש, 22/10): זווית ההגשה. בלי זווית אין מה לכתוב.
     /* הרעיון שיוצא מהצ'אט הוא הרעיון שממשיך הלאה. אם לא שינתה אותו,
        נשאר מה שהיה. צ'אט שלא משנה כלום במצב הוא קישוט. */
+    /* 28/10/2026 (מאיה): "אני כותבת את הרעיון, מזקקת פואנטה/מסר, ואז
+       מוצאת עם ג'מיני את האריזה הקריאייטיבית... ואז בוחרת את פורמט
+       ההנגשה, וכותבת תסריט". אחרי המסר מגיעה האריזה, בשני המסלולים. */
     case 'IDEA_SHARPENED': {
       const sharpened = (action.idea && action.idea.trim()) || state.ideaDescription;
-      /* 28/10/2026: בקטע שצולם אין נקודת יציאה וסוג תוכן לבחור - הם
-         נקבעו בצילום עצמו. משם ישר לפורמט, כמו שהיה עד היום. */
-      if (state.branch === 'footage') {
-        return { ...state, screen: 'format-choice', formatFor: 'idea', ideaDescription: sharpened };
-      }
-      /* 28/10/2026: הנושא והפואנטה נשמרים גם בנפרד, כדי שחזרה למסך
-         תציג כל אחד בתיבה שלו ולא את המשפט המשולב בתיבת הנושא. */
+      /* הנושא והפואנטה נשמרים גם בנפרד, כדי שחזרה למסך תציג כל אחד
+         בתיבה שלו ולא את המשפט המשולב בתיבת הנושא. */
       return {
-        ...state, screen: 'content-basics', ideaDescription: sharpened,
+        ...state, screen: 'creative-packaging', ideaDescription: sharpened, ideaBeforePackaging: null,
         ideaTopic: action.topic ?? state.ideaTopic ?? null,
         ideaPunchline: action.punchline ?? state.ideaPunchline ?? null,
       };
+    }
+    /* הכיוון שבחרה מתוך ה-30 נשמר בנפרד, ונוסע עם הרעיון לכל הפרומפטים
+       שאחריו, כדי שההוק והתסריט ייכתבו לפי האריזה ולא לפי הרעיון הגולמי. */
+    case 'PACKAGING_CHOSEN': {
+      const packaging = (action.packaging && action.packaging.trim()) || null;
+      const base = state.ideaBeforePackaging || state.ideaDescription;
+      const ideaDescription = packaging ? `${base}. האריזה הקריאייטיבית: ${packaging}` : base;
+      const next = { ...state, packaging, ideaBeforePackaging: base, ideaDescription };
+      /* בקטע שצולם אין נקודת יציאה וסוג תוכן לבחור - הם נקבעו בצילום
+         עצמו. משם ישר לפורמט, כמו שהיה עד היום. */
+      if (state.branch === 'footage') return { ...next, screen: 'format-choice', formatFor: 'idea' };
+      return { ...next, screen: 'content-basics' };
     }
     /* שלבים 2 ו-3 במסמך: נקודת היציאה וסוג התוכן. שניהם נכנסים לפרומפט
        חילוץ התוכן, ולכן הם נשמרים במצב ולא נכתבים מחדש ביד בכל פעם. */

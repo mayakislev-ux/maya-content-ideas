@@ -86,3 +86,16 @@ export function buildScriptPrompt({ hook, herWords, originalScript, domain, audi
 ולסיפור. שים לב, תהיה חכם ואל תשמיט פרטים קריטיים. והכי חשוב? תשמור על
 השפה והמילים שלי!!!!!!`;
 }
+
+// 28/10/2026 (מאיה): "זהו הצ'אט בתכלס זה הזווית הקריאייטיבית, אבל הוא
+// לא מתקרב לרמה של הג'מיני". התהליך שלה: רעיון ← מסר ← אריזה
+// קריאייטיבית עם ג'מיני ← פורמט ← תסריט. זה הפרומפט שהיא כותבת לג'מיני,
+// מילה במילה. רק המשתנים מתמלאים.
+export function buildCreativePackagingPrompt({ domain, audience, idea }) {
+  const domainText = domain && domain.trim() ? domain.trim() : '[התחום שלי]';
+  const audienceText = audience && audience.trim() ? audience.trim() : '[הקהל שלי]';
+  return `התחום שלי זה: ${domainText}
+קהל היעד שלי זה: ${audienceText}
+זה הרעיון שלי לתוכן והמסר: ${idea}
+אני רוצה שתמצא לי 30 פורמטי הנגשה לסרטון הזה לרשתות החברתיות`;
+}

@@ -154,17 +154,11 @@ test('תצוגת לקוחה פתוחה רק למאיה', () => {
 /* 22/10/2026: העוזר ליצירת סרטון כלול במנוי הרפרנסים, הצ'אט לא.
    כפתור שמוביל לכלי שהמנוי לא כולל הוא כפתור שבור.
    26/10/2026: המסך שינה שם מ-renderAngleCheck ל-renderIdeaSharpen. */
-test("מנוית רפרנסים לא מקבלת כפתור לצ'אט שהמנוי שלה לא כולל", () => {
+/* 28/10/2026: הצ'אט ירד מהעוזר ליצירת סרטון (במקומו פרומפט האריזה
+   הקריאייטיבית לג'מיני), ולכן אין במסך שום דבר שהמנוי לא כולל. */
+test("בעוזר ליצירת סרטון אין צ'אט, ולכן אין מה לחסום למנוי רפרנסים", () => {
   const va = readFileSync(join(ROOT, 'js', 'video-assistant.js'), 'utf8');
-  const from = va.indexOf('function renderIdeaSharpen()');
-  const to = va.indexOf('function renderContentBasics()', from);
-  const block = va.slice(from, to);
-  assert.ok(from > 0 && to > from, 'מסך חידוד הרעיון לא נמצא');
-  assert.ok(block.includes("document.body.dataset.plan === 'refs'"), 'אין בדיקת סוג מנוי');
-  assert.ok(block.includes('${refsOnly ?'), "הצ'אט לא מותנה בסוג המנוי");
-  assert.ok(block.includes('if (refsOnly) return;'), "הקוד של הצ'אט רץ גם למנוי שלא כולל אותו");
-  assert.ok(block.includes('streamCheckIdea('), "הצ'אט לא מריץ את המנוע האמיתי");
-  assert.ok(!block.includes('showView('), "הצ'אט עדיין מקפיץ ללשונית אחרת במקום לרוץ במקום");
+  assert.ok(!va.includes('streamCheckIdea('), "הצ'אט חזר לעוזר, וצריך שוב לחסום אותו למנוי רפרנסים");
 });
 
 test("הצ'אט אכן חסום למנוי רפרנסים, ולכן התנאי הזה נחוץ", () => {

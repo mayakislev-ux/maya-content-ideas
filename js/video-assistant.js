@@ -16,18 +16,11 @@
 import { mountDrafts, clearScreenDrafts } from './video-assistant-drafts.js';
 import { INITIAL_STATE, nextStep } from './video-assistant-flow.js';
 import { pickIdea, pickReference } from './video-assistant-picker.js';
-import { buildDuplicationPrompt, buildReverseDuplicationPrompt, buildScriptPrompt } from './video-assistant-prompts.js';
+import { buildDuplicationPrompt, buildReverseDuplicationPrompt, buildScriptPrompt, buildCreativePackagingPrompt } from './video-assistant-prompts.js';
 import {
   FORMATS, SCRIPT_STRUCTURE, STARTING_POINTS, CONTENT_TYPES,
   buildExtractionPrompt, buildHookFindingPrompt, buildHookReinforcementPrompt, buildScriptDistillationPrompt,
 } from './video-assistant-content.js';
-// 22/10/2026: הצ'אט "בדיקת רעיון" הקיים, ולא עותק שלו. הוא כבר מכיר את
-// הסימון "זווית: X" בכותרת הרעיון, אותו סימון שתכנית התוכן סומכת עליו.
-import { streamCheckIdea } from './idea-chat.js';
-/* אותו פענוח תשובה שהלשונית מריצה, מאותו קובץ. */
-import { extractIdeaSummary, RECOGNIZED_MARKER } from './idea-reply.js';
-import { addBubble, addThinkingBubble, setBubbleText } from './chat-ui.js';
-import { wireVoiceInput } from './voice-input.js';
 import { playReroll, playSuccess, setMuted, getMuted } from './video-assistant-sound.js';
 import { embedUrlFor, embedShape } from './video-preview.js';
 import { languageName } from './inspiration-readability.js';
@@ -57,7 +50,8 @@ const PHASES = ['התחלה', 'בדיקת התאמה', 'פורמט ושיטה', 
    בזמן שעל המסך היה כתוב "בוא נדייק את הרעיון". שם הפאזה מתאים לכמה
    מסכים, ולכן מסך שצריך שם משלו מקבל אותו כאן. */
 const SCREEN_LABEL = {
-  'idea-sharpen': 'חידוד הרעיון',
+  'idea-sharpen': 'הרעיון והמסר',
+  'creative-packaging': 'האריזה הקריאייטיבית',
   'content-basics': 'נקודת יציאה וסוג תוכן',
 };
 const PHASE_BY_SCREEN = {
@@ -65,7 +59,7 @@ const PHASE_BY_SCREEN = {
   'relevance-check': 1,
   'content-basics': 2, 'footage-type-choice': 2, 'format-choice': 2, 'needs-script-check': 2, 'has-idea-choice': 2,
   transcribe: 3, prompt1: 3, 'her-words': 3, prompt2: 3, 'read-aloud': 3,
-  'idea-sharpen': 1, 'scratch-intro': 3, 'scratch-dump': 3, 'scratch-hook': 3, 'scratch-hook-reinforce': 3, 'scratch-distill': 3,
+  'idea-sharpen': 1, 'creative-packaging': 1, 'scratch-intro': 3, 'scratch-dump': 3, 'scratch-hook': 3, 'scratch-hook-reinforce': 3, 'scratch-distill': 3,
   'footage-speech-find': 3, 'footage-speech-shorten': 3, 'footage-speech-sharpen': 3, 'footage-speech-done': 3,
   'footage-visual-scan': 3, 'footage-visual-extract': 3, 'footage-visual-reframe': 3,
   'footage-visual-message': 3, 'footage-visual-story': 3,
@@ -1213,7 +1207,6 @@ function renderReadAloud() {
      Enter בתיבה הוסיף שורה במקום לשלוח, גם כשהמקלדת הציגה "שליחה"
      כישלון רשת הציג הודעה בלי שום דרך לנסות שוב */
 function renderIdeaSharpen() {
-  const refsOnly = document.body.dataset.plan === 'refs';
   /* הטיוטה גוברת על המצב, כי היא החדשה מבין השתיים. בלי זה התיבה
      הציגה את הרעיון הישן בעוד שהצ'אט דיבר על מה שהוקלד - בדיוק
      ה"לא קולט את הרעיון שלי" שמאיה דיווחה עליו. */
@@ -1223,7 +1216,7 @@ function renderIdeaSharpen() {
   const punch = (punchDraft !== undefined ? punchDraft : (state.ideaPunchline || ''));
   /* 28/10/2026: אותו מסך משרת עכשיו גם קטע שצולם. שם זה לא "רעיון
      לסרטון" אלא המסר שבונים סביב חומר שכבר קיים, ולכן הכותרת והדוגמה
-     מדברות על הקטע. אותו צ'אט, אותו מנוע. */
+     מדברות על הקטע. */
   const forFootage = state.branch === 'footage';
   /* מסלול "יש לי רעיון" מתחיל כאן ישר מהפתיחה, ולכן רק בו יש קישור
      להגרלה ותיבת סימון של בדיקת הרלוונטיות (שהיו פעם מסכים נפרדים). */
@@ -1245,18 +1238,6 @@ function renderIdeaSharpen() {
     <textarea class="cosmic-textarea va-punch-box" id="va-idea-punch" style="min-height:96px"
       placeholder="למשל: החלקה שורפת את השיער מבפנים גם כשהוא נראה מבריק, ויש דרך להחליק בלי לשלם על זה">${escapeHtml(punch)}</textarea>`}
 
-    ${refsOnly ? '' : `
-      <div class="cosmic-btn-row" style="margin-top:4px">
-        <button type="button" class="cosmic-btn" id="va-sharpen-ask">✨ לחדד עם הצ'אט</button>
-      </div>
-      <div class="va-angle-chat" id="va-chat-wrap" hidden>
-        <div class="chat-messages" id="va-chat-messages" role="log" aria-live="polite"></div>
-        <form class="chat-input-row" id="va-chat-form">
-          <textarea id="va-chat-input" enterkeyhint="send" placeholder="לענות לו כאן..." aria-label="הודעה לחידוד הרעיון"></textarea>
-          <button type="button" class="mic-btn" id="va-chat-mic" aria-label="הקלטה קולית" hidden>🎤</button>
-          <button type="submit" class="cosmic-btn" id="va-chat-send">שליחה</button>
-        </form>
-      </div>`}
 
     ${fromIdea ? `<label class="va-check-row">
       <input type="checkbox" id="va-relevance-check" ${state.relevanceConfirmed ? 'checked' : ''}>
@@ -1275,7 +1256,6 @@ function renderIdeaSharpen() {
      מחדד אותה, והניסוח שלו נכנס לתיבה שלה. מה שממשיך הלאה הוא הפואנטה,
      עם הנושא לצידה רק אם היא לא מזכירה אותו בעצמה. */
   const punchBox = forFootage ? null : document.getElementById('va-idea-punch');
-  const targetBox = punchBox || box;
   function mainIdea() {
     const topic = box.value.trim();
     if (!punchBox) return topic;
@@ -1316,156 +1296,37 @@ function renderIdeaSharpen() {
     currentPickId = picked.id;
     dispatch({ type: 'CHOOSE_PULL_IDEA' });
   });
-  if (refsOnly) return;
+}
 
-  const wrap = document.getElementById('va-chat-wrap');
-  const messagesEl = document.getElementById('va-chat-messages');
-  const form = document.getElementById('va-chat-form');
-  const input = document.getElementById('va-chat-input');
-  const sendBtn = document.getElementById('va-chat-send');
-  const askBtn = document.getElementById('va-sharpen-ask');
-  const history = [];
-  let busy = false;
-  let lastAsked = '';
-
-  /* כפתור שלא ניתן ללחוץ עליו אומר את זה. לחיצה שלא עושה כלום ולא
-     מסבירה למה נקראת כמו מסך שבור. */
-  function setBusy(on) {
-    busy = on;
-    if (sendBtn) { sendBtn.disabled = on; sendBtn.textContent = on ? 'עונה...' : 'שליחה'; }
-    if (askBtn) askBtn.disabled = on;
-  }
-
-  /* הוא מתבקש לסיים בשורה אחת בפורמט קבוע, וממנה נבנה הכפתור שמעביר
-     את הניסוח לתיבה. בלי זה היא הייתה צריכה להעתיק ביד מתוך פסקה. */
-  function offerSuggestion(bubble, text) {
-    const raw = String(text || '');
-    /* שני מקורות, לפי סדר אמינות: הרעיון שהשרת ניסח במרקר, ואם הוא עוד
-       לא הגיע - השורה שביקשנו ממנו בפתיחה. */
-    const m = raw.match(/הניסוח המדויק:\s*(.+)/);
-    const fromLine = m && m[1] ? m[1].trim() : '';
-    const picked = (raw.includes('\n') || raw.length > 180 ? fromLine : (fromLine || raw.trim()))
-      .replace(/^["'“”]|["'“”]$/g, '').trim();
-    if (!picked) return;
-    const use = document.createElement('button');
-    use.type = 'button';
-    use.className = 'cosmic-btn va-chat-use';
-    use.textContent = '✓ להשתמש בניסוח הזה';
-    use.addEventListener('click', () => {
-      targetBox.value = picked;
-      targetBox.dispatchEvent(new Event('input', { bubbles: true }));
-      targetBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      showToast(punchBox ? 'הפואנטה עודכנה בתיבה' : 'הרעיון עודכן בתיבה');
-    });
-    bubble.appendChild(use);
-  }
-
-  async function ask(text) {
-    if (busy) return;
-    setBusy(true);
-    lastAsked = text;
-    history.push({ role: 'user', content: text });
-    const thinking = addThinkingBubble(messagesEl);
-    try {
-      const profile = await getProfile();
-      const live = { value: '' };
-      const reply = await streamCheckIdea(history, profile, (delta) => {
-        live.value += delta;
-        setBubbleText(thinking, live.value);
-        messagesEl.scrollTop = messagesEl.scrollHeight;
-      });
-      let full = reply || live.value;
-      history.push({ role: 'assistant', content: full });
-      /* מכאן ועד setBubbleText - בדיוק מה שהלשונית עושה עם אותה תשובה.
-         בלי זה המרקר הטכני והשורה שאחריו הוצגו למשתמשת כטקסט. */
-      if (full.startsWith(RECOGNIZED_MARKER)) {
-        full = full.slice(RECOGNIZED_MARKER.length).trimStart();
-        thinking.classList.add('chat-bubble-excellent');
-      }
-      const { visibleReply, idea: finalIdea } = extractIdeaSummary(full);
-      setBubbleText(thinking, visibleReply);
-      /* הרעיון המנוסח שהשרת כבר מחזיר במרקר עדיף על כל חילוץ משלי. */
-      offerSuggestion(thinking, finalIdea || visibleReply);
-    } catch (err) {
-      console.error('idea chat failed:', err);
-      /* ההודעה הקודמת אמרה "אפשר לנסות שוב" בלי שום דרך לנסות שוב,
-         וגם השאירה את השאלה בהיסטוריה - כך שניסיון חוזר שלח אותה פעמיים. */
-      history.pop();
-      setBubbleText(thinking, 'לא הצלחתי להתחבר כרגע.');
-      const retry = document.createElement('button');
-      retry.type = 'button';
-      retry.className = 'cosmic-btn va-chat-retry';
-      retry.textContent = 'לנסות שוב';
-      retry.addEventListener('click', () => { retry.remove(); ask(lastAsked); });
-      thinking.appendChild(retry);
-    } finally {
-      setBusy(false);
-      messagesEl.scrollTop = messagesEl.scrollHeight;
-    }
-  }
-
-  /* הצ'אט תמיד מדבר על מה שכתוב בתיבה ברגע הלחיצה, ולא על ערך שנתפס
-     כשהמסך צויר. זו הייתה התקלה: הוא שאל על רעיון אחד בזמן שבתיבה
-     כבר היה רעיון אחר. */
-  function currentIdea() {
-    if (!punchBox) return box.value.trim();
-    return `הנושא: ${box.value.trim()} | הפואנטה: ${punchBox.value.trim()}`;
-  }
-
-  const ASK_TAIL = ' ללחוץ על הרעיון הזה ולדייק אותו: האם הוא חד מספיק לקהל שלי, או רחב מדי? '
-    + 'אם הוא רחב, להגיד לי במה בדיוק. '
-    + 'ולסיים תמיד בשורה אחרונה אחת בפורמט המדויק הזה, בלי שום תוספת אחריה: '
-    + 'הניסוח המדויק: <הרעיון מנוסח מחדש במשפט אחד>';
-  /* הפואנטה היא הלב, ולכן הניסוח שחוזר הוא המסר עצמו ולא כותרת של נושא. */
-  const PUNCH_TAIL = ' הפואנטה היא הלב של הסרטון: לבדוק קודם כל אותה. האם יש בה מסר אחד ברור שהצופה יוצא איתו, או שזה עדיין נושא כללי בלי עמדה? '
-    + 'אם אין בה מסר, להגיד לי מה חסר ולהציע מסר חד. '
-    + 'ולסיים תמיד בשורה אחרונה אחת בפורמט המדויק הזה, בלי שום תוספת אחריה: '
-    + 'הניסוח המדויק: <הפואנטה מנוסחת מחדש במשפט אחד, כולל הנושא, כמסר שהצופה יוצא איתו>';
-
-  function openChat() {
-    if (punchBox && punchBox.value.trim().length < 8) {
-      showToast('קודם לכתוב את הפואנטה: מה הם צריכים לצאת איתו מהסרטון?');
-      punchBox.focus();
+/* 28/10/2026 (מאיה): "זהו הצ'אט בתכלס זה הזווית הקריאייטיבית, אבל הוא
+   לא מתקרב לרמה של הג'מיני". במקום הצ'אט, הפרומפט שהיא עצמה כותבת
+   לג'מיני, ממולא בתחום, בקהל, ברעיון ובמסר. הכיוון שבוחרים מתוך ה-30
+   נוסע הלאה לפרומפטים של ההוק והתסריט. */
+async function renderCreativePackaging() {
+  const idea = state.ideaTopic && state.ideaPunchline
+    ? `${state.ideaTopic}. המסר: ${state.ideaPunchline}`
+    : (state.ideaBeforePackaging || state.ideaDescription || '');
+  const audience = await myAudience();
+  const domain = domainInfo ? domainInfo.domain : '';
+  const prompt = buildCreativePackagingPrompt({ domain, audience, idea });
+  cosmicCard(`
+    <h2>האריזה הקריאייטיבית</h2>
+    <p>איך מגישים את המסר בצורה מעניינת ולא בנאלית. להעתיק לג'מיני, לבחור מתוך ה-30 את הכיוון שהכי מדליק, ולהדביק אותו כאן.</p>
+    ${promptPeek(highlightPlaceholders(prompt, [domain, audience, idea]))}
+    ${copyBtn(prompt, "להעתיק פרומפט לג'מיני")}
+    <textarea class="cosmic-textarea" id="va-packaging-input" placeholder="להדביק כאן את הכיוון שבחרת..." style="margin-top:14px">${state.packaging ? escapeHtml(state.packaging) : ''}</textarea>
+    <div class="cosmic-btn-row" style="margin-top:14px">
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-packaging-done-btn">ממשיכים ←</button>
+    </div>
+  `);
+  wireCopyButtons(screenEl());
+  document.getElementById('va-packaging-done-btn').addEventListener('click', () => {
+    const packaging = document.getElementById('va-packaging-input').value.trim();
+    if (!packaging) {
+      showToast('צריך להדביק את הכיוון שבחרת קודם');
       return;
     }
-    const idea0 = punchBox ? punchBox.value.trim() : currentIdea();
-    if (idea0.length < 8) {
-      showToast(forFootage
-        ? 'לכתוב קודם את המסר במשפט, כדי שיהיה על מה ללחוץ'
-        : 'לכתוב קודם את הרעיון במשפט, כדי שיהיה על מה ללחוץ');
-      box.focus();
-      return;
-    }
-    wrap.hidden = false;
-    askBtn.textContent = '✨ לחדד שוב מההתחלה';
-    messagesEl.innerHTML = '';
-    history.length = 0;
-    /* 28/10/2026: בקטע שצולם חייבים לומר לו שהחומר כבר קיים, אחרת הוא
-       מציע לצלם מחדש או לשנות נושא - עצה שאין מה לעשות איתה. */
-    ask(forFootage
-      ? `יש לי קטע שכבר צילמתי, והמסר שאני רוצה לבנות סביבו: "${idea0}". החומר כבר קיים ואי אפשר לצלם אותו מחדש, לכן הדיוק הוא בניסוח של המסר ולא בצילום.${ASK_TAIL}`
-      : `הנושא של הסרטון: "${box.value.trim()}". הפואנטה, מה שהצופה צריך לצאת איתו: "${idea0}".${PUNCH_TAIL}`);
-  }
-
-  function send() {
-    const text = input.value.trim();
-    if (!text || busy) return;
-    addBubble(messagesEl, text, 'user');
-    input.value = '';
-    /* הרעיון שבתיבה נוסע עם כל הודעה, כדי שהוא לא יאבד אותו תוך כדי. */
-    ask(`${text}\n\n(${punchBox ? 'מה שבתיבות שלי כרגע' : 'הרעיון שבתיבה שלי כרגע'}: "${currentIdea()}")`);
-  }
-
-  /* אותו מיקרופון של הלשונית, אותה פונקציה. בטלפון זה ההבדל בין לענות
-     לבין לוותר. */
-  wireVoiceInput({ buttonId: 'va-chat-mic', textareaId: 'va-chat-input' });
-
-  askBtn.addEventListener('click', openChat);
-  form.addEventListener('submit', (e) => { e.preventDefault(); send(); });
-  /* המקלדת בטלפון מציגה "שליחה" בגלל enterkeyhint, ועד היום היא פשוט
-     ירדה שורה. Shift+Enter נשאר שורה חדשה, כמו בכל צ'אט. */
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+    dispatch({ type: 'PACKAGING_CHOSEN', packaging });
   });
 }
 
@@ -1808,13 +1669,15 @@ function buildSummarySteps() {
     steps.push('קראת את התסריט בקול וידעת שהוא מוכן.');
     steps.push('עכשיו: ללכת לצלם לפי התסריט למטה, ואז לערוך.');
   } else if (state.branch === 'scratch') {
-    steps.push(`הרעיון שלך: "${state.ideaDescription || ''}".`);
+    steps.push(`הרעיון שלך: "${state.ideaBeforePackaging || state.ideaDescription || ''}".`);
+    if (state.packaging) steps.push(`האריזה הקריאייטיבית: "${state.packaging}".`);
     steps.push(`בחרת הוק: "${state.hook || ''}".`);
     steps.push(`חיזקת את ההוק: "${state.hookReinforcement || ''}".`);
     steps.push('קיבלת תסריט סופי מזוקק.');
     steps.push('עכשיו: ללכת לצלם לפי התסריט למטה, ואז לערוך.');
   } else if (state.branch === 'idea') {
-    steps.push(`הרעיון שלך: "${state.ideaDescription || state.hook || ''}", ווידאת שהוא רלוונטי.`);
+    steps.push(`הרעיון שלך: "${state.ideaBeforePackaging || state.ideaDescription || state.hook || ''}", ווידאת שהוא רלוונטי.`);
+    if (state.packaging) steps.push(`האריזה הקריאייטיבית: "${state.packaging}".`);
     if (state.selectedFormat) steps.push(`בחרת פורמט הנגשה: "${state.selectedFormat}".`);
     steps.push('קבעת שהתוכן הזה לא צריך תסריט כתוב.');
     steps.push('עכשיו: לפתוח מצלמה ולצלם - ישירות, ספונטני או ויזואלי, לפי הרעיון למעלה.');
@@ -1896,6 +1759,7 @@ function render() {
   if (state.screen === 'prompt2') return renderPrompt2();
   if (state.screen === 'read-aloud') return renderReadAloud();
   if (state.screen === 'idea-sharpen') return renderIdeaSharpen();
+  if (state.screen === 'creative-packaging') return renderCreativePackaging();
   if (state.screen === 'content-basics') return renderContentBasics();
   if (state.screen === 'scratch-intro') return renderScratchIntro();
   if (state.screen === 'scratch-dump') return renderScratchDump();

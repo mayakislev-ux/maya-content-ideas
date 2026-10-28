@@ -123,12 +123,15 @@ test('reference path, already has one: sub-choice skips the pick screen entirely
 /* 28/10/2026 (מאיה: "עומס מנטלי... צריך יותר סדר"). מ"יש לי רעיון"
    נכנסים ישר למסך הרעיון (ההגרלה ובדיקת הרלוונטיות בתוכו), ו"כן, צריך
    תסריט" נכנס ישר למגילה, בלי "שכפול הפוך?" ובלי מסך ההסבר. */
-test('idea path: opening -> idea screen -> basics -> format -> needs script yes -> megillah', () => {
+test('idea path: opening -> idea+message -> creative packaging -> basics -> format -> needs script yes -> megillah', () => {
   let s = nextStep(INITIAL_STATE, { type: 'CHOOSE_IDEA' });
   assert.equal(s.screen, 'idea-sharpen');
   assert.equal(s.branch, 'idea');
   s = nextStep(s, { type: 'IDEA_SHARPENED', idea: 'טעות נפוצה בהסרת שיער' });
+  assert.equal(s.screen, 'creative-packaging');
+  s = nextStep(s, { type: 'PACKAGING_CHOSEN', packaging: 'סרטון של "לפני ואחרי" בשניות' });
   assert.equal(s.screen, 'content-basics');
+  assert.equal(s.ideaDescription, 'טעות נפוצה בהסרת שיער. האריזה הקריאייטיבית: סרטון של "לפני ואחרי" בשניות');
   s = nextStep(s, { type: 'BASICS_CONFIRMED', startingPoint: 'כללי', contentType: 'בעל ערך' });
   assert.equal(s.screen, 'format-choice');
   assert.equal(s.formatFor, 'idea');
@@ -176,7 +179,7 @@ test('חידוד רעיון: בלי רעיון אין דרך להגיע לשפי
 test('חידוד רעיון: הרעיון המחודד מחליף את הישן וממשיך לשני השלבים', () => {
   const s = nextStep({ ...INITIAL_STATE, screen: 'idea-sharpen', ideaDescription: 'גבות' },
     { type: 'IDEA_SHARPENED', idea: 'למה גבות דקות מזקינות את הפנים' });
-  assert.equal(s.screen, 'content-basics');
+  assert.equal(s.screen, 'creative-packaging');
   assert.equal(s.ideaDescription, 'למה גבות דקות מזקינות את הפנים');
 });
 
@@ -348,6 +351,8 @@ test('חידוד הרעיון יושב בין הרעיון לפורמט, ולא 
   s = nextStep(s, { type: 'RELEVANCE_CONFIRMED' });
   assert.equal(s.screen, 'idea-sharpen', 'אחרי הרעיון לא מגיעים לחידוד');
   s = nextStep(s, { type: 'IDEA_SHARPENED', idea: 'ביקורת על קורסים זולים' });
+  assert.equal(s.screen, 'creative-packaging', 'אחרי המסר לא מגיעים לאריזה הקריאייטיבית');
+  s = nextStep(s, { type: 'PACKAGING_CHOSEN', packaging: 'מכתב לעצמי של לפני 5 שנים' });
   assert.equal(s.screen, 'content-basics', 'אין מסך נקודת יציאה וסוג תוכן');
   s = nextStep(s, { type: 'BASICS_CONFIRMED', startingPoint: 'כללי', contentType: 'בעל ערך' });
   assert.equal(s.screen, 'format-choice', 'הפורמט לא בא אחרי חידוד הרעיון');
@@ -381,9 +386,11 @@ test('קטע מצולם: אחרי המסר שואלים רעיון, מחדדים
   assert.equal(s.ideaDescription, 'המסר שאני רוצה להעביר');
   // אין בדיקת רלוונטיות: הקטע כבר צולם
   s = nextStep(s, { type: 'IDEA_SHARPENED', idea: 'למה אני עובדת עם מכשיר אחד' });
-  assert.equal(s.screen, 'format-choice', 'בקטע שצולם אחרי החידוד בא הפורמט, לא נקודת יציאה');
+  assert.equal(s.screen, 'creative-packaging');
+  s = nextStep(s, { type: 'PACKAGING_CHOSEN', packaging: 'השוואה מהירה' });
+  assert.equal(s.screen, 'format-choice', 'בקטע שצולם אחרי האריזה בא הפורמט, לא נקודת יציאה');
   assert.equal(s.formatFor, 'idea');
-  assert.equal(s.ideaDescription, 'למה אני עובדת עם מכשיר אחד', 'הניסוח המחודד לא ממשיך הלאה');
+  assert.equal(s.ideaDescription, 'למה אני עובדת עם מכשיר אחד. האריזה הקריאייטיבית: השוואה מהירה', 'המסר והאריזה לא ממשיכים הלאה');
   s = nextStep(s, { type: 'FORMAT_SELECTED', format: 'מסך חצוי' });
   assert.equal(s.screen, 'needs-script-check');
   assert.equal(nextStep(s, { type: 'NEEDS_SCRIPT_NO' }).screen, 'summary');
@@ -409,4 +416,14 @@ test('28/10: הנושא והפואנטה נשמרים בנפרד, והפואנט
   assert.equal(s.ideaDescription, 'החלקה שורפת מבפנים');
   assert.equal(s.ideaTopic, 'החלקה');
   assert.equal(s.ideaPunchline, 'החלקה שורפת מבפנים');
+});
+
+/* חזרה מהאריזה למסך הרעיון ושינוי הרעיון לא משאירים את הרעיון הישן
+   מתחת לאריזה החדשה. */
+test('אריזה אחרי שינוי רעיון נבנית על הרעיון החדש', () => {
+  let s = nextStep({ ...INITIAL_STATE, screen: 'idea-sharpen', branch: 'idea' }, { type: 'IDEA_SHARPENED', idea: 'ישן' });
+  s = nextStep(s, { type: 'PACKAGING_CHOSEN', packaging: 'א' });
+  s = nextStep({ ...s, screen: 'idea-sharpen' }, { type: 'IDEA_SHARPENED', idea: 'חדש' });
+  s = nextStep(s, { type: 'PACKAGING_CHOSEN', packaging: 'ב' });
+  assert.equal(s.ideaDescription, 'חדש. האריזה הקריאייטיבית: ב');
 });
