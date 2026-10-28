@@ -850,7 +850,16 @@ exports.checkIdea = onRequest(
        שלושתם רשימות סגורות, ומה שלא בהן נזרק: הערכים האלה נכנסים ישר
        לפרומפט המערכת, ו-assertMessagesWithinLimit מודד רק את ההודעות. */
     const ideaContext = pickIdeaContext(req.body && req.body.ideaContext);
-    let systemPrompt = buildSystemPrompt(profile, ideaContext);
+    /* 28/10/2026 (מאיה): "שיהיה פתוח לבדוק כל רעיון, אבל רק אצלי".
+       אצלה הצ'אט בדק כל רעיון מול העסק והקהל שלה, וכך רעיון של לקוחה
+       מתחום אחר נפסל כי "זה לא הקהל". אצלה בלבד נשארים רק השם ולשון
+       הפנייה, והתחום והקהל נקראים מתוך הרעיון עצמו. */
+    const isAdmin = email === ADMIN_EMAIL;
+    const promptProfile = isAdmin && profile ? { name: profile.name, pronoun: profile.pronoun } : profile;
+    let systemPrompt = buildSystemPrompt(promptProfile, ideaContext);
+    if (isAdmin) {
+      systemPrompt += '\n\n**מצב פתוח - כל רעיון מכל תחום:** מי שמדברת איתך היא מאיה, מנטורית השיווק, והיא בודקת רעיונות של לקוחות מכל תחום שהוא. אל תבדוק/י את הרעיון מול העסק או הקהל שלה, ואסור לפסול רעיון כי הוא לא מתאים לקהל שלה. הסק/י את תחום העסק ואת הקהל מתוך הרעיון עצמו ובדוק/י מולם. רק אם אי אפשר להבין מהרעיון למי הוא מדבר, מותר לשאול על זה שאלה קצרה אחת. אל תוסיף/י את השורה על מילוי הפרופיל.';
+    }
 
     if (countClarifyingRepliesSinceLastAngles(messages) >= 2) {
       systemPrompt += '\n\n⚠️ הנחיה דחופה: כבר נשלחו 2 הודעות הבהרה או יותר על הרעיון הנוכחי בשיחה הזו. אסור לשאול שום שאלת הבהרה נוספת - חובה לעבור עכשיו, בהודעה הזו, ישירות לשלב ב\' (5 זוויות הנגשה) על סמך מה שכבר ידוע, גם אם זה לא מושלם. אם הרעיון כבר ברור מספיק, אפשר גם [[RECOGNIZED_EXCELLENT]] אם זה מתאים.';
