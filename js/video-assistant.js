@@ -1268,29 +1268,24 @@ function renderIdeaSharpen() {
      מדברות על הקטע. אותו צ'אט, אותו מנוע. */
   const forFootage = state.branch === 'footage';
 
+  /* 28/10/2026 (מאיה): "כל החלק של הרעיון שלך במשפט אחד מסובך, מיליון
+     טקסט, מבלבל ועושה כאב ראש, חייב לפשט הכל". ירדו פסקת הפתיחה, שלושת
+     הצעדים הממוספרים ושתי שורות ההסבר. נשארו כותרת, תיבות וכפתורים:
+     השאלות שעל התיבות הן ההסבר. */
   cosmicCard(`
-    <h2>${forFootage ? 'המסר של הקטע, במשפט אחד' : 'הרעיון שלך, במשפט אחד'}</h2>
-    <p class="cosmic-lede">${forFootage
-      ? 'הקטע כבר צולם, אבל מה שאומרים סביבו נכתב רק עכשיו. משפט מדויק כאן הוא מה שהופך חומר גלם לסרטון שמישהי עוצרת בשבילו.'
-      : 'רעיון מדויק הוא ההבדל בין סרטון שמדבר למישהי אחת לבין סרטון שמדבר לכולן ולא לאף אחת.'}</p>
-    <ol class="cosmic-howto">
-      <li>${forFootage ? 'לכתוב בתיבה מה המסר של הקטע כמו שהוא עכשיו, גם אם הוא גולמי.' : 'לכתוב על מה הסרטון, ומתחת את הפואנטה: מה הם צריכים לצאת איתו.'}</li>
-      ${refsOnly ? '' : '<li>ללחוץ על "לחדד את הרעיון" והוא ילחץ עליו ויציע ניסוח חד יותר.</li><li>ניסוח שמוצא חן, לחיצה אחת מעבירה אותו לתיבה.</li>'}
-    </ol>
+    <h2>${forFootage ? 'המסר של הקטע' : 'הרעיון שלך'}</h2>
 
-    <label class="cosmic-field-label" for="va-idea-sharp">${forFootage ? 'המסר שלי' : 'על מה הסרטון'}</label>
-    <textarea class="cosmic-textarea" id="va-idea-sharp" style="min-height:${forFootage ? 96 : 64}px"
+    <label class="cosmic-field-label" for="va-idea-sharp">${forFootage ? 'מה המסר של הקטע שכבר צולם?' : 'על מה הסרטון?'}</label>
+    <textarea class="cosmic-textarea" id="va-idea-sharp" style="min-height:${forFootage ? 96 : 56}px"
       placeholder="${forFootage ? 'למשל: למה אני עובדת עם מכשיר אחד ולא עם שלושה' : 'למשל: החלקה לשיער'}">${escapeHtml(idea)}</textarea>
-    ${forFootage
-      ? '<p class="cosmic-hint">זה המסר שימשיך לכל השלבים הבאים. מה שכתוב כאן הוא מה שקובע.</p>'
-      : `<label class="cosmic-field-label va-punch-label" for="va-idea-punch">⭐ הפואנטה: מה המסר? עם מה הם יוצאים מהסרטון?</label>
+    ${forFootage ? '' : `
+    <label class="cosmic-field-label va-punch-label" for="va-idea-punch">⭐ מה הפואנטה שורה תחתונה מהסרטון? מה אתם רוצים שהקהל שלכם יבין? מה המסר?</label>
     <textarea class="cosmic-textarea va-punch-box" id="va-idea-punch" style="min-height:96px"
-      placeholder="למשל: החלקה שורפת את השיער מבפנים גם כשהוא נראה מבריק, ויש דרך להחליק בלי לשלם על זה">${escapeHtml(punch)}</textarea>
-    <p class="cosmic-hint">זה החלק הכי חשוב. סרטון בלי פואנטה הוא נושא, לא סרטון. הפואנטה היא מה שממשיך לכל השלבים הבאים.</p>`}
+      placeholder="למשל: החלקה שורפת את השיער מבפנים גם כשהוא נראה מבריק, ויש דרך להחליק בלי לשלם על זה">${escapeHtml(punch)}</textarea>`}
 
-    ${refsOnly ? '<p class="cosmic-hint">הצ\'אט לחידוד רעיון אינו כלול במנוי הרפרנסים.</p>' : `
+    ${refsOnly ? '' : `
       <div class="cosmic-btn-row" style="margin-top:4px">
-        <button type="button" class="cosmic-btn" id="va-sharpen-ask">✨ לחדד את הרעיון</button>
+        <button type="button" class="cosmic-btn" id="va-sharpen-ask">✨ לחדד עם הצ'אט</button>
       </div>
       <div class="va-angle-chat" id="va-chat-wrap" hidden>
         <div class="chat-messages" id="va-chat-messages" role="log" aria-live="polite"></div>
@@ -1302,7 +1297,7 @@ function renderIdeaSharpen() {
       </div>`}
 
     <div class="cosmic-btn-row" style="margin-top:16px">
-      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-idea-next-btn">${forFootage ? 'המסר מדויק, ממשיכים ←' : 'הרעיון מדויק, ממשיכים ←'}</button>
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-idea-next-btn">ממשיכים ←</button>
     </div>
   `);
 
@@ -1677,11 +1672,19 @@ async function renderScratchDistill() {
     rawScript: state.rawDump || '', ctaType,
     audience, domain: domainInfo ? domainInfo.domain : '',
   });
-  const ctaOptions = CTA_TYPES.map((c) => `<option value="${c.value}">${escapeHtml(c.label)}</option>`).join('');
+  /* 28/10/2026 (מאיה): "מאוד קל לפספס איזו הנעה לפעולה רוצים, שימי לב".
+     זו הייתה רשימה נפתחת שכבר בחרה "משפך" לבד, כך שאפשר היה להעתיק את
+     הפרומפט בלי לראות שיש כאן בחירה בכלל. עכשיו אלה כפתורים גדולים,
+     אף אחד לא בחור מראש, והפרומפט מופיע רק אחרי שבוחרים. */
+  const ctaButtons = CTA_TYPES.map((c) => `
+    <button type="button" class="cosmic-btn cosmic-chip-btn" data-cta="${escapeHtml(c.value)}">${escapeHtml(c.label)}</button>
+  `).join('');
   cosmicCard(`
     <h2>זיקוק התסריט הסופי</h2>
-    <p>איזו הנעה לפעולה הכי מתאימה?</p>
-    <select id="va-scratch-cta-select" class="cosmic-textarea" style="min-height:auto">${ctaOptions}</select>
+    <div class="va-cta-pick">
+      <p class="va-cta-pick-title">⭐ קודם לבחור: מה הצופה צריך לעשות בסוף הסרטון?</p>
+      <div class="cosmic-chip-row" id="va-scratch-cta-row">${ctaButtons}</div>
+    </div>
     <div id="va-scratch-distill-prompt-wrap" style="margin-top:14px"></div>
     <textarea class="cosmic-textarea" id="va-scratch-script-input" placeholder="להדביק כאן את התסריט הסופי שקיבלת..." style="margin-top:14px"></textarea>
     <div class="cosmic-btn-row" style="margin-top:14px">
@@ -1689,8 +1692,12 @@ async function renderScratchDistill() {
     </div>
   `);
   const wrap = document.getElementById('va-scratch-distill-prompt-wrap');
+  let cta = '';
   function refreshPrompt() {
-    const cta = document.getElementById('va-scratch-cta-select').value;
+    if (!cta) {
+      wrap.innerHTML = '<p class="cosmic-hint">הפרומפט יופיע כאן אחרי שבוחרים הנעה לפעולה.</p>';
+      return;
+    }
     const prompt = buildPrompt(cta);
     /* הצהוב מסמן מה מולא לבד, ולכן התחום והקהל שייכים לשם גם הם. */
     const values = [state.ideaDescription, state.hook, state.hookReinforcement, state.rawDump, cta,
@@ -1698,7 +1705,12 @@ async function renderScratchDistill() {
     wrap.innerHTML = `<div class="cosmic-prompt-box">${highlightPlaceholders(prompt, values)}</div>${copyBtn(prompt, 'להעתיק פרומפט')}`;
     wireCopyButtons(wrap);
   }
-  document.getElementById('va-scratch-cta-select').addEventListener('change', refreshPrompt);
+  document.querySelectorAll('#va-scratch-cta-row [data-cta]').forEach((b) => b.addEventListener('click', () => {
+    document.querySelectorAll('#va-scratch-cta-row [data-cta]').forEach((o) => o.classList.remove('cosmic-chip-btn--on'));
+    b.classList.add('cosmic-chip-btn--on');
+    cta = b.getAttribute('data-cta');
+    refreshPrompt();
+  }));
   refreshPrompt();
   document.getElementById('va-scratch-script-done-btn').addEventListener('click', () => {
     const text = document.getElementById('va-scratch-script-input').value.trim();

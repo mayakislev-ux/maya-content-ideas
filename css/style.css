@@ -7263,3 +7263,18 @@ body[data-plan="refs"] .view-tabs-scroll { justify-content: center; }
   border: 2px solid var(--cosmic-glow, #ff2ea8);
   box-shadow: 0 0 14px color-mix(in srgb, var(--cosmic-glow, #ff2ea8) 35%, transparent);
 }
+
+/* 28/10/2026 (מאיה): "מאוד קל לפספס איזו הנעה לפעולה רוצים". הבחירה
+   יושבת בתוך מסגרת זוהרת משלה, מעל הפרומפט, כדי שאי אפשר לדלג עליה. */
+.va-cta-pick {
+  border: 2px solid var(--cosmic-glow, #ff2ea8);
+  border-radius: 14px;
+  padding: 12px 14px;
+  margin-top: 6px;
+  box-shadow: 0 0 14px color-mix(in srgb, var(--cosmic-glow, #ff2ea8) 35%, transparent);
+}
+.va-cta-pick-title {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0 0 10px;
+}
