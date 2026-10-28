@@ -27,7 +27,13 @@ const checkIdea = (() => {
 
 test('לצ\'אט הרעיונות יש תקציב חשיבה, ולא חשיבה פתוחה', () => {
   assert.match(server, /const CHECK_IDEA_THINKING_BUDGET = 1024;/);
-  assert.match(checkIdea, /thinking: \{ type: 'enabled', budget_tokens: thinkingBudget \}/);
+  /* 28/10/2026: budget_tokens נדחה על ידי המודל בכל קריאה, והנפילה לאחור
+     חשבה בלי תקרה (firstTextMs 73052 ו-97456 בלוגים). ההגבלה שעובדת היא
+     adaptive + effort, ו-budget_tokens אסור שיחזור. */
+  assert.match(checkIdea, /thinking: \{ type: 'adaptive' \}, output_config: \{ effort: CHECK_IDEA_EFFORT \}/);
+  assert.doesNotMatch(checkIdea, /budget_tokens: thinkingBudget/);
+  assert.match(server, /const CHECK_IDEA_EFFORT = 'low';/);
+  assert.match(checkIdea, /firstTextMs 73052/, 'המדידה של 28/10 תועדה בקוד');
   assert.match(checkIdea, /requestBody\(CHECK_IDEA_THINKING_BUDGET\)/);
   assert.match(checkIdea, /firstTextMs 22294|firstTextMs 22294/, 'המדידה האמיתית תועדה בקוד');
 });

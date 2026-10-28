@@ -1058,15 +1058,20 @@ async function renderHerWords() {
     await ensureOpeningHook();
   }
   const context = isPreHookMegillah ? (state.openingHook || state.ideaDescription || '') : (state.hook || state.ideaDescription || '');
+  /* 28/10/2026 (מאיה: "באלי שתרשמי בכותרת מגילת אסתר ואני רוצה שהכפתור
+     של ה-SOS ממש ממש ממש יבלוט כי הרבה כותבות מגילה מעפנה ואז זה יוצא
+     גרוע"). הכותרת היא מגילת אסתר בשני המסלולים, ה-SOS הוא כפתור גדול
+     ובולט, ו"להמשיך" עוצר קודם בפופאפ שבודק שהמגילה באמת מפורטת. */
   cosmicCard(`
-    <h2>${isPreHookMegillah ? 'מגילת אסתר - מה יש לך להגיד?' : 'מה יש לך להגיד?'}</h2>
+    <h2>מגילת אסתר - מה יש לך להגיד?</h2>
     ${context ? `<div class="cosmic-context-box"><span>${isPreHookMegillah ? 'ההוק שזיהינו מהרפרנס:' : 'ההוק/הרעיון שבחרת:'}</span>${escapeHtml(context)}</div>` : ''}
     ${isPreHookMegillah
       ? `<p>עכשיו, לפני שמבקשים הוקים - לכתוב כאן את כל מה שיש לך להגיד על הנושא. לא צריך לנסח יפה: מה אתם חושבים על זה? למה? מה חשוב שהקהל יבין? איזה ניסיון או דוגמה יש לך?</p>`
       : `<p>עכשיו הזמן להרחיב עליו - סיפור קצר, דוגמא, או דיבור כללי על הנושא, במילים שלך</p>`}
-    <div class="cosmic-btn-row" style="margin-bottom:14px">
-      <button type="button" class="cosmic-btn" id="va-herwords-help-btn">נתקעת? לקבל עזרה 🆘</button>
-    </div>
+    <button type="button" class="va-sos-big" id="va-herwords-help-btn">
+      <span class="va-sos-big__icon" aria-hidden="true">🆘</span>
+      <span class="va-sos-big__text"><strong>נתקעים? לא ברור מה לכתוב?</strong><span>לחיצה כאן, ו-ChatGPT ישאל אותך שאלות שיוציאו ממך מגילה מלאה</span></span>
+    </button>
     <textarea class="cosmic-textarea" id="va-herwords-input" style="${isPreHookMegillah ? 'min-height:160px' : ''}">${isPreHookMegillah && state.herWords ? escapeHtml(state.herWords) : ''}</textarea>
     <div class="cosmic-btn-row" style="margin-top:14px">
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-herwords-done-btn">להמשיך</button>
@@ -1079,6 +1084,40 @@ async function renderHerWords() {
       showToast('צריך לכתוב משהו קודם');
       return;
     }
+    confirmMegillahDetailed(text);
+  });
+}
+
+/* 28/10/2026 (מאיה: "אולי תעשי פופאפ אחרי החלק הזה, בטוח כתבת מגילה מספיק
+   מפורטת, ועוד פעם כפתור SOS לחדד כמה זה חשוב"). כל מה שנכתב כאן הוא חומר
+   הגלם של התסריט, ו-ChatGPT לא יכול להמציא את מה שלא סופר לו. */
+function confirmMegillahDetailed(text) {
+  const words = text.split(/\s+/).filter(Boolean).length;
+  const overlay = openModal(`
+    <h2 style="margin-top:0">רגע לפני שממשיכים ✋</h2>
+    <p><strong>המגילה באמת מספיק מפורטת?</strong></p>
+    <p>מגילה דלה = תסריט חלש. כל מה שנכתב כאן הוא חומר הגלם של הסרטון, ו-ChatGPT לא יכול להמציא את מה שלא סופר לו: הדוגמאות, הסיפורים, מה באמת חושבים על הנושא.</p>
+    <p class="va-megillah-count">כתבת ${words} מילים</p>
+    <button type="button" class="va-sos-big" id="va-megillah-sos-btn">
+      <span class="va-sos-big__icon" aria-hidden="true">🆘</span>
+      <span class="va-sos-big__text"><strong>לחדד את המגילה עם עזרה</strong><span>ChatGPT ישאל אותך שאלות ויוציא ממך עוד חומר</span></span>
+    </button>
+    <div class="cosmic-btn-row" style="margin-top:14px">
+      <button type="button" class="cosmic-btn" id="va-megillah-back-btn">לחזור ולהוסיף עוד</button>
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-megillah-go-btn">כן, היא מפורטת. להמשיך</button>
+    </div>
+  `);
+  overlay.querySelector('#va-megillah-sos-btn').addEventListener('click', () => {
+    closeModal();
+    openExtractionHelperModal();
+  });
+  overlay.querySelector('#va-megillah-back-btn').addEventListener('click', () => {
+    closeModal();
+    const input = document.getElementById('va-herwords-input');
+    if (input) input.focus();
+  });
+  overlay.querySelector('#va-megillah-go-btn').addEventListener('click', () => {
+    closeModal();
     dispatch({ type: 'HER_WORDS_SUBMITTED', text });
   });
 }

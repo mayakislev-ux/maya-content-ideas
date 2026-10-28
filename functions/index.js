@@ -783,6 +783,9 @@ exports.getClientUsageStats = onCall({ region: 'us-central1', timeoutSeconds: 60
 // תקציב החשיבה הפנימית של הצ'אט. 1024 הוא המינימום שה-API מקבל, וזה בדיוק
 // מה שרצוי כאן: די כדי לעבור על 31 הזוויות, בלי עשרים שניות של מסך ריק.
 const CHECK_IDEA_THINKING_BUDGET = 1024;
+// 28/10/2026: המודל הזה דוחה budget_tokens, ולכן ההגבלה בפועל היא effort.
+// 'low' כי בלי הגבלה האות הראשונה הגיעה אחרי 73-97 שניות.
+const CHECK_IDEA_EFFORT = 'low';
 
 exports.checkIdea = onRequest(
   // ללא timeoutSeconds מפורש זה נופל לברירת המחדל (60 שניות) - אישור אמיתי
@@ -876,10 +879,15 @@ exports.checkIdea = onRequest(
        הנפילה לאחור קיימת כי אי אפשר היה לבדוק את הקריאה הזו מול ה-API
        מהמחשב של מאיה (המפתח הוא secret): אם הפרמטר לא מתקבל, הבקשה
        נשלחת שוב בלעדיו ונשארת ההתנהגות של היום במקום צ'אט שבור. */
+    /* 28/10/2026 (מאיה: "הצ'אט לדיוק זווית ההגשה לא עובד / לא טוען בכלל").
+       budget_tokens נדחה בכל קריאה ("thinking.type.enabled is not supported
+       for this model"), והנפילה לאחור שלחה בלי שום הגבלה. אז המודל חשב בלי
+       תקרה: בלוגים של הבוקר firstTextMs 73052 ו-97456, כלומר דקה וחצי של
+       מסך ריק. ההגבלה שהמודל הזה מקבל היא adaptive + effort. */
     const requestBody = (thinkingBudget) => JSON.stringify({
       model: 'claude-sonnet-5',
       max_tokens: 8192,
-      ...(thinkingBudget ? { thinking: { type: 'enabled', budget_tokens: thinkingBudget } } : {}),
+      ...(thinkingBudget ? { thinking: { type: 'adaptive' }, output_config: { effort: CHECK_IDEA_EFFORT } } : {}),
       system: cachedText(systemPrompt),
       messages: withCacheControl(messages),
       stream: true,

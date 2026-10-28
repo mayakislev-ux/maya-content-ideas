@@ -7202,3 +7202,45 @@ body[data-plan="refs"] .view-tabs-scroll { justify-content: center; }
   border-color: var(--accent-2);
   color: #fff;
 }
+
+/* 28/10/2026 (מאיה: "שהכפתור של ה-SOS ממש ממש ממש יבלוט"): כפתור אדום
+   ברוחב מלא עם פעימה, כדי שלא יתבלבל עם הקופסה הצהובה של ההוק מעליו. */
+.va-sos-big {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  margin: 4px 0 16px;
+  padding: 16px 18px;
+  border: 2px solid #ffd23f;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #ff3b3b 0%, #ff6a2b 100%);
+  color: #fff;
+  font: inherit;
+  text-align: right;
+  cursor: pointer;
+  box-shadow: 0 0 0 0 rgba(255,59,59,.6);
+  animation: va-sos-pulse 1.8s ease-out infinite;
+}
+.va-sos-big:hover { filter: brightness(1.08); }
+.va-sos-big:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+.va-sos-big__icon { font-size: 34px; line-height: 1; flex-shrink: 0; }
+.va-sos-big__text { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.va-sos-big__text strong { font-size: 17px; font-weight: 800; }
+.va-sos-big__text span { font-size: 13px; opacity: .95; line-height: 1.4; }
+@keyframes va-sos-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(255,59,59,.6); }
+  70% { box-shadow: 0 0 0 14px rgba(255,59,59,0); }
+  100% { box-shadow: 0 0 0 0 rgba(255,59,59,0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .va-sos-big { animation: none; }
+}
+.va-megillah-count {
+  display: inline-block;
+  background: rgba(255,255,255,.14);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 13px;
+  font-weight: 700;
+}
