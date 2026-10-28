@@ -160,9 +160,9 @@ describe('אותו מסך, שני מסלולים', () => {
   const tplTo = SHARPEN.indexOf('\n  `);', tplFrom);
   const render = (forFootage) => {
     assert.ok(tplTo > tplFrom, 'לא נמצאה תבנית המסך');
-    const build = new Function('forFootage', 'refsOnly', 'escapeHtml', 'idea', 'punch',
+    const build = new Function('forFootage', 'refsOnly', 'escapeHtml', 'idea', 'punch', 'fromIdea', 'state',
       'return `' + SHARPEN.slice(tplFrom, tplTo) + '`');
-    return build(forFootage, false, (s) => s, 'הרעיון הגולמי שלי', 'הפואנטה הגולמית שלי');
+    return build(forFootage, false, (s) => s, 'הרעיון הגולמי שלי', 'הפואנטה הגולמית שלי', !forFootage, {});
   };
 
   test('רעיון מ-0: הכותרת, התווית והדוגמה על הרעיון', () => {
@@ -299,8 +299,18 @@ test('אין שתי גרסאות של פענוח התשובה', () => {
 describe('הפואנטה: הסעיף הכי קריטי', () => {
   const tplFrom = SHARPEN.indexOf('cosmicCard(`') + 'cosmicCard(`'.length;
   const tplTo = SHARPEN.indexOf('\n  `);', tplFrom);
-  const render = (forFootage) => new Function('forFootage', 'refsOnly', 'escapeHtml', 'idea', 'punch',
-    'return `' + SHARPEN.slice(tplFrom, tplTo) + '`')(forFootage, false, (s) => s, 'נושא', 'הפואנטה שלי');
+  const render = (forFootage) => new Function('forFootage', 'refsOnly', 'escapeHtml', 'idea', 'punch', 'fromIdea', 'state',
+    'return `' + SHARPEN.slice(tplFrom, tplTo) + '`')(forFootage, false, (s) => s, 'נושא', 'הפואנטה שלי', !forFootage, {});
+
+  /* 28/10/2026 (מאיה: "עומס מנטלי"): "מאיפה הרעיון?" ו"בודקים לפני
+     שממשיכים" היו מסכים נפרדים, ועכשיו הם קישור ותיבת סימון כאן. */
+  test('ההגרלה ובדיקת הרלוונטיות נמצאות במסך הרעיון', () => {
+    const html = render(false);
+    assert.ok(html.includes('id="va-pull-idea-link"'), 'אין קישור להגרלה');
+    assert.ok(html.includes('id="va-relevance-check"'), 'אין בדיקת רלוונטיות');
+    assert.ok(!render(true).includes('va-relevance-check'), 'בקטע שצולם הרלוונטיות כבר נבדקה');
+    assert.match(SHARPEN, /relevance && !relevance\.checked/, 'אפשר להמשיך בלי לסמן');
+  });
 
   test('ברעיון מ-0 יש שדה פואנטה באותו מסך, ובקטע שצולם אין', () => {
     assert.ok(render(false).includes('id="va-idea-punch"'), 'אין שדה פואנטה');

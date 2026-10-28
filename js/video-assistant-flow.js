@@ -76,8 +76,12 @@ function step(state, action) {
       return { ...state, screen: 'relevance-check', branch: 'footage' };
     case 'CHOOSE_REFERENCE':
       return { ...state, screen: 'reference-source-choice', branch: 'reference' };
+    /* 28/10/2026 (מאיה: "עומס מנטלי... צריך יותר סדר"). עד היום רעיון
+       עבר דרך "מאיפה הרעיון?", "מה הרעיון?" ו"בודקים לפני שממשיכים"
+       לפני שהגיע למסך הרעיון עצמו. שלושתם נכנסו לתוכו: ההגרלה היא קישור
+       שם, ובדיקת הרלוונטיות היא תיבת סימון שם. */
     case 'CHOOSE_IDEA':
-      return { ...state, screen: 'idea-source-choice', branch: 'idea' };
+      return { ...state, screen: 'idea-sharpen', branch: 'idea' };
 
     // ===== מסלול "מצאתי רפרנס" - יש לה כבר אחד, או שצריך להגריל לה (17/10,
     // מאיה: "צריך להיות 2 כפתורים יש לי רפרנס / אין לי רפרנס ואז להגריל") =====
@@ -109,6 +113,8 @@ function step(state, action) {
     case 'REROLL':
       return { ...state, rerollCount: state.rerollCount + 1 };
     case 'ACCEPT_PICK':
+      /* רעיון מהבנק חוזר למסך הרעיון, שם בודקים רלוונטיות ופואנטה. */
+      if (state.branch === 'idea') return { ...state, screen: 'idea-sharpen', ideaTopic: null, ideaPunchline: null };
       return { ...state, screen: 'relevance-check' };
 
     // ===== השער המשותף: "רלוונטי לקהל היעד, או משרת את המותג?" =====
@@ -170,8 +176,11 @@ function step(state, action) {
     // ===== "צריך תסריט או לא?" - לא כל תוכן צריך תסריט =====
     case 'NEEDS_SCRIPT_NO':
       return { ...state, screen: 'summary' };
+    /* 28/10/2026: עד היום "כן" הוביל ל"יש לך רפרנס לשכפול הפוך?" ומשם
+       למסך קריאה "כתיבה מאפס". שניהם ירדו: שכפול הפוך הוא עכשיו אפשרות
+       בתוך מסך ההוק, ומבנה התסריט נפתח מתוך מסך המגילה למי שרוצה. */
     case 'NEEDS_SCRIPT_YES':
-      return { ...state, screen: 'has-idea-choice' };
+      return { ...state, screen: 'scratch-dump', branch: 'scratch' };
 
     // ===== בחירת שיטת הכתיבה (יש לה רעיון + פורמט + אישרה שצריך תסריט) =====
     // 18/10/2026 (מאיה: "מצאתי רפרנס מתאים לשכפול הפוך" / "לא מצאתי רפרנס

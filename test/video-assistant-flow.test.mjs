@@ -120,35 +120,27 @@ test('reference path, already has one: sub-choice skips the pick screen entirely
   assert.equal(s.screen, 'transcribe');
 });
 
-test('idea path (typed) -> relevance -> format selection -> needs script yes -> choose method -> reverse duplication', () => {
+/* 28/10/2026 (מאיה: "עומס מנטלי... צריך יותר סדר"). מ"יש לי רעיון"
+   נכנסים ישר למסך הרעיון (ההגרלה ובדיקת הרלוונטיות בתוכו), ו"כן, צריך
+   תסריט" נכנס ישר למגילה, בלי "שכפול הפוך?" ובלי מסך ההסבר. */
+test('idea path: opening -> idea screen -> basics -> format -> needs script yes -> megillah', () => {
   let s = nextStep(INITIAL_STATE, { type: 'CHOOSE_IDEA' });
-  assert.equal(s.screen, 'idea-source-choice');
-  s = nextStep(s, { type: 'CHOOSE_TYPE_IDEA' });
-  assert.equal(s.screen, 'type-idea');
-  s = nextStep(s, { type: 'IDEA_TYPED', text: 'הסיפור שלי על בולמיה' });
-  assert.equal(s.screen, 'relevance-check');
-  assert.equal(s.ideaDescription, 'הסיפור שלי על בולמיה');
-  s = nextStep(s, { type: 'RELEVANCE_CONFIRMED' });
-  // 26/10/2026: צ'אט שמדייק את הרעיון, ואז נקודת יציאה וסוג תוכן
+  assert.equal(s.screen, 'idea-sharpen');
+  assert.equal(s.branch, 'idea');
   s = nextStep(s, { type: 'IDEA_SHARPENED', idea: 'טעות נפוצה בהסרת שיער' });
+  assert.equal(s.screen, 'content-basics');
   s = nextStep(s, { type: 'BASICS_CONFIRMED', startingPoint: 'כללי', contentType: 'בעל ערך' });
   assert.equal(s.screen, 'format-choice');
   assert.equal(s.formatFor, 'idea');
   s = nextStep(s, { type: 'FORMAT_SELECTED', format: 'דיבור למצלמה' });
   assert.equal(s.screen, 'needs-script-check');
   s = nextStep(s, { type: 'NEEDS_SCRIPT_YES' });
-  assert.equal(s.screen, 'has-idea-choice');
-  s = nextStep(s, { type: 'CHOOSE_REVERSE_DUPLICATION' });
-  assert.equal(s.screen, 'transcribe');
-  assert.equal(s.branch, 'idea-search');
+  assert.equal(s.screen, 'scratch-dump');
+  assert.equal(s.branch, 'scratch');
 });
 
 test('idea path -> needs script NO ends at the summary without forcing a script', () => {
   let s = nextStep(INITIAL_STATE, { type: 'CHOOSE_IDEA' });
-  s = nextStep(s, { type: 'CHOOSE_TYPE_IDEA' });
-  s = nextStep(s, { type: 'IDEA_TYPED', text: 'רעיון' });
-  s = nextStep(s, { type: 'RELEVANCE_CONFIRMED' });
-  // 26/10/2026: צ'אט שמדייק את הרעיון, ואז נקודת יציאה וסוג תוכן
   s = nextStep(s, { type: 'IDEA_SHARPENED', idea: 'טעות נפוצה בהסרת שיער' });
   s = nextStep(s, { type: 'BASICS_CONFIRMED', startingPoint: 'כללי', contentType: 'בעל ערך' });
   s = nextStep(s, { type: 'FORMAT_SELECTED', format: 'דיבור למצלמה' });
@@ -156,35 +148,21 @@ test('idea path -> needs script NO ends at the summary without forcing a script'
   assert.equal(s.screen, 'summary');
 });
 
-test('idea path from the saved ideas bank also goes through relevance + format + needs-script', () => {
+test('a pulled idea from the bank comes back to the idea screen', () => {
   let s = nextStep(INITIAL_STATE, { type: 'CHOOSE_IDEA' });
   s = nextStep(s, { type: 'CHOOSE_PULL_IDEA' });
   assert.equal(s.screen, 'pulled-idea');
   s = nextStep(s, { type: 'ACCEPT_PICK' });
-  assert.equal(s.screen, 'relevance-check');
-  s = nextStep(s, { type: 'RELEVANCE_CONFIRMED' });
-  // 26/10/2026: צ'אט שמדייק את הרעיון, ואז נקודת יציאה וסוג תוכן
-  s = nextStep(s, { type: 'IDEA_SHARPENED', idea: 'טעות נפוצה בהסרת שיער' });
-  s = nextStep(s, { type: 'BASICS_CONFIRMED', startingPoint: 'כללי', contentType: 'בעל ערך' });
-  assert.equal(s.screen, 'format-choice');
-  s = nextStep(s, { type: 'FORMAT_SELECTED', format: 'ראיון / שיחה' });
-  assert.equal(s.screen, 'needs-script-check');
+  assert.equal(s.screen, 'idea-sharpen');
+  s = nextStep(s, { type: 'BACK' });
+  assert.equal(s.screen, 'pulled-idea');
 });
 
-test('has-idea-choice -> from-scratch starts the real 4-prompt chain', () => {
-  let s = nextStep(INITIAL_STATE, { type: 'CHOOSE_IDEA' });
-  s = nextStep(s, { type: 'CHOOSE_TYPE_IDEA' });
-  s = nextStep(s, { type: 'IDEA_TYPED', text: 'רעיון' });
-  s = nextStep(s, { type: 'RELEVANCE_CONFIRMED' });
-  // 26/10/2026: צ'אט שמדייק את הרעיון, ואז נקודת יציאה וסוג תוכן
-  s = nextStep(s, { type: 'IDEA_SHARPENED', idea: 'טעות נפוצה בהסרת שיער' });
-  s = nextStep(s, { type: 'BASICS_CONFIRMED', startingPoint: 'כללי', contentType: 'בעל ערך' });
-  s = nextStep(s, { type: 'FORMAT_SELECTED', format: 'דיבור למצלמה' });
-  s = nextStep(s, { type: 'NEEDS_SCRIPT_YES' });
-  s = nextStep(s, { type: 'CHOOSE_FROM_SCRATCH' });
-  // 23/10/2026: הזווית כבר נבחרה מוקדם יותר, כאן חוזרים להסבר
-  assert.equal(s.screen, 'scratch-intro');
-  assert.equal(s.branch, 'scratch');
+test('a pulled reference still goes through the relevance check', () => {
+  let s = nextStep(INITIAL_STATE, { type: 'CHOOSE_REFERENCE' });
+  s = nextStep(s, { type: 'CHOOSE_PULL_REFERENCE' });
+  s = nextStep(s, { type: 'ACCEPT_PICK' });
+  assert.equal(s.screen, 'relevance-check');
 });
 
 /* 26/10/2026 (מאיה): "בחלק של כתיבת תסריט מ-0 יש שם תקלה חמורה, שאת

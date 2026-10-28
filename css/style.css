@@ -7278,3 +7278,45 @@ body[data-plan="refs"] .view-tabs-scroll { justify-content: center; }
   font-weight: 700;
   margin: 0 0 10px;
 }
+
+/* 28/10/2026 (מאיה: "עומס מנטלי... צריך יותר סדר"): שלושה מסכים נכנסו
+   למסך הרעיון, ושניים לתוך מסכי הכתיבה. הם מופיעים שם כקישור, כתיבת
+   סימון וכשורה שנפתחת, כדי לא להוסיף עומס למסך שקיבל אותם. */
+.va-text-link {
+  display: inline-block;
+  background: transparent;
+  border: none;
+  padding: 6px 0 0;
+  color: rgba(255,255,255,.75);
+  font-size: 13.5px;
+  text-decoration: underline;
+  cursor: pointer;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+}
+.va-check-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-top: 16px;
+  font-size: 14px;
+  line-height: 1.5;
+  cursor: pointer;
+}
+.va-check-row input {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  margin-top: 2px;
+  accent-color: var(--cosmic-glow, #ff2ea8);
+}
+.va-more {
+  margin: 12px 0;
+  font-size: 14px;
+}
+.va-more summary {
+  cursor: pointer;
+  text-decoration: underline;
+  opacity: .85;
+  padding: 4px 0;
+}
+.va-more[open] summary { margin-bottom: 8px; }

@@ -26,3 +26,17 @@ test('הבחירה בולטת על המסך', () => {
   assert.match(DISTILL, /va-cta-pick/);
   assert.match(CSS, /\.va-cta-pick\s*\{/);
 });
+
+// 28/10/2026: השכפול ההפוך עבר מתוך מסך החלטה נפרד לשורה אופציונלית
+// במסך ההוק, עם אותו פרומפט שלה בדיוק (ההוק המקורי + המגילה).
+const HOOK = SRC.slice(SRC.indexOf('async function renderScratchHook'), SRC.indexOf('async function renderScratchHookReinforce'));
+test('מסך ההוק: סרטון שעבד הוא אפשרות, ומשתמש בפרומפט השכפול ההפוך', () => {
+  assert.match(HOOK, /va-hook-ref-input/, 'אין מקום להדביק תמלול');
+  assert.match(HOOK, /buildReverseDuplicationPrompt\(\{ domain, audience, hook: state\.openingHook, script: state\.rawDump/, 'לא הפרומפט שלה');
+  assert.match(HOOK, /<details class="va-more"/, 'האפשרות לא סגורה כברירת מחדל');
+});
+
+test('"כן, צריך תסריט" לא עובר יותר במסך "שכפול הפוך?"', () => {
+  const FLOW = readFileSync(join(ROOT, 'js', 'video-assistant-flow.js'), 'utf8');
+  assert.match(FLOW, /case 'NEEDS_SCRIPT_YES':\s*return \{ \.\.\.state, screen: 'scratch-dump'/);
+});

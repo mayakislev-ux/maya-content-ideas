@@ -350,9 +350,9 @@ async function renderOpening() {
     <h2>✨ בואו ניצור סרטון</h2>
     <p>מאיפה מתחילים הפעם?</p>
     <div class="cosmic-btn-row">
-      <button type="button" class="cosmic-btn" id="va-reference-btn">שיטת השכפול</button>
+      <button type="button" class="cosmic-btn" id="va-idea-btn">יש לי רעיון</button>
+      <button type="button" class="cosmic-btn" id="va-reference-btn">סרטון שאהבתי (שכפול)</button>
       <button type="button" class="cosmic-btn" id="va-footage-btn">יש לי קטע שצולם</button>
-      <button type="button" class="cosmic-btn" id="va-idea-btn">רעיון מ-0</button>
     </div>
   `);
   document.getElementById('va-footage-btn').addEventListener('click', () => dispatch({ type: 'CHOOSE_FOOTAGE' }));
@@ -1267,6 +1267,9 @@ function renderIdeaSharpen() {
      לסרטון" אלא המסר שבונים סביב חומר שכבר קיים, ולכן הכותרת והדוגמה
      מדברות על הקטע. אותו צ'אט, אותו מנוע. */
   const forFootage = state.branch === 'footage';
+  /* מסלול "יש לי רעיון" מתחיל כאן ישר מהפתיחה, ולכן רק בו יש קישור
+     להגרלה ותיבת סימון של בדיקת הרלוונטיות (שהיו פעם מסכים נפרדים). */
+  const fromIdea = state.branch === 'idea';
 
   /* 28/10/2026 (מאיה): "כל החלק של הרעיון שלך במשפט אחד מסובך, מיליון
      טקסט, מבלבל ועושה כאב ראש, חייב לפשט הכל". ירדו פסקת הפתיחה, שלושת
@@ -1278,6 +1281,7 @@ function renderIdeaSharpen() {
     <label class="cosmic-field-label" for="va-idea-sharp">${forFootage ? 'מה המסר של הקטע שכבר צולם?' : 'על מה הסרטון?'}</label>
     <textarea class="cosmic-textarea" id="va-idea-sharp" style="min-height:${forFootage ? 96 : 56}px"
       placeholder="${forFootage ? 'למשל: למה אני עובדת עם מכשיר אחד ולא עם שלושה' : 'למשל: החלקה לשיער'}">${escapeHtml(idea)}</textarea>
+    ${fromIdea ? '<button type="button" class="va-text-link" id="va-pull-idea-link">🎲 אין לי רעיון? להגריל מבנק הרעיונות</button>' : ''}
     ${forFootage ? '' : `
     <label class="cosmic-field-label va-punch-label" for="va-idea-punch">⭐ מה הפואנטה שורה תחתונה מהסרטון? מה אתם רוצים שהקהל שלכם יבין? מה המסר?</label>
     <textarea class="cosmic-textarea va-punch-box" id="va-idea-punch" style="min-height:96px"
@@ -1295,6 +1299,11 @@ function renderIdeaSharpen() {
           <button type="submit" class="cosmic-btn" id="va-chat-send">שליחה</button>
         </form>
       </div>`}
+
+    ${fromIdea ? `<label class="va-check-row">
+      <input type="checkbox" id="va-relevance-check" ${state.relevanceConfirmed ? 'checked' : ''}>
+      <span>הרעיון רלוונטי לקהל היעד שלי, או משרת את המותג (מציג את האישיות, הערכים או תפיסת העולם שלי)</span>
+    </label>` : ''}
 
     <div class="cosmic-btn-row" style="margin-top:16px">
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-idea-next-btn">ממשיכים ←</button>
@@ -1327,9 +1336,27 @@ function renderIdeaSharpen() {
       box.focus();
       return;
     }
+    const relevance = document.getElementById('va-relevance-check');
+    if (relevance && !relevance.checked) {
+      showToast('רגע לפני שממשיכים: לסמן שהרעיון רלוונטי לקהל או משרת את המותג');
+      relevance.focus();
+      return;
+    }
+    if (relevance) state.relevanceConfirmed = true;
     dispatch(punchBox
       ? { type: 'IDEA_SHARPENED', idea: text, topic: box.value.trim(), punchline: punchBox.value.trim() }
       : { type: 'IDEA_SHARPENED', idea: text });
+  });
+  const pullLink = document.getElementById('va-pull-idea-link');
+  if (pullLink) pullLink.addEventListener('click', async () => {
+    if (!ideasCache) ideasCache = await fetchIdeas();
+    const picked = pickIdea(ideasCache, null);
+    if (!picked) {
+      showToast('אין עדיין רעיונות שמורים בבנק הרעיונות');
+      return;
+    }
+    currentPickId = picked.id;
+    dispatch({ type: 'CHOOSE_PULL_IDEA' });
   });
   if (refsOnly) return;
 
@@ -1588,6 +1615,12 @@ function renderScratchDump() {
     </button>
     <textarea class="cosmic-textarea" id="va-scratch-dump-input" style="min-height:160px" placeholder="כל מה שיש לך להגיד...">${state.rawDump ? escapeHtml(state.rawDump) : ''}</textarea>
     ${megillahMeterHtml('va-scratch')}
+    <details class="va-more">
+      <summary>איך בנוי תסריט טוב?</summary>
+      <ul class="cosmic-summary-list">${SCRIPT_STRUCTURE.map((s) => `
+        <li><span class="cosmic-summary-num">${s.step}</span><div><strong>${escapeHtml(s.name)}</strong><br>${escapeHtml(s.description)}</div></li>
+      `).join('')}</ul>
+    </details>
     <div class="cosmic-btn-row" style="margin-top:14px">
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-scratch-dump-done-btn">להמשיך</button>
     </div>
@@ -1605,11 +1638,33 @@ function renderScratchDump() {
 async function renderScratchHook() {
   const profile = await getProfile();
   const audience = profile && profile.primaryAudience ? profile.primaryAudience : '';
-  const prompt = buildHookFindingPrompt({ idea: state.ideaDescription || '', script: state.rawDump || '', audience, domain: domainInfo ? domainInfo.domain : '' });
+  const domain = domainInfo ? domainInfo.domain : '';
+  /* 28/10/2026: השכפול ההפוך כבר לא מסלול נפרד עם מסך החלטה משלו.
+     המגילה כבר כתובה כאן, ולכן מי שיש לה סרטון שעבד מדביקה את התמלול
+     שלו, וההוקים נבנים בפרומפט השכפול ההפוך שלה (ההוק המקורי + המגילה).
+     מי שאין לה, לא רואה מזה יותר משורה אחת סגורה. */
+  const withRef = !!(state.transcript && state.openingHook);
+  const prompt = withRef
+    ? buildReverseDuplicationPrompt({ domain, audience, hook: state.openingHook, script: state.rawDump || '' })
+    : buildHookFindingPrompt({ idea: state.ideaDescription || '', script: state.rawDump || '', audience, domain: domain });
+  const marks = withRef
+    ? [audience, domain, state.openingHook, state.rawDump]
+    : [state.ideaDescription, state.rawDump, audience];
   cosmicCard(`
     <h2>מציאת הוק</h2>
-    <p>הפרומפט כולל בנק הוקים אמיתי מוטמע - ChatGPT יתאים לך ממנו הוק מדויק. להעתיק, להדביק, ולחזור עם ההוק שבחרת.</p>
-    <div class="cosmic-prompt-box">${highlightPlaceholders(prompt, [state.ideaDescription, state.rawDump, audience])}</div>
+    <p>${withRef
+      ? 'ההוק של הסרטון שעבד + המגילה שלך: ChatGPT יביא 30 הוקים באותו מנגנון. להעתיק, להדביק, ולחזור עם ההוק שבחרת.'
+      : 'הפרומפט כולל בנק הוקים אמיתי מוטמע - ChatGPT יתאים לך ממנו הוק מדויק. להעתיק, להדביק, ולחזור עם ההוק שבחרת.'}</p>
+    ${withRef ? `<div class="cosmic-context-box"><span>ההוק שזיהינו מהסרטון:</span>${escapeHtml(state.openingHook)}</div>` : ''}
+    <details class="va-more"${withRef ? ' open' : ''}>
+      <summary>יש סרטון שעבד ושתרצו להיצמד אליו? (רשות)</summary>
+      <textarea class="cosmic-textarea" id="va-hook-ref-input" placeholder="להדביק כאן את התמלול של הסרטון...">${state.transcript ? escapeHtml(state.transcript) : ''}</textarea>
+      <div class="cosmic-btn-row" style="margin-top:8px">
+        <button type="button" class="cosmic-btn" id="va-hook-ref-btn">לבנות את ההוקים לפי הסרטון</button>
+        ${withRef ? '<button type="button" class="cosmic-btn" id="va-hook-ref-clear-btn">בלי הסרטון</button>' : ''}
+      </div>
+    </details>
+    <div class="cosmic-prompt-box">${highlightPlaceholders(prompt, marks)}</div>
     ${copyBtn(prompt, 'להעתיק פרומפט')}
     <textarea class="cosmic-textarea" id="va-scratch-hook-input" placeholder="להדביק כאן את ההוק שבחרת..." style="margin-top:14px"></textarea>
     <div class="cosmic-btn-row" style="margin-top:14px">
@@ -1617,6 +1672,25 @@ async function renderScratchHook() {
     </div>
   `);
   wireCopyButtons(screenEl());
+  document.getElementById('va-hook-ref-btn').addEventListener('click', async () => {
+    const text = document.getElementById('va-hook-ref-input').value.trim();
+    if (!text) {
+      showToast('קודם להדביק את התמלול של הסרטון');
+      return;
+    }
+    if (text !== state.transcript) state.openingHook = null;
+    state.transcript = text;
+    cosmicCard(`<p>מזהים את ההוק מתוך התמלול...</p>`, { showProgress: false });
+    await ensureOpeningHook();
+    renderScratchHook();
+  });
+  const clearRef = document.getElementById('va-hook-ref-clear-btn');
+  if (clearRef) clearRef.addEventListener('click', () => {
+    state.transcript = null;
+    state.openingHook = null;
+    saveSession(state).catch((err) => console.error('saveSession failed:', err));
+    renderScratchHook();
+  });
   document.getElementById('va-scratch-hook-done-btn').addEventListener('click', () => {
     const hook = document.getElementById('va-scratch-hook-input').value.trim();
     if (!hook) {
