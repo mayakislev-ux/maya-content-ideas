@@ -1072,27 +1072,92 @@ async function renderHerWords() {
       <span class="va-sos-big__icon" aria-hidden="true">🆘</span>
       <span class="va-sos-big__text"><strong>נתקעים? לא ברור מה לכתוב?</strong><span>לחיצה כאן, ו-ChatGPT ישאל אותך שאלות שיוציאו ממך מגילה מלאה</span></span>
     </button>
-    <textarea class="cosmic-textarea" id="va-herwords-input" style="${isPreHookMegillah ? 'min-height:160px' : ''}">${isPreHookMegillah && state.herWords ? escapeHtml(state.herWords) : ''}</textarea>
+    <textarea class="cosmic-textarea" id="va-herwords-input" style="min-height:160px">${isPreHookMegillah && state.herWords ? escapeHtml(state.herWords) : ''}</textarea>
+    ${megillahMeterHtml('va-herwords')}
     <div class="cosmic-btn-row" style="margin-top:14px">
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-herwords-done-btn">להמשיך</button>
     </div>
   `);
   document.getElementById('va-herwords-help-btn').addEventListener('click', openExtractionHelperModal);
-  document.getElementById('va-herwords-done-btn').addEventListener('click', () => {
-    const text = document.getElementById('va-herwords-input').value.trim();
+  wireMegillahGate({
+    prefix: 'va-herwords',
+    inputId: 'va-herwords-input',
+    doneId: 'va-herwords-done-btn',
+    onGo: (text) => dispatch({ type: 'HER_WORDS_SUBMITTED', text }),
+  });
+}
+
+/* 28/10/2026 (מאיה: "הרבה מפספסים את ה-SOS, שזה שלב קריטי... ויוצא להם
+   גרוע"). בנתונים: מגילה של 23 מילים ושפיכות של 40 ו-46 מילים הגיעו עד
+   תסריט, אף אחת דרך ה-SOS. לכן מחסום אמיתי ולא רק תזכורת: מתחת ל-120 מילים
+   "להמשיך" פותח רק את ה-SOS. מעל, פופאפ אחרון שמוודא שזה מפורט. הרף אושר
+   על ידה. */
+export const MEGILLAH_MIN_WORDS = 120;
+
+export function countWords(text) {
+  return String(text || '').split(/\s+/).filter(Boolean).length;
+}
+
+function megillahMeterHtml(prefix) {
+  return `<p class="va-megillah-meter" id="${prefix}-meter" aria-live="polite"></p>`;
+}
+
+function wireMegillahGate({ prefix, inputId, doneId, onGo }) {
+  const input = document.getElementById(inputId);
+  const meter = document.getElementById(`${prefix}-meter`);
+  const paint = () => {
+    const n = countWords(input.value);
+    const ok = n >= MEGILLAH_MIN_WORDS;
+    meter.classList.toggle('va-megillah-meter--ok', ok);
+    meter.textContent = ok
+      ? `${n} מילים ✓ אפשר להמשיך`
+      : `${n} מתוך ${MEGILLAH_MIN_WORDS} מילים לפחות. עוד ${MEGILLAH_MIN_WORDS - n} כדי להמשיך`;
+  };
+  input.addEventListener('input', paint);
+  paint();
+  document.getElementById(doneId).addEventListener('click', () => {
+    const text = input.value.trim();
     if (!text) {
       showToast('צריך לכתוב משהו קודם');
       return;
     }
-    confirmMegillahDetailed(text);
+    if (countWords(text) < MEGILLAH_MIN_WORDS) {
+      megillahTooShort(countWords(text), inputId);
+      return;
+    }
+    confirmMegillahDetailed(text, { inputId, onGo });
+  });
+}
+
+function megillahTooShort(words, inputId) {
+  const overlay = openModal(`
+    <h2 style="margin-top:0">המגילה קצרה מדי 🛑</h2>
+    <p>כתבת ${words} מילים, וצריך לפחות ${MEGILLAH_MIN_WORDS}. ממגילה קצרה יוצא תסריט חלש, כי ChatGPT לא יכול להמציא את מה שלא סופר לו.</p>
+    <p><strong>זה בדיוק הרגע ל-SOS:</strong> הוא ישאל שאלות שיוציאו את כל החומר.</p>
+    <button type="button" class="va-sos-big" id="va-short-sos-btn">
+      <span class="va-sos-big__icon" aria-hidden="true">🆘</span>
+      <span class="va-sos-big__text"><strong>לקבל עזרה להוציא עוד חומר</strong><span>מקבלים פרומפט, מדביקים ב-ChatGPT, עונים על השאלות</span></span>
+    </button>
+    <div class="cosmic-btn-row" style="margin-top:14px">
+      <button type="button" class="cosmic-btn" id="va-short-back-btn">לחזור ולכתוב עוד</button>
+    </div>
+  `);
+  overlay.querySelector('#va-short-sos-btn').addEventListener('click', () => {
+    closeModal();
+    openExtractionHelperModal();
+  });
+  overlay.querySelector('#va-short-back-btn').addEventListener('click', () => {
+    closeModal();
+    const input = document.getElementById(inputId);
+    if (input) input.focus();
   });
 }
 
 /* 28/10/2026 (מאיה: "אולי תעשי פופאפ אחרי החלק הזה, בטוח כתבת מגילה מספיק
    מפורטת, ועוד פעם כפתור SOS לחדד כמה זה חשוב"). כל מה שנכתב כאן הוא חומר
    הגלם של התסריט, ו-ChatGPT לא יכול להמציא את מה שלא סופר לו. */
-function confirmMegillahDetailed(text) {
-  const words = text.split(/\s+/).filter(Boolean).length;
+function confirmMegillahDetailed(text, { inputId, onGo }) {
+  const words = countWords(text);
   const overlay = openModal(`
     <h2 style="margin-top:0">רגע לפני שממשיכים ✋</h2>
     <p><strong>המגילה באמת מספיק מפורטת?</strong></p>
@@ -1113,12 +1178,12 @@ function confirmMegillahDetailed(text) {
   });
   overlay.querySelector('#va-megillah-back-btn').addEventListener('click', () => {
     closeModal();
-    const input = document.getElementById('va-herwords-input');
+    const input = document.getElementById(inputId);
     if (input) input.focus();
   });
   overlay.querySelector('#va-megillah-go-btn').addEventListener('click', () => {
     closeModal();
-    dispatch({ type: 'HER_WORDS_SUBMITTED', text });
+    onGo(text);
   });
 }
 
@@ -1482,22 +1547,23 @@ function renderScratchDump() {
   cosmicCard(`
     <h2>שפיכה את כל מה שיש לך להגיד</h2>
     <p>בלי לערוך, בלי לדאוג לניסוח - כל מה שעולה לך בראש על הרעיון. נזקק את זה אחר כך.</p>
-    <div class="cosmic-btn-row" style="margin-bottom:14px">
-      <button type="button" class="cosmic-btn" id="va-scratch-help-btn">קשה למצוא מה להגיד? לקבל עזרה 🆘</button>
-    </div>
+    <button type="button" class="va-sos-big" id="va-scratch-help-btn">
+      <span class="va-sos-big__icon" aria-hidden="true">🆘</span>
+      <span class="va-sos-big__text"><strong>נתקעים? לא ברור מה לכתוב?</strong><span>לחיצה כאן, ו-ChatGPT ישאל אותך שאלות שיוציאו ממך מגילה מלאה</span></span>
+    </button>
     <textarea class="cosmic-textarea" id="va-scratch-dump-input" style="min-height:160px" placeholder="כל מה שיש לך להגיד...">${state.rawDump ? escapeHtml(state.rawDump) : ''}</textarea>
+    ${megillahMeterHtml('va-scratch')}
     <div class="cosmic-btn-row" style="margin-top:14px">
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-scratch-dump-done-btn">להמשיך</button>
     </div>
   `);
   document.getElementById('va-scratch-help-btn').addEventListener('click', openExtractionHelperModal);
-  document.getElementById('va-scratch-dump-done-btn').addEventListener('click', () => {
-    const text = document.getElementById('va-scratch-dump-input').value.trim();
-    if (!text) {
-      showToast('צריך לכתוב משהו קודם');
-      return;
-    }
-    dispatch({ type: 'SCRATCH_DUMP_READY', text });
+  // 28/10/2026: אותו מחסום כמו במגילה של השכפול. כאן נכתבו 40 ו-46 מילים
+  wireMegillahGate({
+    prefix: 'va-scratch',
+    inputId: 'va-scratch-dump-input',
+    doneId: 'va-scratch-dump-done-btn',
+    onGo: (text) => dispatch({ type: 'SCRATCH_DUMP_READY', text }),
   });
 }
 
