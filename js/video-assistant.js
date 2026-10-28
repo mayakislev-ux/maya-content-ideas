@@ -1157,19 +1157,25 @@ function renderIdeaSharpen() {
      ה"לא קולט את הרעיון שלי" שמאיה דיווחה עליו. */
   const draft = (state.drafts || {})['idea-sharpen|va-idea-sharp'];
   const idea = (draft !== undefined ? draft : (state.ideaDescription || ''));
+  /* 28/10/2026: אותו מסך משרת עכשיו גם קטע שצולם. שם זה לא "רעיון
+     לסרטון" אלא המסר שבונים סביב חומר שכבר קיים, ולכן הכותרת והדוגמה
+     מדברות על הקטע. אותו צ'אט, אותו מנוע. */
+  const forFootage = state.branch === 'footage';
 
   cosmicCard(`
-    <h2>הרעיון שלך, במשפט אחד</h2>
-    <p class="cosmic-lede">רעיון מדויק הוא ההבדל בין סרטון שמדבר למישהי אחת לבין סרטון שמדבר לכולן ולא לאף אחת.</p>
+    <h2>${forFootage ? 'המסר של הקטע, במשפט אחד' : 'הרעיון שלך, במשפט אחד'}</h2>
+    <p class="cosmic-lede">${forFootage
+      ? 'הקטע כבר צולם, אבל מה שאומרים סביבו נכתב רק עכשיו. משפט מדויק כאן הוא מה שהופך חומר גלם לסרטון שמישהי עוצרת בשבילו.'
+      : 'רעיון מדויק הוא ההבדל בין סרטון שמדבר למישהי אחת לבין סרטון שמדבר לכולן ולא לאף אחת.'}</p>
     <ol class="cosmic-howto">
-      <li>לכתוב בתיבה את הרעיון כמו שהוא עכשיו, גם אם הוא גולמי.</li>
+      <li>${forFootage ? 'לכתוב בתיבה מה המסר של הקטע כמו שהוא עכשיו, גם אם הוא גולמי.' : 'לכתוב בתיבה את הרעיון כמו שהוא עכשיו, גם אם הוא גולמי.'}</li>
       ${refsOnly ? '' : '<li>ללחוץ על "לחדד את הרעיון" והוא ילחץ עליו ויציע ניסוח חד יותר.</li><li>ניסוח שמוצא חן, לחיצה אחת מעבירה אותו לתיבה.</li>'}
     </ol>
 
-    <label class="cosmic-field-label" for="va-idea-sharp">הרעיון שלי</label>
+    <label class="cosmic-field-label" for="va-idea-sharp">${forFootage ? 'המסר שלי' : 'הרעיון שלי'}</label>
     <textarea class="cosmic-textarea" id="va-idea-sharp" style="min-height:96px"
-      placeholder="למשל: למה החלקה שורפת את השיער, ומה עושים במקום">${escapeHtml(idea)}</textarea>
-    <p class="cosmic-hint">זה הרעיון שימשיך לכל השלבים הבאים. מה שכתוב כאן הוא מה שקובע.</p>
+      placeholder="${forFootage ? 'למשל: למה אני עובדת עם מכשיר אחד ולא עם שלושה' : 'למשל: למה החלקה שורפת את השיער, ומה עושים במקום'}">${escapeHtml(idea)}</textarea>
+    <p class="cosmic-hint">זה ${forFootage ? 'המסר' : 'הרעיון'} שימשיך לכל השלבים הבאים. מה שכתוב כאן הוא מה שקובע.</p>
 
     ${refsOnly ? '<p class="cosmic-hint">הצ\'אט לחידוד רעיון אינו כלול במנוי הרפרנסים.</p>' : `
       <div class="cosmic-btn-row" style="margin-top:4px">
@@ -1185,7 +1191,7 @@ function renderIdeaSharpen() {
       </div>`}
 
     <div class="cosmic-btn-row" style="margin-top:16px">
-      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-idea-next-btn">הרעיון מדויק, ממשיכים ←</button>
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-idea-next-btn">${forFootage ? 'המסר מדויק, ממשיכים ←' : 'הרעיון מדויק, ממשיכים ←'}</button>
     </div>
   `);
 
@@ -1193,7 +1199,7 @@ function renderIdeaSharpen() {
   document.getElementById('va-idea-next-btn').addEventListener('click', () => {
     const text = box.value.trim();
     if (!text) {
-      showToast('קודם לכתוב את הרעיון בתיבה');
+      showToast(forFootage ? 'קודם לכתוב את המסר בתיבה' : 'קודם לכתוב את הרעיון בתיבה');
       box.focus();
       return;
     }
@@ -1300,7 +1306,9 @@ function renderIdeaSharpen() {
   function openChat() {
     const idea0 = currentIdea();
     if (idea0.length < 8) {
-      showToast('לכתוב קודם את הרעיון במשפט, כדי שיהיה על מה ללחוץ');
+      showToast(forFootage
+        ? 'לכתוב קודם את המסר במשפט, כדי שיהיה על מה ללחוץ'
+        : 'לכתוב קודם את הרעיון במשפט, כדי שיהיה על מה ללחוץ');
       box.focus();
       return;
     }
@@ -1308,7 +1316,11 @@ function renderIdeaSharpen() {
     askBtn.textContent = '✨ לחדד שוב מההתחלה';
     messagesEl.innerHTML = '';
     history.length = 0;
-    ask(`הרעיון שלי לסרטון: "${idea0}".${ASK_TAIL}`);
+    /* 28/10/2026: בקטע שצולם חייבים לומר לו שהחומר כבר קיים, אחרת הוא
+       מציע לצלם מחדש או לשנות נושא - עצה שאין מה לעשות איתה. */
+    ask(forFootage
+      ? `יש לי קטע שכבר צילמתי, והמסר שאני רוצה לבנות סביבו: "${idea0}". החומר כבר קיים ואי אפשר לצלם אותו מחדש, לכן הדיוק הוא בניסוח של המסר ולא בצילום.${ASK_TAIL}`
+      : `הרעיון שלי לסרטון: "${idea0}".${ASK_TAIL}`);
   }
 
   function send() {

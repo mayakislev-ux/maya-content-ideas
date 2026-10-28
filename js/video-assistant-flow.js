@@ -90,12 +90,16 @@ function step(state, action) {
     case 'CHOOSE_TYPE_IDEA':
       return { ...state, screen: 'type-idea' };
     case 'IDEA_TYPED':
-      /* 23/10/2026: בקטע שכבר צולם אין מה לבדוק רלוונטיות ואין מה לבחור
-         זווית, הוא כבר קיים. משם ממשיכים ישר לפורמט, כמו שמאיה ביקשה:
-         "צריך לשאול קודם כל מה הרעיון/מסר שתרצה להעביר, ואז לבקש לבחור
-         פורמט הנגשה, ואז לשאול אם צריך תסריט". */
+      /* 23/10/2026: בקטע שכבר צולם אין מה לבדוק רלוונטיות, הוא כבר צולם.
+         סדר השלבים שלה נשאר: "צריך לשאול קודם כל מה הרעיון/מסר שתרצה
+         להעביר, ואז לבקש לבחור פורמט הנגשה, ואז לשאול אם צריך תסריט".
+
+         28/10/2026 (מאיה): "גם בתכלס הוא צריך להופיע גם בקטע שצולם
+         שממירים לפורמט אחר וכותבים". צ'אט חידוד הרעיון נכנס בין הרעיון
+         לפורמט גם כאן: החומר אכן צולם, אבל המסר שבונים סביבו נכתב רק
+         עכשיו, ולכן הוא זה שצריך להיות מדויק. */
       if (state.branch === 'footage') {
-        return { ...state, screen: 'format-choice', formatFor: 'idea', ideaDescription: action.text };
+        return { ...state, screen: 'idea-sharpen', ideaDescription: action.text };
       }
       return { ...state, screen: 'relevance-check', ideaDescription: action.text };
     case 'CHOOSE_PULL_IDEA':
@@ -214,12 +218,15 @@ function step(state, action) {
     // שלב 0 (חדש, 22/10): זווית ההגשה. בלי זווית אין מה לכתוב.
     /* הרעיון שיוצא מהצ'אט הוא הרעיון שממשיך הלאה. אם לא שינתה אותו,
        נשאר מה שהיה. צ'אט שלא משנה כלום במצב הוא קישוט. */
-    case 'IDEA_SHARPENED':
-      return {
-        ...state,
-        screen: 'content-basics',
-        ideaDescription: (action.idea && action.idea.trim()) || state.ideaDescription,
-      };
+    case 'IDEA_SHARPENED': {
+      const sharpened = (action.idea && action.idea.trim()) || state.ideaDescription;
+      /* 28/10/2026: בקטע שצולם אין נקודת יציאה וסוג תוכן לבחור - הם
+         נקבעו בצילום עצמו. משם ישר לפורמט, כמו שהיה עד היום. */
+      if (state.branch === 'footage') {
+        return { ...state, screen: 'format-choice', formatFor: 'idea', ideaDescription: sharpened };
+      }
+      return { ...state, screen: 'content-basics', ideaDescription: sharpened };
+    }
     /* שלבים 2 ו-3 במסמך: נקודת היציאה וסוג התוכן. שניהם נכנסים לפרומפט
        חילוץ התוכן, ולכן הם נשמרים במצב ולא נכתבים מחדש ביד בכל פעם. */
     case 'BASICS_CONFIRMED':

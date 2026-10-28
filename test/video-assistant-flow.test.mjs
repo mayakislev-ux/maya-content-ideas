@@ -375,7 +375,7 @@ test('חידוד הרעיון יושב בין הרעיון לפורמט, ולא 
   assert.equal(s.screen, 'format-choice', 'הפורמט לא בא אחרי חידוד הרעיון');
 });
 
-test('מסלול קטע מצולם לא עובר בחידוד רעיון, הוא כבר צולם', () => {
+test('קטע מצולם נשאר בבחירת סוג הקטע אחרי הרלוונטיות, לא בחידוד', () => {
   const s = nextStep({ ...INITIAL_STATE, screen: 'relevance-check', branch: 'footage' },
     { type: 'RELEVANCE_CONFIRMED' });
   assert.equal(s.screen, 'footage-type-choice');
@@ -391,17 +391,33 @@ test('הזווית נשמרת עד הסוף גם כשעוברים דרך הפו�
   assert.equal(s.ideaDescription, 'מיתוס שתעודה מספיקה');
 });
 
-test('קטע מצולם: אחרי המסר שואלים רעיון, ואז פורמט, ואז אם צריך תסריט', () => {
+/* 28/10/2026 (מאיה): "גם בתכלס הוא צריך להופיע גם בקטע שצולם שממירים
+   לפורמט אחר וכותבים" - צ'אט חידוד הרעיון נכנס גם למסלול הזה, בין
+   הרעיון לפורמט. בדיקת הרלוונטיות עדיין לא חוזרת לכאן. */
+test('קטע מצולם: אחרי המסר שואלים רעיון, מחדדים אותו, ואז פורמט ותסריט', () => {
   let s = { ...INITIAL_STATE, screen: 'footage-visual-message', branch: 'footage' };
   s = nextStep(s, { type: 'FOOTAGE_VISUAL_READY' });
   assert.equal(s.screen, 'type-idea');
   s = nextStep(s, { type: 'IDEA_TYPED', text: 'המסר שאני רוצה להעביר' });
-  // אין בדיקת רלוונטיות ואין זווית: הקטע כבר צולם
-  assert.equal(s.screen, 'format-choice');
+  assert.equal(s.screen, 'idea-sharpen', 'קטע שצולם לא מגיע לצ\'אט חידוד הרעיון');
   assert.equal(s.ideaDescription, 'המסר שאני רוצה להעביר');
+  // אין בדיקת רלוונטיות: הקטע כבר צולם
+  s = nextStep(s, { type: 'IDEA_SHARPENED', idea: 'למה אני עובדת עם מכשיר אחד' });
+  assert.equal(s.screen, 'format-choice', 'בקטע שצולם אחרי החידוד בא הפורמט, לא נקודת יציאה');
+  assert.equal(s.formatFor, 'idea');
+  assert.equal(s.ideaDescription, 'למה אני עובדת עם מכשיר אחד', 'הניסוח המחודד לא ממשיך הלאה');
   s = nextStep(s, { type: 'FORMAT_SELECTED', format: 'מסך חצוי' });
   assert.equal(s.screen, 'needs-script-check');
   assert.equal(nextStep(s, { type: 'NEEDS_SCRIPT_NO' }).screen, 'summary');
+});
+
+/* חזרה אחורה מהחידוד צריכה להחזיר אותה לתיבת הרעיון של הקטע, ולא
+   לקפוץ מעל שלב. מסך שנוסף לזרימה בלי שהוא נכנס להיסטוריה הוא מלכודת. */
+test('קטע מצולם: חזרה מחידוד הרעיון מחזירה למסך הרעיון', () => {
+  let s = { ...INITIAL_STATE, screen: 'type-idea', branch: 'footage' };
+  s = nextStep(s, { type: 'IDEA_TYPED', text: 'המסר' });
+  s = nextStep(s, { type: 'BACK' });
+  assert.equal(s.screen, 'type-idea');
 });
 
 test('רעיון רגיל עדיין עובר בבדיקת רלוונטיות ובזווית', () => {

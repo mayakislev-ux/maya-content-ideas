@@ -125,7 +125,10 @@ describe('הערכים זהים למסמך', () => {
 describe('הצ׳אט מדבר על מה שכתוב בתיבה, ורק עליו', () => {
   test('הצ׳אט קורא את התיבה ברגע הלחיצה, ולא ערך שנתפס מראש', () => {
     assert.match(SHARPEN, /function currentIdea\(\)/, 'אין קריאה חיה של התיבה');
-    assert.match(SHARPEN, /ask\(`הרעיון שלי לסרטון: "\$\{idea0\}"/, 'השאלה הפותחת לא מהתיבה');
+    assert.match(SHARPEN, /`הרעיון שלי לסרטון: "\$\{idea0\}"/, 'השאלה הפותחת לא מהתיבה');
+    /* 28/10/2026: אותו מסך משרת גם קטע שצולם, ושם הפתיחה אחרת - אבל
+       גם היא חייבת לקרוא את התיבה החיה ולא ערך קפוא. */
+    assert.match(SHARPEN, /המסר שאני רוצה לבנות סביבו: "\$\{idea0\}"/, 'בקטע שצולם הפתיחה לא מהתיבה');
     assert.ok(!/^\s*ask\(`אני עובדת על סרטון/m.test(SHARPEN), 'הצ׳אט עדיין נפתח לבד עם ערך קפוא');
   });
 
@@ -148,6 +151,45 @@ describe('הצ׳אט מדבר על מה שכתוב בתיבה, ורק עליו',
   });
 });
 
+/* 28/10/2026 (מאיה): "גם בתכלס הוא צריך להופיע גם בקטע שצולם שממירים
+   לפורמט אחר וכותבים". אותו מסך משרת עכשיו שני מסלולים, ולכן כאן
+   התבנית עצמה מורצת באמת - עם ועד בלי קטע מצולם - ולא רק נבדקת כמקור.
+   בדיקת מקור הייתה עוברת גם על תבנית שמתפרקת בהרצה. */
+describe('אותו מסך, שני מסלולים', () => {
+  const tplFrom = SHARPEN.indexOf('cosmicCard(`') + 'cosmicCard(`'.length;
+  const tplTo = SHARPEN.indexOf('\n  `);', tplFrom);
+  const render = (forFootage) => {
+    assert.ok(tplTo > tplFrom, 'לא נמצאה תבנית המסך');
+    const build = new Function('forFootage', 'refsOnly', 'escapeHtml', 'idea',
+      'return `' + SHARPEN.slice(tplFrom, tplTo) + '`');
+    return build(forFootage, false, (s) => s, 'הרעיון הגולמי שלי');
+  };
+
+  test('רעיון מ-0: הכותרת, התווית והדוגמה על הרעיון', () => {
+    const html = render(false);
+    assert.match(html, /<h2>הרעיון שלך, במשפט אחד<\/h2>/);
+    assert.match(html, /placeholder="למשל: למה החלקה שורפת/);
+    assert.ok(html.includes('הרעיון הגולמי שלי'), 'הרעיון לא נכנס לתיבה');
+    assert.ok(!html.includes('${'), 'נשארה אינטרפולציה לא פתורה');
+  });
+
+  test('קטע שצולם: אותו מסך מדבר על המסר של הקטע', () => {
+    const html = render(true);
+    assert.match(html, /<h2>המסר של הקטע, במשפט אחד<\/h2>/);
+    assert.match(html, /placeholder="למשל: למה אני עובדת עם מכשיר אחד/);
+    assert.ok(html.includes('הקטע כבר צולם'), 'לא כתוב שהחומר כבר קיים');
+    assert.ok(!html.includes('${'), 'נשארה אינטרפולציה לא פתורה');
+  });
+
+  test('שני המסלולים מקבלים את אותו צ׳אט, אותם מזהים', () => {
+    for (const html of [render(false), render(true)]) {
+      for (const id of ['va-idea-sharp', 'va-sharpen-ask', 'va-chat-wrap', 'va-chat-messages', 'va-chat-form', 'va-chat-input', 'va-chat-send', 'va-idea-next-btn']) {
+        assert.ok(html.includes(`id="${id}"`), `חסר ${id}`);
+      }
+    }
+  });
+});
+
 describe('ברור מה עושים כאן', () => {
   test('יש שלושה צעדים כתובים בראש המסך', () => {
     assert.match(SHARPEN, /cosmic-howto/, 'אין הסבר מה עושים');
@@ -160,7 +202,9 @@ describe('ברור מה עושים כאן', () => {
 
   test('לתיבה יש תווית ודוגמה', () => {
     assert.match(SHARPEN, /cosmic-field-label/, 'לתיבה אין תווית');
-    assert.match(SHARPEN, /placeholder="למשל:/, 'לתיבה אין דוגמה');
+    /* שתי דוגמאות: אחת לרעיון מ-0, ואחת למסר של קטע שצולם. */
+    assert.match(SHARPEN, /'למשל: למה החלקה שורפת/, 'לתיבה אין דוגמה');
+    assert.match(SHARPEN, /'למשל: למה אני עובדת עם מכשיר אחד/, 'לקטע שצולם אין דוגמה משלו');
   });
 
   /* הצעה בתוך פסקה שצריך להעתיק ביד היא לא הצעה. */
