@@ -246,11 +246,14 @@ function step(state, action) {
       const packaging = (action.packaging && action.packaging.trim()) || null;
       const base = state.ideaBeforePackaging || state.ideaDescription;
       const ideaDescription = packaging ? `${base}. האריזה הקריאייטיבית: ${packaging}` : base;
-      const next = { ...state, packaging, ideaBeforePackaging: base, ideaDescription };
-      /* בקטע שצולם אין נקודת יציאה וסוג תוכן לבחור - הם נקבעו בצילום
-         עצמו. משם ישר לפורמט, כמו שהיה עד היום. */
-      if (state.branch === 'footage') return { ...next, screen: 'format-choice', formatFor: 'idea' };
-      return { ...next, screen: 'content-basics' };
+      /* נקודת היציאה וסוג התוכן נבחרים עכשיו באותו מסך, ולכן ממשיכים ישר
+         לפורמט. בקטע שצולם הם לא נשאלים, כי נקבעו בצילום עצמו. */
+      return {
+        ...state, packaging, ideaBeforePackaging: base, ideaDescription,
+        startingPoint: action.startingPoint ?? state.startingPoint ?? null,
+        contentType: action.contentType ?? state.contentType ?? null,
+        screen: 'format-choice', formatFor: 'idea',
+      };
     }
     /* שלבים 2 ו-3 במסמך: נקודת היציאה וסוג התוכן. שניהם נכנסים לפרומפט
        חילוץ התוכן, ולכן הם נשמרים במצב ולא נכתבים מחדש ביד בכל פעם. */

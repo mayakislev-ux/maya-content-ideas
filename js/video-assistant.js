@@ -1309,25 +1309,58 @@ async function renderCreativePackaging() {
   const audience = await myAudience();
   const domain = domainInfo ? domainInfo.domain : '';
   const prompt = buildCreativePackagingPrompt({ domain, audience, idea });
+  /* 28/10/2026 (מאיה: "תעשי מה שחכם ונוח יותר"). נקודת היציאה וסוג
+     התוכן היו מסך נפרד בין האריזה לפורמט. הם החלטות על אותו "איך",
+     ולכן ישבו כאן, מתחת לכיוון שנבחר. בקטע שצולם הם נקבעו בצילום. */
+  const withBasics = state.branch !== 'footage';
   cosmicCard(`
     <h2>האריזה הקריאייטיבית</h2>
     <p>איך מגישים את המסר בצורה מעניינת ולא בנאלית. להעתיק לג'מיני, לבחור מתוך ה-30 את הכיוון שהכי מדליק, ולהדביק אותו כאן.</p>
     ${promptPeek(highlightPlaceholders(prompt, [domain, audience, idea]))}
     ${copyBtn(prompt, "להעתיק פרומפט לג'מיני")}
     <textarea class="cosmic-textarea" id="va-packaging-input" placeholder="להדביק כאן את הכיוון שבחרת..." style="margin-top:14px">${state.packaging ? escapeHtml(state.packaging) : ''}</textarea>
-    <div class="cosmic-btn-row" style="margin-top:14px">
+    ${withBasics ? `
+    <p class="cosmic-field-label" style="margin-top:16px">מאיפה הסרטון יוצא?</p>
+    <div class="cosmic-chip-row" id="va-start-row">${chips(STARTING_POINTS, state.startingPoint, 'data-start')}</div>
+    <p class="cosmic-field-label" style="margin-top:14px">איזה סוג תוכן זה?</p>
+    <div class="cosmic-chip-row" id="va-type-row">${chips(CONTENT_TYPES, state.contentType, 'data-type')}</div>` : ''}
+    <div class="cosmic-btn-row" style="margin-top:16px">
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-packaging-done-btn">ממשיכים ←</button>
     </div>
   `);
   wireCopyButtons(screenEl());
+  let startingPoint = state.startingPoint;
+  let contentType = state.contentType;
+  wireChips('[data-start]', 'data-start', (v) => { startingPoint = v; });
+  wireChips('[data-type]', 'data-type', (v) => { contentType = v; });
   document.getElementById('va-packaging-done-btn').addEventListener('click', () => {
     const packaging = document.getElementById('va-packaging-input').value.trim();
     if (!packaging) {
       showToast('צריך להדביק את הכיוון שבחרת קודם');
       return;
     }
-    dispatch({ type: 'PACKAGING_CHOSEN', packaging });
+    if (withBasics && (!startingPoint || !contentType)) {
+      showToast('לבחור מאיפה הסרטון יוצא ואיזה סוג תוכן זה');
+      return;
+    }
+    dispatch(withBasics
+      ? { type: 'PACKAGING_CHOSEN', packaging, startingPoint, contentType }
+      : { type: 'PACKAGING_CHOSEN', packaging });
   });
+}
+
+function chips(list, picked, attr) {
+  return list.map((x) => `
+    <button type="button" class="cosmic-btn cosmic-chip-btn${picked === x ? ' cosmic-chip-btn--on' : ''}" ${attr}="${escapeHtml(x)}">${escapeHtml(x)}</button>
+  `).join('');
+}
+
+function wireChips(sel, attr, set) {
+  document.querySelectorAll(sel).forEach((b) => b.addEventListener('click', () => {
+    document.querySelectorAll(sel).forEach((o) => o.classList.remove('cosmic-chip-btn--on'));
+    b.classList.add('cosmic-chip-btn--on');
+    set(b.getAttribute(attr));
+  }));
 }
 
 /* שלבים 2 ו-3 במסמך "סיכום כתיבת תסריטים": נקודת יציאה וסוג תוכן.

@@ -129,11 +129,12 @@ test('idea path: opening -> idea+message -> creative packaging -> basics -> form
   assert.equal(s.branch, 'idea');
   s = nextStep(s, { type: 'IDEA_SHARPENED', idea: 'טעות נפוצה בהסרת שיער' });
   assert.equal(s.screen, 'creative-packaging');
-  s = nextStep(s, { type: 'PACKAGING_CHOSEN', packaging: 'סרטון של "לפני ואחרי" בשניות' });
-  assert.equal(s.screen, 'content-basics');
-  assert.equal(s.ideaDescription, 'טעות נפוצה בהסרת שיער. האריזה הקריאייטיבית: סרטון של "לפני ואחרי" בשניות');
-  s = nextStep(s, { type: 'BASICS_CONFIRMED', startingPoint: 'כללי', contentType: 'בעל ערך' });
+  /* 28/10/2026: נקודת היציאה וסוג התוכן נבחרים במסך האריזה עצמו */
+  s = nextStep(s, { type: 'PACKAGING_CHOSEN', packaging: 'סרטון של "לפני ואחרי" בשניות', startingPoint: 'כללי', contentType: 'בעל ערך' });
   assert.equal(s.screen, 'format-choice');
+  assert.equal(s.ideaDescription, 'טעות נפוצה בהסרת שיער. האריזה הקריאייטיבית: סרטון של "לפני ואחרי" בשניות');
+  assert.equal(s.startingPoint, 'כללי');
+  assert.equal(s.contentType, 'בעל ערך');
   assert.equal(s.formatFor, 'idea');
   s = nextStep(s, { type: 'FORMAT_SELECTED', format: 'דיבור למצלמה' });
   assert.equal(s.screen, 'needs-script-check');
@@ -352,10 +353,8 @@ test('חידוד הרעיון יושב בין הרעיון לפורמט, ולא 
   assert.equal(s.screen, 'idea-sharpen', 'אחרי הרעיון לא מגיעים לחידוד');
   s = nextStep(s, { type: 'IDEA_SHARPENED', idea: 'ביקורת על קורסים זולים' });
   assert.equal(s.screen, 'creative-packaging', 'אחרי המסר לא מגיעים לאריזה הקריאייטיבית');
-  s = nextStep(s, { type: 'PACKAGING_CHOSEN', packaging: 'מכתב לעצמי של לפני 5 שנים' });
-  assert.equal(s.screen, 'content-basics', 'אין מסך נקודת יציאה וסוג תוכן');
-  s = nextStep(s, { type: 'BASICS_CONFIRMED', startingPoint: 'כללי', contentType: 'בעל ערך' });
-  assert.equal(s.screen, 'format-choice', 'הפורמט לא בא אחרי חידוד הרעיון');
+  s = nextStep(s, { type: 'PACKAGING_CHOSEN', packaging: 'מכתב לעצמי של לפני 5 שנים', startingPoint: 'כללי', contentType: 'בעל ערך' });
+  assert.equal(s.screen, 'format-choice', 'הפורמט לא בא אחרי האריזה');
 });
 
 test('קטע מצולם נשאר בבחירת סוג הקטע אחרי הרלוונטיות, לא בחידוד', () => {
