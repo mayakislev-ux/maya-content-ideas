@@ -7320,3 +7320,4 @@ body[data-plan="refs"] .view-tabs-scroll { justify-content: center; }
   padding: 4px 0;
 }
 .va-more[open] summary { margin-bottom: 8px; }
+.va-prompt-peek { margin: 10px 0 4px; }

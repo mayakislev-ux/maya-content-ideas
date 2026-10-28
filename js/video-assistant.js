@@ -38,7 +38,7 @@ import {
 import { getProfile, saveProfile } from './user-profile.js';
 import { showToast } from './toast.js';
 import {
-  pickEncouragement, domainTheme, formatElapsed, dnaSteps,
+  pickEncouragement, domainTheme, formatElapsed,
   mascotMood, mascotFace, burstConfetti, flipReveal, startParticleTrail,
   cacheDomainInfoLocally, readCachedDomainInfo, spinReveal,
 } from './video-assistant-fx.js';
@@ -126,24 +126,15 @@ function highlightPlaceholders(text, values = []) {
   return html.replace(/\[([^\]<>]+)\]/g, (m) => (m.includes('<mark>') ? m : `<mark>${m}</mark>`));
 }
 
-// 17/10/2026 (מאיה, רעיון #6): פס התקדמות נוזלי זוהר במקום נקודות סטטיות,
-// ו-#10 "DNA של הסרטון" - שרשרת הצעדים הממשיים של המסלול הנוכחי שלה
-// (לא רק 5 ה"פאזות" הכלליות), כדי שתראה חזותית את הסרטון "נבנה" צעד-צעד.
+// 17/10/2026 (מאיה, רעיון #6): פס התקדמות נוזלי זוהר במקום נקודות סטטיות.
+// 28/10/2026: שרשרת ה-DNA שמתחתיו ירדה. שלושה מדי התקדמות באותו מסך
+// היו רעש לפני השאלה עצמה, ואחד מספיק.
 function progressHtml() {
   const current = PHASE_BY_SCREEN[state.screen] ?? 0;
   const pct = Math.round(((current + 1) / PHASES.length) * 100);
-  const steps = dnaSteps(state.branch || 'idea', current, PHASES.length);
-  const dnaHtml = steps.map((s, i) => `
-    <div class="cosmic-dna-step ${s.status}">
-      <div class="cosmic-dna-step__dot"></div>
-      <div class="cosmic-dna-step__label">${escapeHtml(s.name)}</div>
-    </div>
-    ${i < steps.length - 1 ? `<div class="cosmic-dna-step__line ${s.status === 'done' ? 'is-done' : ''}"></div>` : ''}
-  `).join('');
   return `
     <div class="cosmic-progress__label">שלב ${current + 1} מתוך ${PHASES.length}: ${escapeHtml(SCREEN_LABEL[state.screen] || PHASES[current])}</div>
-    <div class="cosmic-liquid-bar"><div class="cosmic-liquid-fill" style="width:${pct}%"></div></div>
-    <div class="cosmic-dna-chain">${dnaHtml}</div>`;
+    <div class="cosmic-liquid-bar"><div class="cosmic-liquid-fill" style="width:${pct}%"></div></div>`;
 }
 
 function backButtonHtml() {
@@ -193,7 +184,6 @@ function cosmicCard(innerHtml, { showProgress = true } = {}) {
   const startOverBtn = document.getElementById('va-start-over-btn');
   if (startOverBtn) startOverBtn.addEventListener('click', () => restart());
   scrollToCardTop();
-  resetIdleTimer();
   const card = document.getElementById('va-card');
   /* 26/10/2026: כל תיבת טקסט בכרטיס נשמרת תוך כדי כתיבה, חוזרת לעצמה
      כשהמסך מצויר מחדש, ויש שורה שאומרת מתי נשמר. עד כאן הסשן נשמר רק
@@ -226,48 +216,9 @@ function applyDomainTheme(domain) {
   if (root) root.style.setProperty('--cosmic-glow', theme.glow);
 }
 
-// ===== #22: מסקוט SOS שקופץ רק כשאין אינטראקציה זמן-מה, לא כפתור קבוע =====
-const IDLE_MS = 25000;
-const SOS_EXCLUDED_SCREENS = new Set(['opening', 'summary']);
-let idleTimer = null;
-
-function removeSos() {
-  const el = document.getElementById('va-sos-mascot');
-  if (el) el.remove();
-}
-
-function showSos() {
-  if (document.getElementById('va-sos-mascot') || SOS_EXCLUDED_SCREENS.has(state.screen)) return;
-  const btn = document.createElement('button');
-  btn.type = 'button';
-  btn.id = 'va-sos-mascot';
-  btn.className = 'cosmic-sos-mascot';
-  btn.textContent = '🆘 תקועים? אני כאן';
-  btn.addEventListener('click', () => {
-    removeSos();
-    openModal(`
-      <h2 style="margin-top:0">תקועים רגע?</h2>
-      <p>${escapeHtml(pickEncouragement())} זה בסדר להתקדם לאט - אפשר לחזור צעד אחד אחורה, או להתחיל סרטון אחר.</p>
-      <div class="cosmic-btn-row">
-        ${state.history.length ? '<button type="button" class="cosmic-btn" id="va-sos-back-btn">חזרה צעד אחד אחורה</button>' : ''}
-        <button type="button" class="cosmic-btn" id="va-sos-restart-btn">להתחיל סרטון אחר</button>
-      </div>
-    `);
-    const backBtn = document.getElementById('va-sos-back-btn');
-    if (backBtn) backBtn.addEventListener('click', () => { closeModal(); dispatch({ type: 'BACK' }); });
-    document.getElementById('va-sos-restart-btn').addEventListener('click', () => { closeModal(); restart(); });
-  });
-  document.body.appendChild(btn);
-}
-
-function resetIdleTimer() {
-  if (idleTimer) clearTimeout(idleTimer);
-  removeSos();
-  if (SOS_EXCLUDED_SCREENS.has(state.screen)) return;
-  idleTimer = setTimeout(showSos, IDLE_MS);
-}
-
-// ===== #43: פאנל צף שמראה את התסריט/הטקסט המצטבר, בזמן אמת =====
+/* #22 (מסקוט SOS שקפץ לבד אחרי 25 שניות) הוסר ב-28/10/2026: הוא הציע רק
+   חזרה או התחלה מחדש, ששתיהן כבר על המסך, והיה צורה שלישית של עזרה.
+   העזרה האמיתית היא כפתורי ה-SOS במסכי המגילה. */
 function openModal(innerHtml) {
   const overlay = document.createElement('div');
   overlay.className = 'cosmic-modal-overlay';
@@ -420,7 +371,7 @@ function renderTypeIdea() {
     <h2>מה הרעיון?</h2>
     <textarea class="cosmic-textarea" id="va-type-idea-input" placeholder="לכתוב כאן את הרעיון..."></textarea>
     <div class="cosmic-btn-row" style="margin-top:14px">
-      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-type-idea-done-btn">להמשיך</button>
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-type-idea-done-btn">ממשיכים ←</button>
     </div>
   `);
   document.getElementById('va-type-idea-done-btn').addEventListener('click', () => {
@@ -440,7 +391,7 @@ function renderPulledIdea() {
     <p style="font-size:16px;color:#fff;font-weight:600" id="va-idea-title">${escapeHtml(idea.title)}</p>
     ${idea.hookText ? `<p>${escapeHtml(idea.hookText)}</p>` : ''}
     <div class="cosmic-btn-row">
-      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-accept-idea-btn">אהבתי, בואו נמשיך</button>
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-accept-idea-btn">ממשיכים ←</button>
     </div>
     <button type="button" class="cosmic-reroll-btn" id="va-reroll-idea-btn">לא אהבתי - להגריל שוב</button>
   `);
@@ -518,7 +469,7 @@ function renderFootageSpeechFind() {
     <h2>שלב 1: למצוא רגע חזק</h2>
     <p>לחפש משפט שיש בו דעה / הפתעה / טעות / תוצאה / ויכוח. לסמן 20–60 שניות סביבו.</p>
     <div class="cosmic-btn-row" style="margin-top:14px">
-      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-speech-find-next-btn">להמשיך</button>
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-speech-find-next-btn">ממשיכים ←</button>
     </div>
   `);
   document.getElementById('va-speech-find-next-btn').addEventListener('click', () => dispatch({ type: 'FOOTAGE_SPEECH_NEXT' }));
@@ -537,7 +488,7 @@ function renderFootageSpeechShorten() {
       <li>אפשר לקצר 30% בלי לאבד משמעות?</li>
     </ul>
     <div class="cosmic-btn-row" style="margin-top:14px">
-      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-speech-shorten-next-btn">להמשיך</button>
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-speech-shorten-next-btn">ממשיכים ←</button>
     </div>
   `);
   document.getElementById('va-speech-shorten-next-btn').addEventListener('click', () => dispatch({ type: 'FOOTAGE_SPEECH_NEXT' }));
@@ -559,7 +510,7 @@ function renderFootageSpeechSharpen() {
       <li>להוסיף טקסט על המסך שמדגיש את הנקודה המרכזית</li>
     </ul>
     <div class="cosmic-btn-row" style="margin-top:14px">
-      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-speech-sharpen-next-btn">להמשיך</button>
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-speech-sharpen-next-btn">ממשיכים ←</button>
     </div>
   `);
   document.getElementById('va-speech-sharpen-next-btn').addEventListener('click', () => dispatch({ type: 'FOOTAGE_SPEECH_NEXT' }));
@@ -576,7 +527,7 @@ function renderFootageSpeechDone() {
     <p class="cosmic-prompt-box" style="text-align:center;font-size:17px;font-weight:700">הוק ← הרחבת הנושא ← פואנטה / סיומת</p>
     <p>כשהקטע בנוי ככה - הוא מוכן.</p>
     <div class="cosmic-btn-row" style="margin-top:14px">
-      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-speech-done-btn">מוכן</button>
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-speech-done-btn">ממשיכים ←</button>
     </div>
   `);
   flipReveal(card);
@@ -621,7 +572,7 @@ function renderFootageVisualExtract() {
       <li><span class="cosmic-summary-num">6</span><div>סיימת</div></li>
     </ul>
     <div class="cosmic-btn-row">
-      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-visual-extract-done-btn">סיימתי</button>
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-visual-extract-done-btn">ממשיכים ←</button>
     </div>
   `);
   flipReveal(card);
@@ -660,7 +611,7 @@ function renderFootageVisualOutcome({ title, body }) {
     <h2>${title}</h2>
     <p>${body}</p>
     <div class="cosmic-btn-row" style="margin-top:14px">
-      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-visual-outcome-ready-btn">הבנתי, בונים</button>
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-visual-outcome-ready-btn">ממשיכים ←</button>
     </div>
   `);
   document.getElementById('va-visual-outcome-ready-btn').addEventListener('click', () => {
@@ -839,7 +790,7 @@ async function renderPulledReference() {
         </button>`
       : `<button type="button" class="cosmic-btn" id="va-ref-preview-btn" style="margin-bottom:14px">לפתוח תצוגה מקדימה</button>`}
     <div class="cosmic-btn-row">
-      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-accept-ref-btn">אהבתי, בואו נמשיך</button>
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-accept-ref-btn">ממשיכים ←</button>
     </div>
     <button type="button" class="cosmic-reroll-btn" id="va-reroll-ref-btn">לא אהבתי - להגריל שוב</button>
   `);
@@ -910,6 +861,13 @@ async function renderPulledReference() {
   });
 }
 
+/* 28/10/2026 (מאיה: "עומס מנטלי"): הפרומפט המלא הוצג בכל מסך כקופסת
+   טקסט ארוכה שאף אחת לא צריכה לקרוא, רק להעתיק. עכשיו הוא סגור מאחורי
+   שורה אחת, והכפתור שמעתיק אותו הוא מה שבולט. הצהוב עדיין שם למי שפותחת. */
+function promptPeek(html) {
+  return `<details class="va-more va-prompt-peek"><summary>לראות את הפרומפט</summary><div class="cosmic-prompt-box">${html}</div></details>`;
+}
+
 function copyBtn(text, label) {
   return `<button type="button" class="cosmic-btn" data-copy-text="${encodeURIComponent(text)}">${label}</button>`;
 }
@@ -937,7 +895,7 @@ function renderTranscribe() {
       value="${state.referenceLink ? escapeHtml(state.referenceLink) : ''}">
     <textarea class="cosmic-textarea" id="va-transcript-input" style="margin-top:8px" placeholder="להדביק כאן את התמלול...">${state.transcript ? escapeHtml(state.transcript) : ''}</textarea>
     <div class="cosmic-btn-row" style="margin-top:14px">
-      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-transcribe-done-btn">✓ עשיתי</button>
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-transcribe-done-btn">ממשיכים ←</button>
     </div>
   `);
   document.getElementById('va-transcribe-done-btn').addEventListener('click', () => {
@@ -1017,11 +975,11 @@ async function renderPrompt1() {
       ? `<p>ההוק המקורי + התסריט שלך נשלחים ל-ChatGPT - הוא שולף מתוך התסריט שלך הוקים חזקים ומלביש אותם על מנגנון ההוק המקורי, ומביא לך 30 רעיונות.</p>`
       : `<p>רק ההוק הזה נשלח ל-ChatGPT - לא כל התמלול. הוא ישכפל אותו ויביא לך 30 הוקים חדשים באותו מנגנון.</p>`}
     <p>להעתיק, להדביק ב-ChatGPT, ולחזור עם ההוק שהכי קרץ לך מתוך ה-30</p>
-    <div class="cosmic-prompt-box">${highlightPlaceholders(prompt, highlightValues)}</div>
+    ${promptPeek(highlightPlaceholders(prompt, highlightValues))}
     ${copyBtn(prompt, 'להעתיק פרומפט')}
     <textarea class="cosmic-textarea" id="va-hook-input" placeholder="להדביק כאן את ההוק שבחרת..." style="margin-top:14px"></textarea>
     <div class="cosmic-btn-row" style="margin-top:14px">
-      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-hook-chosen-btn">להמשיך</button>
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-hook-chosen-btn">ממשיכים ←</button>
     </div>
   `);
   wireCopyButtons(screenEl());
@@ -1075,7 +1033,7 @@ async function renderHerWords() {
     <textarea class="cosmic-textarea" id="va-herwords-input" style="min-height:160px">${isPreHookMegillah && state.herWords ? escapeHtml(state.herWords) : ''}</textarea>
     ${megillahMeterHtml('va-herwords')}
     <div class="cosmic-btn-row" style="margin-top:14px">
-      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-herwords-done-btn">להמשיך</button>
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-herwords-done-btn">ממשיכים ←</button>
     </div>
   `);
   document.getElementById('va-herwords-help-btn').addEventListener('click', openExtractionHelperModal);
@@ -1196,11 +1154,11 @@ async function renderPrompt2() {
   cosmicCard(`
     <h2>הפרומפט השני</h2>
     <p>להעתיק, להדביק ב-ChatGPT, ותלקבל תסריט מלא</p>
-    <div class="cosmic-prompt-box">${highlightPlaceholders(prompt, [hook, state.herWords, state.transcript])}</div>
+    ${promptPeek(highlightPlaceholders(prompt, [hook, state.herWords, state.transcript]))}
     ${copyBtn(prompt, 'להעתיק פרומפט')}
     <textarea class="cosmic-textarea" id="va-prompt2-script-input" placeholder="להדביק כאן את התסריט שקיבלת..." style="margin-top:14px"></textarea>
     <div class="cosmic-btn-row" style="margin-top:14px">
-      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-script-ready-btn">יש לי תסריט</button>
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-script-ready-btn">ממשיכים ←</button>
     </div>
   `);
   wireCopyButtons(screenEl());
@@ -1233,7 +1191,7 @@ function renderReadAloud() {
       ? `<div class="cosmic-prompt-box va-read-script">${escapeHtml(script)}</div>`
       : '<p style="opacity:.75">התסריט לא נשמר בשלב הקודם, אפשר לחזור אחורה ולהדביק אותו</p>'}
     <div class="cosmic-btn-row">
-      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-read-done-btn">✓ מוכן לעריכה</button>
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-read-done-btn">ממשיכים ←</button>
     </div>
   `);
   document.getElementById('va-read-done-btn').addEventListener('click', () => {
@@ -1527,7 +1485,7 @@ function renderContentBasics() {
     <p class="cosmic-field-label" style="margin-top:14px">איזה סוג תוכן זה?</p>
     <div class="cosmic-chip-row" id="va-type-row">${opts(CONTENT_TYPES, state.contentType, 'data-type')}</div>
     <div class="cosmic-btn-row" style="margin-top:16px">
-      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-basics-next-btn">ממשיכים</button>
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-basics-next-btn">ממשיכים ←</button>
     </div>
   `);
   let startingPoint = state.startingPoint;
@@ -1597,7 +1555,7 @@ function openExtractionHelperModal() {
     const prompt = buildExtractionPrompt({ idea, contentType, startingPoint, audience, domain: domainInfo ? domainInfo.domain : '' });
     const resultEl = overlay.querySelector('#va-ext-result');
     resultEl.innerHTML = `
-      <div class="cosmic-prompt-box" style="margin-top:14px">${highlightPlaceholders(prompt, [idea, contentType, startingPoint, audience])}</div>
+      ${promptPeek(highlightPlaceholders(prompt, [idea, contentType, startingPoint, audience]))}
       ${copyBtn(prompt, 'להעתיק פרומפט')}
       <p style="font-size:12px;opacity:.75;margin-top:10px;margin-bottom:0">עכשיו: להדביק את זה בשיחה חדשה ב-ChatGPT, לענות על השאלות שלו, ואז לחזור לכאן ולהדביק את מה שעלה בתיבת הטקסט הגדולה.</p>
     `;
@@ -1622,7 +1580,7 @@ function renderScratchDump() {
       `).join('')}</ul>
     </details>
     <div class="cosmic-btn-row" style="margin-top:14px">
-      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-scratch-dump-done-btn">להמשיך</button>
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-scratch-dump-done-btn">ממשיכים ←</button>
     </div>
   `);
   document.getElementById('va-scratch-help-btn').addEventListener('click', openExtractionHelperModal);
@@ -1664,11 +1622,11 @@ async function renderScratchHook() {
         ${withRef ? '<button type="button" class="cosmic-btn" id="va-hook-ref-clear-btn">בלי הסרטון</button>' : ''}
       </div>
     </details>
-    <div class="cosmic-prompt-box">${highlightPlaceholders(prompt, marks)}</div>
+    ${promptPeek(highlightPlaceholders(prompt, marks))}
     ${copyBtn(prompt, 'להעתיק פרומפט')}
     <textarea class="cosmic-textarea" id="va-scratch-hook-input" placeholder="להדביק כאן את ההוק שבחרת..." style="margin-top:14px"></textarea>
     <div class="cosmic-btn-row" style="margin-top:14px">
-      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-scratch-hook-done-btn">להמשיך</button>
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-scratch-hook-done-btn">ממשיכים ←</button>
     </div>
   `);
   wireCopyButtons(screenEl());
@@ -1682,12 +1640,26 @@ async function renderScratchHook() {
     state.transcript = text;
     cosmicCard(`<p>מזהים את ההוק מתוך התמלול...</p>`, { showProgress: false });
     await ensureOpeningHook();
+    /* היא יכלה ללחוץ "חזרה" בזמן הזיהוי. בלי הבדיקה הזו מסך ההוק היה
+       מצויר מעל מסך אחר, והלחיצה הבאה הייתה נשלחת מהמסך הלא נכון. */
+    if (state.screen !== 'scratch-hook') return;
+    /* כשהזיהוי נכשל, ensureOpeningHook שם את כל התמלול בתור "ההוק", וזה
+       בדיוק הבאג מ-19/10 (ChatGPT משכפל את כל הפסקה). כאן עדיף לומר
+       שזה לא הצליח ולהישאר עם הפרומפט הרגיל. */
+    if (state.openingHook === state.transcript) {
+      state.openingHook = null;
+      showToast('לא הצלחנו לזהות את ההוק בתמלול. אפשר לנסות שוב');
+    }
     renderScratchHook();
   });
   const clearRef = document.getElementById('va-hook-ref-clear-btn');
   if (clearRef) clearRef.addEventListener('click', () => {
     state.transcript = null;
     state.openingHook = null;
+    /* בלי זה הטיוטה של התיבה ממלאת אותה שוב בתמלול הישן. */
+    const drafts = { ...(state.drafts || {}) };
+    delete drafts['scratch-hook|va-hook-ref-input'];
+    state.drafts = drafts;
     saveSession(state).catch((err) => console.error('saveSession failed:', err));
     renderScratchHook();
   });
@@ -1706,11 +1678,11 @@ async function renderScratchHookReinforce() {
   cosmicCard(`
     <h2>חיזוק ההוק</h2>
     <p>המשפט השני, שנותן סיבה ברורה להישאר. להעתיק, להדביק, ולחזור עם החיזוק שבחרת.</p>
-    <div class="cosmic-prompt-box">${highlightPlaceholders(prompt, [state.ideaDescription, state.hook, state.rawDump])}</div>
+    ${promptPeek(highlightPlaceholders(prompt, [state.ideaDescription, state.hook, state.rawDump]))}
     ${copyBtn(prompt, 'להעתיק פרומפט')}
     <textarea class="cosmic-textarea" id="va-scratch-reinforce-input" placeholder="להדביק כאן את חיזוק ההוק שבחרת..." style="margin-top:14px"></textarea>
     <div class="cosmic-btn-row" style="margin-top:14px">
-      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-scratch-reinforce-done-btn">להמשיך</button>
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-scratch-reinforce-done-btn">ממשיכים ←</button>
     </div>
   `);
   wireCopyButtons(screenEl());
@@ -1762,7 +1734,7 @@ async function renderScratchDistill() {
     <div id="va-scratch-distill-prompt-wrap" style="margin-top:14px"></div>
     <textarea class="cosmic-textarea" id="va-scratch-script-input" placeholder="להדביק כאן את התסריט הסופי שקיבלת..." style="margin-top:14px"></textarea>
     <div class="cosmic-btn-row" style="margin-top:14px">
-      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-scratch-script-done-btn">סיימתי, יש לי תסריט</button>
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-scratch-script-done-btn">ממשיכים ←</button>
     </div>
   `);
   const wrap = document.getElementById('va-scratch-distill-prompt-wrap');
@@ -1776,7 +1748,7 @@ async function renderScratchDistill() {
     /* הצהוב מסמן מה מולא לבד, ולכן התחום והקהל שייכים לשם גם הם. */
     const values = [state.ideaDescription, state.hook, state.hookReinforcement, state.rawDump, cta,
       audience, domainInfo ? domainInfo.domain : ''];
-    wrap.innerHTML = `<div class="cosmic-prompt-box">${highlightPlaceholders(prompt, values)}</div>${copyBtn(prompt, 'להעתיק פרומפט')}`;
+    wrap.innerHTML = `${promptPeek(highlightPlaceholders(prompt, values))}${copyBtn(prompt, 'להעתיק פרומפט')}`;
     wireCopyButtons(wrap);
   }
   document.querySelectorAll('#va-scratch-cta-row [data-cta]').forEach((b) => b.addEventListener('click', () => {
@@ -1948,8 +1920,6 @@ export function wireVideoAssistantView() {
   // 17/10/2026 (רעיון #22, "SOS כשאין אינטראקציה"): כל קליק/הקלדה בתוך
   // התצוגה מאפסים את טיימר ה-idle, כדי שהמסקוט לא יקפוץ בזמן שבפועל
   // כן עובדים (רק כשבאמת נתקעים זמן-מה).
-  document.getElementById('video-assistant-view').addEventListener('click', resetIdleTimer);
-  document.getElementById('video-assistant-view').addEventListener('input', resetIdleTimer);
 
   // 18/10/2026 (לקוחה אמיתית, דרך מאיה: "עניתי בצ'אט על השאלות... זה
   // ריפרש לי והייתי צריכה להתחיל מחדש") - ה"תיקון" מ-17/10 (למעלה,
