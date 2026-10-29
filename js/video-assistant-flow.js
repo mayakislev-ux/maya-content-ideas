@@ -114,7 +114,9 @@ function step(state, action) {
       return { ...state, rerollCount: state.rerollCount + 1 };
     case 'ACCEPT_PICK':
       /* רעיון מהבנק חוזר למסך הרעיון, שם בודקים רלוונטיות ופואנטה. */
-      if (state.branch === 'idea') return { ...state, screen: 'idea-sharpen', ideaTopic: null, ideaPunchline: null };
+      /* ההגרלה שמה את כותרת הרעיון גם ב-hook. ברעיון זה לא הוק, ובלי
+         הניקוי הוא הופיע כ"ההוק" מוכן ב"התסריט שלך" עוד לפני שנבחר. */
+      if (state.branch === 'idea') return { ...state, screen: 'idea-sharpen', ideaTopic: null, ideaPunchline: null, hook: null };
       return { ...state, screen: 'relevance-check' };
 
     // ===== השער המשותף: "רלוונטי לקהל היעד, או משרת את המותג?" =====

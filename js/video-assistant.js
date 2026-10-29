@@ -16,6 +16,7 @@
 import { mountDrafts, clearScreenDrafts } from './video-assistant-drafts.js';
 import { INITIAL_STATE, nextStep } from './video-assistant-flow.js';
 import { pickIdea, pickReference } from './video-assistant-picker.js';
+import { buildParts } from './video-assistant-build.js';
 import { buildDuplicationPrompt, buildReverseDuplicationPrompt, buildScriptPrompt, buildCreativePackagingPrompt } from './video-assistant-prompts.js';
 import {
   FORMATS, SCRIPT_STRUCTURE, STARTING_POINTS, CONTENT_TYPES,
@@ -32,7 +33,7 @@ import { getProfile, saveProfile } from './user-profile.js';
 import { showToast } from './toast.js';
 import {
   pickEncouragement, domainTheme, formatElapsed,
-  mascotMood, mascotFace, burstConfetti, flipReveal, startParticleTrail,
+  burstConfetti, flipReveal, startParticleTrail,
   cacheDomainInfoLocally, readCachedDomainInfo, spinReveal,
 } from './video-assistant-fx.js';
 
@@ -123,12 +124,30 @@ function highlightPlaceholders(text, values = []) {
 // 17/10/2026 (מאיה, רעיון #6): פס התקדמות נוזלי זוהר במקום נקודות סטטיות.
 // 28/10/2026: שרשרת ה-DNA שמתחתיו ירדה. שלושה מדי התקדמות באותו מסך
 // היו רעש לפני השאלה עצמה, ואחד מספיק.
+/* 29/10/2026 (מאיה בחרה "תכלת וקטעים"): חמישה קטעים קצרים, ולידם רק
+   מספר השלב ושמו. במקום הפס הנוזלי והשורה "שלב X מתוך Y: ...". */
 function progressHtml() {
   const current = PHASE_BY_SCREEN[state.screen] ?? 0;
-  const pct = Math.round(((current + 1) / PHASES.length) * 100);
-  return `
-    <div class="cosmic-progress__label">שלב ${current + 1} מתוך ${PHASES.length}: ${escapeHtml(SCREEN_LABEL[state.screen] || PHASES[current])}</div>
-    <div class="cosmic-liquid-bar"><div class="cosmic-liquid-fill" style="width:${pct}%"></div></div>`;
+  const segs = PHASES.map((_, i) => `<i class="${i < current ? 'is-done' : i === current ? 'is-now' : ''}"></i>`).join('');
+  return `<div class="va-steps" role="img" aria-label="שלב ${current + 1} מתוך ${PHASES.length}">${segs}</div>
+    <span class="cosmic-progress__label">${current + 1} · ${escapeHtml(SCREEN_LABEL[state.screen] || PHASES[current])}</span>`;
+}
+
+/* "התסריט שלך נבנה כאן": המשך הכרטיס כלפי מטה. ראה video-assistant-build.js. */
+function buildHtml() {
+  const parts = buildParts(state);
+  if (!parts.length) return '';
+  const rows = parts.map((p) => {
+    const text = p.status === 'wait' ? 'בהמשך' : (p.value || '...');
+    return `<li class="va-build__row is-${p.status}${p.big && p.value ? ' is-big' : ''}">
+      <span class="va-build__mark">${p.status === 'done' ? '✓' : ''}</span>
+      <div><small>${escapeHtml(p.label)}${p.status === 'now' ? ' · עכשיו' : ''}</small><p>${escapeHtml(text)}</p></div>
+    </li>`;
+  }).join('');
+  return `<section class="va-build" aria-label="התסריט שלך">
+    <div class="va-build__title">התסריט שלך נבנה כאן</div>
+    <ul class="va-build__list">${rows}</ul>
+  </section>`;
 }
 
 function backButtonHtml() {
@@ -162,15 +181,13 @@ function scrollToCardTop() {
 }
 
 function cosmicCard(innerHtml, { showProgress = true } = {}) {
-  const mood = mascotMood(state.screen);
+  const back = backButtonHtml();
   screenEl().innerHTML = `<div class="cosmic-card" id="va-card">
     ${resumedNotice ? `<div class="cosmic-resume-bar" style="display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;margin:0 0 12px;font-size:14px">
       <span>ממשיכים מאיפה שעצרת 👋</span>
       <button type="button" class="cosmic-btn" id="va-start-over-btn" style="padding:4px 12px;font-size:13px">להתחיל מההתחלה</button>
     </div>` : ''}
-    <div class="cosmic-mascot ${mood === 'celebrate' ? 'is-celebrate' : ''}" id="va-mascot">${mascotFace(mood)}</div>
-    ${backButtonHtml()}
-    ${showProgress ? progressHtml() : ''}
+    ${back || showProgress ? `<div class="va-head">${back}${showProgress ? progressHtml() : ''}</div>` : ''}
     ${innerHtml}
   </div>`;
   const backBtn = document.getElementById('va-back-btn');
@@ -188,6 +205,9 @@ function cosmicCard(innerHtml, { showProgress = true } = {}) {
     setDrafts: (d) => { state.drafts = d; },
     save: () => saveSession(state),
   });
+  /* אחרי mountDrafts, שמוסיף את שורת השמירה לסוף הכרטיס: התסריט הוא
+     המשך הכרטיס כלפי מטה, ולכן הוא תמיד האחרון. */
+  card.insertAdjacentHTML('beforeend', buildHtml());
   return card;
 }
 
@@ -382,7 +402,7 @@ function renderPulledIdea() {
   const idea = ideasCache.find((i) => i.id === currentPickId);
   const card = cosmicCard(`
     <h2>🎲 הרעיון הזה</h2>
-    <p style="font-size:16px;color:#fff;font-weight:600" id="va-idea-title">${escapeHtml(idea.title)}</p>
+    <p style="font-size:17px;font-weight:700" id="va-idea-title">${escapeHtml(idea.title)}</p>
     ${idea.hookText ? `<p>${escapeHtml(idea.hookText)}</p>` : ''}
     <div class="cosmic-btn-row">
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-accept-idea-btn">ממשיכים ←</button>
@@ -831,7 +851,7 @@ async function renderPulledReference() {
       wrap.style.background = 'transparent';
       wrap.innerHTML = video.thumbnailUrl
         ? `<img src="${escapeHtml(video.thumbnailUrl)}" alt="" style="width:100%;border-radius:14px">`
-        : '<p style="padding:40px 16px;text-align:center;color:#fff">הסרטון הזה לא מוכן להצגה כאן - אפשר לצפות בקישור למטה.</p>';
+        : '<p style="padding:40px 16px;text-align:center">הסרטון הזה לא מוכן להצגה כאן - אפשר לצפות בקישור למטה.</p>';
     }, 4000);
   }
   document.getElementById('va-ref-preview-btn').addEventListener('click', openRefPreview);
@@ -1318,7 +1338,7 @@ function renderIdeaSharpen() {
 
 /* 28/10/2026 (מאיה): "זהו הצ'אט בתכלס זה הזווית הקריאייטיבית, אבל הוא
    לא מתקרב לרמה של הג'מיני". במקום הצ'אט, הפרומפט שהיא עצמה כותבת
-   לג'מיני, ממולא בתחום, בקהל, ברעיון ובמסר. הכיוון שבוחרים מתוך ה-30
+   לג'מיני, ממולא בתחום, בקהל, ברעיון ובמסר. הכיוון שבוחרים מתוך ה-20
    נוסע הלאה לפרומפטים של ההוק והתסריט. */
 async function renderCreativePackaging() {
   const idea = state.ideaTopic && state.ideaPunchline
@@ -1334,7 +1354,7 @@ async function renderCreativePackaging() {
   const withBasics = state.branch !== 'footage';
   cosmicCard(`
     <h2>האריזה הקריאייטיבית</h2>
-    <p>איך מגישים את המסר בצורה מעניינת ולא בנאלית. להעתיק לג'מיני, לבחור מתוך ה-30 את הכיוון שהכי מדליק, ולהדביק אותו כאן.</p>
+    <p>איך מגישים את המסר בצורה מעניינת ולא בנאלית. להעתיק לג'מיני, לבחור מתוך ה-20 את הכיוון שהכי מדליק, ולהדביק אותו כאן.</p>
     <button type="button" class="va-text-link" id="va-what-creative-link">מה זה בעצם קריאייטיב?</button>
     ${promptPeek(highlightPlaceholders(prompt, [domain, audience, idea]))}
     ${copyBtn(prompt, "להעתיק פרומפט לג'מיני")}

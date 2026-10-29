@@ -7379,3 +7379,236 @@ body[data-plan="refs"] .view-tabs-scroll { justify-content: center; }
   border-color: #1f8f5a;
   box-shadow: none;
 }
+
+/* 29/10/2026 (מאיה בחרה מתוך סבבי עיצוב: "תכלת וקטעים", ו"הכרטיס ממשיך
+   למטה"). הדף הכהה נשאר, הכרטיס עובר לתכלת בהיר ונקי: צבע הדגשה אחד,
+   כפתור ראשי אחד בולט, חמישה קטעי התקדמות עם שם השלב בלבד, ובהמשך
+   הכרטיס "התסריט שלך נבנה כאן". המסקוט והכוכבים ירדו.
+   הכל תחת #video-assistant-view, כדי לגבור על השכבה הקוסמית שמעל בלי
+   למחוק אותה. הצבעים כתובים ישירות ולא דרך --cosmic-glow, כי זוהר התחום
+   כותב את המשתנה הזה כ-style על האלמנט ועוקף כל ערך כאן. */
+#video-assistant-view {
+  --va-ink: #0f2340;
+  --va-muted: #5d7d99;
+  --va-blue: #0b6fa8;
+  --va-blue-dark: #095e8f;
+  --va-fill: #e6f2fa;
+  --va-line: #d3e6f2;
+  --va-card: #f7fbfe;
+  --va-pad-x: 28px;
+  --va-pad-b: 30px;
+}
+#video-assistant-view::before {
+  background-image:
+    radial-gradient(480px 480px at 85% 30%, rgba(90,200,255,.22), transparent 70%),
+    radial-gradient(520px 520px at 10% 85%, rgba(120,90,255,.22), transparent 70%);
+  opacity: 1;
+}
+#video-assistant-view .cosmic-card {
+  max-width: 540px;
+  background: var(--va-card);
+  color: var(--va-ink);
+  border: 0;
+  border-radius: 28px;
+  padding: 26px var(--va-pad-x) var(--va-pad-b);
+  backdrop-filter: none;
+  box-shadow: 0 30px 80px rgba(5,15,50,.45);
+}
+@media (max-width: 600px) {
+  #video-assistant-view { --va-pad-x: 18px; --va-pad-b: 22px; }
+  #video-assistant-view .cosmic-card { border-radius: 24px; padding-top: 18px; }
+}
+#video-assistant-view .cosmic-card h2 {
+  text-align: right;
+  font-size: 26px;
+  line-height: 1.2;
+  margin: 0 0 10px;
+  color: var(--va-ink);
+}
+#video-assistant-view .cosmic-card h2 + p,
+#video-assistant-view .cosmic-card h2 + .cosmic-lede { text-align: right; }
+#video-assistant-view .cosmic-card p,
+#video-assistant-view .cosmic-lede,
+#video-assistant-view .cosmic-hint,
+#video-assistant-view .cosmic-howto { color: #3d5878; opacity: 1; }
+#video-assistant-view .cosmic-field-label,
+#video-assistant-view .cosmic-field label { color: var(--va-ink); opacity: 1; font-size: 16px; font-weight: 600; }
+
+/* ראש הכרטיס: חזרה, חמשת הקטעים, ושם השלב */
+#video-assistant-view .va-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 22px;
+}
+#video-assistant-view .cosmic-back-btn {
+  position: static;
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
+  background: var(--va-fill);
+  color: var(--va-blue);
+  font-size: 16px;
+}
+#video-assistant-view .cosmic-back-btn:hover { background: #d8ebf7; }
+.va-steps { flex: 1; display: flex; gap: 5px; }
+.va-steps i { flex: 1; height: 4px; border-radius: 4px; background: #dcebf4; }
+.va-steps i.is-done { background: var(--va-blue); }
+.va-steps i.is-now { background: linear-gradient(270deg, var(--va-blue) 50%, #dcebf4 50%); }
+#video-assistant-view .cosmic-progress__label {
+  padding: 0;
+  margin: 0;
+  font-size: 13px;
+  color: var(--va-muted);
+  opacity: 1;
+  white-space: nowrap;
+}
+
+/* כפתורים */
+#video-assistant-view .cosmic-btn {
+  background: #fff;
+  border: 1px solid var(--va-line);
+  color: var(--va-ink);
+  border-radius: 16px;
+  min-height: 48px;
+}
+#video-assistant-view .cosmic-btn:hover { background: #f0f7fc; }
+#video-assistant-view .cosmic-btn--primary {
+  background: var(--va-blue);
+  border-color: var(--va-blue);
+  color: #fff;
+  min-height: 56px;
+  font-size: 17px;
+  font-weight: 700;
+}
+#video-assistant-view .cosmic-btn--primary:hover { background: var(--va-blue-dark); }
+#video-assistant-view .cosmic-btn__subtitle { color: var(--va-muted); opacity: 1; }
+#video-assistant-view .cosmic-chip-btn--on {
+  background: #e0f2fc;
+  border-color: var(--va-blue);
+  color: #0b4f78;
+  font-weight: 700;
+}
+#video-assistant-view .cosmic-reroll-btn,
+#video-assistant-view .va-text-link,
+#video-assistant-view .va-more summary { color: var(--va-blue); opacity: 1; }
+#video-assistant-view .cosmic-mute-btn { background: var(--va-fill); color: var(--va-ink); }
+#video-assistant-view .cosmic-pick-btn { background: var(--va-blue); }
+#video-assistant-view .va-copy-btn {
+  background: #fff;
+  border: 1.5px solid var(--va-blue);
+  color: var(--va-blue);
+  box-shadow: none;
+}
+#video-assistant-view .va-copy-btn:hover { background: #f0f7fc; }
+#video-assistant-view .va-copy-btn.is-copied { background: #1f8f5a; border-color: #1f8f5a; color: #fff; }
+
+/* שדות */
+#video-assistant-view .cosmic-textarea {
+  background: #fff;
+  border: 1.5px solid #cfe2ee;
+  border-radius: 16px;
+  color: var(--va-ink);
+  font-size: 16px;
+  padding: 14px 16px;
+  line-height: 1.55;
+}
+#video-assistant-view .cosmic-textarea:focus {
+  outline: none;
+  border-color: var(--va-blue);
+  box-shadow: 0 0 0 4px rgba(11,111,168,.12);
+}
+#video-assistant-view .cosmic-textarea::placeholder { color: #a7bccf; }
+#video-assistant-view .cosmic-textarea option { background-color: #fff; color: var(--va-ink); }
+#video-assistant-view .va-punch-label { color: var(--va-ink); }
+#video-assistant-view .va-punch-box { border: 2px solid var(--va-blue); box-shadow: none; }
+#video-assistant-view .va-check-row input { accent-color: var(--va-blue); }
+
+/* תיבות תוכן */
+#video-assistant-view .cosmic-prompt-box { background: #eef6fb; color: var(--va-ink); }
+#video-assistant-view .cosmic-context-box { background: #fff4cc; color: var(--va-ink); }
+#video-assistant-view .cosmic-accordion-item { border-color: var(--va-line); background: #fff; }
+#video-assistant-view .cosmic-accordion-item.is-selected { border-color: var(--va-blue); background: #eef6fb; }
+#video-assistant-view .cosmic-accordion-body { color: #3d5878; opacity: 1; }
+#video-assistant-view .cosmic-accordion-body .cosmic-angle-example { background: #eef6fb; }
+#video-assistant-view .cosmic-selected-chip { background: #e0f2fc; border-color: var(--va-blue); color: #0b4f78; }
+#video-assistant-view .cosmic-summary-list li { border-bottom-color: #e3eef5; }
+#video-assistant-view .cosmic-summary-num { background: var(--va-blue); }
+#video-assistant-view .cosmic-today-challenge { background: #eef6fb; border-color: var(--va-line); }
+#video-assistant-view .va-cta-pick { border: 2px solid var(--va-blue); box-shadow: none; }
+#video-assistant-view .va-save-bar { border-top-color: #e3eef5; }
+#video-assistant-view .va-save-bar__state { color: var(--va-muted); }
+#video-assistant-view .va-megillah-count { background: var(--va-fill); }
+#video-assistant-view .cosmic-card .va-megillah-meter { color: #a0620b; }
+#video-assistant-view .cosmic-card .va-megillah-meter--ok { color: #1f8f5a; }
+
+/* הפופאפים יושבים מחוץ לכרטיס (על body), ולכן מקבלים את אותו מראה כאן */
+.cosmic-modal-overlay { background: rgba(5,12,35,.6); }
+.cosmic-modal-overlay .cosmic-modal {
+  background: #f7fbfe;
+  color: #0f2340;
+  border: 0;
+  border-radius: 24px;
+  box-shadow: 0 30px 80px rgba(5,15,50,.45);
+}
+.cosmic-modal-overlay .cosmic-modal-close { background: #e6f2fa; color: #0f2340; }
+.cosmic-modal-overlay .cosmic-textarea { background: #fff; border: 1.5px solid #cfe2ee; color: #0f2340; }
+.cosmic-modal-overlay .cosmic-textarea::placeholder { color: #a7bccf; }
+.cosmic-modal-overlay .cosmic-btn { background: #fff; border: 1px solid #d3e6f2; color: #0f2340; }
+.cosmic-modal-overlay .cosmic-btn--primary { background: #0b6fa8; border-color: #0b6fa8; color: #fff; }
+.cosmic-modal-overlay .cosmic-prompt-box { background: #eef6fb; color: #0f2340; }
+.cosmic-modal-overlay .va-copy-btn { background: #fff; border: 1.5px solid #0b6fa8; color: #0b6fa8; box-shadow: none; }
+.cosmic-modal-overlay .va-copy-btn.is-copied { background: #1f8f5a; border-color: #1f8f5a; color: #fff; }
+
+/* "התסריט שלך נבנה כאן": אותו כרטיס, ממשיך למטה בגוון תכלת */
+#video-assistant-view .va-build {
+  margin: 26px calc(var(--va-pad-x) * -1) calc(var(--va-pad-b) * -1);
+  padding: 4px var(--va-pad-x) 22px;
+  background: #eaf4fb;
+  border-radius: 0 0 28px 28px;
+  text-align: right;
+}
+.va-build__title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #0b6fa8;
+}
+.va-build__title::before,
+.va-build__title::after { content: ""; flex: 1; height: 1px; background: #cfe3f0; }
+.va-build__list { list-style: none; margin: 0; padding: 0; }
+.va-build__row { display: flex; gap: 14px; padding: 9px 0; }
+.va-build__mark {
+  flex: 0 0 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #0b6fa8;
+  color: #fff;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.va-build__row > div { flex: 1; min-width: 0; }
+.va-build__row small { display: block; font-size: 12px; color: #5d7d99; }
+#video-assistant-view .va-build__row p {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.55;
+  color: #0f2340;
+  opacity: 1;
+  overflow-wrap: anywhere;
+}
+#video-assistant-view .va-build__row.is-big p { font-size: 17px; font-weight: 700; }
+.va-build__row.is-now .va-build__mark { background: #fff; border: 2px solid #0b6fa8; }
+.va-build__row.is-now small { color: #0b6fa8; font-weight: 700; }
+#video-assistant-view .va-build__row.is-now p { color: #0b6fa8; }
+.va-build__row.is-wait .va-build__mark { background: #dbe9f3; }
+.va-build__row.is-wait small,
+#video-assistant-view .va-build__row.is-wait p { color: #9db4c6; }
+@media (max-width: 600px) {
+  #video-assistant-view .va-build { border-radius: 0 0 24px 24px; }
+}
