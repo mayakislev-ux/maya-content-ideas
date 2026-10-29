@@ -17,6 +17,7 @@ import { showToast } from './toast.js';
 import { confirmDialog } from './confirm-dialog.js';
 import { getProfile, saveProfile } from './user-profile.js';
 import { serverErrorText } from './server-error.js';
+import { withAsUid } from './client-view.js';
 
 // היה httpsCallable עם timeout ידני - בקשה חוסמת יחידה, בלי שום בייט זורם
 // על הרשת מהרגע שהיא נשלחת ועד שהתשובה השלמה חוזרת (יכול לקחת עד דקה-שתיים
@@ -58,7 +59,8 @@ async function streamGenerateContentPlan({ pieceCount, ideas, includeSecondaryAu
       'Content-Type': 'application/json',
       Authorization: `Bearer ${idToken}`,
     },
-    body: JSON.stringify({ pieceCount, ideas, includeSecondaryAudience }),
+    // 29/10/2026: כשמאיה צופה בלקוחה, התוכנית נבנית לפי קהל היעד של הלקוחה
+    body: JSON.stringify(withAsUid({ pieceCount, ideas, includeSecondaryAudience })),
   });
 
   if (!response.ok) {

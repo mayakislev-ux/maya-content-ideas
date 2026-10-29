@@ -53,3 +53,35 @@ test('הכפתור והפס: כניסה רק למאיה, ויציאה גלויה
   assert.ok(app.includes('user.email === ADMIN_EMAIL && isClientView()'), 'הפס רק בחשבון שלה');
   assert.ok(app.includes('data-exit-client-view'), 'יש חזרה לתצוגה שלה');
 });
+
+// 29/10/2026 (מאיה: "לבחור את הלקוחה ושיציג לי את הנתונים שלה", "גם לערוך אצלה")
+const cv = await import('../js/client-view.js');
+const require = (await import('node:module')).createRequire(import.meta.url);
+const { actingUid } = require('../functions/acting-uid.js');
+
+test('לקוחה שנבחרה: הנתונים הולכים ל-uid שלה, ויציאה מתצוגת לקוחה מחזירה לחשבון שלה', () => {
+  cv.setClientView(true);
+  cv.setViewedClient({ uid: 'clientUid1234', email: 'c@x.com', name: 'לקוחה' });
+  assert.equal(cv.subjectUid('mayaUid123456'), 'clientUid1234');
+  assert.deepEqual(cv.withAsUid({ a: 1 }), { a: 1, asUid: 'clientUid1234' });
+  cv.setClientView(false);
+  assert.equal(cv.viewedClient(), null);
+  assert.equal(cv.subjectUid('mayaUid123456'), 'mayaUid123456');
+  assert.deepEqual(cv.withAsUid({ a: 1 }), { a: 1 });
+});
+
+test('השרת: asUid מכובד רק למאיה', () => {
+  assert.equal(actingUid('me', 'mayakislev@gmail.com', 'clientUid1234'), 'clientUid1234');
+  assert.equal(actingUid('me', 'client@x.com', 'clientUid1234'), 'me', 'לקוחה לא יכולה לקרוא נתונים של אחרת');
+  assert.equal(actingUid('me', 'mayakislev@gmail.com', '../x'), 'me');
+  assert.equal(actingUid('me', 'mayakislev@gmail.com', undefined), 'me');
+});
+
+test('כל מאגר נתונים קורא וכותב דרך subjectUid, ולא ישר מהמחוברת', () => {
+  for (const f of ['content-plan-store.js', 'ideas-store.js', 'story-table-store.js', 'user-profile.js', 'video-assistant-store.js', 'warming-store.js']) {
+    const src = read(`../js/${f}`);
+    assert.ok(!/(?<!subjectUid\()auth\.currentUser\??\.uid/.test(src), `${f} קורא uid ישירות`);
+  }
+  const app = read('../js/app.js');
+  assert.ok(app.includes('if (!viewedNow) {\n    saveProfile({ lastActiveAt') || app.includes('if (!viewedNow) {\r\n    saveProfile({ lastActiveAt'), 'בתוך לקוחה לא מסמנים אותה כפעילה');
+});

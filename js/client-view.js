@@ -22,7 +22,11 @@ export function isClientView() {
 export function setClientView(on) {
   try {
     if (on) sessionStorage.setItem(KEY, '1');
-    else sessionStorage.removeItem(KEY);
+    else {
+      sessionStorage.removeItem(KEY);
+      // יציאה מתצוגת הלקוחה היא גם יציאה מהלקוחה שנבחרה
+      sessionStorage.removeItem('clientViewAs');
+    }
   } catch {
     /* בלי אחסון אין תצוגת לקוחה, וזה בסדר: היא פשוט נשארת בתצוגה שלה */
   }
@@ -31,4 +35,45 @@ export function setClientView(on) {
 /* מאיה, כשהיא לא בתצוגת לקוחה. כל בדיקה של "רק למנהלת" במסך עוברת כאן. */
 export function actsAsOwner(email) {
   return email === OWNER_EMAIL && !isClientView();
+}
+
+/* 29/10/2026 (מאיה: "בתצוגה כלקוחה אני רוצה לבחור את הלקוחה ושיציג לי את
+   הנתונים שלה", ובהמשך: "גם לערוך אצלה"). כשנבחרה לקוחה, כל קריאה וכתיבה
+   של נתונים הולכת ל-uid שלה ולא של מאיה. זה נשען על כללי Firestore שנותנים
+   למאיה (isAdmin) קריאה וכתיבה, ועל asUid בשרת, שמכובד רק כשהמייל שלה.
+
+   נשמר יחד עם תצוגת הלקוחה ב-sessionStorage, מאותה סיבה: פתיחה חדשה של
+   האפליקציה חוזרת לחשבון שלה ולא משאירה אותה "בתוך" לקוחה בלי לשים לב. */
+const AS_KEY = 'clientViewAs';
+
+/** { uid, email, name, plan } של הלקוחה שנבחרה, או null */
+export function viewedClient() {
+  if (!isClientView()) return null;
+  try {
+    const v = JSON.parse(sessionStorage.getItem(AS_KEY) || 'null');
+    return v && typeof v.uid === 'string' && v.uid ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+export function setViewedClient(client) {
+  try {
+    if (client && client.uid) sessionStorage.setItem(AS_KEY, JSON.stringify(client));
+    else sessionStorage.removeItem(AS_KEY);
+  } catch {
+    /* בלי אחסון נשארים בחשבון שלה */
+  }
+}
+
+/** ה-uid שהנתונים נקראים ונכתבים אליו: של הלקוחה שנבחרה, או של המחוברת */
+export function subjectUid(currentUid) {
+  const v = viewedClient();
+  return v ? v.uid : currentUid;
+}
+
+/** לקריאות לשרת: מוסיף asUid רק כשמאיה צופה בלקוחה */
+export function withAsUid(payload = {}) {
+  const v = viewedClient();
+  return v ? { ...payload, asUid: v.uid } : payload;
 }

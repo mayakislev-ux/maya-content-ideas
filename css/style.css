@@ -7718,3 +7718,13 @@ body[data-plan="refs"] .view-tabs-scroll { justify-content: center; }
 }
 .cosmic-examples-embed iframe { width: 100%; height: 100%; border: 0; display: block; }
 .cosmic-examples-out { display: block; text-align: center; font-size: 14px; }
+
+/* 29/10/2026: בחירת לקוחה בפס של תצוגת הלקוחה. כשנבחרה לקוחה הפס מתחלף
+   לגוון האזהרה של שעון המנוי, כי כל עריכה כאן נשמרת אצלה באמת. */
+.preview-bar--as { background: linear-gradient(135deg, #b3341f 0%, #7d1f12 100%); }
+.preview-bar__pick { display: inline-flex; align-items: center; gap: 6px; }
+.preview-bar__pick select {
+  font: inherit; font-weight: 600; max-width: 60vw;
+  padding: 4px 8px; border-radius: 8px; border: 0;
+  background: #fff; color: #16205a;
+}

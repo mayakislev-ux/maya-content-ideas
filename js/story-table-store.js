@@ -8,6 +8,7 @@ import {
   serverTimestamp,
 } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
+import { subjectUid, withAsUid } from './client-view.js';
 
 // 30/09/2026: מסמך אחד ללקוחה.
 // audiences נשלף מהגיליון ונדרס בכל סנכרון. answers ו-overrides הם מה שהיא
@@ -20,7 +21,7 @@ import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/fireba
 //   }
 
 function tableRef() {
-  return doc(db, 'storyTables', auth.currentUser.uid);
+  return doc(db, 'storyTables', subjectUid(auth.currentUser.uid));
 }
 
 export async function loadStoryTable() {
@@ -38,7 +39,7 @@ export async function loadStoryTable() {
 
 export async function syncStoryTable(sheetUrl) {
   const call = httpsCallable(functions, 'syncStoryTable');
-  const res = await call(sheetUrl ? { sheetUrl } : {});
+  const res = await call(withAsUid(sheetUrl ? { sheetUrl } : {}));
   return res.data;
 }
 
@@ -47,7 +48,7 @@ export async function saveOverride(audienceId, rowKey, text) {
   await setDoc(
     tableRef(),
     {
-      ownerUid: auth.currentUser.uid,
+      ownerUid: subjectUid(auth.currentUser.uid),
       overrides: { [audienceId]: { [rowKey]: text } },
       updatedAt: serverTimestamp(),
     },

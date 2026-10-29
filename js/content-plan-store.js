@@ -10,6 +10,7 @@ import {
   getDocs,
   serverTimestamp,
 } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
+import { subjectUid } from './client-view.js';
 
 function contentPlansCollection() {
   return collection(db, 'contentPlans');
@@ -19,7 +20,7 @@ export async function saveContentPlan({ pieceCount, plan }) {
   return addDoc(contentPlansCollection(), {
     pieceCount,
     plan,
-    ownerUid: auth.currentUser.uid,
+    ownerUid: subjectUid(auth.currentUser.uid),
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
@@ -34,7 +35,7 @@ export async function deleteContentPlan(id) {
 }
 
 export async function listContentPlans() {
-  const uid = auth.currentUser?.uid;
+  const uid = subjectUid(auth.currentUser?.uid);
   const q = query(contentPlansCollection(), where('ownerUid', '==', uid));
   const snap = await getDocs(q);
   const plans = snap.docs.map((d) => ({ id: d.id, ...d.data() }));

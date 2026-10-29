@@ -16,7 +16,7 @@ import { wireConfirmDialog } from './confirm-dialog.js';
 import { wireWarmingView } from './warming.js';
 import { wireVideoAssistantView } from './video-assistant.js';
 import { wireStoryTableView } from './story-table.js';
-import { actsAsOwner, isClientView, setClientView } from './client-view.js';
+import { actsAsOwner, isClientView, setClientView, viewedClient, setViewedClient } from './client-view.js';
 import { wireInspirationView, openInspirationView } from './inspiration-view.js';
 import { showView, getLastView } from './view-router.js';
 import { showToast } from './toast.js';
@@ -702,8 +702,37 @@ onAuthChange(async (user) => {
   if (!previewRefs && user.email === ADMIN_EMAIL && isClientView()) {
     const bar = document.createElement('div');
     bar.className = 'preview-bar';
-    bar.innerHTML = '<span>👁 את בתצוגת לקוחה: ככה לקוחה עם מנוי מלא רואה את האפליקציה. אפשר לעשות הכל, וזה נשמר בחשבון שלך ולא אצל אף לקוחה.</span>'
+    /* 29/10/2026 (מאיה: "לבחור את הלקוחה ושיציג לי את הנתונים שלה",
+       "גם לערוך אצלה"): בחירת לקוחה. מה שעושים אז נשמר אצלה באמת, ולכן
+       הפס אומר את זה במפורש ובצבע אחר. */
+    const viewed = viewedClient();
+    if (viewed) bar.classList.add('preview-bar--as');
+    bar.innerHTML = '<span data-client-view-text></span>'
+      + '<label class="preview-bar__pick"><span>לקוחה:</span><select data-client-view-pick><option value="">החשבון שלי</option></select></label>'
       + '<a href="#" data-exit-client-view>חזרה לתצוגה שלי</a>';
+    bar.querySelector('[data-client-view-text]').textContent = viewed
+      ? '👁 את בתוך החשבון של ' + (viewed.name || viewed.email) + '. כל מה שתשני כאן נשמר אצלה באמת.'
+      : '👁 את בתצוגת לקוחה: ככה לקוחה עם מנוי מלא רואה את האפליקציה. מה שתעשי נשמר בחשבון שלך.';
+    const pick = bar.querySelector('[data-client-view-pick]');
+    pick.addEventListener('change', () => {
+      const chosen = (pick._clients || []).find((c) => c.uid === pick.value) || null;
+      setViewedClient(chosen);
+      window.location.reload();
+    });
+    httpsCallable(functions, 'listClientsForView')().then((res) => {
+      const list = (res.data && res.data.clients) || [];
+      pick._clients = list;
+      for (const c of list) {
+        const opt = document.createElement('option');
+        opt.value = c.uid;
+        opt.textContent = c.name && c.name !== c.email ? c.name + ' · ' + c.email : c.email;
+        pick.appendChild(opt);
+      }
+      if (viewed) pick.value = viewed.uid;
+    }).catch((err) => {
+      console.error('listClientsForView failed:', err);
+      showToast('לא הצלחתי לטעון את רשימת הלקוחות. אפשר לרענן ולנסות שוב.');
+    });
     bar.querySelector('[data-exit-client-view]').addEventListener('click', (e) => {
       e.preventDefault();
       setClientView(false);
@@ -719,8 +748,14 @@ onAuthChange(async (user) => {
   // הראה לכן תאריך "התחברות אחרונה" ישן במשמעותית מהפעילות האמיתית (עד
   // שבוע פער, אומת מול נתונים אמיתיים). כתיבה קלה ולא-חוסמת בכל פתיחה
   // מוצלחת נותנת סיגנל "פעילות אמיתית" אמין, שהשרת מעדיף על lastSignInTime.
-  saveProfile({ lastActiveAt: serverTimestamp() }).catch((err) => console.error('lastActiveAt update failed:', err));
-  setGreeting(user.displayName);
+  /* 29/10/2026: כשמאיה בתוך לקוחה, הכתיבה הזאת הייתה הולכת לפרופיל של
+     הלקוחה, ו"מעקב לקוחות" היה מראה שהיא פעילה כשהיא לא. */
+  const viewedNow = user.email === ADMIN_EMAIL ? viewedClient() : null;
+  if (!viewedNow) {
+    saveProfile({ lastActiveAt: serverTimestamp() }).catch((err) => console.error('lastActiveAt update failed:', err));
+  }
+  setGreeting(viewedNow ? (viewedNow.name || viewedNow.email) : user.displayName);
+  if (viewedNow && viewedNow.plan === 'refs') document.body.dataset.plan = 'refs';
   showPortalBackButton(user);
   if (user.photoURL) {
     const logo = document.querySelector('.app-logo');

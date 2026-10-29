@@ -8,6 +8,7 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
 import { getProfile, saveProfile } from './user-profile.js';
+import { subjectUid, withAsUid } from './client-view.js';
 
 const guessClientDomainFn = httpsCallable(functions, 'guessClientDomain');
 const suggestSearchKeywordsFn = httpsCallable(functions, 'suggestSearchKeywords');
@@ -17,7 +18,7 @@ const extractOpeningHookFn = httpsCallable(functions, 'extractOpeningHook');
 export async function fetchIdeas() {
   /* 20/10/2026: במנוי הרפרנסים הקריאה חסומה בכללים. רשימה ריקה ולא שגיאה */
   if (document.body.dataset.plan === 'refs') return [];
-  const q = query(collection(db, 'ideas'), where('ownerUid', '==', auth.currentUser.uid));
+  const q = query(collection(db, 'ideas'), where('ownerUid', '==', subjectUid(auth.currentUser.uid)));
   const snap = await getDocs(q);
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
@@ -39,7 +40,7 @@ export async function getSavedDomain() {
 // שום פרמטר לא נדרש כאן יותר (ראה functions/index.js, guessClientDomain).
 // מחזירה { domain, subCategory }.
 export async function guessDomain() {
-  const result = await guessClientDomainFn({});
+  const result = await guessClientDomainFn(withAsUid({}));
   return result.data;
 }
 
@@ -67,7 +68,7 @@ export async function extractOpeningHook(transcript) {
 
 /** הסשן הפעיל - מסמך יחיד לפי uid, לא היסטוריה (ראה firestore.rules) */
 export async function loadSession() {
-  const snap = await getDoc(doc(db, 'videoAssistantSessions', auth.currentUser.uid));
+  const snap = await getDoc(doc(db, 'videoAssistantSessions', subjectUid(auth.currentUser.uid)));
   return snap.exists() ? snap.data() : null;
 }
 
@@ -76,13 +77,13 @@ export async function loadSession() {
 // להבחין בין סשן פעיל שהתרענן בטעות (לשחזר) לבין סשן ישן שהיא כבר לא
 // רוצה לחזור אליו (להתחיל ממנו מחדש) - ראה video-assistant.js, wireVideoAssistantView.
 export async function saveSession(state) {
-  await setDoc(doc(db, 'videoAssistantSessions', auth.currentUser.uid), { ...state, updatedAt: Date.now() });
+  await setDoc(doc(db, 'videoAssistantSessions', subjectUid(auth.currentUser.uid)), { ...state, updatedAt: Date.now() });
 }
 
 /* 29/10/2026 (מאיה): "התסריטים שלי". כל סרטון הוא מסמך משלו תחת המשתמשת,
    ולא נדרס כשמתחילים סרטון חדש (את videoAssistantSessions/{uid} כן). */
 function scriptsCol() {
-  return collection(db, 'videoAssistantScripts', auth.currentUser.uid, 'items');
+  return collection(db, 'videoAssistantScripts', subjectUid(auth.currentUser.uid), 'items');
 }
 
 export async function saveScript(id, data) {

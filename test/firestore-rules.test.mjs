@@ -30,11 +30,12 @@ test('לקוחה קוראת וכותבת רק את הטבלה של עצמה', ()
   );
 });
 
-test('מאיה קוראת הכל, ולעולם לא כותבת ללקוחה', () => {
-  const b = block('storyTables');
-  assert.ok(b.includes('allow read: if isAdmin();'), 'למאיה קריאה');
-  assert.ok(!b.includes('allow write: if isAdmin()'), 'ולעולם לא כתיבה');
-  assert.ok(!b.includes('allow read, write: if isAdmin()'), 'ולא קריאה וכתיבה יחד');
+// 29/10/2026 (מאיה: "גם לערוך אצלה"): ההחלטה מ-30/09 ("קריאה בלבד") השתנתה
+// לבקשתה. מאיה, ורק היא, קוראת וכותבת את הנתונים של כל לקוחה.
+test('מאיה קוראת וכותבת את הנתונים של לקוחה, מתצוגה כלקוחה', () => {
+  for (const name of ['ideas', 'profiles', 'warmingPlans', 'storyTables', 'videoAssistantSessions', 'contentPlans']) {
+    assert.ok(block(name).includes('allow read, write: if isAdmin();'), name);
+  }
 });
 
 test('isAdmin הוא המייל של מאיה, ונבדק בשרת ולא במסך', () => {
@@ -148,7 +149,8 @@ test('בנק הרעיונות פתוח למנוי בתוקף, ותמיד מוג�
   const allowLines = b.split(String.fromCharCode(10)).filter((l) => l.includes('allow '));
   assert.ok(allowLines.length > 0, 'אין שורות allow באוסף הרעיונות');
   assert.ok(
-    allowLines.every((l) => l.includes('ownerUid')),
+    // 29/10/2026: חוץ מהשורה של מאיה (תצוגה כלקוחה), שנבדקת בשרת לפי המייל שלה
+    allowLines.every((l) => l.includes('ownerUid') || l.trim() === 'allow read, write: if isAdmin();'),
     'יש שורת allow בלי הגבלת בעלות'
   );
 });

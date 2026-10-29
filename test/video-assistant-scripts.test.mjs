@@ -57,7 +57,7 @@ test('המסמך שנשמר: שם, האם מוכן, וכל הסטייט', () => 
 test('הנתיב שהקוד כותב אליו מותר בכללים', () => {
   const store = read('js', 'video-assistant-store.js');
   const rules = read('firestore.rules');
-  assert.match(store, /collection\(db, 'videoAssistantScripts', auth\.currentUser\.uid, 'items'\)/);
+  assert.match(store, /collection\(db, 'videoAssistantScripts', subjectUid\(auth\.currentUser\.uid\), 'items'\)/);
   assert.match(rules, /match \/videoAssistantScripts\/\{uid\}\/items\/\{itemId\} \{\s*\n\s*allow read, write: if [^;]*request\.auth\.uid == uid;/);
 });
 

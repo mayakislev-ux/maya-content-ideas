@@ -671,6 +671,29 @@ exports.undoRecategorizeBiduri = onCall(
   }
 );
 
+const { actingUid } = require('./acting-uid');
+
+/* 29/10/2026: רשימת הלקוחות לבחירה בתצוגה כלקוחה (ראו acting-uid.js) */
+exports.listClientsForView = onCall({ region: 'us-central1', timeoutSeconds: 60 }, async (request) => {
+  if (!request.auth || request.auth.token.email !== ADMIN_EMAIL) {
+    throw new HttpsError('permission-denied', 'רק למאיה');
+  }
+  const allow = await db.collection('allowlist').get();
+  const planByEmail = new Map(allow.docs.map((d) => [d.id, (d.data() || {}).plan || 'full']));
+  const clients = [];
+  let pageToken;
+  do {
+    const page = await admin.auth().listUsers(1000, pageToken);
+    for (const u of page.users) {
+      if (!u.email || u.email === ADMIN_EMAIL || !planByEmail.has(u.email)) continue;
+      clients.push({ uid: u.uid, email: u.email, name: u.displayName || '', plan: planByEmail.get(u.email) });
+    }
+    pageToken = page.pageToken;
+  } while (pageToken);
+  clients.sort((a, b) => (a.name || a.email).localeCompare(b.name || b.email, 'he'));
+  return { clients };
+});
+
 exports.getClientUsageStats = onCall({ region: 'us-central1', timeoutSeconds: 60 }, async (request) => {
   if (!request.auth || request.auth.token.email !== ADMIN_EMAIL) {
     throw new HttpsError('permission-denied', 'התכונה הזו זמינה כרגע רק למנהלת');
@@ -1126,7 +1149,9 @@ exports.guessClientDomain = onCall({ secrets: [anthropicApiKey, sheetsServiceAcc
   await enforceAllowlist(request.auth.token.email, { allowRefs: true });
   await enforceRateLimit(request.auth.uid, 'guessClientDomain');
 
-  const profileSnap = await db.collection('profiles').doc(request.auth.uid).get();
+  // 29/10/2026: בתצוגה כלקוחה, הקובץ של הלקוחה שנבחרה
+  const subject = actingUid(request.auth.uid, request.auth.token.email, request.data && request.data.asUid);
+  const profileSnap = await db.collection('profiles').doc(subject).get();
   const profile = profileSnap.exists ? profileSnap.data() : {};
   const sheetId = profile.sheetId;
   if (!sheetId) {
@@ -2370,7 +2395,9 @@ exports.generateContentPlan = onRequest(
     // להשוות אליו. פרופיל המשתמשת כבר נאסף פעם אחת בהיכרות הראשונית של
     // הצ'אט (primaryAudience/secondaryAudience) - שולפים אותו כאן ישירות
     // מהשרת (לא מהלקוח, כדי שלא יהיה תלוי בנתון מיושן/לא אמין שהגיע מהלקוח).
-    const profileSnap = await db.collection('profiles').doc(uid).get();
+    // 29/10/2026: בתצוגה כלקוחה, קהל היעד של הלקוחה שנבחרה. המכסה נשארת של המחוברת
+    const subject = actingUid(uid, email, req.body && req.body.asUid);
+    const profileSnap = await db.collection('profiles').doc(subject).get();
     const profile = profileSnap.exists ? profileSnap.data() : {};
     const primaryAudience = (profile.primaryAudience || '').trim();
     const secondaryAudience = (profile.secondaryAudience || '').trim();
@@ -2623,7 +2650,7 @@ Object.assign(exports, require('./form-draft'));
 // 30/09/2026: טבלת החימום בסטורי. הפונקציה מקבלת את enforceAllowlist מכאן
 // כדי לא לשכפל את בדיקת ההרשאה, שהיא אותה בדיקה בכל שאר הפונקציות.
 const { makeSyncStoryTable } = require('./story-table');
-exports.syncStoryTable = makeSyncStoryTable({ enforceAllowlist });
+exports.syncStoryTable = makeSyncStoryTable({ enforceAllowlist, actingUid });
 
 // 09/10/2026: קריאת נתוני Reel מצילום מסך של Insights, בשביל "רנטגן לעמוד"
 // בפורטל. הפונקציה חיה כאן כי מפתח ה-AI כאן, והפורטל קורא אליה עם אסימון

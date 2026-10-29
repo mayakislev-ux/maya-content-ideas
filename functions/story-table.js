@@ -69,14 +69,15 @@ async function resolveSheetId(db, uid, override) {
 
 exports.sheetsServiceAccountKey = sheetsServiceAccountKey;
 
-exports.makeSyncStoryTable = ({ enforceAllowlist }) =>
+exports.makeSyncStoryTable = ({ enforceAllowlist, actingUid }) =>
   onCall(
     { secrets: [sheetsServiceAccountKey], region: 'us-central1', timeoutSeconds: 120 },
     async (request) => {
       if (!request.auth) throw new HttpsError('unauthenticated', 'יש להתחבר קודם');
       await enforceAllowlist(request.auth.token.email);
 
-      const uid = request.auth.uid;
+      // 29/10/2026: בתצוגה כלקוחה, הטבלה של הלקוחה שנבחרה (רק למאיה)
+      const uid = actingUid(request.auth.uid, request.auth.token.email, request.data && request.data.asUid);
       const db = admin.firestore();
       const { sheetId, source } = await resolveSheetId(db, uid, request.data && request.data.sheetUrl);
 

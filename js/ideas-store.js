@@ -9,6 +9,7 @@ import {
   where,
   serverTimestamp,
 } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
+import { subjectUid } from './client-view.js';
 
 function ideasCollection() {
   return collection(db, 'ideas');
@@ -27,7 +28,7 @@ function ideasCollection() {
  * זאת אותה משפחה שגרמה ללקוחות לחשוב שנמחקו להן נתונים ב-11/10.
  */
 export function subscribeToIdeas(callback, onError) {
-  const uid = auth.currentUser?.uid;
+  const uid = subjectUid(auth.currentUser?.uid);
   const q = query(ideasCollection(), where('ownerUid', '==', uid));
   return onSnapshot(
     q,
@@ -67,7 +68,7 @@ export async function addIdea({
     format,
     series,
     seriesOrder,
-    ownerUid: auth.currentUser.uid,
+    ownerUid: subjectUid(auth.currentUser.uid),
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
@@ -95,7 +96,7 @@ export async function addQuickIdea(title) {
     audienceScope: '',
     source: '',
     rating: '',
-    ownerUid: auth.currentUser.uid,
+    ownerUid: subjectUid(auth.currentUser.uid),
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });

@@ -10,6 +10,7 @@ import {
   getDocs,
   serverTimestamp,
 } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
+import { subjectUid } from './client-view.js';
 
 function warmingPlansCollection() {
   return collection(db, 'warmingPlans');
@@ -21,7 +22,7 @@ export async function saveWarmingPlan({ product, audience, extraContext, plan })
     audience,
     extraContext,
     plan,
-    ownerUid: auth.currentUser.uid,
+    ownerUid: subjectUid(auth.currentUser.uid),
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
@@ -36,7 +37,7 @@ export async function deleteWarmingPlan(id) {
 }
 
 export async function listWarmingPlans() {
-  const uid = auth.currentUser?.uid;
+  const uid = subjectUid(auth.currentUser?.uid);
   const q = query(warmingPlansCollection(), where('ownerUid', '==', uid));
   const snap = await getDocs(q);
   const plans = snap.docs.map((d) => ({ id: d.id, ...d.data() }));

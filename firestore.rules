@@ -42,12 +42,17 @@ service cloud.firestore {
        בנק הרעיונות היה חלק מהמנוי המלא בלבד, ולכן מנוית רפרנסים הגיעה
        לעוזר ליצירת סרטון בלי שום רעיון לשלוף ממנו. הרעיונות הם שלה
        ממילא (ownerUid), ולכן התנאי הוא גישה בתוקף, לא סוג המנוי. */
+    /* 29/10/2026 (מאיה: "לבחור לקוחה בתצוגה כלקוחה, ולראות ולערוך את
+       הנתונים שלה"): מאיה קוראת וכותבת את הנתונים של לקוחות. isAdmin הוא
+       המייל שלה, נבדק כאן בשרת, ולכן אף לקוחה לא מקבלת את זה. */
     match /ideas/{ideaId} {
       allow read, update, delete: if isAllowed() && notExpired() && request.auth.uid == resource.data.ownerUid;
       allow create: if isAllowed() && notExpired() && request.auth.uid == request.resource.data.ownerUid;
+      allow read, write: if isAdmin();
     }
     match /profiles/{uid} {
       allow read, write: if isAllowed() && request.auth.uid == uid;
+      allow read, write: if isAdmin();
     }
     match /allowlist/{email} {
       allow read: if request.auth != null && request.auth.token.email == email;
@@ -60,6 +65,7 @@ service cloud.firestore {
     match /warmingPlans/{planId} {
       allow read, update, delete: if isFull() && request.auth.uid == resource.data.ownerUid;
       allow create: if isFull() && request.auth.uid == request.resource.data.ownerUid;
+      allow read, write: if isAdmin();
     }
     // 30/09/2026: טבלת החימום. מסמך אחד לכל לקוחה, לפי ה-uid שלה, ולכן
     // אין צורך ב-ownerUid בתוך המסמך כמו באוספים שהמזהה שלהם אקראי.
@@ -67,21 +73,22 @@ service cloud.firestore {
       allow read, write: if isFull() && request.auth.uid == uid;
       // 30/09/2026 (מאיה: "אבל למה לא מפורט?"): היא הסתכלה על החשבון שלה,
       // שהקובץ שלו ריק, וחשבה שהמסך שבור. מאיה קוראת כל טבלה כדי לראות מה
-      // לקוחה רואה. קריאה בלבד, בלי כתיבה.
-      allow read: if isAdmin();
+      // לקוחה רואה.
+      // 29/10/2026 (מאיה: "גם לערוך אצלה"): עכשיו גם כתיבה, מתצוגה כלקוחה.
+      allow read, write: if isAdmin();
     }
     // 13/10/2026: "העוזר שלך ליצירת סרטון" - מסמך אחד לכל לקוחה (הסשן
     // הפעיל שלה, לא היסטוריה), אותה צורה בדיוק כמו storyTables.
     match /videoAssistantSessions/{uid} {
       /* 20/10/2026: גם מנוי הרפרנסים, כל עוד המנוי בתוקף */
       allow read, write: if (isFull() || (isAllowed() && notExpired())) && request.auth.uid == uid;
-      allow read: if isAdmin();
+      allow read, write: if isAdmin();
     }
     /* 29/10/2026 (מאיה): "התסריטים שלי". כל סרטון שנבנה בעוזר הוא מסמך
        משלו, באותן הרשאות בדיוק כמו הסשן. */
     match /videoAssistantScripts/{uid}/items/{itemId} {
       allow read, write: if (isFull() || (isAllowed() && notExpired())) && request.auth.uid == uid;
-      allow read: if isAdmin();
+      allow read, write: if isAdmin();
     }
     /* 02/10/2026 (מאיה): "בגלל שהסטוריז בצבע מותג אז הייתי רוצה
        שאת הטקסט והצבעים תתאימי בול לגוונים של הצבעי מותג... ושהכל ישמר
@@ -98,6 +105,7 @@ service cloud.firestore {
     match /contentPlans/{planId} {
       allow read, update, delete: if isFull() && request.auth.uid == resource.data.ownerUid;
       allow create: if isFull() && request.auth.uid == request.resource.data.ownerUid;
+      allow read, write: if isAdmin();
     }
     match /pushSubscriptions/{uid} {
       allow read, write: if isAllowed() && request.auth.uid == uid;
