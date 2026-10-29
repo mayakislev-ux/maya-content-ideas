@@ -936,6 +936,16 @@ async function ensureOpeningHook() {
   saveSession(state).catch((err) => console.error('saveSession failed:', err));
 }
 
+/* 29/10/2026 (מאיה: "אני רוצה שזה ימלא לבד את התחום של כל אחד, נגיד
+   אצלי שיווק, זה לא מילא"). domainInfo נטען רק במסלולי הרפרנס, ולכן
+   במסלול "יש לי רעיון" הוא היה ריק והפרומפט יצא עם [התחום שלי]. התחום
+   שכל אחת כתבה בפרופיל (חובה לפני שנכנסים לעוזר) הוא הגיבוי. */
+async function myDomain() {
+  if (domainInfo && domainInfo.domain) return domainInfo.domain;
+  const profile = await getProfile();
+  return profile && profile.business ? profile.business : '';
+}
+
 /* קהל היעד יושב בפרופיל, וכל בונה פרומפט צריך אותו. פעם אחת כאן,
    במקום להעתיק את אותו תנאי בכל מסך מחדש. */
 async function myAudience() {
@@ -946,7 +956,7 @@ async function myAudience() {
 async function renderPrompt1() {
   const profile = await getProfile();
   const audience = profile && profile.primaryAudience ? profile.primaryAudience : '';
-  const domain = domainInfo ? domainInfo.domain : '';
+  const domain = await myDomain();
 
   // 19/10/2026 (מאיה: "קודם כל מדביקים לך את התסריט של הרפרנס ואז הוא
   // כבר מזהה הוק ואז בעצם צריך מגילת אסתר") - בשכפול הפוך ההוק כבר זוהה
@@ -1153,7 +1163,7 @@ async function renderPrompt2() {
   // 19/10/2026 (מאיה, אחרי אישור מפורש) - שדה "התסריט המקורי" מפורש, לא
   // הסתמכות על ש-ChatGPT "זוכר" אותו מפרומפט 1 באותה שיחה; ראה
   // video-assistant-prompts.js, buildScriptPrompt.
-  const prompt = buildScriptPrompt({ hook, herWords: state.herWords, originalScript: state.transcript || '', domain: domainInfo ? domainInfo.domain : '', audience: await myAudience() });
+  const prompt = buildScriptPrompt({ hook, herWords: state.herWords, originalScript: state.transcript || '', domain: await myDomain(), audience: await myAudience() });
   cosmicCard(`
     <h2>הפרומפט השני</h2>
     <p>להעתיק, להדביק ב-ChatGPT, ותלקבל תסריט מלא</p>
@@ -1240,12 +1250,11 @@ function renderIdeaSharpen() {
 
     <label class="cosmic-field-label" for="va-idea-sharp">${forFootage ? 'מה המסר של הקטע שכבר צולם?' : 'על מה הסרטון?'}</label>
     <textarea class="cosmic-textarea" id="va-idea-sharp" style="min-height:${forFootage ? 96 : 56}px"
-      placeholder="${forFootage ? 'למשל: למה אני עובדת עם מכשיר אחד ולא עם שלושה' : 'למשל: החלקה לשיער'}">${escapeHtml(idea)}</textarea>
+      ${forFootage ? 'placeholder="למשל: למה אני עובדת עם מכשיר אחד ולא עם שלושה"' : ''}>${escapeHtml(idea)}</textarea>
     ${fromIdea ? '<button type="button" class="va-text-link" id="va-pull-idea-link">🎲 אין לי רעיון? להגריל מבנק הרעיונות</button>' : ''}
     ${forFootage ? '' : `
     <label class="cosmic-field-label va-punch-label" for="va-idea-punch">⭐ מה הפואנטה שורה תחתונה מהסרטון? מה אתם רוצים שהקהל שלכם יבין? מה המסר?</label>
-    <textarea class="cosmic-textarea va-punch-box" id="va-idea-punch" style="min-height:96px"
-      placeholder="למשל: החלקה שורפת את השיער מבפנים גם כשהוא נראה מבריק, ויש דרך להחליק בלי לשלם על זה">${escapeHtml(punch)}</textarea>`}
+    <textarea class="cosmic-textarea va-punch-box" id="va-idea-punch" style="min-height:96px">${escapeHtml(punch)}</textarea>`}
 
 
     ${fromIdea ? `<label class="va-check-row">
@@ -1316,44 +1325,56 @@ async function renderCreativePackaging() {
     ? `${state.ideaTopic}. המסר: ${state.ideaPunchline}`
     : (state.ideaBeforePackaging || state.ideaDescription || '');
   const audience = await myAudience();
-  const domain = domainInfo ? domainInfo.domain : '';
+  const domain = await myDomain();
   const prompt = buildCreativePackagingPrompt({ domain, audience, idea });
-  /* 28/10/2026 (מאיה: "תעשי מה שחכם ונוח יותר"). נקודת היציאה וסוג
-     התוכן היו מסך נפרד בין האריזה לפורמט. הם החלטות על אותו "איך",
-     ולכן ישבו כאן, מתחת לכיוון שנבחר. בקטע שצולם הם נקבעו בצילום. */
+  /* 28/10/2026 (מאיה: "תעשי מה שחכם ונוח יותר"). נקודת היציאה הייתה
+     מסך נפרד בין האריזה לפורמט, ועכשיו היא יושבת כאן. 29/10/2026 (מאיה):
+     "באיזה סוג תוכן זה נראה לי נוותר, סתם מיוחד ומסבך", ולכן סוג התוכן
+     ירד מהמסך. בקטע שצולם נקודת היציאה לא נשאלת, כי נקבעה בצילום. */
   const withBasics = state.branch !== 'footage';
   cosmicCard(`
     <h2>האריזה הקריאייטיבית</h2>
     <p>איך מגישים את המסר בצורה מעניינת ולא בנאלית. להעתיק לג'מיני, לבחור מתוך ה-30 את הכיוון שהכי מדליק, ולהדביק אותו כאן.</p>
+    <button type="button" class="va-text-link" id="va-what-creative-link">מה זה בעצם קריאייטיב?</button>
     ${promptPeek(highlightPlaceholders(prompt, [domain, audience, idea]))}
     ${copyBtn(prompt, "להעתיק פרומפט לג'מיני")}
     <textarea class="cosmic-textarea" id="va-packaging-input" placeholder="להדביק כאן את הכיוון שבחרת..." style="margin-top:14px">${state.packaging ? escapeHtml(state.packaging) : ''}</textarea>
     ${withBasics ? `
-    <p class="cosmic-field-label" style="margin-top:16px">מאיפה הסרטון יוצא?</p>
-    <div class="cosmic-chip-row" id="va-start-row">${chips(STARTING_POINTS, state.startingPoint, 'data-start')}</div>
-    <p class="cosmic-field-label" style="margin-top:14px">איזה סוג תוכן זה?</p>
-    <div class="cosmic-chip-row" id="va-type-row">${chips(CONTENT_TYPES, state.contentType, 'data-type')}</div>` : ''}
+    <p class="cosmic-field-label" style="margin-top:16px">מה נקודת היציאה של הרעיון?</p>
+    <button type="button" class="va-text-link" id="va-what-start-link">מה זה אומר?</button>
+    <div class="cosmic-chip-row" id="va-start-row">${chips(STARTING_POINTS, state.startingPoint, 'data-start')}</div>` : ''}
     <div class="cosmic-btn-row" style="margin-top:16px">
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-packaging-done-btn">ממשיכים ←</button>
     </div>
   `);
   wireCopyButtons(screenEl());
+  /* 29/10/2026 (מאיה): "שתהיה אופציה למי שלא הבין מה זה קריאייטיב", ו"מה
+     נקודת היציאה של הרעיון, ואז אופציה לפופאפ להסביר מה זה אומר". */
+  document.getElementById('va-what-creative-link').addEventListener('click', () => openModal(`
+    <h2 style="margin-top:0">מה זה קריאייטיב?</h2>
+    <p>קריאייטיב זה איך לוקחים רעיון ומגישים אותו ברשת בצורה מעניינת, לא בנאלית ולא משעממת.</p>
+    <p>כל רעיון אפשר להנגיש באלפי דרכים. המטרה היא לבחור את הדרך הכי חזקה, זו שאתם הכי מתחברים אליה.</p>
+  `));
+  const startLink = document.getElementById('va-what-start-link');
+  if (startLink) startLink.addEventListener('click', () => openModal(`
+    <h2 style="margin-top:0">מה זה נקודת יציאה?</h2>
+    <p>כל רעיון אפשר לספר דרך סיפור אישי, דרך סיפור של לקוח, או בצורה כללית.</p>
+    <p>הכי חזק זה סיפור לקוח או סיפור אישי, כי זה מוחשי יותר. אם אין סיפור כזה, הולכים על כללי.</p>
+  `));
   let startingPoint = state.startingPoint;
-  let contentType = state.contentType;
   wireChips('[data-start]', 'data-start', (v) => { startingPoint = v; });
-  wireChips('[data-type]', 'data-type', (v) => { contentType = v; });
   document.getElementById('va-packaging-done-btn').addEventListener('click', () => {
     const packaging = document.getElementById('va-packaging-input').value.trim();
     if (!packaging) {
       showToast('צריך להדביק את הכיוון שבחרת קודם');
       return;
     }
-    if (withBasics && (!startingPoint || !contentType)) {
-      showToast('לבחור מאיפה הסרטון יוצא ואיזה סוג תוכן זה');
+    if (withBasics && !startingPoint) {
+      showToast('לבחור מה נקודת היציאה של הרעיון');
       return;
     }
     dispatch(withBasics
-      ? { type: 'PACKAGING_CHOSEN', packaging, startingPoint, contentType }
+      ? { type: 'PACKAGING_CHOSEN', packaging, startingPoint }
       : { type: 'PACKAGING_CHOSEN', packaging });
   });
 }
@@ -1447,7 +1468,9 @@ function openExtractionHelperModal() {
     </div>
     <div id="va-ext-result"></div>
   `);
+  let domain = domainInfo ? domainInfo.domain : '';
   getProfile().then((p) => {
+    if (!domain && p && p.business) domain = p.business;
     const el = overlay.querySelector('#va-ext-audience');
     if (el && !el.value && p && p.primaryAudience) el.value = p.primaryAudience;
   });
@@ -1455,7 +1478,7 @@ function openExtractionHelperModal() {
     const contentType = overlay.querySelector('#va-ext-contenttype').value.trim();
     const startingPoint = overlay.querySelector('#va-ext-startpoint').value.trim();
     const audience = overlay.querySelector('#va-ext-audience').value.trim();
-    const prompt = buildExtractionPrompt({ idea, contentType, startingPoint, audience, domain: domainInfo ? domainInfo.domain : '' });
+    const prompt = buildExtractionPrompt({ idea, contentType, startingPoint, audience, domain: domain });
     const resultEl = overlay.querySelector('#va-ext-result');
     resultEl.innerHTML = `
       ${promptPeek(highlightPlaceholders(prompt, [idea, contentType, startingPoint, audience]))}
@@ -1499,7 +1522,7 @@ function renderScratchDump() {
 async function renderScratchHook() {
   const profile = await getProfile();
   const audience = profile && profile.primaryAudience ? profile.primaryAudience : '';
-  const domain = domainInfo ? domainInfo.domain : '';
+  const domain = await myDomain();
   /* 28/10/2026: השכפול ההפוך כבר לא מסלול נפרד עם מסך החלטה משלו.
      המגילה כבר כתובה כאן, ולכן מי שיש לה סרטון שעבד מדביקה את התמלול
      שלו, וההוקים נבנים בפרומפט השכפול ההפוך שלה (ההוק המקורי + המגילה).
@@ -1577,7 +1600,7 @@ async function renderScratchHook() {
 }
 
 async function renderScratchHookReinforce() {
-  const prompt = buildHookReinforcementPrompt({ idea: state.ideaDescription || '', hook: state.hook || '', script: state.rawDump || '', audience: await myAudience(), domain: domainInfo ? domainInfo.domain : '' });
+  const prompt = buildHookReinforcementPrompt({ idea: state.ideaDescription || '', hook: state.hook || '', script: state.rawDump || '', audience: await myAudience(), domain: await myDomain() });
   cosmicCard(`
     <h2>חיזוק ההוק</h2>
     <p>המשפט השני, שנותן סיבה ברורה להישאר. להעתיק, להדביק, ולחזור עם החיזוק שבחרת.</p>
@@ -1616,10 +1639,11 @@ const CTA_TYPES = [
    שם בלבד. אותו באג בדיוק, במסלול השני. */
 async function renderScratchDistill() {
   const audience = await myAudience();
+  const domain = await myDomain();
   const buildPrompt = (ctaType) => buildScriptDistillationPrompt({
     idea: state.ideaDescription || '', hook: state.hook || '', hookReinforcement: state.hookReinforcement || '',
     rawScript: state.rawDump || '', ctaType,
-    audience, domain: domainInfo ? domainInfo.domain : '',
+    audience, domain: domain,
   });
   /* 28/10/2026 (מאיה): "מאוד קל לפספס איזו הנעה לפעולה רוצים, שימי לב".
      זו הייתה רשימה נפתחת שכבר בחרה "משפך" לבד, כך שאפשר היה להעתיק את
@@ -1650,7 +1674,7 @@ async function renderScratchDistill() {
     const prompt = buildPrompt(cta);
     /* הצהוב מסמן מה מולא לבד, ולכן התחום והקהל שייכים לשם גם הם. */
     const values = [state.ideaDescription, state.hook, state.hookReinforcement, state.rawDump, cta,
-      audience, domainInfo ? domainInfo.domain : ''];
+      audience, domain];
     wrap.innerHTML = `${promptPeek(highlightPlaceholders(prompt, values))}${copyBtn(prompt, 'להעתיק פרומפט')}`;
     wireCopyButtons(wrap);
   }
