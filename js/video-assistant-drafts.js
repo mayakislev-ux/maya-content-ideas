@@ -73,11 +73,7 @@ export function savedLabel(ms, now = Date.now()) {
   return `נשמר ב-${t} ✓`;
 }
 
-export const SAVE_BAR_HTML = `
-<div class="va-save-bar" id="va-save-bar">
-  <span class="va-save-bar__state" id="va-save-state" role="status" aria-live="polite">נשמר אוטומטית תוך כדי כתיבה</span>
-  <button type="button" class="cosmic-btn va-save-bar__btn" id="va-save-now">לשמור עכשיו</button>
-</div>`;
+const noop = () => {};
 
 /**
  * חיבור הכרטיס המצויר לשמירה.
@@ -86,10 +82,11 @@ export const SAVE_BAR_HTML = `
  * screen  שם המסך הנוכחי
  * getDrafts/setDrafts  קריאה וכתיבה של הטיוטות בסטייט
  * save()  שמירה בפועל, מחזירה Promise
+ * onError()  נקרא כשהשמירה נכשלה, כדי שזה ייאמר ולא ייבלע
  * timers  להזרקה בבדיקות
  */
 export function mountDrafts(card, {
-  screen, getDrafts, setDrafts, save,
+  screen, getDrafts, setDrafts, save, onError = noop,
   setTimer = setTimeout, clearTimer = clearTimeout,
 }) {
   if (!card) return null;
@@ -100,24 +97,19 @@ export function mountDrafts(card, {
     el.value = valueFor(getDrafts(), screen, el.id, el.value) || '';
   }
 
-  card.insertAdjacentHTML('beforeend', SAVE_BAR_HTML);
-  const stateEl = card.querySelector('#va-save-state');
-  const btn = card.querySelector('#va-save-now');
-
+  /* 29/10/2026 (מאיה): "תעיפי את הכפתור לשמור עכשיו, שלא יהיה את הפס
+     הזה, אבל שזה כן ישמור אוטומטית כל כמה שניות". השמירה נשארה בדיוק
+     כמו שהייתה, רגע אחרי כל הקלדה. רק השורה והכפתור ירדו. */
   let pending = null;
-  let lastSaved = 0;
 
   const flush = async () => {
     if (pending) { clearTimer(pending); pending = null; }
-    if (stateEl) stateEl.textContent = 'שומר...';
     try {
       await save();
-      lastSaved = Date.now();
-      if (stateEl) stateEl.textContent = savedLabel(lastSaved);
-    } catch {
+    } catch (err) {
       /* 26/10/2026: כישלון שמירה נאמר, ולא נבלע. תיבה שנראית שמורה ואינה
          שמורה היא בדיוק התקלה שהבנות דיווחו עליה. */
-      if (stateEl) stateEl.textContent = 'השמירה לא עברה. אפשר ללחוץ "לשמור עכשיו"';
+      onError(err);
     }
   };
 
@@ -125,13 +117,11 @@ export function mountDrafts(card, {
     const el = e.target;
     if (!isDraftField(el)) return;
     setDrafts(withDraft(getDrafts(), screen, el.id, el.value));
-    if (stateEl) stateEl.textContent = 'נשמר בעוד רגע...';
     if (pending) clearTimer(pending);
     pending = setTimer(flush, DEBOUNCE_MS);
   };
 
   card.addEventListener('input', onInput);
-  if (btn) btn.addEventListener('click', flush);
 
-  return { flush, fields, stateEl, btn };
+  return { flush, fields };
 }

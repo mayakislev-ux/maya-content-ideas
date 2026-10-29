@@ -107,17 +107,6 @@ class El {
     return this.all().find((c) => c.id === id) || null;
   }
 
-  /* מקבל בדיוק את SAVE_BAR_HTML, ולכן מזהה את שלושת הצמתים שבו. */
-  insertAdjacentHTML(_where, html) {
-    const bar = new El('div', { id: 'va-save-bar' });
-    for (const id of html.match(/id="([^"]+)"/g).map((m) => m.slice(4, -1))) {
-      if (id === 'va-save-bar') continue;
-      const tag = id === 'va-save-now' ? 'button' : 'span';
-      const text = html.includes('>לשמור עכשיו<') && tag === 'button' ? 'לשמור עכשיו' : 'נשמר אוטומטית תוך כדי כתיבה';
-      bar.children.push(new El(tag, { id, textContent: text }));
-    }
-    this.children.push(bar);
-  }
 }
 
 function harness(kids, screen = 'prompt2', drafts = {}) {
@@ -140,19 +129,19 @@ function harness(kids, screen = 'prompt2', drafts = {}) {
 const textarea = (id) => new El('textarea', { id });
 
 describe('הכרטיס האמיתי', () => {
-  test('מסך בלי תיבות לא מקבל שורת שמירה', () => {
+  test('מסך בלי תיבות לא מתחבר לשמירה', () => {
     const h = harness([new El('button', { id: 'go' })]);
     assert.equal(h.api, null);
-    assert.equal(h.card.querySelector('#va-save-bar'), null);
   });
 
-  test('מסך עם תיבה מקבל שורה וכפתור', () => {
+  /* 29/10/2026 (מאיה): "תעיפי את הכפתור לשמור עכשיו, שלא יהיה את הפס". */
+  test('אין יותר שורת שמירה וכפתור', () => {
     const h = harness([textarea('va-prompt2-script-input')]);
-    assert.ok(h.card.querySelector('#va-save-bar'));
-    assert.ok(h.card.querySelector('#va-save-now'));
+    assert.equal(h.card.querySelector('#va-save-bar'), null);
+    assert.equal(h.card.querySelector('#va-save-now'), null);
   });
 
-  test('הקלדה נכנסת לטיוטה, ונשמרת רק אחרי רגע שקט', async () => {
+  test('הקלדה נכנסת לטיוטה, ונשמרת לבד אחרי רגע שקט', async () => {
     const ta = textarea('va-prompt2-script-input');
     const h = harness([ta]);
     ta.value = 'התסריט שקיבלתי';
@@ -161,10 +150,9 @@ describe('הכרטיס האמיתי', () => {
     assert.deepEqual(h.state().drafts, { 'prompt2|va-prompt2-script-input': 'התסריט שקיבלתי' });
     assert.equal(h.saves.length, 0, 'עוד לא נשמר');
 
-    await h.api.flush();
+    await h.run();
     assert.equal(h.saves.length, 1);
     assert.deepEqual(h.saves[0], { 'prompt2|va-prompt2-script-input': 'התסריט שקיבלתי' });
-    assert.equal(h.card.querySelector('#va-save-state').textContent, 'נשמר ✓');
   });
 
   test('ציור מחדש מחזיר את מה שהוקלד', () => {
@@ -174,30 +162,22 @@ describe('הכרטיס האמיתי', () => {
     assert.equal(h.card.querySelector('#va-prompt2-script-input').value, 'מה שהודבק');
   });
 
-  test('כפתור "לשמור עכשיו" שומר מיד', async () => {
-    const ta = textarea('va-x');
-    const h = harness([ta]);
-    ta.value = 'טקסט';
-    h.card.fire('input', ta);
-    const btn = h.card.querySelector('#va-save-now');
-    await Promise.all((btn.listeners.click || []).map((fn) => fn({ target: btn })));
-    assert.equal(h.saves.length, 1);
-  });
-
   /* תיבה שנראית שמורה ואינה שמורה היא בדיוק התקלה שדווחה. */
   test('כישלון שמירה נאמר ולא נבלע', async () => {
     const card = new El('div', { id: 'va-card' });
     card.children.push(textarea('va-x'));
     let drafts = {};
+    let told = 0;
     const api = mountDrafts(card, {
       screen: 's',
       getDrafts: () => drafts,
       setDrafts: (d) => { drafts = d; },
       save: async () => { throw new Error('offline'); },
+      onError: () => { told += 1; },
       setTimer: () => 1,
       clearTimer: () => {},
     });
     await api.flush();
-    assert.match(card.querySelector('#va-save-state').textContent, /לא עברה/);
+    assert.equal(told, 1);
   });
 });

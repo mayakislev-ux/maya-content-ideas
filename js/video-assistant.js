@@ -204,6 +204,7 @@ function cosmicCard(innerHtml, { showProgress = true } = {}) {
     getDrafts: () => state.drafts || {},
     setDrafts: (d) => { state.drafts = d; },
     save: () => saveSession(state),
+    onError: () => showToast('השמירה לא עברה. כדאי לבדוק שיש אינטרנט'),
   });
   /* אחרי mountDrafts, שמוסיף את שורת השמירה לסוף הכרטיס: התסריט הוא
      המשך הכרטיס כלפי מטה, ולכן הוא תמיד האחרון. */
