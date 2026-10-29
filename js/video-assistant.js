@@ -16,7 +16,8 @@
 import { mountDrafts, clearScreenDrafts } from './video-assistant-drafts.js';
 import { INITIAL_STATE, nextStep } from './video-assistant-flow.js';
 import { pickIdea, pickReference } from './video-assistant-picker.js';
-import { buildParts } from './video-assistant-build.js';
+import { buildParts, hasContent, scriptDoc, scriptFields, scriptTitle, syncIdea } from './video-assistant-build.js';
+import { confirmDialog } from './confirm-dialog.js';
 import { buildDuplicationPrompt, buildReverseDuplicationPrompt, buildScriptPrompt, buildCreativePackagingPrompt } from './video-assistant-prompts.js';
 import {
   FORMATS, SCRIPT_STRUCTURE, STARTING_POINTS, CONTENT_TYPES,
@@ -27,6 +28,7 @@ import { embedUrlFor, embedShape } from './video-preview.js';
 import { languageName } from './inspiration-readability.js';
 import {
   fetchIdeas, fetchInspirationBank, getSavedDomain, guessDomain, saveDomain, saveSession, loadSession,
+  saveScript, listScripts, deleteScript,
   extractOpeningHook,
 } from './video-assistant-store.js';
 import { getProfile, saveProfile } from './user-profile.js';
@@ -86,14 +88,45 @@ function dispatch(action) {
   resumedNotice = false;
   const leaving = state.screen;
   const drafts = state.drafts || {};
+  const { scriptId, scriptCreatedAt } = state;
   state = nextStep(state, action);
+  /* חזרה אחורה משחזרת סטייט מלפני שהפריט ב"התסריטים שלי" נוצר. בלי זה
+     אותו סרטון היה נשמר שוב כפריט חדש. רק "להתחיל מחדש" פותח פריט חדש. */
+  if (action.type !== 'RESTART' && scriptId && !state.scriptId && state.branch) state = { ...state, scriptId, scriptCreatedAt };
   /* מה שהוקלד במסך שעזבנו כבר הפך לסטייט אמיתי, ולכן הטיוטה שלו מיותרת.
      אם היא תישאר, היא עלולה למלא מחדש תיבה שנוקתה בכוונה. */
   state.drafts = state.screen === leaving ? drafts : clearScreenDrafts(drafts, leaving);
-  saveSession(state).catch((err) => console.error('saveSession failed:', err));
+  saveAll().catch((err) => console.error('saveSession failed:', err));
   // 17/10/2026 (מאיה: "המעבר בין המסכים עושה סחרחורת"): מעבר הפורטל (#32)
   // הוסר - render ישיר, בלי אנימציית scale/blur בין מסכים.
   render();
+}
+
+/* שמירה של הסשן, ושל הסרטון כפריט ב"התסריטים שלי". הפריט נוצר ברגע
+   שנכתב בו משהו. כישלון שלו לא מפיל את שמירת הסשן, שהיא מה שמונע אובדן
+   עבודה באמצע. */
+let scriptErrorAt = 0;
+function saveAll() {
+  if (!state.scriptId && hasContent(state)) {
+    state.scriptId = `s${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
+    state.scriptCreatedAt = Date.now();
+  }
+  /* בלי תוכן לא דורסים את הפריט, למשל בחזרה אחורה עד מסך הפתיחה. */
+  if (state.scriptId && hasContent(state)) {
+    try {
+      saveScript(state.scriptId, scriptDoc(state)).catch((err) => {
+        console.warn('saveScript failed:', err);
+        /* נאמר, ולא נבלע. פעם בדקה, כי זה נקרא בכל הקלדה. */
+        if (Date.now() - scriptErrorAt > 60000) {
+          scriptErrorAt = Date.now();
+          showToast('השמירה ב"התסריטים שלי" לא עברה. כדאי לבדוק שיש אינטרנט');
+        }
+      });
+    } catch (err) {
+      console.warn('saveScript failed:', err);
+    }
+  }
+  return saveSession(state);
 }
 
 function escapeHtml(str) {
@@ -215,7 +248,7 @@ function cosmicCard(innerHtml, { showProgress = true } = {}) {
     screen: state.screen,
     getDrafts: () => state.drafts || {},
     setDrafts: (d) => { state.drafts = d; },
-    save: () => saveSession(state),
+    save: () => saveAll(),
     onError: () => showToast('השמירה לא עברה. כדאי לבדוק שיש אינטרנט'),
   });
   /* אחרי mountDrafts, שמוסיף את שורת השמירה לסוף הכרטיס: התסריט הוא
@@ -263,6 +296,141 @@ function openModal(innerHtml) {
 function closeModal() {
   const overlay = document.getElementById('va-modal-overlay');
   if (overlay) overlay.remove();
+}
+
+// ===== "התסריטים שלי" =====
+/* 29/10/2026 (מאיה): "שיהיה בצד כפתור 'התסריטים שלי', ואז כל פעם זה ישמור
+   את כל מה שהיא כותבת, ויהיה לה אופציה גם לערוך/למחוק". חלון אחד: רשימה,
+   ובלחיצה על סרטון כל החלקים שלו לעריכה, להמשיך לבנות או למחוק. */
+function libDate(ms) {
+  if (!ms) return '';
+  const d = new Date(ms);
+  return `${d.toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' })} · ${d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', hour12: false })}`;
+}
+
+async function openScriptsLibrary() {
+  closeModal();
+  await saveAll().catch((err) => console.error('saveSession failed:', err));
+  const overlay = openModal(`<div id="va-lib"><h2 style="margin-top:0">📝 התסריטים שלי</h2><p>טוענים...</p></div>`);
+  overlay.querySelector('.cosmic-modal').classList.add('va-lib-modal');
+  let items;
+  try {
+    items = await listScripts();
+  } catch (err) {
+    console.error('listScripts failed:', err);
+    overlay.querySelector('#va-lib').innerHTML = '<h2 style="margin-top:0">📝 התסריטים שלי</h2><p>לא הצלחנו לטעון את הרשימה. כדאי לבדוק שיש אינטרנט ולנסות שוב.</p>';
+    return;
+  }
+  renderLibraryList(overlay, items);
+}
+
+function renderLibraryList(overlay, items) {
+  const box = overlay.querySelector('#va-lib');
+  box.innerHTML = `<h2 style="margin-top:0">📝 התסריטים שלי</h2>
+    ${items.length ? `<ul class="va-lib-list">${items.map((it) => `
+      <li><button type="button" class="va-lib-item" data-id="${escapeHtml(it.id)}">
+        <span class="va-lib-item__title">${escapeHtml(it.title || 'סרטון בלי שם')}</span>
+        <span class="va-lib-item__meta">${it.done ? '✓ מוכן' : 'בבנייה'} · ${escapeHtml(libDate(it.updatedAt))}</span>
+      </button></li>`).join('')}</ul>`
+      : '<p>עוד אין כאן תסריטים. כל סרטון שמתחילים לבנות נשמר כאן לבד, תוך כדי כתיבה.</p>'}`;
+  box.querySelectorAll('.va-lib-item').forEach((btn) => btn.addEventListener('click', () => {
+    const item = items.find((it) => it.id === btn.getAttribute('data-id'));
+    if (item) renderLibraryItem(overlay, items, item);
+  }));
+}
+
+function renderLibraryItem(overlay, items, item) {
+  const box = overlay.querySelector('#va-lib');
+  /* הסרטון שפתוח עכשיו בעוזר נערך בעוזר עצמו. אם היה נערך גם כאן, המסך
+     שמאחורי החלון היה ממשיך להחזיק את הטקסט הישן ודורס את העריכה. */
+  const live = state.scriptId === item.id;
+  let s = live ? { ...state } : { ...(item.state || {}) };
+  const fields = scriptFields(s);
+  const script = fields.find((f) => f.key === 'script');
+  box.innerHTML = `
+    <button type="button" class="va-text-link" id="va-lib-back">→ לכל התסריטים</button>
+    <h2 style="margin-top:4px">${escapeHtml(item.title || 'סרטון בלי שם')}</h2>
+    <p class="va-lib-item__meta">${item.done ? '✓ מוכן' : 'בבנייה'} · ${escapeHtml(libDate(item.updatedAt))}</p>
+    ${live ? '<p class="va-lib-live">זה הסרטון שפתוח עכשיו בעוזר, ולכן עורכים אותו שם.</p>' : ''}
+    ${fields.length ? fields.map((f) => `
+      <label class="cosmic-field-label" for="va-lib-${f.key}">${escapeHtml(f.label)}</label>
+      <textarea class="cosmic-textarea va-lib-field" id="va-lib-${f.key}" data-field="${f.field}" rows="${f.key === 'script' || f.key === 'dump' ? 8 : 2}"${live ? ' readonly' : ''}>${escapeHtml(f.value)}</textarea>`).join('')
+      : '<p>עוד לא נכתב כאן חלק שלם. אפשר להמשיך לבנות מאיפה שעצרת.</p>'}
+    <p class="va-lib-saved" id="va-lib-saved" role="status" aria-live="polite"></p>
+    ${script ? copyBtn(script.value, 'להעתיק את התסריט') : ''}
+    <div class="cosmic-btn-row" style="margin-top:12px">
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-lib-resume">${live ? 'חזרה לעוזר ←' : (item.done ? 'לפתוח בעוזר' : 'להמשיך לבנות ←')}</button>
+      <button type="button" class="va-text-link va-lib-delete" id="va-lib-delete">למחוק את הסרטון הזה</button>
+    </div>`;
+  wireCopyButtons(box);
+  /* עריכה נשמרת לבד, רגע אחרי ההקלדה, כמו בעוזר עצמו. */
+  let timer = null;
+  const savedEl = box.querySelector('#va-lib-saved');
+  const flush = async () => {
+    timer = null;
+    item.title = scriptTitle(s);
+    item.updatedAt = Date.now();
+    item.state = { ...s };
+    try {
+      await saveScript(item.id, { ...scriptDoc(s), createdAt: item.createdAt || item.updatedAt });
+      savedEl.textContent = 'נשמר ✓';
+    } catch (err) {
+      console.error('saveScript failed:', err);
+      savedEl.textContent = 'השמירה לא עברה. כדאי לבדוק שיש אינטרנט';
+    }
+  };
+  box.querySelector('#va-lib-back').addEventListener('click', async () => {
+    if (timer) { clearTimeout(timer); await flush(); }
+    renderLibraryList(overlay, items);
+  });
+  if (!live) box.querySelectorAll('.va-lib-field').forEach((ta) => ta.addEventListener('input', () => {
+    const field = ta.getAttribute('data-field');
+    s = syncIdea({ ...s, [field]: ta.value }, field);
+    /* כפתור ההעתקה מחזיק את הטקסט שצויר, ולכן מתעדכן יחד עם התיבה */
+    if (ta.id === 'va-lib-script') {
+      const copy = box.querySelector('[data-copy-text]');
+      if (copy) copy.setAttribute('data-copy-text', encodeURIComponent(ta.value));
+    }
+    savedEl.textContent = '';
+    clearTimeout(timer);
+    timer = setTimeout(flush, 800);
+  }));
+
+  box.querySelector('#va-lib-resume').addEventListener('click', async () => {
+    if (live) { closeModal(); return; }
+    if (timer) { clearTimeout(timer); await flush(); }
+    state = { ...s, scriptId: item.id, scriptCreatedAt: item.createdAt };
+    if (!state.history) state.history = [];
+    resumedNotice = false;
+    currentPickId = null;
+    sessionStartTs = Date.now();
+    closeModal();
+    saveSession(state).catch((err) => console.error('saveSession failed:', err));
+    render();
+  });
+  box.querySelector('#va-lib-delete').addEventListener('click', async () => {
+    const ok = await confirmDialog('למחוק את הסרטון הזה? אי אפשר להחזיר אותו אחר כך.', { okLabel: 'למחוק', cancelLabel: 'לא, להשאיר' });
+    if (!ok) return;
+    clearTimeout(timer);
+    try {
+      await deleteScript(item.id);
+    } catch (err) {
+      console.error('deleteScript failed:', err);
+      showToast('המחיקה לא עברה. כדאי לבדוק שיש אינטרנט');
+      return;
+    }
+    /* הסרטון שפתוח עכשיו בעוזר נמחק: מתחילים נקי, אחרת השמירה הבאה הייתה
+       מחזירה אותו לרשימה. */
+    if (state.scriptId === item.id) {
+      state = { ...INITIAL_STATE, history: [] };
+      currentPickId = null;
+      sessionStartTs = Date.now();
+      saveSession(state).catch((err) => console.error('saveSession failed:', err));
+      render();
+    }
+    renderLibraryList(overlay, items.filter((it) => it.id !== item.id));
+    showToast('נמחק');
+  });
 }
 
 // ===== מסך פתיחה: שלושת מסלולי הפתיחה, ניסוח מדויק של מאיה (16/10) =====
@@ -966,7 +1134,7 @@ async function ensureOpeningHook() {
     // נכשל השרת - נופלים חזרה לכל התמלול במקום לתקוע אותה כאן לגמרי
     state.openingHook = state.transcript;
   }
-  saveSession(state).catch((err) => console.error('saveSession failed:', err));
+  saveAll().catch((err) => console.error('saveSession failed:', err));
 }
 
 /* 29/10/2026 (מאיה: "אני רוצה שזה ימלא לבד את התחום של כל אחד, נגיד
@@ -1619,7 +1787,7 @@ async function renderScratchHook() {
     const drafts = { ...(state.drafts || {}) };
     delete drafts['scratch-hook|va-hook-ref-input'];
     state.drafts = drafts;
-    saveSession(state).catch((err) => console.error('saveSession failed:', err));
+    saveAll().catch((err) => console.error('saveSession failed:', err));
     renderScratchHook();
   });
   document.getElementById('va-scratch-hook-done-btn').addEventListener('click', () => {
@@ -1881,6 +2049,7 @@ export function wireVideoAssistantView() {
   // התצוגה, לא בכל רענון מסך - מאזין ל-pointermove גם מעל כרטיס שמתחלף.
   startParticleTrail(document.getElementById('video-assistant-view'));
   window.addEventListener('resize', fitView);
+  document.getElementById('video-assistant-scripts-btn').addEventListener('click', openScriptsLibrary);
   // 17/10/2026 (רעיון #22, "SOS כשאין אינטראקציה"): כל קליק/הקלדה בתוך
   // התצוגה מאפסים את טיימר ה-idle, כדי שהמסקוט לא יקפוץ בזמן שבפועל
   // כן עובדים (רק כשבאמת נתקעים זמן-מה).

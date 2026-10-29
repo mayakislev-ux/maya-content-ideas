@@ -4,7 +4,7 @@
 // (user-profile.js) בלי לשכפל אותם.
 import { db, auth, functions } from './firebase-init.js';
 import {
-  collection, query, where, getDocs, doc, getDoc, setDoc,
+  collection, query, where, getDocs, doc, getDoc, setDoc, deleteDoc, orderBy, limit,
 } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
 import { getProfile, saveProfile } from './user-profile.js';
@@ -77,4 +77,24 @@ export async function loadSession() {
 // רוצה לחזור אליו (להתחיל ממנו מחדש) - ראה video-assistant.js, wireVideoAssistantView.
 export async function saveSession(state) {
   await setDoc(doc(db, 'videoAssistantSessions', auth.currentUser.uid), { ...state, updatedAt: Date.now() });
+}
+
+/* 29/10/2026 (מאיה): "התסריטים שלי". כל סרטון הוא מסמך משלו תחת המשתמשת,
+   ולא נדרס כשמתחילים סרטון חדש (את videoAssistantSessions/{uid} כן). */
+function scriptsCol() {
+  return collection(db, 'videoAssistantScripts', auth.currentUser.uid, 'items');
+}
+
+export async function saveScript(id, data) {
+  await setDoc(doc(scriptsCol(), id), data);
+}
+
+/* 50 האחרונים: כל פריט נושא את כל הסטייט, ורשימה שמורידה הכל תאט עם הזמן. */
+export async function listScripts() {
+  const snap = await getDocs(query(scriptsCol(), orderBy('updatedAt', 'desc'), limit(50)));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+export async function deleteScript(id) {
+  await deleteDoc(doc(scriptsCol(), id));
 }

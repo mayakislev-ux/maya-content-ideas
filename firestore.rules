@@ -77,6 +77,12 @@ service cloud.firestore {
       allow read, write: if (isFull() || (isAllowed() && notExpired())) && request.auth.uid == uid;
       allow read: if isAdmin();
     }
+    /* 29/10/2026 (מאיה): "התסריטים שלי". כל סרטון שנבנה בעוזר הוא מסמך
+       משלו, באותן הרשאות בדיוק כמו הסשן. */
+    match /videoAssistantScripts/{uid}/items/{itemId} {
+      allow read, write: if (isFull() || (isAllowed() && notExpired())) && request.auth.uid == uid;
+      allow read: if isAdmin();
+    }
     /* 02/10/2026 (מאיה): "בגלל שהסטוריז בצבע מותג אז הייתי רוצה
        שאת הטקסט והצבעים תתאימי בול לגוונים של הצבעי מותג... ושהכל ישמר
        תמיד ולא כל פעם מחדש". הגדרות המותג והרצפים שנבנו, לכל אחת

@@ -7632,4 +7632,55 @@ body[data-plan="refs"] .view-tabs-scroll { justify-content: center; }
 #video-assistant-view[hidden] { display: none !important; }
 #video-assistant-view > #video-assistant-screen { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; }
 #video-assistant-view > #video-assistant-screen > .cosmic-card { margin: auto; width: 100%; }
-#video-assistant-view > #video-assistant-back-btn { align-self: flex-start; }
+
+/* 29/10/2026: "התסריטים שלי". הכפתור בראש העוזר, והחלון עם הרשימה. */
+#video-assistant-view .va-topbar {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+#video-assistant-view .va-topbar .hub-back-btn { margin: 0; }
+#video-assistant-view .va-topbar .cosmic-mute-btn { position: static; flex: 0 0 auto; }
+.va-scripts-btn {
+  margin-inline-start: auto;
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.28);
+  background: rgba(255,255,255,.12);
+  color: #fff;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.va-scripts-btn:hover { background: rgba(255,255,255,.2); }
+.cosmic-modal-overlay .va-lib-modal { max-width: 560px; }
+.va-lib-list { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.va-lib-item {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  text-align: right;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid #d3e6f2;
+  background: #fff;
+  color: #0f2340;
+  font-family: inherit;
+  cursor: pointer;
+}
+.va-lib-item:hover { border-color: #16205a; }
+.va-lib-item__title { font-size: 16px; font-weight: 700; }
+.va-lib-item__meta { font-size: 13px; color: #5d7d99; margin: 0 0 8px; }
+.va-lib-field { margin-bottom: 12px; }
+.va-lib-live { background: #eef6fb; border-radius: 12px; padding: 10px 14px; color: #0f2340; font-size: 14px; }
+.va-lib-saved { min-height: 20px; margin: 0; font-size: 13px; color: #1f8f5a; }
+.cosmic-modal-overlay .va-text-link { color: #0b6fa8; }
+.cosmic-modal-overlay .va-lib-delete { color: #b42318; align-self: center; }
+.cosmic-modal-overlay .cosmic-field-label { color: #0f2340; font-weight: 700; display: block; margin: 6px 0 6px; }
