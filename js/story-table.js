@@ -30,7 +30,7 @@ import { onAuthChange } from './auth.js';
 import { wireStoryAssets } from './story-assets.js';
 import { wireStorySequence, escapeHtml } from './story-sequence.js';
 
-const OWNER_EMAIL = 'mayakislev@gmail.com';
+import { actsAsOwner } from './client-view.js';
 
 const state = { table: null, audienceId: null, busy: false, preview: false, planAudienceId: null };
 
@@ -218,7 +218,7 @@ async function wireOwnerBar() {
   // 01/10/2026 (מאיה): "אני לא רוצה אפילו שיראו את האופציה לצפות אחת
   // לשנייה". לכן השורה הזאת אינה קיימת ב-HTML בכלל, ונבנית בקוד רק
   // כשהמייל הוא של מאיה. לקוחה לא רואה אותה גם אם תפתח את מקור הדף.
-  if ((auth.currentUser && auth.currentUser.email) !== OWNER_EMAIL) return;
+  if (!actsAsOwner(auth.currentUser && auth.currentUser.email)) return;
   const host = el('story-table-panel');
   const anchor = el('story-table');
   if (!host || !anchor) return;

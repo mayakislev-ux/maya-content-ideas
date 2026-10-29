@@ -24,7 +24,7 @@ import { showToast } from './toast.js';
 import { listAssets } from './story-assets.js';
 import { loadBrand, saveBrand, previewHtml, normalizeBrand, DEFAULT_BRAND } from './story-brand.js';
 
-const OWNER_EMAIL = 'mayakislev@gmail.com';
+import { actsAsOwner } from './client-view.js';
 const URL_ENDPOINT = 'https://us-central1-content-ideas-becd7.cloudfunctions.net/breakdownStorySequence';
 /* 02/10/2026 (מאיה): "לקח יותר מדי זמן ונעצר". הדפדפן ויתר אחרי 170 שניות
    בזמן שהשרת עוד עבד. קריאה אחת לוקחת 80 עד 95 שניות, ולשרת יש תקציב של
@@ -257,7 +257,7 @@ async function callBreakdown({ topic, context, cta, assets, goal, signal, onPart
 /* ---------------- המסך ---------------- */
 
 export async function wireStorySequence() {
-  if ((auth.currentUser && auth.currentUser.email) !== OWNER_EMAIL) return;
+  if (!actsAsOwner(auth.currentUser && auth.currentUser.email)) return;
   const host = el('story-table-panel');
   const anchor = el('story-table');
   if (!host || !anchor) return;

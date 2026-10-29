@@ -24,7 +24,7 @@ import {
 import { showToast } from './toast.js';
 import { confirmDialog } from './confirm-dialog.js';
 
-const OWNER_EMAIL = 'mayakislev@gmail.com';
+import { actsAsOwner } from './client-view.js';
 const BUCKET = 'gs://content-ideas-becd7-story-assets';
 const MAX_BYTES = 10 * 1024 * 1024;
 
@@ -207,7 +207,7 @@ export function assetCardHtml(asset) {
 }
 
 export async function wireStoryAssets() {
-  if ((auth.currentUser && auth.currentUser.email) !== OWNER_EMAIL) return;
+  if (!actsAsOwner(auth.currentUser && auth.currentUser.email)) return;
   const host = el('story-table-panel');
   const anchor = el('story-table');
   if (!host || !anchor) return;

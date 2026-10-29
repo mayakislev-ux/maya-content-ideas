@@ -300,9 +300,9 @@ test('כל מה שהמסך משתמש בו מהמודול הטהור באמת מ
 test('שורת המנהלת לא קיימת בדף שהלקוחות מקבלות', () => {
   assert.ok(!HTML.includes('st-owner-bar'), 'לא במקור הדף');
   assert.ok(!HTML.includes('st-owner-pick'), 'וגם לא הבחירה');
-  assert.match(VIEW, /OWNER_EMAIL/, 'והקוד בונה אותה רק למאיה');
+  assert.match(VIEW, /actsAsOwner/, 'והקוד בונה אותה רק למאיה');
   const fn = VIEW.slice(VIEW.indexOf('async function wireOwnerBar'), VIEW.indexOf('export async function wireStoryTableView'));
-  const guard = fn.indexOf('OWNER_EMAIL');
+  const guard = fn.indexOf('actsAsOwner');
   const creates = fn.indexOf('createElement');
   assert.ok(guard > -1 && creates > guard, "הבדיקה על המייל קודמת לבניית השורה");
 });

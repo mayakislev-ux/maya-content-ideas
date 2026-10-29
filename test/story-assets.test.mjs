@@ -25,7 +25,7 @@ test('הבלוק אינו קיים ב-HTML, ולכן לקוחה לא רואה א
 
 test('נבנה רק אחרי בדיקת מייל, ולא אחרי בדיקת ממשק', () => {
   const fn = src.slice(src.indexOf('export async function wireStoryAssets'));
-  const guard = fn.indexOf('OWNER_EMAIL');
+  const guard = fn.indexOf('actsAsOwner');
   const build = fn.indexOf('createElement');
   assert.ok(guard > -1 && guard < build, 'בדיקת הבעלות קודמת לכל בנייה');
 });

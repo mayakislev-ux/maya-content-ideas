@@ -15,7 +15,7 @@ import { confirmDialog } from './confirm-dialog.js';
 import { updateIdea } from './ideas-store.js';
 import { showToast } from './toast.js';
 import { serverErrorText } from './server-error.js';
-const ADMIN_EMAIL = 'mayakislev@gmail.com';
+import { actsAsOwner } from './client-view.js';
 
 // checkIdea used to be a plain httpsCallable - converted to a raw streaming
 // HTTP endpoint so the reply appears progressively instead of behind a single
@@ -25,7 +25,7 @@ const ADMIN_EMAIL = 'mayakislev@gmail.com';
 const CHECK_IDEA_URL = 'https://us-central1-content-ideas-becd7.cloudfunctions.net/checkIdea';
 
 function isAdmin() {
-  return auth.currentUser && auth.currentUser.email === ADMIN_EMAIL;
+  return Boolean(auth.currentUser) && actsAsOwner(auth.currentUser.email);
 }
 
 // Parses one chunk of raw SSE text against a carried-over buffer (a chunk can

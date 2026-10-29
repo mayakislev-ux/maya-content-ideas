@@ -16,6 +16,7 @@ import { wireConfirmDialog } from './confirm-dialog.js';
 import { wireWarmingView } from './warming.js';
 import { wireVideoAssistantView } from './video-assistant.js';
 import { wireStoryTableView } from './story-table.js';
+import { actsAsOwner, isClientView, setClientView } from './client-view.js';
 import { wireInspirationView, openInspirationView } from './inspiration-view.js';
 import { showView, getLastView } from './view-router.js';
 import { showToast } from './toast.js';
@@ -262,6 +263,13 @@ document.getElementById('signout-btn').addEventListener('click', () => signOutUs
 document.getElementById('drawer-signout-btn').addEventListener('click', () => signOutUser());
 
 const getTokenUsage = httpsCallable(functions, 'getTokenUsage');
+/* 29/10/2026: כניסה לתצוגת לקוחה. טעינה מחדש ולא החלפה במקום, כדי שכל
+   מסך יחליט מחדש מה מוצג, בדיוק כמו בפתיחה של לקוחה. */
+document.getElementById('client-view-btn').addEventListener('click', () => {
+  setClientView(true);
+  window.location.reload();
+});
+
 document.getElementById('token-usage-btn').addEventListener('click', async () => {
   const btn = document.getElementById('token-usage-btn');
   // 19/10/2026 (מאיה: כפתור כאן גם הוא זרק אותה לתחתית העמוד) - לכפתור הזה
@@ -688,6 +696,22 @@ onAuthChange(async (user) => {
     }
   }
 
+  /* 29/10/2026 (מאיה: "לצפות ולבצע בתור לקוחה, כמו שיש בפורטל"): תצוגת
+     לקוחה מלאה, ראו client-view.js. הפס נשאר למעלה כל הזמן, כדי שלא
+     תחשוב שהאפליקציה שלה איבדה את כפתורי הניהול. */
+  if (!previewRefs && user.email === ADMIN_EMAIL && isClientView()) {
+    const bar = document.createElement('div');
+    bar.className = 'preview-bar';
+    bar.innerHTML = '<span>👁 את בתצוגת לקוחה: ככה לקוחה עם מנוי מלא רואה את האפליקציה. אפשר לעשות הכל, וזה נשמר בחשבון שלך ולא אצל אף לקוחה.</span>'
+      + '<a href="#" data-exit-client-view>חזרה לתצוגה שלי</a>';
+    bar.querySelector('[data-exit-client-view]').addEventListener('click', (e) => {
+      e.preventDefault();
+      setClientView(false);
+      window.location.reload();
+    });
+    document.body.prepend(bar);
+  }
+
   document.getElementById('login-screen').hidden = true;
   document.getElementById('app-screen').hidden = false;
   // Firebase Auth's lastSignInTime לא מתעדכן בפתיחה חוזרת של ה-PWA (הסשן
@@ -710,7 +734,7 @@ onAuthChange(async (user) => {
       logo.insertAdjacentElement('afterend', avatar);
     }
   }
-  const isAdmin = user.email === ADMIN_EMAIL;
+  const isAdmin = actsAsOwner(user.email);
   /* 01/10/2026 (מאיה): "אני רוצה לבטל את הכתיבת תסריטים במוח
      השיווקי אין צורך בכלל". התכונה היתה כבויה מאז 14/09 ועכשיו הוסרה
      לגמרי: המסך, הכפתור, js/script-chat.js, functions/script-system-prompt.js
@@ -721,6 +745,7 @@ onAuthChange(async (user) => {
      ב-AI וחוות דעת שהתקבלו. */
   document.getElementById('token-usage-btn').hidden = !isAdmin;
   document.getElementById('view-feedback-btn').hidden = !isAdmin;
+  document.getElementById('client-view-btn').hidden = !isAdmin;
 
   /* 26/10/2026: שלושת הכפתורים שהמודולים האלה שירתו ירדו לבקשתה, ולכן
      אין יותר מה לחבר כאן. המודולים עצמם נשארו בריפו ולא נמחקו, כדי
