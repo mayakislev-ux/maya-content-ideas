@@ -690,11 +690,11 @@ function renderFormatChoice() {
 // הצביעה הוורודה האוטומטית - שתי התשובות שוות משקל. =====
 function renderNeedsScriptCheck() {
   cosmicCard(`
-    <h2>צריך תסריט בכלל?</h2>
+    <h2>האם צריך תסריט?</h2>
     <p>לא כל תוכן צריך תסריט כתוב מראש - לפעמים עדיף לדעת את הכיוון ולדבר בספונטניות, או שהפורמט עצמו ויזואלי ולא מבוסס דיבור.</p>
     <div class="cosmic-btn-row">
-      <button type="button" class="cosmic-btn" id="va-needs-script-no-btn">לא, אדע מה להגיד בלי תסריט כתוב</button>
-      <button type="button" class="cosmic-btn" id="va-needs-script-yes-btn">כן, אני רוצה תסריט מסודר</button>
+      <button type="button" class="cosmic-btn" id="va-needs-script-yes-btn">כן</button>
+      <button type="button" class="cosmic-btn" id="va-needs-script-no-btn">לא, אני אדע בדיוק מה לכתוב/להגיד</button>
     </div>
   `);
   document.getElementById('va-needs-script-no-btn').addEventListener('click', () => dispatch({ type: 'NEEDS_SCRIPT_NO' }));
@@ -1512,8 +1512,8 @@ function openExtractionHelperModal() {
 
 function renderScratchDump() {
   cosmicCard(`
-    <h2>שפיכה את כל מה שיש לך להגיד</h2>
-    <p>בלי לערוך, בלי לדאוג לניסוח - כל מה שעולה לך בראש על הרעיון. נזקק את זה אחר כך.</p>
+    <h2>מגילת אסתר</h2>
+    <p>תשפכו כל מה שיש לכם להגיד, הסדר לא משנה. כל מה שעולה לכם לראש, לפרטי פרטים וכמה שיותר ספציפי, עם דוגמאות ומספרים. מומלץ להיעזר בפרומפט חילוץ התוכן בכפתור ה-SOS.</p>
     <button type="button" class="va-sos-big" id="va-scratch-help-btn">
       <span class="va-sos-big__icon" aria-hidden="true">🆘</span>
       <span class="va-sos-big__text"><strong>נתקעים? לא ברור מה לכתוב?</strong><span>לחיצה כאן, ו-ChatGPT ישאל אותך שאלות שיוציאו ממך מגילה מלאה</span></span>

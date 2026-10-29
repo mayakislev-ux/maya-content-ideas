@@ -7468,8 +7468,9 @@ body[data-plan="refs"] .view-tabs-scroll { justify-content: center; }
 
 /* כפתורים */
 /* 29/10/2026 (מאיה, צילום מסך): "הכפתורים יהיו כהים בצבע של הרקע והכתב
-   לבן, כי יותר מדי לבן גם קשה לעין, זה עומס מנטלי". כפתור רגיל בכחול
-   הלילה של הדף, הראשי בכחול הבולט, ובחירה מסומנת באותו כחול בולט. */
+   לבן, כי יותר מדי לבן גם קשה לעין, זה עומס מנטלי". ואחר כך: "כל
+   הכפתורים בכל החלוניות בצבע הכחול הזה, ולא כל פעם צבע אחר". כל כפתור
+   בכחול הלילה של הדף, גם הראשי. בחירה מסומנת מקבלת טבעת תכלת ו-✓. */
 #video-assistant-view .cosmic-btn {
   background: var(--va-navy);
   border: 1px solid var(--va-navy);
@@ -7479,26 +7480,28 @@ body[data-plan="refs"] .view-tabs-scroll { justify-content: center; }
 }
 #video-assistant-view .cosmic-btn:hover { background: var(--va-navy-hover); }
 #video-assistant-view .cosmic-btn--primary {
-  background: var(--va-blue);
-  border-color: var(--va-blue);
+  background: var(--va-navy);
+  border-color: var(--va-navy);
   color: #fff;
   min-height: 56px;
   font-size: 17px;
   font-weight: 700;
 }
-#video-assistant-view .cosmic-btn--primary:hover { background: var(--va-blue-dark); }
+#video-assistant-view .cosmic-btn--primary:hover { background: var(--va-navy-hover); }
 #video-assistant-view .cosmic-btn__subtitle { color: rgba(255,255,255,.75); opacity: 1; }
 #video-assistant-view .cosmic-chip-btn--on {
-  background: var(--va-blue);
-  border-color: var(--va-blue);
+  background: var(--va-navy);
+  border-color: var(--va-navy);
   color: #fff;
   font-weight: 700;
+  box-shadow: 0 0 0 3px #7fc8f0;
 }
+#video-assistant-view .cosmic-chip-btn--on::before { content: "✓ "; }
 #video-assistant-view .cosmic-reroll-btn,
 #video-assistant-view .va-text-link,
 #video-assistant-view .va-more summary { color: var(--va-blue); opacity: 1; }
 #video-assistant-view .cosmic-mute-btn { background: var(--va-fill); color: var(--va-ink); }
-#video-assistant-view .cosmic-pick-btn { background: var(--va-blue); }
+#video-assistant-view .cosmic-pick-btn { background: var(--va-navy); }
 #video-assistant-view .va-copy-btn {
   background: var(--va-navy);
   border: 1.5px solid var(--va-navy);
@@ -7560,7 +7563,7 @@ body[data-plan="refs"] .view-tabs-scroll { justify-content: center; }
 .cosmic-modal-overlay .cosmic-textarea { background: #fff; border: 1.5px solid #cfe2ee; color: #0f2340; }
 .cosmic-modal-overlay .cosmic-textarea::placeholder { color: #a7bccf; }
 .cosmic-modal-overlay .cosmic-btn { background: #16205a; border: 1px solid #16205a; color: #fff; }
-.cosmic-modal-overlay .cosmic-btn--primary { background: #0b6fa8; border-color: #0b6fa8; color: #fff; }
+.cosmic-modal-overlay .cosmic-btn--primary { background: #16205a; border-color: #16205a; color: #fff; }
 .cosmic-modal-overlay .cosmic-prompt-box { background: #eef6fb; color: #0f2340; }
 .cosmic-modal-overlay .va-copy-btn { background: #16205a; border: 1.5px solid #16205a; color: #fff; box-shadow: none; }
 .cosmic-modal-overlay .va-copy-btn.is-copied { background: #1f8f5a; border-color: #1f8f5a; color: #fff; }
