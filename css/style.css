@@ -7620,3 +7620,16 @@ body[data-plan="refs"] .view-tabs-scroll { justify-content: center; }
 @media (max-width: 600px) {
   #video-assistant-view .va-build { border-radius: 0 0 24px 24px; }
 }
+
+/* 29/10/2026: הרקע נגמר בתחתית המסך (--va-fit, ראה fitView), והכרטיס
+   ממורכז בגובה, גם במחשב ולא רק בטלפון. כרטיס ארוך מהמסך פשוט מתחיל
+   למעלה, כי margin: auto בולע רק שטח פנוי. */
+#video-assistant-view {
+  display: flex;
+  flex-direction: column;
+  min-height: var(--va-fit, 100svh);
+}
+#video-assistant-view[hidden] { display: none !important; }
+#video-assistant-view > #video-assistant-screen { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; }
+#video-assistant-view > #video-assistant-screen > .cosmic-card { margin: auto; width: 100%; }
+#video-assistant-view > #video-assistant-back-btn { align-self: flex-start; }

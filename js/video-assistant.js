@@ -180,6 +180,17 @@ function scrollToCardTop() {
   }
 }
 
+/* 29/10/2026 (מאיה, צילום מסך): "מתחת לחלק שכותבים בו יש מלא מלא אזור
+   ריק מיותר, אין שם כלום". הרקע היה בגובה מסך שלם, ומעליו עוד הכותרת של
+   האפליקציה, ולכן תמיד היה מתחת לכרטיס עוד מסך כמעט ריק לגלול אליו.
+   עכשיו הרקע נגמר בדיוק בתחתית המסך, והכרטיס יושב באמצעו. */
+function fitView() {
+  const view = document.getElementById('video-assistant-view');
+  if (!view || view.hidden) return;
+  const top = view.getBoundingClientRect().top + window.scrollY;
+  view.style.setProperty('--va-fit', `${Math.max(360, Math.round(window.innerHeight - top))}px`);
+}
+
 function cosmicCard(innerHtml, { showProgress = true } = {}) {
   const back = backButtonHtml();
   screenEl().innerHTML = `<div class="cosmic-card" id="va-card">
@@ -195,6 +206,7 @@ function cosmicCard(innerHtml, { showProgress = true } = {}) {
   const startOverBtn = document.getElementById('va-start-over-btn');
   if (startOverBtn) startOverBtn.addEventListener('click', () => restart());
   scrollToCardTop();
+  fitView();
   const card = document.getElementById('va-card');
   /* 26/10/2026: כל תיבת טקסט בכרטיס נשמרת תוך כדי כתיבה, חוזרת לעצמה
      כשהמסך מצויר מחדש, ויש שורה שאומרת מתי נשמר. עד כאן הסשן נשמר רק
@@ -1868,6 +1880,7 @@ export function wireVideoAssistantView() {
   // 17/10/2026 (רעיון #14, "שובל חלקיקים"): מופעל פעם אחת על כל אזור
   // התצוגה, לא בכל רענון מסך - מאזין ל-pointermove גם מעל כרטיס שמתחלף.
   startParticleTrail(document.getElementById('video-assistant-view'));
+  window.addEventListener('resize', fitView);
   // 17/10/2026 (רעיון #22, "SOS כשאין אינטראקציה"): כל קליק/הקלדה בתוך
   // התצוגה מאפסים את טיימר ה-idle, כדי שהמסקוט לא יקפוץ בזמן שבפועל
   // כן עובדים (רק כשבאמת נתקעים זמן-מה).
