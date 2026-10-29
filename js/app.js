@@ -591,11 +591,15 @@ async function showPortalBackButton(user) {
 
 /* 29/10/2026: חלון בחירת הלקוחה בתצוגה כלקוחה (ראו client-picker.js). מחוץ
    למטפל ההתחברות, כדי שהיציאות שלו יהיו רק של ההתחברות. */
+async function loadClientsForView() {
+  const res = await httpsCallable(functions, 'listClientsForView')();
+  return (res.data && res.data.clients) || [];
+}
+
 function wireClientPick(pickBtn, viewed) {
   let clientsPromise = null;
   pickBtn.addEventListener('click', async () => {
-    clientsPromise = clientsPromise || httpsCallable(functions, 'listClientsForView')()
-      .then((res) => (res.data && res.data.clients) || []);
+    clientsPromise = clientsPromise || loadClientsForView();
     let list;
     try {
       pickBtn.disabled = true;
