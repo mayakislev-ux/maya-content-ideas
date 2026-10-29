@@ -7722,9 +7722,47 @@ body[data-plan="refs"] .view-tabs-scroll { justify-content: center; }
 /* 29/10/2026: בחירת לקוחה בפס של תצוגת הלקוחה. כשנבחרה לקוחה הפס מתחלף
    לגוון האזהרה של שעון המנוי, כי כל עריכה כאן נשמרת אצלה באמת. */
 .preview-bar--as { background: linear-gradient(135deg, #b3341f 0%, #7d1f12 100%); }
-.preview-bar__pick { display: inline-flex; align-items: center; gap: 6px; }
-.preview-bar__pick select {
-  font: inherit; font-weight: 600; max-width: 60vw;
-  padding: 4px 8px; border-radius: 8px; border: 0;
+.preview-bar__pick {
+  font: inherit; font-weight: 700; cursor: pointer;
+  padding: 5px 12px; border-radius: 999px; border: 0;
   background: #fff; color: #16205a;
 }
+.preview-bar__pick:disabled { opacity: 0.7; cursor: wait; }
+
+/* 29/10/2026: חלון בחירת לקוחה, עם תיקייה לכל מחזור */
+.cp-overlay {
+  position: fixed; inset: 0; z-index: 10000;
+  background: rgba(10, 14, 40, 0.55);
+  display: flex; align-items: flex-start; justify-content: center;
+  padding: 6vh 16px 16px;
+}
+.cp-modal {
+  width: min(520px, 100%); max-height: 84svh; display: flex; flex-direction: column; gap: 10px;
+  background: #fff; color: #16205a; border-radius: 16px; padding: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3); direction: rtl;
+}
+.cp-head { display: flex; align-items: center; justify-content: space-between; }
+.cp-title { margin: 0; font-size: 1.15rem; }
+.cp-close { border: 0; background: transparent; font-size: 1.2rem; cursor: pointer; color: inherit; }
+.cp-search {
+  font: inherit; padding: 10px 12px; border-radius: 10px;
+  border: 1.5px solid #c9cbe0; width: 100%; box-sizing: border-box;
+}
+.cp-mine, .cp-folder, .cp-client {
+  font: inherit; color: inherit; cursor: pointer; text-align: right;
+  border: 0; background: transparent; width: 100%;
+}
+.cp-mine { padding: 8px 10px; border-radius: 10px; font-weight: 700; background: #f2f3fa; }
+.cp-list { overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
+.cp-folder {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px; border-radius: 10px; font-weight: 800;
+}
+.cp-folder:hover, .cp-client:hover { background: #f2f3fa; }
+.cp-folder__name { flex: 1; }
+.cp-folder__count { font-size: 0.8rem; background: #16205a; color: #fff; border-radius: 999px; padding: 1px 8px; }
+.cp-clients { display: flex; flex-direction: column; padding-inline-start: 28px; }
+.cp-client { display: flex; flex-direction: column; padding: 8px 10px; border-radius: 10px; }
+.cp-client__mail { font-size: 0.8rem; opacity: 0.7; direction: ltr; text-align: right; }
+.cp-mine.is-on, .cp-client.is-on { outline: 2px solid #16205a; }
+.cp-empty { text-align: center; opacity: 0.7; margin: 16px 0; }

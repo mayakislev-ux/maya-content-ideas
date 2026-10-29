@@ -85,3 +85,18 @@ test('כל מאגר נתונים קורא וכותב דרך subjectUid, ולא �
   const app = read('../js/app.js');
   assert.ok(app.includes('if (!viewedNow) {\n    saveProfile({ lastActiveAt') || app.includes('if (!viewedNow) {\r\n    saveProfile({ lastActiveAt'), 'בתוך לקוחה לא מסמנים אותה כפעילה');
 });
+
+test('בחירת לקוחה: חיפוש בשם ובמייל, תיקיות לפי מחזור, החדש למעלה', async () => {
+  const { groupClients } = await import('../js/client-picker.js');
+  const clients = [
+    { uid: '1', name: 'חן זכרוב', email: 'chen@x.com', cohort: 'מחזור 6' },
+    { uid: '2', name: 'הדס', email: 'hadas@x.com', cohort: 'מחזור 7' },
+    { uid: '3', name: '', email: 'old@x.com', cohort: 'מחזורים 1-6 (לפני הפורטל)' },
+    { uid: '4', name: 'נופית', email: 'nofit@x.com', cohort: 'מחזור 6' },
+    { uid: '5', name: 'בלי', email: 'none@x.com' },
+  ];
+  assert.deepEqual(groupClients(clients).map((g) => g.cohort), ['מחזור 7', 'מחזור 6', 'מחזורים 1-6 (לפני הפורטל)', 'בלי מחזור']);
+  assert.deepEqual(groupClients(clients, 'חן').map((g) => g.clients.map((c) => c.uid)), [['1']]);
+  assert.deepEqual(groupClients(clients, 'NOFIT').flatMap((g) => g.clients.map((c) => c.uid)), ['4']);
+  assert.equal(groupClients(clients, 'אין כזאת').length, 0);
+});

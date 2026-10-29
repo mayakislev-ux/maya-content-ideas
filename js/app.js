@@ -17,6 +17,7 @@ import { wireWarmingView } from './warming.js';
 import { wireVideoAssistantView } from './video-assistant.js';
 import { wireStoryTableView } from './story-table.js';
 import { actsAsOwner, isClientView, setClientView, viewedClient, setViewedClient } from './client-view.js';
+import { openClientPicker } from './client-picker.js';
 import { wireInspirationView, openInspirationView } from './inspiration-view.js';
 import { showView, getLastView } from './view-router.js';
 import { showToast } from './toast.js';
@@ -588,6 +589,36 @@ async function showPortalBackButton(user) {
   btn.hidden = false;
 }
 
+/* 29/10/2026: חלון בחירת הלקוחה בתצוגה כלקוחה (ראו client-picker.js). מחוץ
+   למטפל ההתחברות, כדי שהיציאות שלו יהיו רק של ההתחברות. */
+function wireClientPick(pickBtn, viewed) {
+  let clientsPromise = null;
+  pickBtn.addEventListener('click', async () => {
+    clientsPromise = clientsPromise || httpsCallable(functions, 'listClientsForView')()
+      .then((res) => (res.data && res.data.clients) || []);
+    let list;
+    try {
+      pickBtn.disabled = true;
+      list = await clientsPromise;
+    } catch (err) {
+      clientsPromise = null;
+      console.error('listClientsForView failed:', err);
+      showToast('לא הצלחתי לטעון את רשימת הלקוחות. אפשר לנסות שוב.');
+      return;
+    } finally {
+      pickBtn.disabled = false;
+    }
+    openClientPicker({
+      clients: list,
+      currentUid: viewed ? viewed.uid : null,
+      onPick: (chosen) => {
+        setViewedClient(chosen);
+        window.location.reload();
+      },
+    });
+  });
+}
+
 onAuthChange(async (user) => {
   if (!user && portalHandoffPending) return;
   document.getElementById('launch-splash').hidden = true;
@@ -708,31 +739,15 @@ onAuthChange(async (user) => {
     const viewed = viewedClient();
     if (viewed) bar.classList.add('preview-bar--as');
     bar.innerHTML = '<span data-client-view-text></span>'
-      + '<label class="preview-bar__pick"><span>לקוחה:</span><select data-client-view-pick><option value="">החשבון שלי</option></select></label>'
+      + '<button type="button" class="preview-bar__pick" data-client-view-pick>' + (viewed ? 'להחליף לקוחה ▾' : '🔎 בחירת לקוחה ▾') + '</button>'
       + '<a href="#" data-exit-client-view>חזרה לתצוגה שלי</a>';
     bar.querySelector('[data-client-view-text]').textContent = viewed
       ? '👁 את בתוך החשבון של ' + (viewed.name || viewed.email) + '. כל מה שתשני כאן נשמר אצלה באמת.'
       : '👁 את בתצוגת לקוחה: ככה לקוחה עם מנוי מלא רואה את האפליקציה. מה שתעשי נשמר בחשבון שלך.';
-    const pick = bar.querySelector('[data-client-view-pick]');
-    pick.addEventListener('change', () => {
-      const chosen = (pick._clients || []).find((c) => c.uid === pick.value) || null;
-      setViewedClient(chosen);
-      window.location.reload();
-    });
-    httpsCallable(functions, 'listClientsForView')().then((res) => {
-      const list = (res.data && res.data.clients) || [];
-      pick._clients = list;
-      for (const c of list) {
-        const opt = document.createElement('option');
-        opt.value = c.uid;
-        opt.textContent = c.name && c.name !== c.email ? c.name + ' · ' + c.email : c.email;
-        pick.appendChild(opt);
-      }
-      if (viewed) pick.value = viewed.uid;
-    }).catch((err) => {
-      console.error('listClientsForView failed:', err);
-      showToast('לא הצלחתי לטעון את רשימת הלקוחות. אפשר לרענן ולנסות שוב.');
-    });
+    /* 29/10/2026 (מאיה: "לחפש את השמות שלהן, ושיחולק לפי מחזורים"): חלון
+       חיפוש עם תיקייה לכל מחזור, במקום רשימה נפתחת ארוכה. */
+    const pickBtn = bar.querySelector('[data-client-view-pick]');
+    wireClientPick(pickBtn, viewed);
     bar.querySelector('[data-exit-client-view]').addEventListener('click', (e) => {
       e.preventDefault();
       setClientView(false);

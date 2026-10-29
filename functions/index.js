@@ -680,13 +680,22 @@ exports.listClientsForView = onCall({ region: 'us-central1', timeoutSeconds: 60 
   }
   const allow = await db.collection('allowlist').get();
   const planByEmail = new Map(allow.docs.map((d) => [d.id, (d.data() || {}).plan || 'full']));
+  /* 29/10/2026 (מאיה: "שיחולק לי לפי מחזורים, כמו תיקייה"). המחזור שמור
+     ברשימת הגישה (cohort). מי שנכנסה מהשיתוף בדרייב לפני הפורטל היא
+     ממחזורים 1-6, ומי שאין לה שום סימן נכנסת ל"בלי מחזור". */
+  const cohortByEmail = new Map(allow.docs.map((d) => {
+    const x = d.data() || {};
+    if (x.cohort) return [d.id, String(x.cohort)];
+    if (/מחזור 1-6/.test(x.source || '')) return [d.id, 'מחזורים 1-6 (לפני הפורטל)'];
+    return [d.id, 'בלי מחזור'];
+  }));
   const clients = [];
   let pageToken;
   do {
     const page = await admin.auth().listUsers(1000, pageToken);
     for (const u of page.users) {
       if (!u.email || u.email === ADMIN_EMAIL || !planByEmail.has(u.email)) continue;
-      clients.push({ uid: u.uid, email: u.email, name: u.displayName || '', plan: planByEmail.get(u.email) });
+      clients.push({ uid: u.uid, email: u.email, name: u.displayName || '', plan: planByEmail.get(u.email), cohort: cohortByEmail.get(u.email) });
     }
     pageToken = page.pageToken;
   } while (pageToken);
