@@ -97,3 +97,12 @@ test('חזרה עד מסך הפתיחה לא מצמידה את הפריט היש
   assert.match(va, /scriptId && !state\.scriptId && state\.branch\)/);
   assert.match(va, /if \(state\.scriptId && hasContent\(state\)\)/);
 });
+
+/* 29/10/2026 (מאיה): "נכנסתי לתסריטים ולא נותן לי ללחוץ X". */
+test('ה-X מחובר לחלון שלו, והסגירה מורידה כל חלון פתוח', () => {
+  const va = read('js', 'video-assistant.js');
+  assert.match(va, /overlay\.querySelector\('\.cosmic-modal-close'\)\.addEventListener\('click', closeModal\)/);
+  assert.doesNotMatch(va, /getElementById\('va-modal-close'\)/);
+  assert.match(va, /function closeModal\(\) \{\s*document\.querySelectorAll\('\.cosmic-modal-overlay'\)\.forEach/);
+  assert.match(va, /if \(libraryOpening\) return;/);
+});

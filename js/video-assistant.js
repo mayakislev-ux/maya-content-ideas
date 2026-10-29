@@ -289,13 +289,15 @@ function openModal(innerHtml) {
   </div>`;
   overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); });
   document.body.appendChild(overlay);
-  document.getElementById('va-modal-close').addEventListener('click', closeModal);
+  /* 29/10/2026 (מאיה: "נכנסתי לתסריטים ולא נותן לי ללחוץ X"). שתי לחיצות על
+     הכפתור פתחו שני חלונות עם אותו id, וה-X של העליון היה מחובר לחלון
+     התחתון. עכשיו כל X מחובר לחלון שלו, והסגירה מורידה את כולם. */
+  overlay.querySelector('.cosmic-modal-close').addEventListener('click', closeModal);
   return overlay;
 }
 
 function closeModal() {
-  const overlay = document.getElementById('va-modal-overlay');
-  if (overlay) overlay.remove();
+  document.querySelectorAll('.cosmic-modal-overlay').forEach((o) => o.remove());
 }
 
 // ===== "התסריטים שלי" =====
@@ -308,9 +310,14 @@ function libDate(ms) {
   return `${d.toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' })} · ${d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', hour12: false })}`;
 }
 
+let libraryOpening = false;
 async function openScriptsLibrary() {
+  if (libraryOpening) return;
+  libraryOpening = true;
   closeModal();
   await saveAll().catch((err) => console.error('saveSession failed:', err));
+  libraryOpening = false;
+  closeModal();
   const overlay = openModal(`<div id="va-lib"><h2 style="margin-top:0">📝 התסריטים שלי</h2><p>טוענים...</p></div>`);
   overlay.querySelector('.cosmic-modal').classList.add('va-lib-modal');
   let items;
@@ -2050,6 +2057,7 @@ export function wireVideoAssistantView() {
   startParticleTrail(document.getElementById('video-assistant-view'));
   window.addEventListener('resize', fitView);
   document.getElementById('video-assistant-scripts-btn').addEventListener('click', openScriptsLibrary);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
   // 17/10/2026 (רעיון #22, "SOS כשאין אינטראקציה"): כל קליק/הקלדה בתוך
   // התצוגה מאפסים את טיימר ה-idle, כדי שהמסקוט לא יקפוץ בזמן שבפועל
   // כן עובדים (רק כשבאמת נתקעים זמן-מה).
