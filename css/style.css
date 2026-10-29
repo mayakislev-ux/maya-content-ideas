@@ -7395,6 +7395,8 @@ body[data-plan="refs"] .view-tabs-scroll { justify-content: center; }
   --va-fill: #e6f2fa;
   --va-line: #d3e6f2;
   --va-card: #f7fbfe;
+  --va-navy: #16205a;
+  --va-navy-hover: #1f2d78;
   --va-pad-x: 28px;
   --va-pad-b: 30px;
 }
@@ -7465,14 +7467,17 @@ body[data-plan="refs"] .view-tabs-scroll { justify-content: center; }
 }
 
 /* כפתורים */
+/* 29/10/2026 (מאיה, צילום מסך): "הכפתורים יהיו כהים בצבע של הרקע והכתב
+   לבן, כי יותר מדי לבן גם קשה לעין, זה עומס מנטלי". כפתור רגיל בכחול
+   הלילה של הדף, הראשי בכחול הבולט, ובחירה מסומנת באותו כחול בולט. */
 #video-assistant-view .cosmic-btn {
-  background: #fff;
-  border: 1px solid var(--va-line);
-  color: var(--va-ink);
+  background: var(--va-navy);
+  border: 1px solid var(--va-navy);
+  color: #fff;
   border-radius: 16px;
   min-height: 48px;
 }
-#video-assistant-view .cosmic-btn:hover { background: #f0f7fc; }
+#video-assistant-view .cosmic-btn:hover { background: var(--va-navy-hover); }
 #video-assistant-view .cosmic-btn--primary {
   background: var(--va-blue);
   border-color: var(--va-blue);
@@ -7482,11 +7487,11 @@ body[data-plan="refs"] .view-tabs-scroll { justify-content: center; }
   font-weight: 700;
 }
 #video-assistant-view .cosmic-btn--primary:hover { background: var(--va-blue-dark); }
-#video-assistant-view .cosmic-btn__subtitle { color: var(--va-muted); opacity: 1; }
+#video-assistant-view .cosmic-btn__subtitle { color: rgba(255,255,255,.75); opacity: 1; }
 #video-assistant-view .cosmic-chip-btn--on {
-  background: #e0f2fc;
+  background: var(--va-blue);
   border-color: var(--va-blue);
-  color: #0b4f78;
+  color: #fff;
   font-weight: 700;
 }
 #video-assistant-view .cosmic-reroll-btn,
@@ -7495,12 +7500,12 @@ body[data-plan="refs"] .view-tabs-scroll { justify-content: center; }
 #video-assistant-view .cosmic-mute-btn { background: var(--va-fill); color: var(--va-ink); }
 #video-assistant-view .cosmic-pick-btn { background: var(--va-blue); }
 #video-assistant-view .va-copy-btn {
-  background: #fff;
-  border: 1.5px solid var(--va-blue);
-  color: var(--va-blue);
+  background: var(--va-navy);
+  border: 1.5px solid var(--va-navy);
+  color: #fff;
   box-shadow: none;
 }
-#video-assistant-view .va-copy-btn:hover { background: #f0f7fc; }
+#video-assistant-view .va-copy-btn:hover { background: var(--va-navy-hover); }
 #video-assistant-view .va-copy-btn.is-copied { background: #1f8f5a; border-color: #1f8f5a; color: #fff; }
 
 /* שדות */
@@ -7554,10 +7559,10 @@ body[data-plan="refs"] .view-tabs-scroll { justify-content: center; }
 .cosmic-modal-overlay .cosmic-modal-close { background: #e6f2fa; color: #0f2340; }
 .cosmic-modal-overlay .cosmic-textarea { background: #fff; border: 1.5px solid #cfe2ee; color: #0f2340; }
 .cosmic-modal-overlay .cosmic-textarea::placeholder { color: #a7bccf; }
-.cosmic-modal-overlay .cosmic-btn { background: #fff; border: 1px solid #d3e6f2; color: #0f2340; }
+.cosmic-modal-overlay .cosmic-btn { background: #16205a; border: 1px solid #16205a; color: #fff; }
 .cosmic-modal-overlay .cosmic-btn--primary { background: #0b6fa8; border-color: #0b6fa8; color: #fff; }
 .cosmic-modal-overlay .cosmic-prompt-box { background: #eef6fb; color: #0f2340; }
-.cosmic-modal-overlay .va-copy-btn { background: #fff; border: 1.5px solid #0b6fa8; color: #0b6fa8; box-shadow: none; }
+.cosmic-modal-overlay .va-copy-btn { background: #16205a; border: 1.5px solid #16205a; color: #fff; box-shadow: none; }
 .cosmic-modal-overlay .va-copy-btn.is-copied { background: #1f8f5a; border-color: #1f8f5a; color: #fff; }
 
 /* "התסריט שלך נבנה כאן": אותו כרטיס, ממשיך למטה בגוון תכלת */
