@@ -4,6 +4,99 @@
 // מהורדת קישורי הדוגמאות החיצוניים (אינסטגרם/טיקטוק) - כי גם הם קבצים
 // חיצוניים, בדיוק מה שהיא ביקשה להוציא.
 
+/* 29/10/2026 (מאיה: "בחלק של בחר פורמט הנגשה הרבה לא מבינים או לא זוכרים
+   מה זה כל פורמט. לכל פורמט כמה לינקים שמראים מה זה, אבל שזה לא ייפתח
+   כלינק חיצוני אלא כפופאפ, שיהיה להם תמונה"). הדוגמאות חוזרות, הפעם בתוך
+   האפליקציה: הסרטון מוטמע בפופאפ (embedUrlFor), לא נפתח בחוץ.
+   הקישורים מתוך המסמך שלה. קישורי vt.tiktok.com המקוצרים פוענחו פעם אחת
+   למזהה הסרטון, כי בלי מזהה אי אפשר להטמיע. */
+export const FORMAT_EXAMPLES = {
+  "דיבור למצלמה": [
+    {
+      "url": "https://www.instagram.com/reel/DPN__PXAttX/"
+    },
+    {
+      "url": "https://www.instagram.com/reel/DNjBwppIiAt/"
+    }
+  ],
+  "וויס אובר": [
+    {
+      "url": "https://www.instagram.com/reel/DBmKqNsIvhR/"
+    },
+    {
+      "url": "https://www.tiktok.com/video/7475764014123977992",
+      "tiktokVideoId": "7475764014123977992"
+    }
+  ],
+  "ראיון / שיחה": [
+    {
+      "url": "https://www.instagram.com/reel/DHnqDyrows5/"
+    },
+    {
+      "url": "https://www.instagram.com/reel/DI8lhRyIEUp/"
+    }
+  ],
+  "תוכן ויזואלי יפה": [
+    {
+      "url": "https://www.instagram.com/reel/DLPyRWPoESW/"
+    },
+    {
+      "url": "https://www.instagram.com/reel/DHgi4YiI833/"
+    },
+    {
+      "url": "https://www.tiktok.com/video/7561414215119195410",
+      "tiktokVideoId": "7561414215119195410"
+    }
+  ],
+  "טקסט דינמי": [
+    {
+      "url": "https://www.instagram.com/reel/DMBFvuFIM5T/"
+    },
+    {
+      "url": "https://www.instagram.com/reel/DFiW2WholdZ/"
+    }
+  ],
+  "משחק תפקידים": [
+    {
+      "url": "https://www.tiktok.com/video/7500635865677401362",
+      "tiktokVideoId": "7500635865677401362"
+    }
+  ],
+  "פוסט קרוסלה": [
+    {
+      "url": "https://www.instagram.com/p/DOGEHwMDXQN/"
+    }
+  ],
+  "לוח / טאבלט": [
+    {
+      "url": "https://www.instagram.com/reel/DHTm9eEIGie/"
+    }
+  ],
+  "סטיץ' (תגובה לסרטון ויראלי)": [
+    {
+      "url": "https://www.tiktok.com/video/7567422966271659282",
+      "tiktokVideoId": "7567422966271659282"
+    }
+  ],
+  "תגובה לתגובה": [
+    {
+      "url": "https://www.tiktok.com/video/7480554664354680071",
+      "tiktokVideoId": "7480554664354680071"
+    }
+  ],
+  "מסך ירוק": [
+    {
+      "url": "https://www.tiktok.com/video/7482082670478953735",
+      "tiktokVideoId": "7482082670478953735"
+    }
+  ],
+  "מסך חצוי": [
+    {
+      "url": "https://www.instagram.com/reel/DMS5oV9olzs/"
+    }
+  ]
+};
+
 // מתוך "סיכום ודוגמאות - סוגי תוכן ופורמטים"
 export const FORMATS = [
   { name: 'דיבור למצלמה', description: 'זה הפורמט הכי ישיר והפורמט היחיד שהוא חובה לכולם גם אם לא נוח לכם. הקהל רואה מי אתם באמת. תוך כמה שניות הם מחליטים: "הבן אדם הזה מדבר אליי, אני יכול לסמוך עליו" או "לא, זה לא בשבילי". דיבור למצלמה יוצר אמון ולויאליות - ובלי אמון, אין מכירות.' },

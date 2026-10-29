@@ -7684,3 +7684,37 @@ body[data-plan="refs"] .view-tabs-scroll { justify-content: center; }
 .cosmic-modal-overlay .va-text-link { color: #0b6fa8; }
 .cosmic-modal-overlay .va-lib-delete { color: #b42318; align-self: center; }
 .cosmic-modal-overlay .cosmic-field-label { color: #0f2340; font-weight: 700; display: block; margin: 6px 0 6px; }
+
+/* 29/10/2026: דוגמאות לכל פורמט, בפופאפ בתוך האפליקציה */
+#video-assistant-view .cosmic-examples-btn {
+  display: block;
+  margin: 12px 0 0;
+  padding: 10px 16px;
+  border-radius: 12px;
+  border: 1.5px solid var(--va-navy);
+  background: transparent;
+  color: var(--va-navy);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.cosmic-examples-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 12px; }
+.cosmic-examples-tab {
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1.5px solid #16205a;
+  background: transparent;
+  color: #16205a;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.cosmic-examples-tab[aria-pressed="true"] { background: #16205a; color: #fff; }
+.cosmic-examples-embed {
+  margin: 0 auto 12px;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #000;
+}
+.cosmic-examples-embed iframe { width: 100%; height: 100%; border: 0; display: block; }
+.cosmic-examples-out { display: block; text-align: center; font-size: 14px; }

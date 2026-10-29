@@ -20,7 +20,7 @@ import { buildParts, hasContent, scriptDoc, scriptFields, scriptTitle, syncIdea 
 import { confirmDialog } from './confirm-dialog.js';
 import { buildDuplicationPrompt, buildReverseDuplicationPrompt, buildScriptPrompt, buildCreativePackagingPrompt } from './video-assistant-prompts.js';
 import {
-  FORMATS, SCRIPT_STRUCTURE, STARTING_POINTS, CONTENT_TYPES,
+  FORMATS, FORMAT_EXAMPLES, SCRIPT_STRUCTURE, STARTING_POINTS, CONTENT_TYPES,
   buildExtractionPrompt, buildHookFindingPrompt, buildHookReinforcementPrompt, buildScriptDistillationPrompt,
 } from './video-assistant-content.js';
 import { playReroll, playSuccess, setMuted, getMuted } from './video-assistant-sound.js';
@@ -849,6 +849,7 @@ function renderFormatChoice() {
       <summary><span><span class="cosmic-format-icon">${FORMAT_ICONS[f.name] || '🎬'}</span>${escapeHtml(f.name)}</span></summary>
       <div class="cosmic-accordion-body">
         <p style="margin:0">${escapeHtml(f.description)}</p>
+        ${FORMAT_EXAMPLES[f.name] ? `<button type="button" class="cosmic-examples-btn" data-format-examples="${i}">👀 לראות דוגמה</button>` : ''}
         <button type="button" class="cosmic-pick-btn" data-pick-format="${i}">הפורמט שלי</button>
       </div>
     </details>
@@ -859,6 +860,12 @@ function renderFormatChoice() {
     ${state.selectedFormat ? `<div class="cosmic-selected-chip">✓ נבחר: ${escapeHtml(state.selectedFormat)}</div>` : ''}
     <div class="cosmic-accordion">${itemsHtml}</div>
   `);
+  screenEl().querySelectorAll('[data-format-examples]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      openFormatExamples(FORMATS[Number(btn.dataset.formatExamples)].name);
+    });
+  });
   screenEl().querySelectorAll('[data-pick-format]').forEach((btn) => {
     btn.addEventListener('click', (e) => {
       e.preventDefault();
@@ -867,6 +874,44 @@ function renderFormatChoice() {
       dispatch({ type: 'FORMAT_SELECTED', format });
     });
   });
+}
+
+/* 29/10/2026: דוגמאות לפורמט, בתוך פופאפ. דוגמה אחת בכל פעם (כמה הטמעות
+   יחד כבדות בטלפון), עם כפתורים לדוגמה הבאה. אם ההטמעה לא נטענת תוך 4
+   שניות, כמו בתצוגה המקדימה של הרפרנס, נשאר רק קישור לצפייה בפלטפורמה. */
+function openFormatExamples(name) {
+  const list = FORMAT_EXAMPLES[name] || [];
+  if (!list.length) return;
+  const overlay = openModal(`
+    <h2 style="margin-top:0">${escapeHtml(name)}</h2>
+    ${list.length > 1 ? `<div class="cosmic-examples-tabs">${list.map((_, i) => `<button type="button" class="cosmic-examples-tab" data-example="${i}">דוגמה ${i + 1}</button>`).join('')}</div>` : ''}
+    <div class="cosmic-examples-stage"></div>
+  `);
+  const stage = overlay.querySelector('.cosmic-examples-stage');
+  let timer = null;
+  function show(i) {
+    const ex = list[i];
+    const embed = embedUrlFor(ex.url, ex);
+    const shape = embedShape(ex.url, ex);
+    overlay.querySelectorAll('[data-example]').forEach((b) => b.setAttribute('aria-pressed', String(Number(b.dataset.example) === i)));
+    clearTimeout(timer);
+    stage.innerHTML = `
+      <div class="cosmic-examples-embed" style="aspect-ratio:${shape.w}/${shape.h};width:min(100%, calc(66vh * ${shape.w} / ${shape.h}))">
+        <iframe src="${escapeHtml(embed)}" title="דוגמה לפורמט ${escapeHtml(name)}" loading="lazy" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture" allowfullscreen></iframe>
+      </div>
+      <a href="${escapeHtml(ex.url)}" target="_blank" rel="noopener" class="cosmic-examples-out">לצפייה בפלטפורמה המקורית ↗</a>
+    `;
+    const frame = stage.querySelector('iframe');
+    let loaded = false;
+    frame.addEventListener('load', () => { loaded = true; });
+    timer = setTimeout(() => {
+      if (loaded || !document.body.contains(overlay)) return;
+      const wrap = stage.querySelector('.cosmic-examples-embed');
+      if (wrap) wrap.outerHTML = '<p class="muted" style="text-align:center;padding:24px 8px">הדוגמה הזאת לא נטענת כאן כרגע. אפשר לצפות בה בקישור למטה.</p>';
+    }, 4000);
+  }
+  overlay.querySelectorAll('[data-example]').forEach((b) => b.addEventListener('click', () => show(Number(b.dataset.example))));
+  show(0);
 }
 
 // ===== "צריך תסריט או לא?" - ניסוח מתוקן (16/10)
