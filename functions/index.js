@@ -1530,6 +1530,63 @@ exports.generateContentSummaries = onCall(
 // איזה שירות ספציפי מוצג בפועל - אבל התמונה עצמה מראה בבירור מסכת פנים
 // זהב (טיפולי פנים) או כיסא מספרה (שיער), ולא איפור. טקסט בלבד ניחש "איפור"
 // כי זה נשמע הכי "קרוב" לתוכן העסקי-כללי; עם התמונה, אין ניחוש.
+// 31/10/2026 (מאיה: "יש הרבה בלבול של סרטונים בקטגוריות... בדיקה הכי מקיפה שיש").
+// קריאה בלבד: מחזירה הצעה לכל סרטון ולא כותבת כלום למסד. תמונה וטקסט יחד, כי
+// טקסט כללי לא אומר איזה שירות מוצג. אותה קריאה גם קובעת אם מה שנשמע הוא דיבור
+// או שיר, כי אורך התמלול לא מבדיל בין השניים.
+exports.auditInspirationCategories = onCall(
+  { secrets: [anthropicApiKey], region: 'us-central1', timeoutSeconds: 540 },
+  async (request) => {
+    if (!request.auth || request.auth.token.email !== ADMIN_EMAIL) {
+      throw new HttpsError('permission-denied', 'רק מאיה יכולה להריץ את זה');
+    }
+    const ids = ((request.data && request.data.ids) || []).slice(0, 25);
+    const taxonomy = Object.entries({ ...SUBCATEGORIES_BY_DOMAIN, 'תוכן אישי וחיבור': {}, 'צילום ותדמית': {} })
+      .map(([domain, subs]) => `תחום "${domain}":\n${Object.entries(subs).map(([n, d]) => `  - ${n}${d ? `: ${d}` : ''}`).join('\n') || '  (בלי תת-קטגוריות)'}`)
+      .join('\n');
+    const results = [];
+    for (const id of ids) {
+      try {
+        const snap = await db.collection('inspirationBank').doc(id).get();
+        if (!snap.exists) throw new Error('missing');
+        const v = snap.data();
+        const text = String(v.translationHe || v.transcriptHe || v.transcript || '').slice(0, 1500);
+        const content = [];
+        if (v.thumbnailUrl) {
+          const img = await fetch(v.thumbnailUrl);
+          if (img.ok) {
+            content.push({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: Buffer.from(await img.arrayBuffer()).toString('base64') } });
+          }
+        }
+        content.push({ type: 'text', text: `זו תמונה מסרטון רפרנס לבעלי עסקים קטנים. הקטגוריה הנוכחית שלו עלולה להיות שגויה, אל תסמוך/י עליה.
+הקטגוריה הנוכחית: ${v.domain} / ${v.subCategory || 'אין'}
+סיכום: ${v.contentSummary || 'אין'}
+חשבון וכתובת: ${v.url}
+הטקסט ששמעו בסרטון:
+${text || '(אין)'}
+
+בחר/י לפי מה שרואים ושומעים בסרטון עצמו, ולפי המקצוע של בעל החשבון.
+${taxonomy}
+
+בנוסף קבע/י מה נשמע בסרטון:
+speech = אדם מדבר ואפשר לקרוא את זה כתוכן.
+song = מילים של שיר, מוזיקה או טרנד, בלי דיבור אמיתי.
+silent = אין טקסט, או רק רעש, קריאה בודדת או מילים מנותקות.
+
+החזר/י JSON בלבד: {"domain":"...","sub":"שם מדויק מהרשימה או ריק אם אין","audio":"speech|song|silent","conf":"high|low","why":"עד 8 מילים"}.
+אם אי אפשר לדעת, השאר/י את הקטגוריה הנוכחית וסמן/י conf=low.` });
+        const data = await callAnthropic(anthropicApiKey.value(), { model: 'claude-sonnet-5-5', max_tokens: 500, messages: [{ role: 'user', content }] }, 'auditInspirationCategories');
+        const raw = getResponseText(data) || '';
+        const match = raw.match(/\{[\s\S]*\}/);
+        results.push({ id, ...JSON.parse(match ? match[0] : raw) });
+      } catch (err) {
+        results.push({ id, error: String((err && err.message) || err).slice(0, 120) });
+      }
+    }
+    return { results };
+  }
+);
+
 exports.classifyInspirationSubcategories = onCall(
   { secrets: [anthropicApiKey], region: 'us-central1', timeoutSeconds: 540 },
   async (request) => {
