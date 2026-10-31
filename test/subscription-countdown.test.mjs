@@ -12,8 +12,9 @@ import { fileURLToPath } from 'node:url';
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const src = readFileSync(join(ROOT, 'js', 'app.js'), 'utf8');
 
-const fnSrc = (src.match(/function showSubscriptionCountdown\(access\) \{[\s\S]*?\n\}/) || [])[0];
-assert.ok(fnSrc, 'showSubscriptionCountdown לא נמצאה ב-app.js');
+/* 31/10/2026: הפונקציה עברה ל-subscription-notice.js */
+const noticeSrc = readFileSync(join(ROOT, 'js', 'subscription-notice.js'), 'utf8').replace(/^export /gm, '');
+assert.ok(noticeSrc.includes('function showSubscriptionCountdown('), 'showSubscriptionCountdown לא נמצאה');
 
 function makeDocument() {
   const nodes = [];
@@ -44,7 +45,7 @@ function makeDocument() {
 }
 
 function load(doc) {
-  return new Function('document', `${fnSrc}; return showSubscriptionCountdown;`)(doc);
+  return new Function('document', `${noticeSrc}; return showSubscriptionCountdown;`)(doc);
 }
 
 function run(access) {
@@ -88,7 +89,7 @@ test('מנוי שכבר פג לא מציג שעון, כי המסך חוסם או
 test('התאריך עצמו מופיע, כדי שלא תצטרך לספור', () => {
   const until = inDays(5);
   const bar = run({ showCountdown: true, paidUntil: until });
-  const expected = until.toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' });
+  const expected = until.toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric', timeZone: 'Asia/Jerusalem' });
   assert.ok(bar.textContent.includes(expected), `חסר התאריך ${expected}`);
 });
 

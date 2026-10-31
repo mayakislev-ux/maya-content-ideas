@@ -6411,6 +6411,8 @@ body[data-plan="refs"] .view-tabs-scroll { justify-content: center; }
 .sub-countdown b { color: #f0d6a3; font-weight: 800; }
 .sub-countdown.is-urgent { background: linear-gradient(135deg, #b3341f 0%, #7d1f12 100%); }
 .sub-countdown.is-urgent b { color: #ffd9c7; }
+.sub-countdown a { color: #fff; font-weight: 800; text-decoration: underline; white-space: nowrap; }
+#login-error a { color: inherit; text-decoration: underline; white-space: nowrap; }
 
 .preview-bar {
   position: sticky; top: 0; z-index: 9999;

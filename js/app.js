@@ -1,5 +1,6 @@
 import { onAuthChange, signInWithGoogle, signOutUser, portalHandoff } from './auth.js';
 import { loginErrorText } from './login-error-text.js';
+import { showSubscriptionCountdown, showExpiredNotice } from './subscription-notice.js';
 import { isInAppBrowser, showInAppBrowserWarning } from './inapp-browser.js';
 import { auth, db, functions } from './firebase-init.js';
 import { doc, getDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
@@ -208,27 +209,6 @@ function onIdeasChanged(ideas) {
    הגישה מעצמו, בלי שמישהו יצטרך לזכור לכבות אותה.
    ההסתרה בממשק היא נוחות בלבד. האכיפה האמיתית היא ב-firestore.rules
    וב-enforceAllowlist בשרת. */
-/* שעון ספירה לאחור למנוי שנגמר ולא מתחדש (22/10/2026).
-   מופיע רק למי שסומנה showCountdown, כלומר מנוי לחודש בודד.
-   ללקוחה עם הוראת קבע זה היה רעש מלחיץ ולא מידע. */
-function showSubscriptionCountdown(access) {
-  if (!access || !access.showCountdown || !access.paidUntil) return;
-  if (document.querySelector('.sub-countdown')) return;
-
-  const MS_DAY = 24 * 60 * 60 * 1000;
-  const days = Math.ceil((access.paidUntil.getTime() - Date.now()) / MS_DAY);
-  if (days < 0) return;
-
-  const date = access.paidUntil.toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' });
-  const left = days === 0 ? 'היום' : days === 1 ? 'מחר' : `בעוד ${days} ימים`;
-
-  const bar = document.createElement('div');
-  bar.className = 'sub-countdown' + (days <= 3 ? ' is-urgent' : '');
-  bar.setAttribute('role', 'status');
-  bar.innerHTML = `<span>המנוי שלך למאגר הרפרנסים נגמר ${left} <b>(${date})</b></span>`;
-  document.body.prepend(bar);
-}
-
 async function loadAccess(email) {
   if (email === ADMIN_EMAIL) return { allowed: true, refsOnly: false, expired: false, paidUntil: null, showCountdown: false };
   const snap = await getDoc(doc(db, 'allowlist', email));
@@ -243,6 +223,7 @@ async function loadAccess(email) {
     /* מנוי לחודש בודד בלי הוראת קבע נגמר בלי שום התראה מוקדמת,
        ולכן מי שעליה רואה כמה ימים נשארו. למנוי מתחדש זה רעש ולא מידע. */
     showCountdown: data.showCountdown === true,
+    renewOffer: data.renewOffer === true,
   };
 }
 
@@ -686,8 +667,7 @@ onAuthChange(async (user) => {
   }
   if (access.expired) {
     const errorEl = document.getElementById('login-error');
-    errorEl.textContent = 'המנוי הסתיים. אנא פני למאיה כדי לחדש';
-    errorEl.hidden = false;
+    showExpiredNotice(errorEl, access);
     await signOutUser();
     return;
   }
@@ -722,6 +702,7 @@ onAuthChange(async (user) => {
         const d = snap.exists() ? (snap.data() || {}) : {};
         showSubscriptionCountdown({
           showCountdown: d.showCountdown === true,
+          renewOffer: d.renewOffer === true,
           paidUntil: d.paidUntil?.toDate ? d.paidUntil.toDate() : null,
         });
       } catch (err) {
