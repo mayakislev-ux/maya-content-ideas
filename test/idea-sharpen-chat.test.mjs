@@ -62,7 +62,7 @@ describe('נקודת יציאה וסוג תוכן הם שלבים אמיתיים
   test('הפופאפ של חילוץ התוכן מתמלא ממה שכבר נבחר', () => {
     const modal = VA.slice(VA.indexOf('function openExtractionHelperModal'));
     /* 31/10/2026: סוג שכבר נבחר גובר, ורק בלעדיו הסוג מזוהה לבד. */
-    assert.match(VA, /async function extractionContentType[\s\S]{0,120}state\.contentType/, 'סוג התוכן שנבחר לא גובר');
+    assert.match(VA, /function knownExtractionType[\s\S]{0,120}state\.contentType/, 'סוג התוכן שנבחר לא גובר');
     assert.match(modal.slice(0, 3000), /extractionContentType\(idea\)/, 'סוג התוכן לא עובר לפופאפ');
     assert.match(modal.slice(0, 3000), /state\.startingPoint/, 'נקודת היציאה לא עוברת לפופאפ');
   });

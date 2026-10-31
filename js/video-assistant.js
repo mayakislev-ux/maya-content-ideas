@@ -1333,6 +1333,7 @@ async function renderHerWords() {
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-herwords-done-btn">ממשיכים ←</button>
     </div>
   `);
+  prepareExtractionHelper();
   document.getElementById('va-herwords-help-btn').addEventListener('click', openExtractionHelperModal);
   wireMegillahGate({
     prefix: 'va-herwords',
@@ -1735,16 +1736,34 @@ function renderScratchIntro() {
    שהוא כבר יבנה את הפרומפט ופשוט יהיה כפתור העתק ל-ChatGPT... שיידע לזהות
    לבד ויקליד"). אין יותר טופס: הרעיון, הקהל ונקודת היציאה כבר ידועים, וסוג
    התוכן מזוהה לבד. מה שבכל זאת לא ידוע, הפרומפט מבקש מ-ChatGPT לזהות. */
-let extractionTypeCache = { idea: '', type: '' };
+let extractionTypeCache = { idea: '', type: '', pending: null };
+let extractionProfile = null;
 
-async function extractionContentType(idea) {
+function knownExtractionType(idea) {
   if (CONTENT_TYPES.includes(state.contentType)) return state.contentType;
-  if (extractionTypeCache.idea === idea) return extractionTypeCache.type;
-  const found = await classifyContentType(idea);
-  /* רק שלושת הסוגים נכנסים לפרומפט, גם אם הסיווג החזיר משהו ישן */
-  const type = CONTENT_TYPES.includes(found) ? found : '';
-  if (type) extractionTypeCache = { idea, type };
-  return type;
+  return extractionTypeCache.idea === idea ? extractionTypeCache.type : '';
+}
+
+function extractionContentType(idea) {
+  const known = knownExtractionType(idea);
+  if (known) return Promise.resolve(known);
+  if (extractionTypeCache.idea === idea && extractionTypeCache.pending) return extractionTypeCache.pending;
+  const pending = classifyContentType(idea).then((found) => {
+    /* רק שלושת הסוגים נכנסים לפרומפט, גם אם הסיווג החזיר משהו ישן */
+    const type = CONTENT_TYPES.includes(found) ? found : '';
+    if (extractionTypeCache.pending === pending) extractionTypeCache = { idea, type, pending: null };
+    return type;
+  });
+  extractionTypeCache = { idea, type: '', pending };
+  return pending;
+}
+
+/* 31/10/2026 (מאיה: "הפרומט של המגילת אסתר טוען לאט"). הפופאפ חיכה לסיווג:
+   שרת שמתעורר (כ-2 שניות בלוגים) ועוד קריאה למודל. עכשיו הזיהוי מתחיל כשנכנסים
+   למסך, והפופאפ לא מחכה לו בכלל. */
+function prepareExtractionHelper() {
+  extractionProfile = getProfile().catch(() => null);
+  extractionContentType(state.ideaDescription || state.hook || '');
 }
 
 async function openExtractionHelperModal() {
@@ -1758,22 +1777,37 @@ async function openExtractionHelperModal() {
   `);
   /* תקלה בפרופיל לא עוצרת עזרה: ה-SOS הוא היציאה מהמחסום של המגילה, והפרומפט
      מסתדר גם בלי קהל ותחום. */
-  const [profile, contentType] = await Promise.all([getProfile().catch(() => null), extractionContentType(idea)]);
+  const profile = await (extractionProfile || getProfile().catch(() => null));
+  const contentType = knownExtractionType(idea);
   const resultEl = overlay.querySelector('#va-ext-result');
   /* היא יכלה לסגור את הפופאפ בזמן הזיהוי */
   if (!resultEl || !resultEl.isConnected) return;
   const audience = (profile && profile.primaryAudience) || '';
   const domain = (domainInfo && domainInfo.domain) || (profile && profile.business) || '';
   const startingPoint = state.startingPoint || '';
-  const prompt = buildExtractionPrompt({ idea, contentType, startingPoint, audience, domain: domain });
+  const promptFor = (type) => buildExtractionPrompt({ idea, contentType: type, startingPoint, audience, domain: domain });
+  const typeHint = (type) => `<p class="cosmic-hint">סוג התוכן שזוהה: <strong>${escapeHtml(type)}</strong></p>`;
+  const peekFor = (text, type) => highlightPlaceholders(text, [idea, type, startingPoint, audience, domain]);
+  const prompt = promptFor(contentType);
   resultEl.innerHTML = `
     <p>הפרומפט מוכן. ChatGPT ישאל שאלות שיוציאו ממך בדיוק מה להגיד, ובסוף יאסוף את התשובות למגילה אחת.</p>
-    ${contentType ? `<p class="cosmic-hint">סוג התוכן שזוהה: <strong>${escapeHtml(contentType)}</strong></p>` : ''}
+    ${contentType ? typeHint(contentType) : ''}
     ${copyBtn(prompt, 'להעתיק ל-ChatGPT')}
-    ${promptPeek(highlightPlaceholders(prompt, [idea, contentType, startingPoint, audience, domain]))}
+    ${promptPeek(peekFor(prompt, contentType))}
     <p class="cosmic-hint" style="margin-top:10px;margin-bottom:0">אחרי שמדביקים ועונים על השאלות, חוזרים לכאן ומדביקים את המגילה בתיבת הטקסט הגדולה.</p>
   `;
   wireCopyButtons(resultEl);
+  if (contentType) return;
+  /* הזיהוי הגיע אחרי שהפרומפט כבר על המסך: מעדכנים במקום, בלי לסגור כלום.
+     מי שכבר העתיקה קיבלה פרומפט תקין, שמבקש מ-ChatGPT לזהות לבד. */
+  extractionContentType(idea).then((type) => {
+    if (!type || !resultEl.isConnected) return;
+    const text = promptFor(type);
+    const btn = resultEl.querySelector('.va-copy-btn');
+    btn.setAttribute('data-copy-text', encodeURIComponent(text));
+    btn.insertAdjacentHTML('beforebegin', typeHint(type));
+    resultEl.querySelector('.va-prompt-peek .cosmic-prompt-box').innerHTML = peekFor(text, type);
+  });
 }
 
 function renderScratchDump() {
@@ -1796,6 +1830,7 @@ function renderScratchDump() {
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-scratch-dump-done-btn">ממשיכים ←</button>
     </div>
   `);
+  prepareExtractionHelper();
   document.getElementById('va-scratch-help-btn').addEventListener('click', openExtractionHelperModal);
   // 28/10/2026: אותו מחסום כמו במגילה של השכפול. כאן נכתבו 40 ו-46 מילים
   wireMegillahGate({

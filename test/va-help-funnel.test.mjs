@@ -18,6 +18,12 @@ test('SOS: אין טופס, רק פרומפט מוכן וכפתור העתקה �
   assert.match(modal, /wireCopyButtons\(resultEl\)/);
 });
 
+test('SOS: הפופאפ לא מחכה לזיהוי סוג התוכן, והזיהוי מתחיל כבר בכניסה למסך', () => {
+  const modal = between('async function openExtractionHelperModal', 'function renderScratchDump');
+  assert.ok(!/await[^\n]*extractionContentType/.test(modal), 'הפופאפ חוזר לחכות לסיווג');
+  assert.match(between('function renderScratchDump', 'async function renderScratchHook'), /prepareExtractionHelper\(\)/);
+});
+
 test('SOS: רק שלושה סוגי תוכן, בלי בידורי', () => {
   assert.deepEqual(CONTENT_TYPES, ['בעל ערך', 'מכירתי', 'אישי']);
   assert.ok(!buildExtractionPrompt({ idea: 'x' }).includes('בידורי'));
