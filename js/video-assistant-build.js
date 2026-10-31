@@ -20,6 +20,7 @@ const PARTS = {
   reference: {
     label: 'הרפרנס',
     get: (s) => s.referenceLink || clip(s.transcript, 90),
+    full: (s) => s.referenceLink || s.transcript,
     screens: ['transcribe'],
   },
   idea: {
@@ -45,11 +46,13 @@ const PARTS = {
   dump: {
     label: 'מה יש לך להגיד',
     get: (s) => clip(s.rawDump),
+    full: (s) => s.rawDump,
     screens: ['scratch-dump'],
   },
   herWords: {
     label: 'מה יש לך להגיד',
     get: (s) => clip(s.herWords),
+    full: (s) => s.herWords,
     screens: ['her-words'],
   },
   hook: {
@@ -66,6 +69,7 @@ const PARTS = {
   script: {
     label: 'התסריט',
     get: (s) => clip(s.draftScript || s.finalScript, 220),
+    full: (s) => s.draftScript || s.finalScript,
     screens: ['scratch-distill', 'prompt2', 'read-aloud'],
   },
 };
@@ -78,6 +82,9 @@ const BY_BRANCH = {
   'idea-search': ['idea', 'message', 'packaging', 'format', 'reference', 'herWords', 'hook', 'script'],
 };
 
+/* 31/10/2026 (מאיה: "לא רואים את כל מה שכתבתי, אבל זה מעולה כי זה אורך,
+   אז כפתור 'עוד' שנראה הכל במידת הצורך"). value נשאר מקוצר, ו-full הוא
+   הטקסט המלא, רק כשבאמת יש עוד מה לראות. */
 /** רשימת החלקים להצגה: done (נבנה), now (נבנה במסך הזה), wait (בהמשך).
     ריקה כשעוד לא נבנה כלום, וגם במסך הסיכום, שמציג את הכל בעצמו. */
 export function buildParts(state) {
@@ -87,7 +94,9 @@ export function buildParts(state) {
   const rows = keys.map((key) => {
     const part = PARTS[key];
     const value = part.get(state);
-    return { key, label: part.label, value: value ? String(value).trim() : '', big: !!part.big, here: part.screens.includes(state.screen) };
+    const shown = value ? String(value).trim() : '';
+    const whole = part.full ? String(part.full(state) || '').trim() : shown;
+    return { key, label: part.label, value: shown, full: whole.length > shown.length ? whole : '', big: !!part.big, here: part.screens.includes(state.screen) };
   });
   if (!rows.some((r) => r.value)) return [];
   let cur = rows.findIndex((r) => r.here);

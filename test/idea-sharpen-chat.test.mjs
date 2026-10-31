@@ -61,7 +61,9 @@ describe('נקודת יציאה וסוג תוכן הם שלבים אמיתיים
 
   test('הפופאפ של חילוץ התוכן מתמלא ממה שכבר נבחר', () => {
     const modal = VA.slice(VA.indexOf('function openExtractionHelperModal'));
-    assert.match(modal.slice(0, 3000), /state\.contentType/, 'סוג התוכן לא עובר לפופאפ');
+    /* 31/10/2026: סוג שכבר נבחר גובר, ורק בלעדיו הסוג מזוהה לבד. */
+    assert.match(VA, /async function extractionContentType[\s\S]{0,120}state\.contentType/, 'סוג התוכן שנבחר לא גובר');
+    assert.match(modal.slice(0, 3000), /extractionContentType\(idea\)/, 'סוג התוכן לא עובר לפופאפ');
     assert.match(modal.slice(0, 3000), /state\.startingPoint/, 'נקודת היציאה לא עוברת לפופאפ');
   });
 });
@@ -74,15 +76,15 @@ describe('הערכים זהים למסמך', () => {
     assert.deepEqual(STARTING_POINTS, ['סיפור אישי', 'סיפור לקוח', 'כללי']);
   });
 
-  test('סוג תוכן: בעל ערך / מכירתי / אישי / בידורי', async () => {
+  test('סוג תוכן: בעל ערך / מכירתי / אישי (31/10/2026: "יש לנו רק 3")', async () => {
     const { CONTENT_TYPES } = await import('../js/video-assistant-content.js');
-    assert.deepEqual(CONTENT_TYPES, ['בעל ערך', 'מכירתי', 'אישי', 'בידורי']);
+    assert.deepEqual(CONTENT_TYPES, ['בעל ערך', 'מכירתי', 'אישי']);
   });
 
   test('שתי הרשימות באמת מופיעות ככה במסמך', () => {
     const doc = readFileSync(join(ROOT, 'test', 'fixtures', 'script-doc.txt'), 'utf8');
     assert.ok(doc.includes('סיפור אישי / סיפור לקוח / כללי'), 'נקודת היציאה לא כך במסמך');
-    assert.ok(doc.includes('בעל ערך/מכירתי/אישי/בידורי'), 'סוג התוכן לא כך במסמך');
+    assert.ok(doc.includes('בעל ערך/מכירתי/אישי'), 'סוג התוכן לא כך במסמך');
   });
 });
 

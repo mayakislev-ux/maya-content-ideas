@@ -7766,3 +7766,34 @@ body[data-plan="refs"] .view-tabs-scroll { justify-content: center; }
 .cp-client__mail { font-size: 0.8rem; opacity: 0.7; direction: ltr; text-align: right; }
 .cp-mine.is-on, .cp-client.is-on { outline: 2px solid #16205a; }
 .cp-empty { text-align: center; opacity: 0.7; margin: 16px 0; }
+
+/* 31/10/2026: "עוד" ב"התסריט שלך נבנה כאן", הפתק של ג'מיני, ושאלת המשפך */
+#video-assistant-view .va-build__row p[hidden] { display: none; }
+#video-assistant-view .va-build__full { white-space: pre-wrap; }
+.va-build__more {
+  border: 0;
+  background: transparent;
+  padding: 6px 0;
+  min-height: 32px;
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #0b6fa8;
+  cursor: pointer;
+  text-decoration: underline;
+}
+.va-ai-note {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 0 0 12px;
+  padding: 11px 14px;
+  border-radius: 14px;
+  background: #eef0ff;
+  border: 1.5px solid #263ea8;
+  text-align: start;
+}
+.va-ai-note strong { font-size: 16px; font-weight: 800; color: #1b2c80; }
+.va-ai-note small { font-size: 13px; line-height: 1.5; color: #3d4670; }
+.va-funnel-ask { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+.va-funnel-ask[hidden] { display: none; }

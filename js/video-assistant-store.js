@@ -13,6 +13,25 @@ import { subjectUid, withAsUid } from './client-view.js';
 const guessClientDomainFn = httpsCallable(functions, 'guessClientDomain');
 const suggestSearchKeywordsFn = httpsCallable(functions, 'suggestSearchKeywords');
 const extractOpeningHookFn = httpsCallable(functions, 'extractOpeningHook');
+const classifyIdeaFn = httpsCallable(functions, 'classifyIdea');
+
+/* 31/10/2026 (מאיה: "שיידע לזהות לבד ויקליד"). אותו סיווג שמסך הרעיונות
+   כבר משתמש בו, והוא מחזיר רק את שלושת הסוגים. תקלה או המתנה ארוכה מחזירות
+   ריק, והפרומפט מבקש מ-ChatGPT לזהות בעצמו: לא עוצרים בגלל זה עזרה. */
+export async function classifyContentType(idea, timeoutMs = 8000) {
+  const title = String(idea || '').trim().slice(0, 2000);
+  if (!title) return '';
+  try {
+    const result = await Promise.race([
+      classifyIdeaFn({ title }),
+      new Promise((resolve) => { setTimeout(() => resolve(null), timeoutMs); }),
+    ]);
+    return (result && result.data && result.data.category) || '';
+  } catch (err) {
+    console.error('classifyContentType failed:', err);
+    return '';
+  }
+}
 
 /** רעיונות פעילים של הלקוחה הנוכחית - קריאה חד-פעמית, לא listener */
 export async function fetchIdeas() {

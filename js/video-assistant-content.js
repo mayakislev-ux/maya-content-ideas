@@ -320,7 +320,8 @@ export const SCRIPT_STRUCTURE = [
    הערכים והסדר הם מילה במילה מהמסמך, ולא ניסוח משלי: הם נכנסים כמות
    שהם לפרומפט חילוץ התוכן, שמצהיר בדיוק על הניסוחים האלה. */
 export const STARTING_POINTS = ['סיפור אישי', 'סיפור לקוח', 'כללי'];
-export const CONTENT_TYPES = ['בעל ערך', 'מכירתי', 'אישי', 'בידורי'];
+/* 31/10/2026 (מאיה: "סוג תוכן יש לנו רק 3"). בידורי ירד מהרעיונות כבר ב-09/10. */
+export const CONTENT_TYPES = ['בעל ערך', 'מכירתי', 'אישי'];
 
 /* 23/10/2026 (מאיה: "בפורמטים להוקים או יצירת תסריטים שהוא מכין ל-chat
    הוא שוכח למלא בצהוב את התחום שלי, למשל שיווק או עיצוב גבות, תלוי
@@ -348,7 +349,7 @@ export function buildExtractionPrompt({ idea, contentType, startingPoint, audien
 
 אני מצרפת:
 רעיון של התוכן
-סוג תוכן (מכירתי / בעל ערך / בידורי / אישי )
+סוג תוכן (מכירתי / בעל ערך / אישי)
 נקודת יציאה של התוכן (סיפור אישי / סיפור לקוח / כללי)
 מי הקהל יעד כאן
 
@@ -378,14 +379,14 @@ export function buildExtractionPrompt({ idea, contentType, startingPoint, audien
 מה הרעיון הספציפי של התוכן?
 [${fillBracket(idea, 'כאן מצרפים את הרעיון')}]
 —-
-מה סוג התוכן? (מכירתי / בעל ערך / בידורי / אישי)
-[${fillBracket(contentType, 'כאן כותבים את סוג התוכן')}]
+מה סוג התוכן? (מכירתי / בעל ערך / אישי)
+[${fillBracket(contentType, 'תזהה לבד לפי הרעיון')}]
 —-
 מה הנקודת יציאה של התוכן ?(סיפור אישי / סיפור לקוח / כללי?)
-[${fillBracket(startingPoint, 'כאן מצרפים את הנקודת יציאה')}]
+[${fillBracket(startingPoint, 'תזהה לבד לפי הרעיון')}]
 —-
 מי הקהל יעד בתוכן הזה?
-[${fillBracket(audience, 'כאן מצרפים את הקהל יעד')}]`;
+[${fillBracket(audience, 'תזהה לבד לפי הרעיון')}]`;
 }
 
 // פרומפט 2: מציאת הוק, כולל בנק ההוקים האמיתי להעתקה
@@ -693,7 +694,7 @@ export function buildHookReinforcementPrompt({ idea, hook, script, audience, dom
 // הוחלף במלואו במסמך המקורי שלה - הגרסה הקודמת תמצתה כל שלב לשורה אחת
 // והחסירה שלם את פירוט 4 סוגי ההנעה לפעולה (מטרה/מתי להשתמש/אחוז
 // מהתוכן לכל סוג) - בלעדיו למודל אין בכלל לפי מה לבחור הנעה לפעולה.
-export function buildScriptDistillationPrompt({ idea, hook, hookReinforcement, rawScript, ctaType, audience, domain }) {
+export function buildScriptDistillationPrompt({ idea, hook, hookReinforcement, rawScript, ctaType, funnel, audience, domain }) {
   return `${contextHeader({ domain, audience })}אחרי שיש לכם מגילת אסתר + הוק + חיזוק - הפרומט הזה עוזר לכם לזקק את זה לתסריט שעובד לפי מבנה נכון של סרטון(חוסך לכם זמן לעשות את זה לבד)
 אתה מומחה בזיקוק ועריכת תסריטי רילס חדים, דרמטיים ומדויקים.
 המטרה שלך:
@@ -850,7 +851,7 @@ export function buildScriptDistillationPrompt({ idea, hook, hookReinforcement, r
 מתי להשתמש: בסרטונים מכירתיים שמציגים את המוצר/שירות שלנו , סיפורי הצלחה של לקוחות
 בכמה מהתוכן?: 5%-10% מהתוכן
 
-הסוג הרצוי עבור התסריט הזה: ${fillBracket(ctaType, 'משפך / מעורבות / עוקבים / מכירה - תבחר את המתאים ביותר לתסריט')}
+הסוג הרצוי עבור התסריט הזה: ${fillBracket(ctaType, 'משפך / מעורבות / עוקבים / מכירה - תבחר את המתאים ביותר לתסריט')}${String(funnel || '').trim() ? `\nהמשפך שאליו ההנעה לפעולה צריכה להוביל: ${String(funnel).trim()}` : ''}
 
 שלב 7 – חוק הדחיסה
 בתסריט לוגי:

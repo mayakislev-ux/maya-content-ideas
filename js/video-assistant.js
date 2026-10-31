@@ -29,7 +29,7 @@ import { languageName } from './inspiration-readability.js';
 import {
   fetchIdeas, fetchInspirationBank, getSavedDomain, guessDomain, saveDomain, saveSession, loadSession,
   saveScript, listScripts, deleteScript,
-  extractOpeningHook,
+  extractOpeningHook, classifyContentType,
 } from './video-assistant-store.js';
 import { getProfile, saveProfile } from './user-profile.js';
 import { showToast } from './toast.js';
@@ -174,13 +174,32 @@ function buildHtml() {
     const text = p.status === 'wait' ? 'בהמשך' : (p.value || '...');
     return `<li class="va-build__row is-${p.status}${p.big && p.value ? ' is-big' : ''}">
       <span class="va-build__mark">${p.status === 'done' ? '✓' : ''}</span>
-      <div><small>${escapeHtml(p.label)}${p.status === 'now' ? ' · עכשיו' : ''}</small><p>${escapeHtml(text)}</p></div>
+      <div><small>${escapeHtml(p.label)}${p.status === 'now' ? ' · עכשיו' : ''}</small><p>${escapeHtml(text)}</p>${p.full && p.status !== 'wait' ? `<p class="va-build__full" hidden>${escapeHtml(p.full)}</p><button type="button" class="va-build__more" aria-expanded="false">עוד</button>` : ''}</div>
     </li>`;
   }).join('');
   return `<section class="va-build" aria-label="התסריט שלך">
     <div class="va-build__title">התסריט שלך נבנה כאן</div>
     <ul class="va-build__list">${rows}</ul>
   </section>`;
+}
+
+/* "עוד" מחליף את הקיצור בטקסט המלא באותו מקום, ולחיצה נוספת מחזירה. */
+function wireBuildMore(root) {
+  root.querySelectorAll('.va-build__more').forEach((btn) => btn.addEventListener('click', () => {
+    const full = btn.previousElementSibling;
+    const short = full.previousElementSibling;
+    const open = full.hidden;
+    full.hidden = !open;
+    short.hidden = open;
+    btn.textContent = open ? 'פחות' : 'עוד';
+    btn.setAttribute('aria-expanded', String(open));
+  }));
+}
+
+/* 31/10/2026 (מאיה: "את הפרומפט למציאת הוק תדגישי שזה לג'מיני, ותכתבי בקטן
+   שהוא טוב בהוקים וקריאייטיב, אבל את הכתיבה עצמה ה-ChatGPT לוקח"). */
+function geminiHookNote() {
+  return `<div class="va-ai-note"><strong>✨ הפרומפט הזה הולך לג'מיני</strong><small>ג'מיני חזק במיוחד בהוקים ובקריאייטיב. את כתיבת התסריט עצמה ChatGPT לוקח, בהמשך.</small></div>`;
 }
 
 function backButtonHtml() {
@@ -254,6 +273,7 @@ function cosmicCard(innerHtml, { showProgress = true } = {}) {
   /* אחרי mountDrafts, שמוסיף את שורת השמירה לסוף הכרטיס: התסריט הוא
      המשך הכרטיס כלפי מטה, ולכן הוא תמיד האחרון. */
   card.insertAdjacentHTML('beforeend', buildHtml());
+  wireBuildMore(card);
   return card;
 }
 
@@ -1235,14 +1255,15 @@ async function renderPrompt1() {
     ? [audience, domain, hookForPrompt, reverseDupScript]
     : [audience, domain, hookForPrompt];
   cosmicCard(`
-    <h2>פרומפט מוכן ל-ChatGPT</h2>
+    <h2>מציאת הוק</h2>
+    ${geminiHookNote()}
     <div class="cosmic-context-box"><span>ההוק שזיהינו מתוך התמלול שלך:</span>${escapeHtml(hookForPrompt)}</div>
     ${isReverseDup
-      ? `<p>ההוק המקורי + התסריט שלך נשלחים ל-ChatGPT - הוא שולף מתוך התסריט שלך הוקים חזקים ומלביש אותם על מנגנון ההוק המקורי, ומביא לך 30 רעיונות.</p>`
-      : `<p>רק ההוק הזה נשלח ל-ChatGPT - לא כל התמלול. הוא ישכפל אותו ויביא לך 30 הוקים חדשים באותו מנגנון.</p>`}
-    <p>להעתיק, להדביק ב-ChatGPT, ולחזור עם ההוק שהכי קרץ לך מתוך ה-30</p>
+      ? `<p>ההוק המקורי + התסריט שלך נשלחים לג'מיני - הוא שולף מתוך התסריט שלך הוקים חזקים ומלביש אותם על מנגנון ההוק המקורי, ומביא לך 30 רעיונות.</p>`
+      : `<p>רק ההוק הזה נשלח לג'מיני - לא כל התמלול. הוא ישכפל אותו ויביא לך 30 הוקים חדשים באותו מנגנון.</p>`}
+    <p>להעתיק, להדביק בג'מיני, ולחזור עם ההוק שהכי קרץ לך מתוך ה-30</p>
     ${promptPeek(highlightPlaceholders(prompt, highlightValues))}
-    ${copyBtn(prompt, 'להעתיק פרומפט')}
+    ${copyBtn(prompt, "להעתיק פרומפט לג'מיני")}
     <textarea class="cosmic-textarea" id="va-hook-input" placeholder="להדביק כאן את ההוק שבחרת..." style="margin-top:14px"></textarea>
     <div class="cosmic-btn-row" style="margin-top:14px">
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-hook-chosen-btn">ממשיכים ←</button>
@@ -1419,9 +1440,9 @@ async function renderPrompt2() {
   const prompt = buildScriptPrompt({ hook, herWords: state.herWords, originalScript: state.transcript || '', domain: await myDomain(), audience: await myAudience() });
   cosmicCard(`
     <h2>הפרומפט השני</h2>
-    <p>להעתיק, להדביק ב-ChatGPT, ותלקבל תסריט מלא</p>
+    <p>להעתיק, להדביק ב-ChatGPT, ולקבל תסריט מלא</p>
     ${promptPeek(highlightPlaceholders(prompt, [hook, state.herWords, state.transcript]))}
-    ${copyBtn(prompt, 'להעתיק פרומפט')}
+    ${copyBtn(prompt, 'להעתיק פרומפט ל-ChatGPT')}
     <textarea class="cosmic-textarea" id="va-prompt2-script-input" placeholder="להדביק כאן את התסריט שקיבלת..." style="margin-top:14px"></textarea>
     <div class="cosmic-btn-row" style="margin-top:14px">
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-script-ready-btn">ממשיכים ←</button>
@@ -1705,41 +1726,47 @@ function renderScratchIntro() {
 // עכשיו שלושה שלבים מפורשים: 1) ממלאים כאן, 2) מעתיקים ושולחים ל-
 // ChatGPT, 3) חוזרים ומדביקים את התשובה בתיבת הטקסט הגדולה במסך
 // הקודם (לא כאן - המודאל הזה רק בונה את הפרומפט).
-function openExtractionHelperModal() {
+/* 31/10/2026 (מאיה: "בחלק של ה-SOS שהוא שואל מה הסוג תוכן, בתכלס אני רוצה
+   שהוא כבר יבנה את הפרומפט ופשוט יהיה כפתור העתק ל-ChatGPT... שיידע לזהות
+   לבד ויקליד"). אין יותר טופס: הרעיון, הקהל ונקודת היציאה כבר ידועים, וסוג
+   התוכן מזוהה לבד. מה שבכל זאת לא ידוע, הפרומפט מבקש מ-ChatGPT לזהות. */
+let extractionTypeCache = { idea: '', type: '' };
+
+async function extractionContentType(idea) {
+  if (CONTENT_TYPES.includes(state.contentType)) return state.contentType;
+  if (extractionTypeCache.idea === idea) return extractionTypeCache.type;
+  const found = await classifyContentType(idea);
+  /* רק שלושת הסוגים נכנסים לפרומפט, גם אם הסיווג החזיר משהו ישן */
+  const type = CONTENT_TYPES.includes(found) ? found : '';
+  if (type) extractionTypeCache = { idea, type };
+  return type;
+}
+
+async function openExtractionHelperModal() {
   // 19/10/2026: גם קרוא ממסך "מה יש לך להגיד?" (מסלולי רפרנס/שכפול
   // הפוך), שבהם ideaDescription ריק אבל hook כן מוגדר - fallback אליו
-  // כדי שגם שם יהיה הקשר אמיתי לבנאי הפרומפט, לא ריק.
+  // כדי שגם שם יהיה הקשר אמיתי, לא ריק.
   const idea = state.ideaDescription || state.hook || '';
   const overlay = openModal(`
     <h2 style="margin-top:0">קשה למצוא מה להגיד?</h2>
-    <p style="font-size:13px">זה בנאי פרומפט בלבד: ממלאים כאן, מקבלים פרומפט מוכן, מעתיקים אותו ושולחים ל-ChatGPT - הוא ישאל שאלות שיוציאו ממך בדיוק מה להגיד. את התשובות שמתקבלות מ-ChatGPT מדביקים חזרה בתיבת הטקסט הגדולה (לא כאן במודאל).</p>
-    <input type="text" class="cosmic-textarea" id="va-ext-contenttype" style="min-height:auto" placeholder="סוג תוכן (מכירתי / בעל ערך / בידורי / אישי)" value="${escapeHtml(state.contentType || '')}">
-    <input type="text" class="cosmic-textarea" id="va-ext-startpoint" style="min-height:auto;margin-top:8px" placeholder="נקודת יציאה (סיפור אישי / סיפור לקוח / כללי)" value="${escapeHtml(state.startingPoint || '')}">
-    <input type="text" class="cosmic-textarea" id="va-ext-audience" style="min-height:auto;margin-top:8px" placeholder="קהל היעד">
-    <div class="cosmic-btn-row" style="margin-top:14px">
-      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-ext-generate-btn">לבנות את הפרומפט</button>
-    </div>
-    <div id="va-ext-result"></div>
+    <div id="va-ext-result"><p class="cosmic-hint">מכינים את הפרומפט...</p></div>
   `);
-  let domain = domainInfo ? domainInfo.domain : '';
-  getProfile().then((p) => {
-    if (!domain && p && p.business) domain = p.business;
-    const el = overlay.querySelector('#va-ext-audience');
-    if (el && !el.value && p && p.primaryAudience) el.value = p.primaryAudience;
-  });
-  overlay.querySelector('#va-ext-generate-btn').addEventListener('click', () => {
-    const contentType = overlay.querySelector('#va-ext-contenttype').value.trim();
-    const startingPoint = overlay.querySelector('#va-ext-startpoint').value.trim();
-    const audience = overlay.querySelector('#va-ext-audience').value.trim();
-    const prompt = buildExtractionPrompt({ idea, contentType, startingPoint, audience, domain: domain });
-    const resultEl = overlay.querySelector('#va-ext-result');
-    resultEl.innerHTML = `
-      ${promptPeek(highlightPlaceholders(prompt, [idea, contentType, startingPoint, audience]))}
-      ${copyBtn(prompt, 'להעתיק פרומפט')}
-      <p style="font-size:12px;opacity:.75;margin-top:10px;margin-bottom:0">עכשיו: להדביק את זה בשיחה חדשה ב-ChatGPT, לענות על השאלות שלו, ואז לחזור לכאן ולהדביק את מה שעלה בתיבת הטקסט הגדולה.</p>
-    `;
-    wireCopyButtons(resultEl);
-  });
+  const [profile, contentType] = await Promise.all([getProfile(), extractionContentType(idea)]);
+  const resultEl = overlay.querySelector('#va-ext-result');
+  /* היא יכלה לסגור את הפופאפ בזמן הזיהוי */
+  if (!resultEl || !resultEl.isConnected) return;
+  const audience = (profile && profile.primaryAudience) || '';
+  const domain = (domainInfo && domainInfo.domain) || (profile && profile.business) || '';
+  const startingPoint = state.startingPoint || '';
+  const prompt = buildExtractionPrompt({ idea, contentType, startingPoint, audience, domain: domain });
+  resultEl.innerHTML = `
+    <p>הפרומפט מוכן. ChatGPT ישאל שאלות שיוציאו ממך בדיוק מה להגיד, ובסוף יאסוף את התשובות למגילה אחת.</p>
+    ${contentType ? `<p class="cosmic-hint">סוג התוכן שזוהה: <strong>${escapeHtml(contentType)}</strong></p>` : ''}
+    ${copyBtn(prompt, 'להעתיק ל-ChatGPT')}
+    ${promptPeek(highlightPlaceholders(prompt, [idea, contentType, startingPoint, audience, domain]))}
+    <p class="cosmic-hint" style="margin-top:10px;margin-bottom:0">אחרי שמדביקים ועונים על השאלות, חוזרים לכאן ומדביקים את המגילה בתיבת הטקסט הגדולה.</p>
+  `;
+  wireCopyButtons(resultEl);
 }
 
 function renderScratchDump() {
@@ -1789,9 +1816,10 @@ async function renderScratchHook() {
     : [state.ideaDescription, state.rawDump, audience];
   cosmicCard(`
     <h2>מציאת הוק</h2>
+    ${geminiHookNote()}
     <p>${withRef
-      ? 'ההוק של הסרטון שעבד + המגילה שלך: ChatGPT יביא 30 הוקים באותו מנגנון. להעתיק, להדביק, ולחזור עם ההוק שבחרת.'
-      : 'הפרומפט כולל בנק הוקים אמיתי מוטמע - ChatGPT יתאים לך ממנו הוק מדויק. להעתיק, להדביק, ולחזור עם ההוק שבחרת.'}</p>
+      ? "ההוק של הסרטון שעבד + המגילה שלך: ג'מיני יביא 30 הוקים באותו מנגנון. להעתיק, להדביק, ולחזור עם ההוק שבחרת."
+      : "הפרומפט כולל בנק הוקים אמיתי מוטמע - ג'מיני יתאים לך ממנו הוק מדויק. להעתיק, להדביק, ולחזור עם ההוק שבחרת."}</p>
     ${withRef ? `<div class="cosmic-context-box"><span>ההוק שזיהינו מהסרטון:</span>${escapeHtml(state.openingHook)}</div>` : ''}
     <details class="va-more"${withRef ? ' open' : ''}>
       <summary>יש סרטון שעבד ושתרצו להיצמד אליו? (רשות)</summary>
@@ -1802,7 +1830,7 @@ async function renderScratchHook() {
       </div>
     </details>
     ${promptPeek(highlightPlaceholders(prompt, marks))}
-    ${copyBtn(prompt, 'להעתיק פרומפט')}
+    ${copyBtn(prompt, "להעתיק פרומפט לג'מיני")}
     <textarea class="cosmic-textarea" id="va-scratch-hook-input" placeholder="להדביק כאן את ההוק שבחרת..." style="margin-top:14px"></textarea>
     <div class="cosmic-btn-row" style="margin-top:14px">
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-scratch-hook-done-btn">ממשיכים ←</button>
@@ -1893,9 +1921,9 @@ const CTA_TYPES = [
 async function renderScratchDistill() {
   const audience = await myAudience();
   const domain = await myDomain();
-  const buildPrompt = (ctaType) => buildScriptDistillationPrompt({
+  const buildPrompt = (ctaType, funnel) => buildScriptDistillationPrompt({
     idea: state.ideaDescription || '', hook: state.hook || '', hookReinforcement: state.hookReinforcement || '',
-    rawScript: state.rawDump || '', ctaType,
+    rawScript: state.rawDump || '', ctaType, funnel,
     audience, domain: domain,
   });
   /* 28/10/2026 (מאיה): "מאוד קל לפספס איזו הנעה לפעולה רוצים, שימי לב".
@@ -1910,6 +1938,10 @@ async function renderScratchDistill() {
     <div class="va-cta-pick">
       <p class="va-cta-pick-title">⭐ קודם לבחור: מה הצופה צריך לעשות בסוף הסרטון?</p>
       <div class="cosmic-chip-row" id="va-scratch-cta-row">${ctaButtons}</div>
+      <div class="va-funnel-ask" id="va-scratch-funnel-wrap" hidden>
+        <label class="cosmic-field-label" for="va-scratch-funnel-input">מה המשפך? לאן הצופה עובר בסוף הסרטון?</label>
+        <input type="text" class="cosmic-textarea" id="va-scratch-funnel-input" style="min-height:auto" placeholder="למשל: מדריך חינמי, וובינר, קבוצת וואטסאפ">
+      </div>
     </div>
     <div id="va-scratch-distill-prompt-wrap" style="margin-top:14px"></div>
     <textarea class="cosmic-textarea" id="va-scratch-script-input" placeholder="להדביק כאן את התסריט הסופי שקיבלת..." style="margin-top:14px"></textarea>
@@ -1918,25 +1950,37 @@ async function renderScratchDistill() {
     </div>
   `);
   const wrap = document.getElementById('va-scratch-distill-prompt-wrap');
+  /* 31/10/2026 (מאיה: "אם אני בוחרת משפך, שישאל אותי רגע מה המשפך שאצטרך
+     להזין, ואז הוא יוסיף את זה לפרומפט"). בלי זה ChatGPT המציא לאן לשלוח. */
+  const funnelWrap = document.getElementById('va-scratch-funnel-wrap');
+  const funnelInput = document.getElementById('va-scratch-funnel-input');
   let cta = '';
   function refreshPrompt() {
     if (!cta) {
       wrap.innerHTML = '<p class="cosmic-hint">הפרומפט יופיע כאן אחרי שבוחרים הנעה לפעולה.</p>';
       return;
     }
-    const prompt = buildPrompt(cta);
+    const funnel = cta === 'משפך' ? funnelInput.value.trim() : '';
+    if (cta === 'משפך' && !funnel) {
+      wrap.innerHTML = '<p class="cosmic-hint">הפרומפט יופיע כאן אחרי שכותבים מה המשפך.</p>';
+      return;
+    }
+    const prompt = buildPrompt(cta, funnel);
     /* הצהוב מסמן מה מולא לבד, ולכן התחום והקהל שייכים לשם גם הם. */
-    const values = [state.ideaDescription, state.hook, state.hookReinforcement, state.rawDump, cta,
+    const values = [state.ideaDescription, state.hook, state.hookReinforcement, state.rawDump, cta, funnel,
       audience, domain];
-    wrap.innerHTML = `${promptPeek(highlightPlaceholders(prompt, values))}${copyBtn(prompt, 'להעתיק פרומפט')}`;
+    wrap.innerHTML = `${promptPeek(highlightPlaceholders(prompt, values))}${copyBtn(prompt, 'להעתיק פרומפט ל-ChatGPT')}`;
     wireCopyButtons(wrap);
   }
   document.querySelectorAll('#va-scratch-cta-row [data-cta]').forEach((b) => b.addEventListener('click', () => {
     document.querySelectorAll('#va-scratch-cta-row [data-cta]').forEach((o) => o.classList.remove('cosmic-chip-btn--on'));
     b.classList.add('cosmic-chip-btn--on');
     cta = b.getAttribute('data-cta');
+    funnelWrap.hidden = cta !== 'משפך';
     refreshPrompt();
+    if (cta === 'משפך' && !funnelInput.value.trim()) funnelInput.focus();
   }));
+  funnelInput.addEventListener('input', refreshPrompt);
   refreshPrompt();
   document.getElementById('va-scratch-script-done-btn').addEventListener('click', () => {
     const text = document.getElementById('va-scratch-script-input').value.trim();
