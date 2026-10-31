@@ -1881,9 +1881,10 @@ async function renderScratchHookReinforce() {
   const prompt = buildHookReinforcementPrompt({ idea: state.ideaDescription || '', hook: state.hook || '', script: state.rawDump || '', audience: await myAudience(), domain: await myDomain() });
   cosmicCard(`
     <h2>חיזוק ההוק</h2>
-    <p>המשפט השני, שנותן סיבה ברורה להישאר. להעתיק, להדביק, ולחזור עם החיזוק שבחרת.</p>
+    ${geminiHookNote()}
+    <p>המשפט השני, שנותן סיבה ברורה להישאר. להעתיק, להדביק בג'מיני, ולחזור עם החיזוק שבחרת.</p>
     ${promptPeek(highlightPlaceholders(prompt, [state.ideaDescription, state.hook, state.rawDump]))}
-    ${copyBtn(prompt, 'להעתיק פרומפט')}
+    ${copyBtn(prompt, "להעתיק פרומפט לג'מיני")}
     <textarea class="cosmic-textarea" id="va-scratch-reinforce-input" placeholder="להדביק כאן את חיזוק ההוק שבחרת..." style="margin-top:14px"></textarea>
     <div class="cosmic-btn-row" style="margin-top:14px">
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-scratch-reinforce-done-btn">ממשיכים ←</button>

@@ -64,6 +64,12 @@ test("מציאת הוק הולכת לג'מיני, בשני המסלולים, ו�
   assert.match(between('async function renderScratchDistill', '// ===== מסך הסיכום הסופי'), /להעתיק פרומפט ל-ChatGPT/);
 });
 
+test("חיזוק ההוק גם הוא בג'מיני (31/10/2026: \"חיזוק הוק תשאירי ג'מיני\")", () => {
+  const screen = between('async function renderScratchHookReinforce', 'const CTA_TYPES');
+  assert.match(screen, /geminiHookNote\(\)/);
+  assert.match(screen, /להעתיק פרומפט לג'מיני/);
+});
+
 test('משפך: נכנס לפרומפט רק כשנכתב', () => {
   const base = { idea: 'א', hook: 'ב', hookReinforcement: 'ג', rawScript: 'ד', ctaType: 'משפך' };
   assert.match(buildScriptDistillationPrompt({ ...base, funnel: 'מדריך חינמי' }), /הסוג הרצוי עבור התסריט הזה: משפך\nהמשפך שאליו ההנעה לפעולה צריכה להוביל: מדריך חינמי/);
