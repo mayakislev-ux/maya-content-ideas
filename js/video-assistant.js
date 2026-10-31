@@ -14,7 +14,7 @@
 // לנשים וגברים, ומסך סיכום ברור בסוף שמראה בדיוק מה נעשה ומה נשאר.
 
 import { mountDrafts, clearScreenDrafts, draftKey, withDraft } from './video-assistant-drafts.js';
-import { INITIAL_STATE, nextStep } from './video-assistant-flow.js';
+import { INITIAL_STATE, isCarousel, nextStep } from './video-assistant-flow.js';
 import { pickIdea, pickReference } from './video-assistant-picker.js';
 import { buildParts, hasContent, scriptDoc, scriptFields, scriptTitle, syncIdea } from './video-assistant-build.js';
 import { confirmDialog } from './confirm-dialog.js';
@@ -1967,7 +1967,7 @@ async function renderScratchDistill() {
   const buildPrompt = (ctaType, funnel) => buildScriptDistillationPrompt({
     idea: state.ideaDescription || '', hook: state.hook || '', hookReinforcement: state.hookReinforcement || '',
     rawScript: state.rawDump || '', ctaType, funnel,
-    audience, domain: domain,
+    audience, domain: domain, carousel: isCarousel(state),
   });
   /* 28/10/2026 (מאיה): "מאוד קל לפספס איזו הנעה לפעולה רוצים, שימי לב".
      זו הייתה רשימה נפתחת שכבר בחרה "משפך" לבד, כך שאפשר היה להעתיק את
@@ -1979,6 +1979,7 @@ async function renderScratchDistill() {
   `).join('');
   cosmicCard(`
     <h2>זיקוק התסריט הסופי</h2>
+    ${isCarousel(state) ? '<p class="cosmic-hint">בחרת פוסט קרוסלה, אז הפרומפט כותב טקסט קצר לכל שקופית, עד 10 שקופיות.</p>' : ''}
     <div class="va-cta-pick">
       <p class="va-cta-pick-title">⭐ קודם לבחור: מה הצופה צריך לעשות בסוף הסרטון?</p>
       <div class="cosmic-chip-row" id="va-scratch-cta-row">${ctaButtons}</div>
@@ -2035,6 +2036,7 @@ async function renderScratchDistill() {
   document.getElementById('va-scratch-script-done-btn').addEventListener('click', () => {
     /* המסך הבא מחכה לפרופיל, ובינתיים הכפתור הזה עדיין על המסך. */
     if (state.screen !== 'scratch-distill') return;
+    if (isCarousel(state)) celebrate();
     const text = document.getElementById('va-scratch-script-input').value.trim();
     if (!text) {
       showToast('צריך להדביק את התסריט קודם');
@@ -2117,9 +2119,9 @@ function buildSummarySteps() {
     if (state.packaging) steps.push(`האריזה הקריאייטיבית: "${state.packaging}".`);
     steps.push(`בחרת הוק: "${state.hook || ''}".`);
     steps.push(`חיזקת את ההוק: "${state.hookReinforcement || ''}".`);
-    steps.push('קיבלת תסריט סופי מזוקק.');
+    steps.push(isCarousel(state) ? 'קיבלת את הטקסט לכל שקופית בקרוסלה.' : 'קיבלת תסריט סופי מזוקק.');
     if (state.sceneRewritten) steps.push('שכתבת אותו לשפה של רשתות חברתיות, כדי שלא יישמע כמו הרצאה.');
-    steps.push('עכשיו: ללכת לצלם לפי התסריט למטה, ואז לערוך.');
+    steps.push(isCarousel(state) ? 'עכשיו: לעצב את השקופיות לפי הטקסט למטה.' : 'עכשיו: ללכת לצלם לפי התסריט למטה, ואז לערוך.');
   } else if (state.branch === 'idea') {
     steps.push(`הרעיון שלך: "${state.ideaBeforePackaging || state.ideaDescription || state.hook || ''}", ווידאת שהוא רלוונטי.`);
     if (state.packaging) steps.push(`האריזה הקריאייטיבית: "${state.packaging}".`);

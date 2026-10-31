@@ -1,7 +1,7 @@
 // 31/10/2026 (מאיה): פרומפט "השלכה לתוך סצנה" אחרי זיקוק התסריט, במידת הצורך.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildSceneRewritePrompt } from '../js/video-assistant-content.js';
+import { buildSceneRewritePrompt, buildScriptDistillationPrompt, FORMATS } from '../js/video-assistant-content.js';
 import { INITIAL_STATE, nextStep } from '../js/video-assistant-flow.js';
 import { buildParts } from '../js/video-assistant-build.js';
 
@@ -80,4 +80,33 @@ test('התסריט נשאר גם בחזרה של כמה שלבים, עד תחי�
 test('בתסריט שנבנה, התסריט הוא מה שעובדים עליו עכשיו', () => {
   const parts = buildParts({ ...distilled, screen: 'scratch-scene', draftScript: 'מזוקק' });
   assert.equal(parts.find((p) => p.key === 'script').status, 'now');
+});
+
+test('קרוסלה: שם הפורמט זהה לזה שברשימה, אחרת התנאי לא יתקיים לעולם', () => {
+  assert.ok(FORMATS.some((f) => f.name === 'פוסט קרוסלה'));
+});
+
+test('קרוסלה: ההוראה נוספת לפרומפט רק כשבוחרים בה, ובסופו', () => {
+  const base = { idea: 'א', hook: 'ב', hookReinforcement: 'ג', rawScript: 'ד', ctaType: 'מעורבות' };
+  const plain = buildScriptDistillationPrompt(base);
+  const carousel = buildScriptDistillationPrompt({ ...base, carousel: true });
+  assert.ok(!plain.includes('שקופית'));
+  assert.ok(carousel.startsWith(plain), 'שאר הפרומפט השתנה');
+  assert.match(carousel, /עד 10 שקופיות מקסימום, אבל לא בכוח 10/);
+  assert.match(carousel, /השקופית הראשונה = ההוק/);
+  assert.match(carousel, /השקופית האחרונה = סיכום והנעה לפעולה/);
+});
+
+test('קרוסלה: אחרי הזיקוק ישר לסיכום, בלי שכתוב למונולוג, והתסריט לא נמחק בחזרה', () => {
+  const s = nextStep({ ...distilled, selectedFormat: 'פוסט קרוסלה' }, { type: 'SCRATCH_SCRIPT_READY', text: 'שקופיות' });
+  assert.equal(s.screen, 'summary');
+  assert.equal(s.draftScript, 'שקופיות');
+  const back = nextStep(s, { type: 'BACK' });
+  assert.equal(back.screen, 'scratch-distill');
+  assert.equal(back.draftScript, 'שקופיות');
+});
+
+test('פורמט אחר ממשיך למסך השכתוב', () => {
+  const s = nextStep({ ...distilled, selectedFormat: 'טוקינג הד' }, { type: 'SCRATCH_SCRIPT_READY', text: 'תסריט' });
+  assert.equal(s.screen, 'scratch-scene');
 });

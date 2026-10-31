@@ -48,6 +48,11 @@ export const INITIAL_STATE = {
   sceneRewritten: false, sceneRewrite: null,
 };
 
+/* 31/10/2026: קרוסלה נכתבת לשקופיות ולא מדוברת, ולכן שלבי הסרטון לא חלים עליה. */
+export function isCarousel(state) {
+  return state.selectedFormat === 'פוסט קרוסלה';
+}
+
 function withoutHistory(state) {
   const { history, ...rest } = state;
   return rest;
@@ -294,7 +299,8 @@ function step(state, action) {
       return { ...state, screen: 'scratch-distill', hookReinforcement: action.text };
     // שלב 4: פרומפט זיקוק תסריט סופי
     case 'SCRATCH_SCRIPT_READY':
-      return { ...state, screen: 'scratch-scene', draftScript: action.text };
+      /* שכתוב ל"מונולוג של 45 שניות" היה הורס קרוסלה, ולכן הוא לא מוצע לה. */
+      return { ...state, screen: isCarousel(state) ? 'summary' : 'scratch-scene', draftScript: action.text };
     // שלב 5, במידת הצורך: שכתוב תסריט שיצא מסביר. בלי טקסט התסריט נשאר כמו שהוא.
     case 'SCRATCH_SCENE_DONE':
       return action.text
