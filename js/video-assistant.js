@@ -13,7 +13,7 @@
 // בפרומפטים, תיקון הפונט (900 היה כבד מדי לטקסט רץ), ניסוח בגוף פונה
 // לנשים וגברים, ומסך סיכום ברור בסוף שמראה בדיוק מה נעשה ומה נשאר.
 
-import { mountDrafts, clearScreenDrafts } from './video-assistant-drafts.js';
+import { mountDrafts, clearScreenDrafts, draftKey, withDraft } from './video-assistant-drafts.js';
 import { INITIAL_STATE, nextStep } from './video-assistant-flow.js';
 import { pickIdea, pickReference } from './video-assistant-picker.js';
 import { buildParts, hasContent, scriptDoc, scriptFields, scriptTitle, syncIdea } from './video-assistant-build.js';
@@ -22,6 +22,7 @@ import { buildDuplicationPrompt, buildReverseDuplicationPrompt, buildScriptPromp
 import {
   FORMATS, FORMAT_EXAMPLES, SCRIPT_STRUCTURE, STARTING_POINTS, CONTENT_TYPES,
   buildExtractionPrompt, buildHookFindingPrompt, buildHookReinforcementPrompt, buildScriptDistillationPrompt,
+  buildSceneRewritePrompt,
 } from './video-assistant-content.js';
 import { playReroll, playSuccess, setMuted, getMuted } from './video-assistant-sound.js';
 import { embedUrlFor, embedShape } from './video-preview.js';
@@ -62,7 +63,7 @@ const PHASE_BY_SCREEN = {
   'relevance-check': 1,
   'content-basics': 2, 'footage-type-choice': 2, 'format-choice': 2, 'needs-script-check': 2, 'has-idea-choice': 2,
   transcribe: 3, prompt1: 3, 'her-words': 3, prompt2: 3, 'read-aloud': 3,
-  'idea-sharpen': 1, 'creative-packaging': 1, 'scratch-intro': 3, 'scratch-dump': 3, 'scratch-hook': 3, 'scratch-hook-reinforce': 3, 'scratch-distill': 3,
+  'idea-sharpen': 1, 'creative-packaging': 1, 'scratch-intro': 3, 'scratch-dump': 3, 'scratch-hook': 3, 'scratch-hook-reinforce': 3, 'scratch-distill': 3, 'scratch-scene': 3,
   'footage-speech-find': 3, 'footage-speech-shorten': 3, 'footage-speech-sharpen': 3, 'footage-speech-done': 3,
   'footage-visual-scan': 3, 'footage-visual-extract': 3, 'footage-visual-reframe': 3,
   'footage-visual-message': 3, 'footage-visual-story': 3,
@@ -200,6 +201,15 @@ function wireBuildMore(root) {
    שהוא טוב בהוקים וקריאייטיב, אבל את הכתיבה עצמה ה-ChatGPT לוקח"). */
 function geminiHookNote() {
   return `<div class="va-ai-note"><strong>✨ הפרומפט הזה הולך לג'מיני</strong><small>ג'מיני חזק במיוחד בהוקים ובקריאייטיב. את כתיבת התסריט עצמה ChatGPT לוקח, בהמשך.</small></div>`;
+}
+
+/* טקסט שכבר נכתב חוזר לתיבה דרך הטיוטה ולא כערך של התיבה, כי ערך של התיבה גובר
+   על הטיוטה (valueFor), ואז עריכה או ניקוי שלה לא היו שורדים רענון. */
+function seedDraft(id, value) {
+  const drafts = state.drafts || {};
+  if (value && !Object.prototype.hasOwnProperty.call(drafts, draftKey(state.screen, id))) {
+    state.drafts = withDraft(drafts, state.screen, id, value);
+  }
 }
 
 function backButtonHtml() {
@@ -1928,6 +1938,7 @@ async function renderScratchDistill() {
      זו הייתה רשימה נפתחת שכבר בחרה "משפך" לבד, כך שאפשר היה להעתיק את
      הפרומפט בלי לראות שיש כאן בחירה בכלל. עכשיו אלה כפתורים גדולים,
      אף אחד לא בחור מראש, והפרומפט מופיע רק אחרי שבוחרים. */
+  seedDraft('va-scratch-script-input', state.draftScript);
   const ctaButtons = CTA_TYPES.map((c) => `
     <button type="button" class="cosmic-btn cosmic-chip-btn" data-cta="${escapeHtml(c.value)}">${escapeHtml(c.label)}</button>
   `).join('');
@@ -1987,13 +1998,44 @@ async function renderScratchDistill() {
   });
   refreshPrompt();
   document.getElementById('va-scratch-script-done-btn').addEventListener('click', () => {
+    /* המסך הבא מחכה לפרופיל, ובינתיים הכפתור הזה עדיין על המסך. */
+    if (state.screen !== 'scratch-distill') return;
     const text = document.getElementById('va-scratch-script-input').value.trim();
     if (!text) {
       showToast('צריך להדביק את התסריט קודם');
       return;
     }
-    celebrate();
     dispatch({ type: 'SCRATCH_SCRIPT_READY', text });
+  });
+}
+
+/* 31/10/2026 (מאיה: "מה שהוא עושה לוקח את התסריט ומוודא שהוא לא מנוסח בצורה
+   של הרצאה אלא בצורה שמתאימה לרשתות החברתיות", "במידת הצורך"). כפתור אחד:
+   הודבקה גרסה חדשה, היא התסריט. לא הודבק כלום, ממשיכים עם מה שיש. */
+async function renderScratchScene() {
+  const script = state.draftScript || '';
+  /* תקלה בפרופיל לא עוצרת כאן: הפרומפט מסתדר גם בלי קהל ותחום, ובלי זה הכפתור
+     במסך הקודם לא היה עושה כלום. */
+  const [audience, domain] = await Promise.all([myAudience().catch(() => ''), myDomain().catch(() => '')]);
+  if (state.screen !== 'scratch-scene') return;
+  const prompt = buildSceneRewritePrompt({ script, audience, domain });
+  seedDraft('va-scratch-scene-input', state.sceneRewrite);
+  cosmicCard(`
+    <h2>התסריט נשמע כמו הרצאה?</h2>
+    <p>אם הוא יצא קצת מסביר ופחות סיפורי, הפרומפט הזה משכתב אותו לשפה של רשתות חברתיות. להעתיק, להדביק ב-ChatGPT, ולחזור עם הגרסה החדשה.</p>
+    ${promptPeek(highlightPlaceholders(prompt, [script, audience, domain]))}
+    ${copyBtn(prompt, 'להעתיק פרומפט ל-ChatGPT')}
+    <textarea class="cosmic-textarea" id="va-scratch-scene-input" placeholder="להדביק כאן את הגרסה החדשה..." style="margin-top:14px"></textarea>
+    <p class="cosmic-hint">התסריט כבר טוב? לא צריך להדביק כלום, פשוט ממשיכים.</p>
+    <div class="cosmic-btn-row" style="margin-top:14px">
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-scratch-scene-done-btn">ממשיכים ←</button>
+    </div>
+  `);
+  wireCopyButtons(screenEl());
+  document.getElementById('va-scratch-scene-done-btn').addEventListener('click', () => {
+    const text = document.getElementById('va-scratch-scene-input').value.trim();
+    celebrate();
+    dispatch({ type: 'SCRATCH_SCENE_DONE', text });
   });
 }
 
@@ -2041,6 +2083,7 @@ function buildSummarySteps() {
     steps.push(`בחרת הוק: "${state.hook || ''}".`);
     steps.push(`חיזקת את ההוק: "${state.hookReinforcement || ''}".`);
     steps.push('קיבלת תסריט סופי מזוקק.');
+    if (state.sceneRewritten) steps.push('שכתבת אותו לשפה של רשתות חברתיות, כדי שלא יישמע כמו הרצאה.');
     steps.push('עכשיו: ללכת לצלם לפי התסריט למטה, ואז לערוך.');
   } else if (state.branch === 'idea') {
     steps.push(`הרעיון שלך: "${state.ideaBeforePackaging || state.ideaDescription || state.hook || ''}", ווידאת שהוא רלוונטי.`);
@@ -2133,6 +2176,7 @@ function render() {
   if (state.screen === 'scratch-hook') return renderScratchHook();
   if (state.screen === 'scratch-hook-reinforce') return renderScratchHookReinforce();
   if (state.screen === 'scratch-distill') return renderScratchDistill();
+  if (state.screen === 'scratch-scene') return renderScratchScene();
   if (state.screen === 'summary') return renderSummary();
   cosmicCard(`<p>מסך לא מוכר: "${state.screen}"</p>`);
 }

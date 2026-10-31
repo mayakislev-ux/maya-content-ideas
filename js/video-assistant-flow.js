@@ -43,6 +43,9 @@ export const INITIAL_STATE = {
      תמלול, כדי שבסיכום האחרון יהיה לי הכל מסודר"). התמלול כבר נשמר,
      הלינק לא, ולכן בסוף התהליך לא היה זכר לסרטון שהיא משכפלת. */
   referenceLink: null,
+  /* 31/10/2026: האם התסריט עבר את פרומפט "השלכה לתוך סצנה" (שורה בסיכום),
+     והגרסה ששוכתבה כשחוזרים מהסיכום, כדי שלא תאבד בדרך. */
+  sceneRewritten: false, sceneRewrite: null,
 };
 
 function withoutHistory(state) {
@@ -58,7 +61,15 @@ export function nextStep(state, action) {
   if (action.type === 'BACK') {
     if (!state.history.length) return state;
     const prev = state.history[state.history.length - 1];
-    return { ...prev, history: state.history.slice(0, -1) };
+    const back = { ...prev, history: state.history.slice(0, -1) };
+    /* חזרה משחזרת סטייט מלפני שהתסריט נכתב, וגם הפריט ב"התסריטים שלי" נשמר
+       ממנו. בלי זה תסריט שהודבק נמחק מכל מקום. */
+    if (state.screen === 'summary' && prev.screen === 'scratch-scene') {
+      back.sceneRewrite = state.draftScript !== prev.draftScript ? state.draftScript : null;
+    } else if (state.draftScript && !prev.draftScript && String(prev.screen).startsWith('scratch-')) {
+      back.draftScript = state.draftScript;
+    }
+    return back;
   }
 
   const next = step(state, action);
@@ -283,7 +294,12 @@ function step(state, action) {
       return { ...state, screen: 'scratch-distill', hookReinforcement: action.text };
     // שלב 4: פרומפט זיקוק תסריט סופי
     case 'SCRATCH_SCRIPT_READY':
-      return { ...state, screen: 'summary', draftScript: action.text };
+      return { ...state, screen: 'scratch-scene', draftScript: action.text };
+    // שלב 5, במידת הצורך: שכתוב תסריט שיצא מסביר. בלי טקסט התסריט נשאר כמו שהוא.
+    case 'SCRATCH_SCENE_DONE':
+      return action.text
+        ? { ...state, screen: 'summary', draftScript: action.text, sceneRewritten: true, sceneRewrite: null }
+        : { ...state, screen: 'summary', sceneRewritten: false, sceneRewrite: null };
 
     // ===== מסך הסיכום הסופי - "אפילו ילד בן 10 יכול להבין" =====
     case 'RESTART':

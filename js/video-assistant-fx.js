@@ -77,7 +77,7 @@ export function dnaSteps(branch, phaseIndex, totalPhases) {
 const CELEBRATE_SCREENS = new Set(['summary']);
 const THINKING_SCREENS = new Set([
   'describe-idea', 'search-guidance', 'transcribe', 'prompt1', 'her-words', 'prompt2',
-  'scratch-dump', 'scratch-hook', 'scratch-hook-reinforce', 'scratch-distill',
+  'scratch-dump', 'scratch-hook', 'scratch-hook-reinforce', 'scratch-distill', 'scratch-scene',
 ]);
 const WINKING_SCREENS = new Set(['pulled-idea', 'pulled-reference']);
 

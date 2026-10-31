@@ -219,6 +219,7 @@ test('שני השלבים שורדים עד הסיכום', () => {
   s = nextStep(s, { type: 'SCRATCH_HOOK_CHOSEN', hook: 'הוק' });
   s = nextStep(s, { type: 'SCRATCH_REINFORCEMENT_CHOSEN', text: 'חיזוק' });
   s = nextStep(s, { type: 'SCRATCH_SCRIPT_READY', text: 'תסריט' });
+  s = nextStep(s, { type: 'SCRATCH_SCENE_DONE', text: '' });
   assert.equal(s.screen, 'summary');
   assert.equal(s.ideaDescription, 'גבות דקות מזקינות');
   assert.equal(s.startingPoint, 'סיפור אישי');
@@ -247,6 +248,9 @@ test('from-scratch: full 4-prompt chain (dump -> hook -> reinforcement -> distil
   assert.equal(s.screen, 'scratch-distill');
   assert.equal(s.hookReinforcement, 'חיזוק ההוק');
   s = nextStep(s, { type: 'SCRATCH_SCRIPT_READY', text: 'התסריט הסופי' });
+  assert.equal(s.screen, 'scratch-scene');
+  assert.equal(s.draftScript, 'התסריט הסופי');
+  s = nextStep(s, { type: 'SCRATCH_SCENE_DONE', text: '' });
   assert.equal(s.screen, 'summary');
   assert.equal(s.draftScript, 'התסריט הסופי');
 });

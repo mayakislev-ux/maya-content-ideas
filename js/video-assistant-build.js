@@ -70,7 +70,7 @@ const PARTS = {
     label: 'התסריט',
     get: (s) => clip(s.draftScript || s.finalScript, 220),
     full: (s) => s.draftScript || s.finalScript,
-    screens: ['scratch-distill', 'prompt2', 'read-aloud'],
+    screens: ['scratch-distill', 'scratch-scene', 'prompt2', 'read-aloud'],
   },
 };
 
