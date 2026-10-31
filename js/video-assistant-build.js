@@ -96,7 +96,7 @@ export function buildParts(state) {
     const value = part.get(state);
     const shown = value ? String(value).trim() : '';
     const whole = part.full ? String(part.full(state) || '').trim() : shown;
-    return { key, label: part.label, value: shown, full: whole.length > shown.length ? whole : '', big: !!part.big, here: part.screens.includes(state.screen) };
+    return { key, label: part.label, value: shown, full: whole !== shown ? whole : '', big: !!part.big, here: part.screens.includes(state.screen) };
   });
   if (!rows.some((r) => r.value)) return [];
   let cur = rows.findIndex((r) => r.here);

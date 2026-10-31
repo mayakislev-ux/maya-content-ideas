@@ -1439,7 +1439,7 @@ async function renderPrompt2() {
   // video-assistant-prompts.js, buildScriptPrompt.
   const prompt = buildScriptPrompt({ hook, herWords: state.herWords, originalScript: state.transcript || '', domain: await myDomain(), audience: await myAudience() });
   cosmicCard(`
-    <h2>הפרומפט השני</h2>
+    <h2>כתיבת התסריט</h2>
     <p>להעתיק, להדביק ב-ChatGPT, ולקבל תסריט מלא</p>
     ${promptPeek(highlightPlaceholders(prompt, [hook, state.herWords, state.transcript]))}
     ${copyBtn(prompt, 'להעתיק פרומפט ל-ChatGPT')}
@@ -1721,11 +1721,6 @@ function renderScratchIntro() {
   document.getElementById('va-scratch-start-btn').addEventListener('click', () => dispatch({ type: 'SCRATCH_START_DUMP' }));
 }
 
-// 18/10/2026 (מאיה: "צריך להסביר ששולחים את זה ל-ChatGPT ואז מדביקים
-// לכאן") - עד עכשיו לא היה כתוב בשום מקום מה עושים עם הפרומפט שנוצר.
-// עכשיו שלושה שלבים מפורשים: 1) ממלאים כאן, 2) מעתיקים ושולחים ל-
-// ChatGPT, 3) חוזרים ומדביקים את התשובה בתיבת הטקסט הגדולה במסך
-// הקודם (לא כאן - המודאל הזה רק בונה את הפרומפט).
 /* 31/10/2026 (מאיה: "בחלק של ה-SOS שהוא שואל מה הסוג תוכן, בתכלס אני רוצה
    שהוא כבר יבנה את הפרומפט ופשוט יהיה כפתור העתק ל-ChatGPT... שיידע לזהות
    לבד ויקליד"). אין יותר טופס: הרעיון, הקהל ונקודת היציאה כבר ידועים, וסוג
@@ -1751,7 +1746,9 @@ async function openExtractionHelperModal() {
     <h2 style="margin-top:0">קשה למצוא מה להגיד?</h2>
     <div id="va-ext-result"><p class="cosmic-hint">מכינים את הפרומפט...</p></div>
   `);
-  const [profile, contentType] = await Promise.all([getProfile(), extractionContentType(idea)]);
+  /* תקלה בפרופיל לא עוצרת עזרה: ה-SOS הוא היציאה מהמחסום של המגילה, והפרומפט
+     מסתדר גם בלי קהל ותחום. */
+  const [profile, contentType] = await Promise.all([getProfile().catch(() => null), extractionContentType(idea)]);
   const resultEl = overlay.querySelector('#va-ext-result');
   /* היא יכלה לסגור את הפופאפ בזמן הזיהוי */
   if (!resultEl || !resultEl.isConnected) return;
@@ -1961,7 +1958,7 @@ async function renderScratchDistill() {
       return;
     }
     const funnel = cta === 'משפך' ? funnelInput.value.trim() : '';
-    if (cta === 'משפך' && !funnel) {
+    if (cta === 'משפך' && funnel.length < 2) {
       wrap.innerHTML = '<p class="cosmic-hint">הפרומפט יופיע כאן אחרי שכותבים מה המשפך.</p>';
       return;
     }
@@ -1980,7 +1977,13 @@ async function renderScratchDistill() {
     refreshPrompt();
     if (cta === 'משפך' && !funnelInput.value.trim()) funnelInput.focus();
   }));
-  funnelInput.addEventListener('input', refreshPrompt);
+  /* לא בכל הקשה: בנייה מחדש סוגרת את "לראות את הפרומפט" ומציגה כפתור העתקה
+     על מילה חצי כתובה. */
+  let funnelTimer = null;
+  funnelInput.addEventListener('input', () => {
+    clearTimeout(funnelTimer);
+    funnelTimer = setTimeout(refreshPrompt, 400);
+  });
   refreshPrompt();
   document.getElementById('va-scratch-script-done-btn').addEventListener('click', () => {
     const text = document.getElementById('va-scratch-script-input').value.trim();

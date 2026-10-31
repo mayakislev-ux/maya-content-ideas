@@ -39,6 +39,10 @@ test('"עוד": הטקסט המלא זמין כשהוא קוצר, ולא כשא�
   assert.ok(dump.value.length < long.length, 'הקיצור נעלם');
   assert.equal(dump.full, long);
   assert.equal(parts.find((p) => p.key === 'idea').full, '');
+  /* 141 תווים נחתכים, והקיצור עם "..." ארוך יותר מהמקור. גם כאן צריך "עוד". */
+  const edge = 'א'.repeat(141);
+  const edgeParts = buildParts({ ...INITIAL_STATE, branch: 'scratch', screen: 'scratch-hook', ideaDescription: 'רעיון', rawDump: edge });
+  assert.equal(edgeParts.find((p) => p.key === 'dump').full, edge);
 });
 
 test('"עוד": הכפתור מופיע ומחליף בין קצר למלא', () => {
@@ -68,7 +72,7 @@ test('משפך: נכנס לפרומפט רק כשנכתב', () => {
 
 test('משפך: בלי לכתוב מה המשפך אין פרומפט להעתקה', () => {
   const distill = between('async function renderScratchDistill', '// ===== מסך הסיכום הסופי');
-  assert.match(distill, /cta === 'משפך' && !funnel/);
+  assert.match(distill, /cta === 'משפך' && funnel\.length < 2/);
   assert.match(distill, /funnelWrap\.hidden = cta !== 'משפך'/);
-  assert.match(distill, /funnelInput\.addEventListener\('input', refreshPrompt\)/);
+  assert.match(distill, /funnelTimer = setTimeout\(refreshPrompt, 400\)/);
 });
