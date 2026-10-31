@@ -1,6 +1,7 @@
 import { db, functions } from './firebase-init.js';
 import { openVideoPopup } from './inspiration-popup.js';
-import { readabilityOf, languageName } from './inspiration-readability.js';
+import { readabilityOf, languageName, readableTextOf } from './inspiration-readability.js';
+import { openFeed } from './inspiration-feed.js';
 import { collection, getDocs } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
 import { serverErrorText } from './server-error.js';
@@ -8,6 +9,14 @@ import { serverErrorText } from './server-error.js';
 const matchInspirationQuery = httpsCallable(functions, 'matchInspirationQuery');
 
 const PLATFORM_LABEL = { instagram: 'Instagram', tiktok: 'TikTok' };
+
+/** מספר צפיות קצר לתצוגה. מיוצא לבדיקות. */
+export function shortCount(n) {
+  const v = Number(n) || 0;
+  if (v >= 1e6) return `${(v / 1e6).toFixed(1).replace(/\.0$/, '')}M`;
+  if (v >= 1e3) return `${Math.round(v / 1e3)}K`;
+  return v ? String(v) : '';
+}
 const PLATFORM_ICON = {
   instagram:
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.2" cy="6.8" r="1"/></svg>',
@@ -81,6 +90,11 @@ function rebuildSubcategoryFilterOptions(videos, domain) {
   const uniqueSubcategories = [...new Set(
     videos.filter((v) => v.domain === domain && v.subCategory).map((v) => v.subCategory)
   )].sort((a, b) => a.localeCompare(b, 'he'));
+  /* 31/10/2026: המספר ליד כל קטגוריה, כדי שלא יבחרו קטגוריה ויגלו בה שני סרטונים */
+  const subCounts = new Map();
+  for (const v of videos) {
+    if (v.domain === domain && v.subCategory) subCounts.set(v.subCategory, (subCounts.get(v.subCategory) || 0) + 1);
+  }
 
   if (!uniqueSubcategories.length) {
     select.hidden = true;
@@ -92,7 +106,7 @@ function rebuildSubcategoryFilterOptions(videos, domain) {
   for (const subCategory of uniqueSubcategories) {
     const option = document.createElement('option');
     option.value = subCategory;
-    option.textContent = subCategory;
+    option.textContent = `${subCategory} (${subCounts.get(subCategory)})`;
     select.appendChild(option);
   }
   select.hidden = false;
@@ -242,9 +256,18 @@ function renderBatch(grid) {
   }
 }
 
+/* הרשימה שעל המסך עכשיו, כולל סינון, זווית וחיפוש: מצב הגלילה פותח בדיוק אותה. */
+let shownVideos = [];
+
 function renderCards(videos) {
   const grid = document.getElementById('inspiration-grid');
   const empty = document.getElementById('inspiration-empty');
+  shownVideos = videos;
+  const feedBtn = document.getElementById('inspiration-feed-btn');
+  if (feedBtn) {
+    feedBtn.hidden = !videos.length;
+    feedBtn.textContent = `▶ מצב גלילה (${videos.length})`;
+  }
   if (io) { io.disconnect(); io = null; }
   grid.innerHTML = '';
   sentinel = null;
@@ -322,13 +345,20 @@ function buildCard(video) {
 
     const domainTag = document.createElement('span');
     domainTag.className = 'inspiration-card-domain';
-    domainTag.textContent = video.domain;
+    /* 31/10/2026: בלי תת-הקטגוריה אי אפשר לראות על הכרטיס למה הסרטון נמצא כאן */
+    domainTag.textContent = video.subCategory ? `${video.domain} · ${video.subCategory}` : video.domain;
 
     const cta = document.createElement('span');
     cta.className = 'inspiration-card-cta';
     cta.textContent = 'פתחו לצפייה ←';
 
     info.append(badge, domainTag, readabilityChip(video));
+    if (video.viewsAtAdd) {
+      const views = document.createElement('span');
+      views.className = 'inspiration-card-views';
+      views.textContent = `${shortCount(video.viewsAtAdd)} צפיות`;
+      info.appendChild(views);
+    }
     if ((video.angleTags || []).length) info.appendChild(angleChips(video, pickAngle));
     info.appendChild(cta);
 
@@ -340,7 +370,8 @@ function buildCard(video) {
     // spoken text, cleaned up from the raw speech-to-text pass). See the
     // inspiration-bank-system skill for how each field gets filled in.
     const isForeign = video.sourceLanguage && video.sourceLanguage !== 'he';
-    const readableText = isForeign ? video.translationHe : video.transcriptHe;
+    /* בשיר או בלי דיבור אין כפתור טקסט: התגית כבר אומרת שאין מה לקרוא */
+    const readableText = readableTextOf(video);
     if (readableText) {
       // "המדויק" הוסר מהתוויות - חלק מהתמלולים הישנים (Whisper, אודיו בלבד)
       // מפספסים תוכן שמופיע רק ככיתוב על המסך, אז זה לא תמיד מדויק באמת.
@@ -535,6 +566,9 @@ export function wireInspirationView() {
     const query = input.value.trim();
     if (query) runSearch(query);
   });
+
+  const feedBtn = document.getElementById('inspiration-feed-btn');
+  if (feedBtn) feedBtn.addEventListener('click', () => openFeed(shownVideos));
 
   document.getElementById('inspiration-search-clear-btn').addEventListener('click', () => {
     activeAngle = null;

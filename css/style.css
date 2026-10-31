@@ -7799,3 +7799,63 @@ body[data-plan="refs"] .view-tabs-scroll { justify-content: center; }
 .va-ai-note small { font-size: 13px; line-height: 1.5; color: #3d4670; }
 .va-funnel-ask { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
 .va-funnel-ask[hidden] { display: none; }
+
+/* 31/10/2026: מצב גלילה רציף במאגר הרפרנסים, ראו js/inspiration-feed.js.
+   תמיד כהה: סרטון נראה הכי טוב על רקע שחור, בכל ערכת צבעים. */
+.inspiration-feed-btn {
+  font: inherit; font-weight: 700; cursor: pointer; border: 0; border-radius: 10px;
+  padding: 10px 16px; background: var(--accent); color: #fff; white-space: nowrap;
+}
+.inspiration-card-views { font-size: 0.8rem; font-weight: 700; color: var(--accent); }
+.inspiration-card-read--song { background: var(--accent-tint); color: var(--accent-strong); }
+body.feed-open { overflow: hidden; }
+.feed { position: fixed; inset: 0; z-index: 10000; background: #000; color: #fff; display: flex; flex-direction: column; }
+.feed[hidden] { display: none; }
+.feed-head {
+  position: absolute; top: 0; inset-inline: 0; z-index: 3; display: flex; align-items: center; gap: 10px;
+  padding: calc(8px + env(safe-area-inset-top, 0px)) 12px 8px; pointer-events: none;
+}
+.feed-close {
+  pointer-events: auto; width: 40px; height: 40px; border-radius: 50%; border: 0; cursor: pointer;
+  background: rgba(255,255,255,.18); color: #fff; font-size: 18px;
+}
+.feed-count { font-size: 0.85rem; font-weight: 700; font-variant-numeric: tabular-nums; text-shadow: 0 1px 3px #000; }
+.feed-scroller { flex: 1; min-height: 0; overflow-y: auto; scroll-snap-type: y mandatory; overscroll-behavior: contain; }
+.feed-slide {
+  height: 100%; scroll-snap-align: start; scroll-snap-stop: always; display: flex; flex-direction: column;
+  align-items: center; box-sizing: border-box; padding: calc(56px + env(safe-area-inset-top, 0px)) 34px calc(10px + env(safe-area-inset-bottom, 0px)); gap: 8px;
+}
+.feed-slide__top { width: 100%; display: flex; justify-content: center; flex: none; }
+.feed-out {
+  color: #fff; font-weight: 700; font-size: 0.9rem; text-decoration: none; padding: 7px 14px;
+  border-radius: 999px; background: rgba(255,255,255,.16);
+}
+.feed-stage {
+  position: relative; flex: 1; min-height: 0; aspect-ratio: 9 / 16; max-width: 100%; border-radius: 12px;
+  overflow: hidden; background: #15121a;
+}
+.feed-poster { width: 100%; height: 100%; object-fit: cover; display: block; }
+.feed-frame { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: #000; }
+.feed-blocked {
+  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 14px; padding: 20px; text-align: center; background: rgba(0,0,0,.72);
+}
+.feed-blocked__text { margin: 0; font-size: 0.95rem; }
+.feed-blocked__btn { color: #111; background: #fff; font-weight: 700; padding: 10px 18px; border-radius: 10px; text-decoration: none; }
+.feed-slide__bottom { width: 100%; max-width: 560px; flex: none; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; }
+.feed-tag { margin: 0; font-size: 0.8rem; opacity: .85; }
+.feed-note { margin: 0; font-size: 0.85rem; font-weight: 700; }
+.feed-read { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.feed-read__btn { font: inherit; font-size: 0.85rem; font-weight: 700; cursor: pointer; color: #fff; background: rgba(255,255,255,.16); border: 0; border-radius: 999px; padding: 6px 14px; }
+.feed-read__panel { width: 100%; box-sizing: border-box; max-height: 34vh; overflow-y: auto; background: #1d1824; border-radius: 10px; padding: 10px 12px; text-align: start; }
+.feed-read__panel[hidden] { display: none; }
+.feed-read__text { margin: 0 0 8px; font-size: 0.9rem; line-height: 1.55; white-space: pre-wrap; }
+.feed-read__copy { font: inherit; font-size: 0.8rem; font-weight: 700; cursor: pointer; color: #111; background: #fff; border: 0; border-radius: 8px; padding: 5px 10px; }
+.feed-nav {
+  position: absolute; z-index: 3; inset-inline-end: 4px; width: 28px; height: 56px; border: 0; border-radius: 8px;
+  background: rgba(255,255,255,.14); color: #fff; font-size: 13px; cursor: pointer;
+}
+.feed-nav--prev { top: calc(50% - 62px); }
+.feed-nav--next { top: calc(50% + 6px); }
+.feed-nav:disabled { opacity: .25; cursor: default; }
+@media (prefers-reduced-motion: reduce) { .feed-scroller { scroll-behavior: auto; } }

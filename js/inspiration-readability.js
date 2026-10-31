@@ -14,6 +14,7 @@ export const READABILITY = {
   hebrew: { id: 'hebrew', label: 'בעברית', chip: 'עברית', order: 1 },
   translated: { id: 'translated', label: 'מתורגם לעברית', chip: 'תרגום', order: 2 },
   visual: { id: 'visual', label: 'ויזואלי, בלי דיבור', chip: 'ויזואלי', order: 3 },
+  song: { id: 'song', label: 'שיר בלי דיבור', chip: '🎵 שיר בלי דיבור', order: 3 },
   untranslated: { id: 'untranslated', label: 'עדיין בלי תרגום', chip: 'בלי תרגום', order: 4 },
 };
 
@@ -32,6 +33,11 @@ export const LANGUAGE_NAME = {
  */
 export function readabilityOf(video) {
   const v = video || {};
+  /* 31/10/2026 (מאיה: "יש מלא סרטונים נטו עם מוזיקה, ואז כשיש תמלול סתם של השיר
+     זה מבלבל"). audioKind נקבע בבדיקת כל המאגר, כי אורך הטקסט לא מבדיל בין
+     מילים של שיר לבין דיבור. */
+  if (v.audioKind === 'song') return READABILITY.song;
+  if (v.audioKind === 'silent') return READABILITY.visual;
   const lang = v.sourceLanguage || null;
   const spoken = String(v.transcriptHe || v.transcript || '').trim();
   const translated = String(v.translationHe || '').trim();
@@ -44,6 +50,20 @@ export function readabilityOf(video) {
   if (!isForeign && spoken) return READABILITY.hebrew;
   if (translated) return READABILITY.translated;
   return READABILITY.untranslated;
+}
+
+/** מה נשמע בסרטון: 'song', 'silent', 'speech', או '' כשעוד לא נבדק. */
+export function audioKindOf(video) {
+  return (video && video.audioKind) || '';
+}
+
+/** הטקסט להצגה. בשיר או בלי דיבור אין כזה: מילים של שיר הן לא תוכן הסרטון. */
+export function readableTextOf(video) {
+  const v = video || {};
+  const kind = audioKindOf(v);
+  if (kind === 'song' || kind === 'silent') return '';
+  const isForeign = v.sourceLanguage && v.sourceLanguage !== 'he';
+  return (isForeign ? v.translationHe : v.transcriptHe) || '';
 }
 
 /** שם השפה בעברית, או null כשלא ידוע. */
