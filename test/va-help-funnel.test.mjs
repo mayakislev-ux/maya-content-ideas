@@ -24,6 +24,12 @@ test('SOS: הפופאפ לא מחכה לזיהוי סוג התוכן, והזיה
   assert.match(between('function renderScratchDump', 'async function renderScratchHook'), /prepareExtractionHelper\(\)/);
 });
 
+test('SOS: זיהוי סוג התוכן פתוח גם למנוי הרפרנסים, שיש לו את העוזר', () => {
+  const fns = readFileSync(new URL('../functions/index.js', import.meta.url), 'utf8');
+  const start = fns.indexOf('exports.classifyIdea');
+  assert.match(fns.slice(start, start + 600), /enforceAllowlist\(request\.auth\.token\.email, \{ allowRefs: true \}\)/);
+});
+
 test('SOS: רק שלושה סוגי תוכן, בלי בידורי', () => {
   assert.deepEqual(CONTENT_TYPES, ['בעל ערך', 'מכירתי', 'אישי']);
   assert.ok(!buildExtractionPrompt({ idea: 'x' }).includes('בידורי'));

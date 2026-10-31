@@ -1078,7 +1078,8 @@ exports.classifyIdea = onCall({ secrets: [anthropicApiKey], region: 'us-central1
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'יש להתחבר כדי להשתמש בתכונה הזו');
   }
-  await enforceAllowlist(request.auth.token.email);
+  /* 31/10/2026: העוזר לסרטון מזהה בעזרתה את סוג התוכן, והוא פתוח גם למנוי הרפרנסים. */
+  await enforceAllowlist(request.auth.token.email, { allowRefs: true });
 
   const title = (request.data && request.data.title) || '';
   const hookText = (request.data && request.data.hookText) || '';
