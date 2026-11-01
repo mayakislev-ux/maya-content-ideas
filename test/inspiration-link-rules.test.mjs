@@ -5,12 +5,14 @@ import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const { tiktokVerdict, pageVerdict, runIsTrustworthy, nextFailCount } = require('../functions/inspiration-link-rules.js');
 
-test('tiktok: a real answer is alive, an empty one or 400 is dead, overload is unknown', () => {
-  assert.equal(tiktokVerdict(200, { title: 'x', author_name: 'a', thumbnail_url: 'u' }), 'alive');
-  assert.equal(tiktokVerdict(200, { title: '', author_name: '@' }), 'dead');
-  assert.equal(tiktokVerdict(400, null), 'dead');
-  assert.equal(tiktokVerdict(429, null), 'unknown');
-  assert.equal(tiktokVerdict(503, null), 'unknown');
+test('tiktok: its own image is alive, the generic image is dead, overload says nothing', () => {
+  const page = (img) => `<meta property="og:image" content="${img}"/>`;
+  assert.equal(tiktokVerdict(200, page('https://p16-sign.tiktokcdn.com/abc.jpg')), 'alive');
+  assert.equal(tiktokVerdict(200, page('https://sf16-sg.tiktokcdn.com/obj/eden-sg/kvy/c.png')), 'dead');
+  assert.equal(tiktokVerdict(200, '<title>x</title>'), 'unknown');
+  assert.equal(tiktokVerdict(404, ''), 'dead');
+  assert.equal(tiktokVerdict(429, ''), 'unknown');
+  assert.equal(tiktokVerdict(503, ''), 'unknown');
 });
 
 test('post page: an image means alive, a server problem says nothing', () => {

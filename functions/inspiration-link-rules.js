@@ -11,11 +11,15 @@ const MAX_DEAD_SHARE = 0.1;
 const MIN_FOR_SHARE = 20;
 const MAX_REMOVALS_PER_RUN = 20;
 
-/** תשובת oEmbed של טיקטוק. סרטון שהוסר או נחסם מחזיר JSON ריק או 400/404. */
-function tiktokVerdict(status, body) {
-  if (status === 200) return body && (body.thumbnail_url || body.title || (body.author_name && body.author_name !== '@')) ? 'alive' : 'dead';
-  if (status === 400 || status === 404) return 'dead';
-  return 'unknown';
+/** עמוד הסרטון בטיקטוק כשמבקשים תצוגה מקדימה. לסרטון חי יש התמונה שלו, ולסרטון
+    שנמחק או נחסם יש תמונה כללית של טיקטוק (obj/eden-). oEmbed לא עוזר כאן: נכון
+    ל-01/11/2026 הוא מחזיר אותה תשובה גם על מזהה שלא קיים. */
+function tiktokVerdict(status, html) {
+  if (status === 404 || status === 410) return 'dead';
+  if (status !== 200) return 'unknown';
+  const m = String(html || '').match(/property=["']og:image["']\s+content=["']([^"']*)/) || String(html || '').match(/content=["']([^"']*)["']\s+property=["']og:image["']/);
+  if (!m) return 'unknown';
+  return /\/obj\/eden-/.test(m[1]) ? 'dead' : 'alive';
 }
 
 /** עמוד הפוסט כשמבקשים תצוגה מקדימה: רק לפוסט קיים יש בו תמונה. */

@@ -26,27 +26,16 @@ async function get(url, ua) {
   return { status: res.status, finalUrl: res.url, text: await res.text() };
 }
 
-/* פוסט תמונות בטיקטוק נכשל תמיד ב-oEmbed, אז בודקים אותו לפי העמוד */
 async function checkTiktok(video) {
-  const short = !/\/(video|photo)\/\d+/.test(video.url);
-  const page = short ? await get(video.url, PREVIEW_UA) : null;
-  const finalUrl = page ? page.finalUrl : video.url;
-  if (page && page.status >= 500) return { verdict: 'unknown' };
-  if (/\/photo\/\d+/.test(finalUrl)) {
-    const p = page || await get(finalUrl, PREVIEW_UA);
-    return { verdict: pageVerdict(p.status, p.text) };
-  }
-  const r = await get(`https://www.tiktok.com/oembed?url=${encodeURIComponent(finalUrl)}`, 'Mozilla/5.0');
-  let body = null;
-  try { body = JSON.parse(r.text); } catch (err) { if (r.status === 200) return { verdict: 'unknown' }; }
-  let verdict = tiktokVerdict(r.status, body);
-  /* תשובה ריקה יכולה להיות גם הגבלת קצב רגעית, אז נותנים הזדמנות שנייה */
+  const r = await get(video.url, PREVIEW_UA);
+  let verdict = tiktokVerdict(r.status, r.text);
+  /* תשובה כללית יכולה להיות גם הגבלת קצב רגעית, אז נותנים הזדמנות שנייה */
   if (verdict === 'dead') {
     await sleep(3000);
-    const again = await get(`https://www.tiktok.com/oembed?url=${encodeURIComponent(finalUrl)}`, 'Mozilla/5.0');
-    try { verdict = tiktokVerdict(again.status, JSON.parse(again.text)); } catch (err) { verdict = 'unknown'; }
+    const again = await get(video.url, PREVIEW_UA);
+    verdict = tiktokVerdict(again.status, again.text);
   }
-  const m = finalUrl.match(/\/video\/(\d+)/);
+  const m = r.finalUrl.match(/\/video\/(\d+)/);
   return { verdict, videoId: m ? m[1] : null };
 }
 
@@ -131,7 +120,7 @@ exports.dailyInspirationLinkCheck = onSchedule(
 
 /* בדיקה ידנית לפני שסומכים על התזמון: dry לא כותב כלום */
 exports.checkInspirationLinksNow = onCall(
-  { region: 'us-central1', timeoutSeconds: 540, memory: '512MiB' },
+  { region: 'us-central1', timeoutSeconds: 540, memory: '512MiB', invoker: 'public' },
   async (request) => {
     if (!request.auth || request.auth.token.email !== ADMIN_EMAIL) {
       throw new HttpsError('permission-denied', 'רק מאיה יכולה להריץ את זה');
