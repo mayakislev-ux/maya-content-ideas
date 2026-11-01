@@ -31,6 +31,7 @@ const DOMAIN_THEMES = {
   'עיצוב, נדל"ן ואדריכלות': { glow: '#7fd8c9', name: 'teal' },
   'כושר ותזונה': { glow: '#7fff9f', name: 'mint' },
   'תוכן אישי וחיבור': { glow: '#ff8a65', name: 'coral' },
+  'חנויות, אוכל ותיירות': { glow: '#ffb74d', name: 'amber' },
 };
 const DEFAULT_THEME = { glow: '#ff2ea8', name: 'default' };
 

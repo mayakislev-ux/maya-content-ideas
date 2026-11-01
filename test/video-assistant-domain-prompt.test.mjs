@@ -5,13 +5,14 @@ import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const { DOMAINS, buildDomainGuessPrompt, parseDomainGuess, subCategoriesOf } = require('../functions/video-assistant-domain-prompt.js');
 
-test('DOMAINS has exactly the 6 canonical inspiration-bank domains', () => {
+test('DOMAINS has exactly the 7 canonical inspiration-bank domains', () => {
   assert.deepEqual(DOMAINS, [
     'יופי וקוסמטיקה',
     'בריאות נפשית, טיפול ורוח',
     'עסקים ויזמות',
     'עיצוב, נדל"ן ואדריכלות',
     'כושר ותזונה',
+    'חנויות, אוכל ותיירות',
     'תוכן אישי וחיבור',
   ]);
 });
@@ -44,7 +45,7 @@ test('parseDomainGuess drops a subCategory that does not belong to the guessed d
 });
 
 test('parseDomainGuess allows a null subCategory for a domain with none', () => {
-  const result = parseDomainGuess('{"domainIndex": 6, "subCategory": null}');
+  const result = parseDomainGuess('{"domainIndex": 7, "subCategory": null}');
   assert.deepEqual(result, { domain: 'תוכן אישי וחיבור', subCategory: null });
 });
 
