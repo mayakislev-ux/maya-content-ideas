@@ -52,6 +52,11 @@ let timer = null;
 let settleTimer = null;
 let pushedState = false;
 let ownBack = false;
+let frameNow = null;
+/* אחרי לחיצה אחת על סאונד מנסים להשאיר אותו דולק גם בסרטונים הבאים */
+let soundOn = false;
+/* תרגום פתוח מראש בסרטון זר. מי שסגרה אותו, הוא נשאר סגור עד היציאה. */
+let readOpen = true;
 
 function el(tag, className, text) {
   const node = document.createElement(tag);
@@ -77,12 +82,16 @@ function textPanel(video, slide) {
 
   const isTranslation = Boolean(video.sourceLanguage) && video.sourceLanguage !== 'he';
   const label = isTranslation ? 'תרגום לעברית' : 'התמלול';
-  const wrap = el('div', 'feed-read');
+  const wrap = el('div', isTranslation ? 'feed-read feed-read--auto' : 'feed-read');
   const btn = el('button', 'feed-read__btn', label);
   btn.type = 'button';
-  btn.setAttribute('aria-expanded', 'false');
   const panel = el('div', 'feed-read__panel');
-  panel.hidden = true;
+  const setOpen = (open) => {
+    panel.hidden = !open;
+    btn.textContent = open ? 'הסתרה' : label;
+    btn.setAttribute('aria-expanded', String(open));
+    slide.classList.toggle('is-reading', open);
+  };
   const warning = el('p', 'feed-read__warning', accuracyNoteOf(isTranslation));
   const body = el('p', 'feed-read__text', text);
   const copy = el('button', 'feed-read__copy', 'העתקת הטקסט');
@@ -99,11 +108,16 @@ function textPanel(video, slide) {
   });
   panel.append(warning, body, copy);
   btn.addEventListener('click', () => {
-    panel.hidden = !panel.hidden;
-    btn.textContent = panel.hidden ? label : 'הסתרה';
-    btn.setAttribute('aria-expanded', String(!panel.hidden));
-    slide.classList.toggle('is-reading', !panel.hidden);
+    const open = panel.hidden;
+    setOpen(open);
+    if (isTranslation) {
+      readOpen = open;
+      /* גם השקופיות הסמוכות שכבר נבנו מתיישרות, שלא יקפוץ פתוח בגלילה הבאה */
+      host.querySelectorAll('.feed-read--auto').forEach((w) => w.dispatchEvent(new Event('feed-read-sync')));
+    }
   });
+  wrap.addEventListener('feed-read-sync', () => setOpen(readOpen));
+  setOpen(isTranslation && readOpen);
   wrap.append(btn, panel);
   return wrap;
 }
@@ -152,7 +166,60 @@ function clearStage(i) {
   const slide = slides[i];
   if (!slide) return;
   slide.classList.remove('is-playing', 'is-blocked');
-  slide.querySelectorAll('.feed-frame, .feed-blocked').forEach((n) => n.remove());
+  slide.querySelectorAll('.feed-frame, .feed-blocked, .feed-sound').forEach((n) => n.remove());
+  if (i === active) frameNow = null;
+}
+
+/* הנגן של טיקטוק מקבל פקודות בהודעות. דפדפן לא נותן לסרטון להתחיל עם צליל
+   בלי לחיצה, ובאינסטגרם אין שום דרך לשלוט מבחוץ, שם נשארת הלחיצה של הנגן שלהם. */
+function tellPlayer(type) {
+  if (!frameNow || !frameNow.contentWindow) return;
+  frameNow.contentWindow.postMessage({ type, value: undefined, 'x-tiktok-player': true }, 'https://www.tiktok.com');
+}
+
+function showSoundButton(show) {
+  const slide = slides[active];
+  const stage = slide && slide.querySelector('.feed-stage');
+  if (!stage) return;
+  const existing = stage.querySelector('.feed-sound');
+  if (!show) { if (existing) existing.remove(); return; }
+  if (existing) return;
+  const btn = el('button', 'feed-sound', '🔇 הפעלת סאונד');
+  btn.type = 'button';
+  btn.addEventListener('click', () => {
+    soundOn = true;
+    tellPlayer('unMute');
+    tellPlayer('play');
+    btn.remove();
+  });
+  stage.appendChild(btn);
+}
+
+function onPlayerMessage(e) {
+  if (!frameNow || e.source !== frameNow.contentWindow) return;
+  let msg = e.data;
+  if (typeof msg === 'string') {
+    try { msg = JSON.parse(msg); } catch (err) { return; }
+  }
+  if (!msg || !msg['x-tiktok-player']) return;
+  if (msg.type === 'onPlayerReady') {
+    tellPlayer(soundOn ? 'unMute' : 'mute');
+    tellPlayer('play');
+    showSoundButton(!soundOn);
+  } else if (msg.type === 'onMute') {
+    showSoundButton(Boolean(msg.value));
+  } else if (msg.type === 'onPlayerError') {
+    const code = msg.value && msg.value.errorCode;
+    if (code === 3002) {
+      /* הדפדפן חסם ניגון עם צליל: מנגנים בלי צליל ומשאירים כפתור */
+      tellPlayer('mute');
+      tellPlayer('play');
+      showSoundButton(true);
+    } else if (code === 1001 && slides[active]) {
+      clearTimeout(timer);
+      blockedBox(list[active], slides[active], 'הסרטון הזה כבר לא זמין. אפשר להמשיך לגלול.');
+    }
+  }
 }
 
 function blockedBox(video, slide, message) {
@@ -185,6 +252,7 @@ function play(i) {
     slide.querySelectorAll('.feed-blocked').forEach((n) => n.remove());
   });
   slide.querySelector('.feed-stage').appendChild(frame);
+  frameNow = frame;
   slide.classList.add('is-playing');
   clearTimeout(timer);
   /* אותו עיקרון כמו בפופאפ: חלון ממקור אחר שנחסם נראה כמו ריבוע שחור בלי הסבר.
@@ -268,6 +336,8 @@ export function closeFeed() {
   document.removeEventListener('keydown', onKey);
   document.removeEventListener('visibilitychange', onVisibility);
   window.removeEventListener('popstate', onPop);
+  window.removeEventListener('message', onPlayerMessage);
+  frameNow = null;
   /* כפתור הסגירה מוריד גם את הצעד שהוספנו להיסטוריה, כדי שחזרה לא תיתקע */
   if (pushedState) {
     pushedState = false;
@@ -323,6 +393,7 @@ export function openFeed(videos, start = 0) {
   document.body.classList.add('feed-open');
   document.addEventListener('keydown', onKey);
   document.addEventListener('visibilitychange', onVisibility);
+  window.addEventListener('message', onPlayerMessage);
 
   /* כפתור החזרה בטלפון יוצא ממצב הגלילה, ולא מהאפליקציה */
   try {

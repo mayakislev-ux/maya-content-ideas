@@ -2704,6 +2704,7 @@ Object.assign(exports, require('./strategy-form'));
 Object.assign(exports, require('./nightly-scripts'));
 Object.assign(exports, require('./backfill-marketing'));
 Object.assign(exports, require('./ofek-reminder'));
+Object.assign(exports, require('./inspiration-link-check'));
 
 /* 12/10/2026: הקובץ הזה לא היה מחובר כאן מעולם, ולכן Firebase לא הכיר
    את שמונה הפונקציות שבו. הן המשיכו לרוץ בענן על קוד ישן שנפרס פעם

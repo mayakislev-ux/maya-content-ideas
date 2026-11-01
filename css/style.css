@@ -7849,6 +7849,8 @@ body.feed-open { overflow: hidden; }
 .feed-read__btn { font: inherit; font-size: 0.85rem; font-weight: 700; cursor: pointer; color: #fff; background: rgba(255,255,255,.16); border: 0; border-radius: 999px; padding: 6px 14px; }
 .feed-read__panel { width: 100%; box-sizing: border-box; max-height: 34vh; overflow-y: auto; overscroll-behavior: contain; background: #1d1824; border-radius: 10px; padding: 10px 12px; text-align: start; }
 .feed-read__panel[hidden] { display: none; }
+.feed-read--auto .feed-read__panel { max-height: 24vh; }
+.feed-sound { position: absolute; top: 10px; inset-inline-start: 10px; z-index: 2; font: inherit; font-size: 0.85rem; font-weight: 700; cursor: pointer; color: #111; background: #fff; border: 0; border-radius: 999px; padding: 8px 14px; }
 .feed-read__warning { margin: 0 0 8px; font-size: 0.78rem; line-height: 1.45; opacity: .85; }
 .feed-read__text { margin: 0 0 8px; font-size: 0.9rem; line-height: 1.55; white-space: pre-wrap; }
 .feed-read__copy { font: inherit; font-size: 0.8rem; font-weight: 700; cursor: pointer; color: #111; background: #fff; border: 0; border-radius: 8px; padding: 5px 10px; }
