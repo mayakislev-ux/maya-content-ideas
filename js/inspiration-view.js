@@ -2,9 +2,18 @@ import { db, functions } from './firebase-init.js';
 import { openVideoPopup } from './inspiration-popup.js';
 import { accuracyNoteOf, readabilityOf, languageName, readableTextOf } from './inspiration-readability.js';
 import { openFeed } from './inspiration-feed.js';
-import { collection, getDocs } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
+import { collection, doc, getDoc, getDocs } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
 import { serverErrorText } from './server-error.js';
+
+/* כל סרטון נטען פעם אחת בלבד בביקור, גם כשגוללים אליו שוב */
+const subtitlesCache = new Map();
+function loadSubtitles(id) {
+  if (!subtitlesCache.has(id)) {
+    subtitlesCache.set(id, getDoc(doc(db, 'inspirationSubs', id)).then((snap) => (snap.exists() ? snap.data().segments : null)));
+  }
+  return subtitlesCache.get(id);
+}
 
 const matchInspirationQuery = httpsCallable(functions, 'matchInspirationQuery');
 
@@ -573,7 +582,7 @@ export function wireInspirationView() {
   });
 
   const feedBtn = document.getElementById('inspiration-feed-btn');
-  if (feedBtn) feedBtn.addEventListener('click', () => openFeed(shownVideos));
+  if (feedBtn) feedBtn.addEventListener('click', () => openFeed(shownVideos, 0, { loadSubtitles }));
 
   document.getElementById('inspiration-search-clear-btn').addEventListener('click', () => {
     activeAngle = null;

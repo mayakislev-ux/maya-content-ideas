@@ -9,6 +9,7 @@
 // תמיד נשארים פס צד, הפסים למעלה ולמטה וחיצים, שאיתם אפשר לעבור הלאה.
 import { embedUrlFor } from './video-preview.js';
 import { accuracyNoteOf, audioKindOf, readableTextOf } from './inspiration-readability.js';
+import { lastSubtitleEnd, subtitleAt } from './inspiration-subtitles.js';
 
 const PLATFORM_NAME = { instagram: 'אינסטגרם', tiktok: 'טיקטוק' };
 const TT_ID = /tiktok\.com\/.*\/video\/(\d+)/;
@@ -57,6 +58,13 @@ let frameNow = null;
 let soundOn = false;
 /* תרגום פתוח מראש בסרטון זר. מי שסגרה אותו, הוא נשאר סגור עד היציאה. */
 let readOpen = true;
+let loadSubs = null;
+let subs = null;
+let subsOn = true;
+/* באינסטגרם הנגן לא מדווח באיזו שנייה הוא, אז סופרים לבד מרגע הלחיצה עליו */
+let clockFrom = null;
+let clockAt = 0;
+let clockTimer = null;
 
 function el(tag, className, text) {
   const node = document.createElement(tag);
@@ -116,8 +124,9 @@ function textPanel(video, slide) {
       host.querySelectorAll('.feed-read--auto').forEach((w) => w.dispatchEvent(new Event('feed-read-sync')));
     }
   });
-  wrap.addEventListener('feed-read-sync', () => setOpen(readOpen));
-  setOpen(isTranslation && readOpen);
+  wrap.addEventListener('feed-read-sync', () => setOpen(readOpen && !video.hasSubtitles));
+  /* כשיש כתוביות על הסרטון, הפאנל הפתוח רק מקטין אותו */
+  setOpen(isTranslation && readOpen && !video.hasSubtitles);
   wrap.append(btn, panel);
   return wrap;
 }
@@ -146,6 +155,16 @@ function fillSlide(i) {
   const bottom = el('div', 'feed-slide__bottom');
   const tag = [video.domain, video.subCategory].filter(Boolean).join(' · ');
   if (tag) bottom.appendChild(el('p', 'feed-tag', tag));
+  if (video.hasSubtitles) {
+    const toggle = el('button', 'feed-sub-toggle', subsOn ? 'כיבוי כתוביות' : 'הפעלת כתוביות');
+    toggle.type = 'button';
+    toggle.addEventListener('click', () => {
+      subsOn = !subsOn;
+      host.querySelectorAll('.feed-sub-toggle').forEach((b) => { b.textContent = subsOn ? 'כיבוי כתוביות' : 'הפעלת כתוביות'; });
+      if (!subsOn) host.querySelectorAll('.feed-sub').forEach((n) => n.remove());
+    });
+    bottom.appendChild(toggle);
+  }
   const read = textPanel(video, slide);
   if (read) bottom.appendChild(read);
 
@@ -166,8 +185,90 @@ function clearStage(i) {
   const slide = slides[i];
   if (!slide) return;
   slide.classList.remove('is-playing', 'is-blocked');
-  slide.querySelectorAll('.feed-frame, .feed-blocked, .feed-sound').forEach((n) => n.remove());
-  if (i === active) frameNow = null;
+  slide.querySelectorAll('.feed-frame, .feed-blocked, .feed-sound, .feed-sub, .feed-sub-start').forEach((n) => n.remove());
+  if (i === active) {
+    frameNow = null;
+    subs = null;
+    stopClock();
+  }
+}
+
+function stageNow() {
+  const slide = slides[active];
+  return slide ? slide.querySelector('.feed-stage') : null;
+}
+
+function showSub(t) {
+  const stage = stageNow();
+  if (!stage) return;
+  const text = subsOn ? subtitleAt(subs, t) : '';
+  let line = stage.querySelector('.feed-sub');
+  if (!text) { if (line) line.remove(); return; }
+  if (!line) {
+    line = el('p', 'feed-sub');
+    line.dir = 'rtl';
+    stage.appendChild(line);
+  }
+  if (line.textContent !== text) line.textContent = text;
+}
+
+function stopClock() {
+  clearInterval(clockTimer);
+  clockTimer = null;
+  clockFrom = null;
+  clockAt = 0;
+}
+
+function runClock() {
+  clockFrom = Date.now();
+  clearInterval(clockTimer);
+  clockTimer = setInterval(() => {
+    const t = clockAt + (Date.now() - clockFrom) / 1000;
+    showSub(t);
+    if (t > lastSubtitleEnd(subs) + 1) stopClock();
+  }, 200);
+}
+
+function restartClock() {
+  stopClock();
+  runClock();
+  const btn = stageNow() && stageNow().querySelector('.feed-sub-start');
+  if (btn) btn.textContent = '↺ כתוביות מההתחלה';
+}
+
+/* לחיצה בתוך נגן ממקור אחר לא מגיעה אלינו, אבל הפוקוס עובר אליו, וזה כן נראה מכאן.
+   לחיצה ראשונה מתחילה, הבאות עוצרות וממשיכות כמו בנגן עצמו. */
+function onWindowBlur() {
+  setTimeout(() => {
+    if (!frameNow || !subs || document.activeElement !== frameNow || tiktokId(list[active])) return;
+    if (clockTimer) {
+      clockAt += (Date.now() - clockFrom) / 1000;
+      clearInterval(clockTimer);
+      clockTimer = null;
+    } else if (clockFrom === null && clockAt === 0) {
+      restartClock();
+    } else {
+      runClock();
+    }
+    /* מחזירים את הפוקוס, אחרת הלחיצה הבאה בנגן לא תיראה */
+    frameNow.blur();
+    window.focus();
+  }, 0);
+}
+
+function startSubs(i) {
+  const video = list[i];
+  if (!loadSubs || !video.hasSubtitles || !video.id) return;
+  Promise.resolve(loadSubs(video.id)).then((segments) => {
+    if (i !== active || !frameNow || !segments || !segments.length) return;
+    subs = segments;
+    if (tiktokId(video)) return;
+    /* כתובית שלא מגיעה לא נראית כמו תקלה, אז אין לחכות לזיהוי הלחיצה בלבד */
+    const btn = el('button', 'feed-sub-start', '▶ התחלת כתוביות');
+    btn.type = 'button';
+    btn.addEventListener('click', restartClock);
+    stageNow().appendChild(btn);
+  }).catch((err) => { console.error('Subtitles failed:', err); });
 }
 
 /* הנגן של טיקטוק מקבל פקודות בהודעות. דפדפן לא נותן לסרטון להתחיל עם צליל
@@ -206,6 +307,9 @@ function onPlayerMessage(e) {
     tellPlayer(soundOn ? 'unMute' : 'mute');
     tellPlayer('play');
     showSoundButton(!soundOn);
+  } else if (msg.type === 'onCurrentTime') {
+    const t = msg.value && typeof msg.value === 'object' ? msg.value.currentTime : msg.value;
+    showSub(Number(t));
   } else if (msg.type === 'onMute') {
     showSoundButton(Boolean(msg.value));
   } else if (msg.type === 'onPlayerError') {
@@ -253,6 +357,7 @@ function play(i) {
   });
   slide.querySelector('.feed-stage').appendChild(frame);
   frameNow = frame;
+  startSubs(i);
   slide.classList.add('is-playing');
   clearTimeout(timer);
   /* אותו עיקרון כמו בפופאפ: חלון ממקור אחר שנחסם נראה כמו ריבוע שחור בלי הסבר.
@@ -337,7 +442,10 @@ export function closeFeed() {
   document.removeEventListener('visibilitychange', onVisibility);
   window.removeEventListener('popstate', onPop);
   window.removeEventListener('message', onPlayerMessage);
+  window.removeEventListener('blur', onWindowBlur);
   frameNow = null;
+  subs = null;
+  stopClock();
   /* כפתור הסגירה מוריד גם את הצעד שהוספנו להיסטוריה, כדי שחזרה לא תיתקע */
   if (pushedState) {
     pushedState = false;
@@ -352,10 +460,11 @@ export function closeFeed() {
 }
 
 /** פותח מצב גלילה על הרשימה שעל המסך. מחזיר false כשאין מה להציג. */
-export function openFeed(videos, start = 0) {
+export function openFeed(videos, start = 0, options = {}) {
   if (!videos || !videos.length) return false;
   if (host) closeFeed();
   list = videos.slice();
+  loadSubs = options.loadSubtitles || null;
   active = -1;
   target = null;
   lastFocus = document.activeElement;
@@ -394,6 +503,7 @@ export function openFeed(videos, start = 0) {
   document.addEventListener('keydown', onKey);
   document.addEventListener('visibilitychange', onVisibility);
   window.addEventListener('message', onPlayerMessage);
+  window.addEventListener('blur', onWindowBlur);
 
   /* כפתור החזרה בטלפון יוצא ממצב הגלילה, ולא מהאפליקציה */
   try {

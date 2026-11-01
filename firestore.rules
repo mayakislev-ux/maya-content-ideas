@@ -110,6 +110,10 @@ service cloud.firestore {
     match /pushSubscriptions/{uid} {
       allow read, write: if isAllowed() && request.auth.uid == uid;
     }
+    match /inspirationSubs/{videoId} {
+      allow read: if isAllowed() && notExpired();
+      allow write: if isAdmin();
+    }
     match /inspirationBank/{videoId} {
       allow read: if isAllowed() && notExpired();
       allow write: if isAdmin();

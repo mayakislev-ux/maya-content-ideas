@@ -7843,6 +7843,9 @@ body.feed-open { overflow: hidden; }
 .feed-blocked__text { margin: 0; font-size: 0.95rem; }
 .feed-blocked__btn { color: #111; background: #fff; font-weight: 700; padding: 10px 18px; border-radius: 10px; text-decoration: none; }
 .feed-slide__bottom { width: 100%; max-width: 560px; flex: none; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; }
+.feed-sub { position: absolute; inset-inline: 10px; bottom: 58px; z-index: 2; width: fit-content; max-width: calc(100% - 20px); margin: 0 auto; box-sizing: border-box; pointer-events: none; text-align: center; color: #fff; font-size: 1.02rem; font-weight: 700; line-height: 1.35; background: rgba(0,0,0,.62); border-radius: 8px; padding: 4px 10px; }
+.feed-sub-start { position: absolute; top: 10px; inset-inline-end: 10px; z-index: 2; font: inherit; font-size: 0.8rem; font-weight: 700; cursor: pointer; color: #111; background: #fff; border: 0; border-radius: 999px; padding: 7px 12px; }
+.feed-sub-toggle { font: inherit; font-size: 0.78rem; font-weight: 700; cursor: pointer; color: #fff; background: transparent; border: 1px solid rgba(255,255,255,.35); border-radius: 999px; padding: 4px 12px; }
 .feed-tag { margin: 0; font-size: 0.8rem; opacity: .85; }
 .feed-note { margin: 0; font-size: 0.85rem; font-weight: 700; }
 .feed-read { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 6px; }
