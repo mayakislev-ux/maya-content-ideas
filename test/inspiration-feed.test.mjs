@@ -47,7 +47,7 @@ test('דיבור: הטקסט מוצג לפי השפה, גם כשעוד לא נב
 
 test('הכפתור מחובר לרשימה שעל המסך, ומוסתר כשאין סרטונים', () => {
   assert.match(HTML, /id="inspiration-feed-btn"[^>]*hidden/);
-  assert.match(VIEW, /openFeed\(shownVideos\)/);
+  assert.match(VIEW, /openFeed\(shownVideos, 0, \{ loadSubtitles \}\)/);
   assert.match(VIEW, /feedBtn\.hidden = !videos\.length/);
   assert.match(VIEW, /readableTextOf\(video\)/);
 });

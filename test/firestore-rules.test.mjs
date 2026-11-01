@@ -77,6 +77,7 @@ test('מנוי רפרנסים מזוהה לפי plan ולא לפי עצם הקי
 test('מאגר ההשראה פתוח לכל מי שברשימה, כולל מנוי רפרנסים', () => {
   /* 15/10/2026: נוספה גם בדיקת תוקף המנוי (notExpired), והבדיקה לא עודכנה */
   assert.ok(block('inspirationBank').includes('allow read: if isAllowed() && notExpired();'));
+  assert.ok(block('inspirationSubs').includes('allow read: if isAllowed() && notExpired();'));
 });
 
 test('העוזר ליצירת סרטון פתוח גם למנוי רפרנסים בתוקף (20/10)', () => {
