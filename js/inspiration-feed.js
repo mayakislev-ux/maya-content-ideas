@@ -8,11 +8,14 @@
 // אצבע על מסגרת ממקור אחר לא תמיד מגיעה לגלילה שלנו, ואין דרך לדעת מבחוץ. לכן
 // תמיד נשארים פס צד, הפסים למעלה ולמטה וחיצים, שאיתם אפשר לעבור הלאה.
 import { embedUrlFor } from './video-preview.js';
-import { audioKindOf, readableTextOf } from './inspiration-readability.js';
+import { accuracyNoteOf, audioKindOf, readableTextOf } from './inspiration-readability.js';
 
 const PLATFORM_NAME = { instagram: 'אינסטגרם', tiktok: 'טיקטוק' };
 const TT_ID = /tiktok\.com\/.*\/video\/(\d+)/;
 const LOAD_TIMEOUT_MS = 8000;
+const SETTLE_MS = 150;
+const FILL_AROUND = 3;
+const KEEP_AROUND = 8;
 
 /** מזהה הטיקטוק של הסרטון, או null כשזה קישור מקוצר בלי מזהה שמור. */
 function tiktokId(video) {
@@ -40,11 +43,15 @@ export function openLabel(video) {
 
 let host = null;
 let list = [];
+let slides = [];
 let active = -1;
+let target = null;
 let observer = null;
 let lastFocus = null;
 let timer = null;
+let settleTimer = null;
 let pushedState = false;
+let ownBack = false;
 
 function el(tag, className, text) {
   const node = document.createElement(tag);
@@ -66,7 +73,7 @@ function textPanel(video, slide) {
   const kind = audioKindOf(video);
   if (kind === 'song') return el('p', 'feed-note', '🎵 שיר בלי דיבור');
   if (kind === 'silent') return el('p', 'feed-note', 'בלי דיבור');
-  if (!text) return null;
+  if (!text) return kind === 'speech' ? el('p', 'feed-note', 'אין תמלול לסרטון הזה') : null;
 
   const isTranslation = Boolean(video.sourceLanguage) && video.sourceLanguage !== 'he';
   const label = isTranslation ? 'תרגום לעברית' : 'התמלול';
@@ -76,6 +83,7 @@ function textPanel(video, slide) {
   btn.setAttribute('aria-expanded', 'false');
   const panel = el('div', 'feed-read__panel');
   panel.hidden = true;
+  const warning = el('p', 'feed-read__warning', accuracyNoteOf(isTranslation));
   const body = el('p', 'feed-read__text', text);
   const copy = el('button', 'feed-read__copy', 'העתקת הטקסט');
   copy.type = 'button';
@@ -89,7 +97,7 @@ function textPanel(video, slide) {
     }
     setTimeout(() => { copy.textContent = 'העתקת הטקסט'; }, 1800);
   });
-  panel.append(body, copy);
+  panel.append(warning, body, copy);
   btn.addEventListener('click', () => {
     panel.hidden = !panel.hidden;
     btn.textContent = panel.hidden ? label : 'הסתרה';
@@ -100,16 +108,25 @@ function textPanel(video, slide) {
   return wrap;
 }
 
-function buildSlide(video, index) {
+/* שקופית ריקה לכל סרטון, ותוכן רק ליד המקום שבו נמצאים. בניית מאות שקופיות
+   מלאות בבת אחת תוקעת טלפון, אותה סיבה שהרשת עצמה נטענת בעמודים. */
+function shell(index) {
   const slide = el('section', 'feed-slide');
   slide.dataset.index = String(index);
+  return slide;
+}
 
+function fillSlide(i) {
+  const slide = slides[i];
+  const video = list[i];
+  if (!slide || !video || slide.firstChild) return;
   const top = el('div', 'feed-slide__top');
   top.appendChild(outLink(video, 'feed-out'));
 
   const stage = el('div', 'feed-stage');
   const poster = el('img', 'feed-poster');
   poster.alt = '';
+  if (video.thumbnailUrl) poster.src = video.thumbnailUrl;
   stage.appendChild(poster);
 
   const bottom = el('div', 'feed-slide__bottom');
@@ -119,59 +136,41 @@ function buildSlide(video, index) {
   if (read) bottom.appendChild(read);
 
   slide.append(top, stage, bottom);
-  return slide;
 }
 
-function slideAt(i) {
-  return host && host.querySelector(`.feed-slide[data-index="${i}"]`);
-}
-
-/* תמונות רק ליד המקום שבו נמצאים, אחרת מאות תמונות יורדות בפתיחה. */
-function loadPosters(i) {
-  for (let j = i - 2; j <= i + 3; j += 1) {
-    const slide = slideAt(j);
-    const video = list[j];
-    if (!slide || !video || !video.thumbnailUrl) continue;
-    const img = slide.querySelector('.feed-poster');
-    if (img && !img.getAttribute('src')) img.src = video.thumbnailUrl;
+function fillAround(i) {
+  for (let j = i - FILL_AROUND; j <= i + FILL_AROUND; j += 1) fillSlide(j);
+  for (let j = 0; j < slides.length; j += 1) {
+    if (Math.abs(j - i) > KEEP_AROUND && slides[j].firstChild) {
+      slides[j].textContent = '';
+      slides[j].classList.remove('is-reading');
+    }
   }
 }
 
 function clearStage(i) {
-  const slide = slideAt(i);
+  const slide = slides[i];
   if (!slide) return;
   slide.classList.remove('is-playing', 'is-blocked');
   slide.querySelectorAll('.feed-frame, .feed-blocked').forEach((n) => n.remove());
 }
 
-function showFallback(video, slide, message) {
-  const stage = slide.querySelector('.feed-stage');
-  slide.querySelectorAll('.feed-frame, .feed-blocked').forEach((n) => n.remove());
-  slide.classList.remove('is-playing');
+function blockedBox(video, slide, message) {
+  slide.querySelectorAll('.feed-blocked').forEach((n) => n.remove());
   slide.classList.add('is-blocked');
   const box = el('div', 'feed-blocked');
   box.append(el('p', 'feed-blocked__text', message), outLink(video, 'feed-blocked__btn'));
-  stage.appendChild(box);
+  slide.querySelector('.feed-stage').appendChild(box);
 }
 
-function activate(i) {
-  if (i === active || !list[i]) return;
-  clearTimeout(timer);
-  clearStage(active);
-  active = i;
-  const count = host.querySelector('.feed-count');
-  if (count) count.textContent = `${i + 1} מתוך ${list.length}`;
-  const prev = host.querySelector('.feed-nav--prev');
-  const next = host.querySelector('.feed-nav--next');
-  if (prev) prev.disabled = i === 0;
-  if (next) next.disabled = i === list.length - 1;
-  loadPosters(i);
-
+function play(i) {
   const video = list[i];
-  const slide = slideAt(i);
+  const slide = slides[i];
+  if (!video || !slide || i !== active) return;
+  clearStage(i);
   const src = feedEmbedUrl(video);
   if (!src) {
-    showFallback(video, slide, 'את הסרטון הזה אפשר לראות רק באפליקציה שלו.');
+    blockedBox(video, slide, 'את הסרטון הזה אפשר לראות רק באפליקציה שלו.');
     return;
   }
   const frame = el('iframe', 'feed-frame');
@@ -179,52 +178,104 @@ function activate(i) {
   frame.title = 'סרטון רפרנס';
   frame.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen';
   frame.allowFullscreen = true;
-  let loaded = false;
-  frame.addEventListener('load', () => { loaded = true; clearTimeout(timer); });
+  frame.addEventListener('load', () => {
+    clearTimeout(timer);
+    /* טעינה איטית שהצליחה בסוף: ההודעה יורדת והסרטון נשאר */
+    slide.classList.remove('is-blocked');
+    slide.querySelectorAll('.feed-blocked').forEach((n) => n.remove());
+  });
   slide.querySelector('.feed-stage').appendChild(frame);
   slide.classList.add('is-playing');
-  /* אותו עיקרון כמו בפופאפ: חלון ממקור אחר שנחסם נראה כמו ריבוע שחור בלי הסבר. */
+  clearTimeout(timer);
+  /* אותו עיקרון כמו בפופאפ: חלון ממקור אחר שנחסם נראה כמו ריבוע שחור בלי הסבר.
+     המסגרת נשארת מתחת להודעה, כי ברשת איטית היא עוד יכולה להיטען. */
   timer = setTimeout(() => {
-    if (!loaded && active === i) showFallback(video, slide, 'הסרטון לא נטען כאן. אפשר לפתוח אותו באפליקציה שלו, או להמשיך לגלול.');
+    if (active === i) blockedBox(video, slide, 'הסרטון לא נטען כאן. אפשר לפתוח אותו באפליקציה שלו, או להמשיך לגלול.');
   }, LOAD_TIMEOUT_MS);
 }
 
+function activate(i, immediate) {
+  if (i === active || !list[i]) return;
+  clearTimeout(timer);
+  clearTimeout(settleTimer);
+  clearStage(active);
+  active = i;
+  target = null;
+  const count = host.querySelector('.feed-count');
+  if (count) count.textContent = `${i + 1} מתוך ${list.length}`;
+  const prev = host.querySelector('.feed-nav--prev');
+  const next = host.querySelector('.feed-nav--next');
+  if (prev) prev.disabled = i === 0;
+  if (next) next.disabled = i === list.length - 1;
+  fillAround(i);
+  /* בגלילה מהירה לא טוענים נגן מלא לכל סרטון שעוברים בו */
+  if (immediate) play(i);
+  else settleTimer = setTimeout(() => play(i), SETTLE_MS);
+}
+
 function goTo(i) {
-  const slide = slideAt(i);
+  const slide = slides[i];
   if (!slide) return;
-  slide.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  target = i;
+  fillSlide(i);
+  const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  slide.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
   /* בדפדפן בלי IntersectionObserver הגלילה לא תפעיל את הסרטון מעצמה */
-  if (!observer) activate(i);
+  if (!observer) activate(i, true);
+}
+
+/* לחיצה כפולה על חץ מתקדמת שני סרטונים גם לפני שהגלילה הראשונה הסתיימה */
+function step(by) {
+  goTo((target === null ? active : target) + by);
 }
 
 function onKey(e) {
   if (!host) return;
   if (e.key === 'Escape') closeFeed();
-  if (e.key === 'ArrowDown' || e.key === 'PageDown') { e.preventDefault(); goTo(active + 1); }
-  if (e.key === 'ArrowUp' || e.key === 'PageUp') { e.preventDefault(); goTo(active - 1); }
+  if (e.key === 'ArrowDown' || e.key === 'PageDown') { e.preventDefault(); step(1); }
+  if (e.key === 'ArrowUp' || e.key === 'PageUp') { e.preventDefault(); step(-1); }
 }
 
 function onPop() {
+  /* החזרה שאנחנו ביקשנו בסגירה הקודמת, לא הלקוחה שלחצה עכשיו */
+  if (ownBack) return;
   pushedState = false;
   closeFeed();
+}
+
+/* יציאה לאפליקציה אחרת: הצליל של הסרטון לא ממשיך ברקע */
+function onVisibility() {
+  if (!host || active < 0) return;
+  clearTimeout(timer);
+  clearTimeout(settleTimer);
+  if (document.hidden) clearStage(active);
+  else play(active);
 }
 
 export function closeFeed() {
   if (!host) return;
   clearTimeout(timer);
+  clearTimeout(settleTimer);
   if (observer) observer.disconnect();
   observer = null;
   host.remove();
   host = null;
   list = [];
+  slides = [];
   active = -1;
+  target = null;
   document.body.classList.remove('feed-open');
   document.removeEventListener('keydown', onKey);
+  document.removeEventListener('visibilitychange', onVisibility);
   window.removeEventListener('popstate', onPop);
   /* כפתור הסגירה מוריד גם את הצעד שהוספנו להיסטוריה, כדי שחזרה לא תיתקע */
   if (pushedState) {
     pushedState = false;
-    try { history.back(); } catch (err) { /* דפדפן בלי היסטוריה: אין מה לעשות */ }
+    try {
+      ownBack = true;
+      window.addEventListener('popstate', () => { setTimeout(() => { ownBack = false; }, 0); }, { once: true });
+      history.back();
+    } catch (err) { ownBack = false; /* דפדפן בלי היסטוריה: אין מה לעשות */ }
   }
   if (lastFocus && lastFocus.focus) lastFocus.focus();
   lastFocus = null;
@@ -236,6 +287,7 @@ export function openFeed(videos, start = 0) {
   if (host) closeFeed();
   list = videos.slice();
   active = -1;
+  target = null;
   lastFocus = document.activeElement;
 
   host = el('div', 'feed');
@@ -253,22 +305,24 @@ export function openFeed(videos, start = 0) {
 
   const scroller = el('div', 'feed-scroller');
   const frag = document.createDocumentFragment();
-  list.forEach((video, i) => frag.appendChild(buildSlide(video, i)));
+  slides = list.map((video, i) => shell(i));
+  slides.forEach((slide) => frag.appendChild(slide));
   scroller.appendChild(frag);
 
   const navPrev = el('button', 'feed-nav feed-nav--prev', '▲');
   navPrev.type = 'button';
   navPrev.setAttribute('aria-label', 'לסרטון הקודם');
-  navPrev.addEventListener('click', () => goTo(active - 1));
+  navPrev.addEventListener('click', () => step(-1));
   const navNext = el('button', 'feed-nav feed-nav--next', '▼');
   navNext.type = 'button';
   navNext.setAttribute('aria-label', 'לסרטון הבא');
-  navNext.addEventListener('click', () => goTo(active + 1));
+  navNext.addEventListener('click', () => step(1));
 
   host.append(head, scroller, navPrev, navNext);
   document.body.appendChild(host);
   document.body.classList.add('feed-open');
   document.addEventListener('keydown', onKey);
+  document.addEventListener('visibilitychange', onVisibility);
 
   /* כפתור החזרה בטלפון יוצא ממצב הגלילה, ולא מהאפליקציה */
   try {
@@ -286,10 +340,10 @@ export function openFeed(videos, start = 0) {
         if (entry.isIntersecting) activate(Number(entry.target.dataset.index));
       });
     }, { root: scroller, threshold: 0.6 });
-    scroller.querySelectorAll('.feed-slide').forEach((s) => observer.observe(s));
+    slides.forEach((s) => observer.observe(s));
   }
-  activate(first);
-  if (first > 0) slideAt(first).scrollIntoView({ block: 'start' });
+  activate(first, true);
+  if (first > 0) slides[first].scrollIntoView({ block: 'start' });
   close.focus();
   return true;
 }

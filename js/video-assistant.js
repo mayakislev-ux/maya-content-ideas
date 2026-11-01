@@ -1009,7 +1009,7 @@ function subCategorySelectHtml(domain, selectedSub) {
   const subs = SUBCATEGORIES_BY_DOMAIN[domain] || [];
   if (!subs.length) return '<p class="muted" style="font-size:13px">(לתחום הזה אין תתי-קטגוריה)</p>';
   const opts = ['<option value="">לבחור תת-קטגוריה מדויקת</option>']
-    .concat(subs.map((s) => `<option value="${s}" ${s === selectedSub ? 'selected' : ''}>${s}</option>`))
+    .concat(subs.map((s) => `<option value="${escapeHtml(s)}" ${s === selectedSub ? 'selected' : ''}>${escapeHtml(s)}</option>`))
     .join('');
   return `<select id="va-subcategory-select" class="cosmic-textarea" style="min-height:auto;margin-top:10px">${opts}</select>`;
 }
@@ -1017,7 +1017,7 @@ function subCategorySelectHtml(domain, selectedSub) {
 function renderDomainConfirm(guessedDomain, guessedSub, onConfirmed) {
   const initialDomain = guessedDomain || DOMAIN_OPTIONS[0];
   const options = DOMAIN_OPTIONS.map(
-    (d) => `<option value="${d}" ${d === initialDomain ? 'selected' : ''}>${d}</option>`
+    (d) => `<option value="${escapeHtml(d)}" ${d === initialDomain ? 'selected' : ''}>${escapeHtml(d)}</option>`
   ).join('');
   cosmicCard(`
     <h2>התחום המדויק שלך</h2>

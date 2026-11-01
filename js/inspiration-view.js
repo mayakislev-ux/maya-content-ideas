@@ -1,6 +1,6 @@
 import { db, functions } from './firebase-init.js';
 import { openVideoPopup } from './inspiration-popup.js';
-import { readabilityOf, languageName, readableTextOf } from './inspiration-readability.js';
+import { accuracyNoteOf, readabilityOf, languageName, readableTextOf } from './inspiration-readability.js';
 import { openFeed } from './inspiration-feed.js';
 import { collection, getDocs } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
@@ -14,6 +14,7 @@ const PLATFORM_LABEL = { instagram: 'Instagram', tiktok: 'TikTok' };
 export function shortCount(n) {
   const v = Number(n) || 0;
   if (v >= 1e6) return `${(v / 1e6).toFixed(1).replace(/\.0$/, '')}M`;
+  if (v >= 999500) return '1M';
   if (v >= 1e3) return `${Math.round(v / 1e3)}K`;
   return v ? String(v) : '';
 }
@@ -259,15 +260,19 @@ function renderBatch(grid) {
 /* הרשימה שעל המסך עכשיו, כולל סינון, זווית וחיפוש: מצב הגלילה פותח בדיוק אותה. */
 let shownVideos = [];
 
-function renderCards(videos) {
-  const grid = document.getElementById('inspiration-grid');
-  const empty = document.getElementById('inspiration-empty');
+function setShownVideos(videos) {
   shownVideos = videos;
   const feedBtn = document.getElementById('inspiration-feed-btn');
   if (feedBtn) {
     feedBtn.hidden = !videos.length;
     feedBtn.textContent = `▶ מצב גלילה (${videos.length})`;
   }
+}
+
+function renderCards(videos) {
+  const grid = document.getElementById('inspiration-grid');
+  const empty = document.getElementById('inspiration-empty');
+  setShownVideos(videos);
   if (io) { io.disconnect(); io = null; }
   grid.innerHTML = '';
   sentinel = null;
@@ -386,9 +391,7 @@ function buildCard(video) {
       // צעד-אחר-צעד (להוריד את הסרטון, ואז להעלות אותו ל-Gemini).
       const accuracyWarning = document.createElement('p');
       accuracyWarning.className = 'inspiration-card-accuracy-warning';
-      accuracyWarning.textContent = isForeign
-        ? '⚠️ התרגום כאן לא תמיד מדויק במאה אחוז. לדיוק מלא: הורידו את הסרטון והעלו אותו ל-Gemini לתרגום מדויק יותר.'
-        : '⚠️ התמלול כאן לא תמיד מדויק במאה אחוז. לדיוק מלא: הורידו את הסרטון והעלו אותו ל-Gemini לתמלול מדויק יותר.';
+      accuracyWarning.textContent = accuracyNoteOf(Boolean(isForeign));
       // 05/10/2026, ממצא מהביקורת: האזהרה הקבועה הוסיפה כ-95 פיקסל לכל
       // כרטיס, וכרטיס הגיע ל-680 פיקסל בטלפון. היא נפתחת יחד עם הטקסט.
       accuracyWarning.hidden = true;
@@ -490,6 +493,8 @@ async function runSearch(query) {
 
   grid.innerHTML = '<p class="inspiration-loading">מחפשת רפרנסים מתאימים…</p>';
   status.hidden = true;
+  /* בזמן חיפוש, ואחרי חיפוש שנכשל, הכפתור לא פותח רשימה ישנה */
+  setShownVideos([]);
 
   let ids;
   try {

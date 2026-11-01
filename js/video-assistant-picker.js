@@ -48,12 +48,13 @@ const LEGACY_SUBCATEGORIES = {
 
 export function pickReference(videos, domain, subCategory, excludeId) {
   const inDomain = (videos || []).filter((v) => v && v.domain === domain);
-  const wanted = LEGACY_SUBCATEGORIES[subCategory] || [subCategory];
+  const wanted = [subCategory, ...(LEGACY_SUBCATEGORIES[subCategory] || [])];
   const inSubCategory = subCategory ? inDomain.filter((v) => wanted.includes(v.subCategory)) : [];
   const pool = inSubCategory.length ? inSubCategory : inDomain;
   /* 01/11/2026: שכפול נשען על המילים, וסרטון של שיר או בלי דיבור לא נותן מה לשכפל */
   const spoken = pool.filter((v) => v.audioKind !== 'song' && v.audioKind !== 'silent');
-  const base = spoken.length ? spoken : pool;
+  /* "להגריל שוב" על הסרטון המדובר היחיד לא מחזיר אותו שוב ושוב */
+  const base = spoken.some((v) => v.id !== excludeId) ? spoken : pool;
   const easy = base.filter((v) => Array.isArray(v.formatTags) && v.formatTags.some((f) => EASY_FORMATS.includes(f)));
   const easyWithoutExcluded = easy.filter((v) => v.id !== excludeId);
   if (easyWithoutExcluded.length) return pickFrom(easyWithoutExcluded, null);

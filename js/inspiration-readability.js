@@ -52,6 +52,13 @@ export function readabilityOf(video) {
   return READABILITY.untranslated;
 }
 
+/** האזהרה שליד כל טקסט, כרטיס ומצב גלילה באותו נוסח. */
+export function accuracyNoteOf(isTranslation) {
+  return isTranslation
+    ? '⚠️ התרגום כאן לא תמיד מדויק במאה אחוז. לדיוק מלא: הורידו את הסרטון והעלו אותו ל-Gemini לתרגום מדויק יותר.'
+    : '⚠️ התמלול כאן לא תמיד מדויק במאה אחוז. לדיוק מלא: הורידו את הסרטון והעלו אותו ל-Gemini לתמלול מדויק יותר.';
+}
+
 /** מה נשמע בסרטון: 'song', 'silent', 'speech', או '' כשעוד לא נבדק. */
 export function audioKindOf(video) {
   return (video && video.audioKind) || '';

@@ -37,3 +37,17 @@ test('a category of only songs still returns something', () => {
   const videos = [{ id: 'song', domain: 'כושר ותזונה', subCategory: 'פילאטיס', audioKind: 'song' }];
   assert.equal(pickReference(videos, 'כושר ותזונה', 'פילאטיס', null).id, 'song');
 });
+
+test('rerolling the only spoken video moves on instead of returning it', () => {
+  const videos = [
+    { id: 'talk', domain: 'כושר ותזונה', subCategory: 'פילאטיס', audioKind: 'speech' },
+    { id: 'song', domain: 'כושר ותזונה', subCategory: 'פילאטיס', audioKind: 'song' },
+  ];
+  for (let i = 0; i < 20; i += 1) assert.equal(pickReference(videos, 'כושר ותזונה', 'פילאטיס', 'talk').id, 'song');
+});
+
+test('the domain options escape the quote in real estate names', () => {
+  const src = readFileSync(new URL('../js/video-assistant.js', import.meta.url), 'utf8');
+  assert.ok(!/<option value="\$\{[ds]\}"/.test(src));
+  assert.ok(src.includes('<option value="${escapeHtml(d)}"'));
+});

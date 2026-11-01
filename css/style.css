@@ -7835,7 +7835,7 @@ body.feed-open { overflow: hidden; }
   overflow: hidden; background: #15121a;
 }
 .feed-poster { width: 100%; height: 100%; object-fit: cover; display: block; }
-.feed-frame { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: #000; }
+.feed-frame { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: transparent; }
 .feed-blocked {
   position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 14px; padding: 20px; text-align: center; background: rgba(0,0,0,.72);
@@ -7847,8 +7847,9 @@ body.feed-open { overflow: hidden; }
 .feed-note { margin: 0; font-size: 0.85rem; font-weight: 700; }
 .feed-read { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .feed-read__btn { font: inherit; font-size: 0.85rem; font-weight: 700; cursor: pointer; color: #fff; background: rgba(255,255,255,.16); border: 0; border-radius: 999px; padding: 6px 14px; }
-.feed-read__panel { width: 100%; box-sizing: border-box; max-height: 34vh; overflow-y: auto; background: #1d1824; border-radius: 10px; padding: 10px 12px; text-align: start; }
+.feed-read__panel { width: 100%; box-sizing: border-box; max-height: 34vh; overflow-y: auto; overscroll-behavior: contain; background: #1d1824; border-radius: 10px; padding: 10px 12px; text-align: start; }
 .feed-read__panel[hidden] { display: none; }
+.feed-read__warning { margin: 0 0 8px; font-size: 0.78rem; line-height: 1.45; opacity: .85; }
 .feed-read__text { margin: 0 0 8px; font-size: 0.9rem; line-height: 1.55; white-space: pre-wrap; }
 .feed-read__copy { font: inherit; font-size: 0.8rem; font-weight: 700; cursor: pointer; color: #111; background: #fff; border: 0; border-radius: 8px; padding: 5px 10px; }
 .feed-nav {
