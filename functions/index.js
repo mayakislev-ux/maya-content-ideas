@@ -1575,7 +1575,7 @@ silent = אין טקסט, או רק רעש, קריאה בודדת או מילי�
 
 החזר/י JSON בלבד: {"domain":"...","sub":"שם מדויק מהרשימה או ריק אם אין","audio":"speech|song|silent","conf":"high|low","why":"עד 8 מילים"}.
 אם אי אפשר לדעת, השאר/י את הקטגוריה הנוכחית וסמן/י conf=low.` });
-        const data = await callAnthropic(anthropicApiKey.value(), { model: 'claude-sonnet-5-5', max_tokens: 500, messages: [{ role: 'user', content }] }, 'auditInspirationCategories');
+        const data = await callAnthropic(anthropicApiKey.value(), { model: 'claude-sonnet-5-5', max_tokens: 2000, messages: [{ role: 'user', content }] }, 'auditInspirationCategories');
         const raw = getResponseText(data) || '';
         const match = raw.match(/\{[\s\S]*\}/);
         results.push({ id, ...JSON.parse(match ? match[0] : raw) });

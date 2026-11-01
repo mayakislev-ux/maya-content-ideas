@@ -39,10 +39,21 @@ export function pickIdea(ideas, excludeId) {
  * אחרת רפרנס יחיד בפורמט קל שהוחרג (reroll) היה גורם לנפילה חזרה לאותו
  * רפרנס בדיוק במקום למעבר לכל רפרנס אחר בתחום.
  */
+/* 31/10/2026: הקטגוריות פוצלו, ולקוחות ותיקים עדיין שמורים על השם הישן */
+const LEGACY_SUBCATEGORIES = {
+  גבות: ['עיצוב גבות', 'הרמת גבות', 'מיקרובליידינג', 'קורס עיצוב גבות'],
+  ריסים: ['הלחמת ריסים', 'הרמת ריסים', 'קורס הלחמת ריסים'],
+  'שיווק ויצירת תוכן': ['שיווק, רשתות ובניית מותג'],
+};
+
 export function pickReference(videos, domain, subCategory, excludeId) {
   const inDomain = (videos || []).filter((v) => v && v.domain === domain);
-  const inSubCategory = subCategory ? inDomain.filter((v) => v.subCategory === subCategory) : [];
-  const base = inSubCategory.length ? inSubCategory : inDomain;
+  const wanted = LEGACY_SUBCATEGORIES[subCategory] || [subCategory];
+  const inSubCategory = subCategory ? inDomain.filter((v) => wanted.includes(v.subCategory)) : [];
+  const pool = inSubCategory.length ? inSubCategory : inDomain;
+  /* 01/11/2026: שכפול נשען על המילים, וסרטון של שיר או בלי דיבור לא נותן מה לשכפל */
+  const spoken = pool.filter((v) => v.audioKind !== 'song' && v.audioKind !== 'silent');
+  const base = spoken.length ? spoken : pool;
   const easy = base.filter((v) => Array.isArray(v.formatTags) && v.formatTags.some((f) => EASY_FORMATS.includes(f)));
   const easyWithoutExcluded = easy.filter((v) => v.id !== excludeId);
   if (easyWithoutExcluded.length) return pickFrom(easyWithoutExcluded, null);
