@@ -96,6 +96,19 @@ test('שכפול רגיל: מה מוסיפים לשכפול, בלי SOS, בלי 
     assert.ok(!screen.includes(banned), banned);
   }
   assert.match(screen, /HER_WORDS_SUBMITTED/);
+  assert.ok(!screen.includes('צריך לכתוב משהו קודם'), 'השדה לא חובה');
+});
+
+test('שכפול רגיל: תוספת ריקה יורדת מהפרומפט, ומלאה נכנסת כמו קודם', async () => {
+  const { buildScriptPrompt } = await import('../js/video-assistant-prompts.js');
+  const base = { hook: 'ההוק', originalScript: 'המקור', domain: 'תחום', audience: 'קהל' };
+  const empty = buildScriptPrompt({ ...base, herWords: '' });
+  assert.ok(!empty.includes('זה מה שיש לי להגיד'));
+  assert.ok(!empty.includes('יחד עם כל מה'));
+  assert.match(empty, /תלביש אותו בתסריט המקורי אבל הכי חשוב\?/);
+  const full = buildScriptPrompt({ ...base, herWords: 'סיפור שלי' });
+  assert.match(full, /זה מה שיש לי להגיד: סיפור שלי/);
+  assert.match(full, /יחד עם כל מה\nשיש לי להגיד אבל הכי חשוב\?/);
 });
 
 test('משפך: נכנס לפרומפט רק כשנכתב', () => {

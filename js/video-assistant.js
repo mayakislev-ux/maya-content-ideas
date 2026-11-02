@@ -1360,18 +1360,16 @@ function renderDuplicationAddOn(context) {
     <h2>מה יש לך להוסיף לשכפול?</h2>
     ${context ? `<div class="cosmic-context-box"><span>ההוק שבחרת:</span>${escapeHtml(context)}</div>` : ''}
     <p>בהתאם למנגנון ולתסריט המקורי: איזו דעה, דוגמא או סיפור שמתאימים למנגנון של התסריט המקורי יש לך להוסיף? אפשר גם הערה אישית או מקצועית.</p>
-    <p class="muted">רק מה שקשור למנגנון של התסריט. לא צריך לכתוב הרבה.</p>
+    <p class="muted">רק מה שקשור למנגנון של התסריט. לא חובה: אם אין מה להוסיף, ממשיכים.</p>
     <textarea class="cosmic-textarea" id="va-dupadd-input" style="min-height:120px"></textarea>
     <div class="cosmic-btn-row" style="margin-top:14px">
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-dupadd-done-btn">ממשיכים ←</button>
     </div>
   `);
+  /* 02/11/2026 (מאיה: "לא רוצה שתעשי כחלק חובה, ואם לא מילאו כלום אז בפורמט
+     תמחקי רק את החלק הזה"). ריק עובר הלאה, ו-buildScriptPrompt משמיט את השורה. */
   document.getElementById('va-dupadd-done-btn').addEventListener('click', () => {
     const text = document.getElementById('va-dupadd-input').value.trim();
-    if (!text) {
-      showToast('צריך לכתוב משהו קודם');
-      return;
-    }
     dispatch({ type: 'HER_WORDS_SUBMITTED', text });
   });
 }
