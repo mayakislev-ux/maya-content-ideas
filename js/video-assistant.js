@@ -1317,6 +1317,14 @@ async function renderHerWords() {
     await ensureOpeningHook();
   }
   const context = isPreHookMegillah ? (state.openingHook || state.ideaDescription || '') : (state.hook || state.ideaDescription || '');
+  /* 02/11/2026 (מאיה: "בגלל שזה שכפול תוכן לא צריך את ה-SOS... וגם לא צריך
+     שיהיה כתוב מגילת אסתר... זה מכריח אותי לרשום מגילה עם תווים"). בשכפול
+     רגיל התסריט המקורי כבר נותן את המבנה, ומה שחסר הוא רק מה שהיא מוסיפה
+     לתוכו. בלי SOS, בלי מינימום מילים, ושאלה שנצמדת למנגנון. */
+  if (state.branch === 'reference') {
+    renderDuplicationAddOn(context);
+    return;
+  }
   /* 28/10/2026 (מאיה: "באלי שתרשמי בכותרת מגילת אסתר ואני רוצה שהכפתור
      של ה-SOS ממש ממש ממש יבלוט כי הרבה כותבות מגילה מעפנה ואז זה יוצא
      גרוע"). הכותרת היא מגילת אסתר בשני המסלולים, ה-SOS הוא כפתור גדול
@@ -1344,6 +1352,27 @@ async function renderHerWords() {
     inputId: 'va-herwords-input',
     doneId: 'va-herwords-done-btn',
     onGo: (text) => dispatch({ type: 'HER_WORDS_SUBMITTED', text }),
+  });
+}
+
+function renderDuplicationAddOn(context) {
+  cosmicCard(`
+    <h2>מה יש לך להוסיף לשכפול?</h2>
+    ${context ? `<div class="cosmic-context-box"><span>ההוק שבחרת:</span>${escapeHtml(context)}</div>` : ''}
+    <p>בהתאם למנגנון ולתסריט המקורי: איזו דעה, דוגמא או סיפור שמתאימים למנגנון של התסריט המקורי יש לך להוסיף? אפשר גם הערה אישית או מקצועית.</p>
+    <p class="muted">רק מה שקשור למנגנון של התסריט. לא צריך לכתוב הרבה.</p>
+    <textarea class="cosmic-textarea" id="va-dupadd-input" style="min-height:120px"></textarea>
+    <div class="cosmic-btn-row" style="margin-top:14px">
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-dupadd-done-btn">ממשיכים ←</button>
+    </div>
+  `);
+  document.getElementById('va-dupadd-done-btn').addEventListener('click', () => {
+    const text = document.getElementById('va-dupadd-input').value.trim();
+    if (!text) {
+      showToast('צריך לכתוב משהו קודם');
+      return;
+    }
+    dispatch({ type: 'HER_WORDS_SUBMITTED', text });
   });
 }
 

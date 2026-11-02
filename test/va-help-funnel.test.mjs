@@ -85,6 +85,19 @@ test("חיזוק ההוק גם הוא בג'מיני או ב-ChatGPT", () => {
   assert.ok(!screen.includes("להדביק בג'מיני,"));
 });
 
+/* 02/11/2026 (מאיה: "בגלל שזה שכפול תוכן לא צריך את ה-SOS... וגם לא צריך
+   שיהיה כתוב מגילת אסתר... זה מכריח אותי לרשום מגילה עם תווים"). */
+test('שכפול רגיל: מה מוסיפים לשכפול, בלי SOS, בלי מגילה ובלי מינימום מילים', () => {
+  assert.match(between('async function renderHerWords', 'function renderDuplicationAddOn'), /state\.branch === 'reference'[\s\S]{0,80}renderDuplicationAddOn/);
+  const screen = between('function renderDuplicationAddOn', 'export const MEGILLAH_MIN_WORDS');
+  assert.match(screen, /מה יש לך להוסיף לשכפול\?/);
+  assert.match(screen, /למנגנון של התסריט המקורי/);
+  for (const banned of ['מגילת אסתר', 'va-sos-big', 'wireMegillahGate', 'MEGILLAH_MIN_WORDS', 'megillahMeterHtml']) {
+    assert.ok(!screen.includes(banned), banned);
+  }
+  assert.match(screen, /HER_WORDS_SUBMITTED/);
+});
+
 test('משפך: נכנס לפרומפט רק כשנכתב', () => {
   const base = { idea: 'א', hook: 'ב', hookReinforcement: 'ג', rawScript: 'ד', ctaType: 'משפך' };
   assert.match(buildScriptDistillationPrompt({ ...base, funnel: 'מדריך חינמי' }), /הסוג הרצוי עבור התסריט הזה: משפך\nהמשפך שאליו ההנעה לפעולה צריכה להוביל: מדריך חינמי/);
