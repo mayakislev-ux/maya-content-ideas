@@ -7,21 +7,20 @@ test('initial state is the opening screen with empty history', () => {
   assert.deepEqual(INITIAL_STATE.history, []);
 });
 
-test('footage path: footage -> relevance check -> "what did you film?"', () => {
+/* 02/11/2026 (מאיה: "בואי נשאיר רק את הקטע שצולם דיבור, וזה פשוט לא צריך
+   את הבחירה של ה-2 כפתורים"). */
+test('footage path: footage -> relevance check -> straight into curating the speech, no type choice', () => {
   let s = nextStep(INITIAL_STATE, { type: 'CHOOSE_FOOTAGE' });
   assert.equal(s.screen, 'relevance-check');
   assert.equal(s.branch, 'footage');
   s = nextStep(s, { type: 'RELEVANCE_CONFIRMED' });
-  assert.equal(s.screen, 'footage-type-choice');
+  assert.equal(s.screen, 'footage-speech-find');
+  assert.equal(s.footageKind, 'speech');
 });
 
 test('footage, speech clip: one sequence (find -> shorten -> sharpen -> done), not a choice (18/10)', () => {
   let s = nextStep(INITIAL_STATE, { type: 'CHOOSE_FOOTAGE' });
   s = nextStep(s, { type: 'RELEVANCE_CONFIRMED' });
-  // 26/10/2026: צ'אט שמדייק את הרעיון, ואז נקודת יציאה וסוג תוכן
-  s = nextStep(s, { type: 'IDEA_SHARPENED', idea: 'טעות נפוצה בהסרת שיער' });
-  s = nextStep(s, { type: 'BASICS_CONFIRMED', startingPoint: 'כללי', contentType: 'בעל ערך' });
-  s = nextStep(s, { type: 'FOOTAGE_IS_SPEECH' });
   assert.equal(s.screen, 'footage-speech-find');
   s = nextStep(s, { type: 'FOOTAGE_SPEECH_NEXT' });
   assert.equal(s.screen, 'footage-speech-shorten');
@@ -38,12 +37,10 @@ test('FOOTAGE_SPEECH_NEXT throws from a screen outside the sequence', () => {
   assert.throws(() => nextStep(base, { type: 'FOOTAGE_SPEECH_NEXT' }), /FOOTAGE_SPEECH_NEXT not valid/);
 });
 
-test('footage, visual clip, found a moment -> extraction guidance -> summary', () => {
-  let s = nextStep(INITIAL_STATE, { type: 'CHOOSE_FOOTAGE' });
-  s = nextStep(s, { type: 'RELEVANCE_CONFIRMED' });
-  // 26/10/2026: צ'אט שמדייק את הרעיון, ואז נקודת יציאה וסוג תוכן
-  s = nextStep(s, { type: 'IDEA_SHARPENED', idea: 'טעות נפוצה בהסרת שיער' });
-  s = nextStep(s, { type: 'BASICS_CONFIRMED', startingPoint: 'כללי', contentType: 'בעל ערך' });
+/* 02/11/2026: אין עוד כניסה חדשה למסלול הוויזואלי. סרטון שנשמר באמצע
+   המסלול עדיין מסתיים, ולכן הבדיקות האלה מתחילות ממסך הבחירה הישן. */
+test('saved mid-way: footage, visual clip, found a moment -> extraction guidance -> summary', () => {
+  let s = { ...INITIAL_STATE, screen: 'footage-type-choice', branch: 'footage' };
   s = nextStep(s, { type: 'FOOTAGE_IS_VISUAL' });
   assert.equal(s.screen, 'footage-visual-scan');
   s = nextStep(s, { type: 'FOOTAGE_VISUAL_FOUND_MOMENT' });
@@ -74,17 +71,10 @@ test('footage branch records which path was actually taken, for a concrete summa
   // באמת קרה במסלול הזה.
   let speech = nextStep(INITIAL_STATE, { type: 'CHOOSE_FOOTAGE' });
   speech = nextStep(speech, { type: 'RELEVANCE_CONFIRMED' });
-  // 23/10/2026: הזווית נבחרת אחרי הרעיון ולפני הפורמט
-  speech = nextStep(speech, { type: 'IDEA_SHARPENED', idea: 'טעות נפוצה' });
-  speech = nextStep(speech, { type: 'BASICS_CONFIRMED', startingPoint: 'כללי', contentType: 'בעל ערך' });
-  speech = nextStep(speech, { type: 'FOOTAGE_IS_SPEECH' });
   assert.equal(speech.footageKind, 'speech');
 
-  let visual = nextStep(INITIAL_STATE, { type: 'CHOOSE_FOOTAGE' });
-  visual = nextStep(visual, { type: 'RELEVANCE_CONFIRMED' });
-  // 23/10/2026: הזווית נבחרת אחרי הרעיון ולפני הפורמט
-  visual = nextStep(visual, { type: 'IDEA_SHARPENED', idea: 'טעות נפוצה' });
-  visual = nextStep(visual, { type: 'BASICS_CONFIRMED', startingPoint: 'כללי', contentType: 'בעל ערך' });
+  // 02/11/2026: רק סרטון שנשמר באמצע המסלול הוויזואלי מגיע לכאן
+  let visual = { ...INITIAL_STATE, screen: 'footage-type-choice', branch: 'footage' };
   visual = nextStep(visual, { type: 'FOOTAGE_IS_VISUAL' });
   assert.equal(visual.footageKind, 'visual');
 
@@ -310,7 +300,7 @@ test('REROLL keeps the current screen, only bumps the count, and leaves no back-
 test('BACK undoes the previous real navigation, one step at a time', () => {
   let s = nextStep(INITIAL_STATE, { type: 'CHOOSE_FOOTAGE' });
   s = nextStep(s, { type: 'RELEVANCE_CONFIRMED' });
-  assert.equal(s.screen, 'footage-type-choice');
+  assert.equal(s.screen, 'footage-speech-find');
 
   s = nextStep(s, { type: 'BACK' });
   assert.equal(s.screen, 'relevance-check');
@@ -361,10 +351,10 @@ test('חידוד הרעיון יושב בין הרעיון לפורמט, ולא 
   assert.equal(s.screen, 'format-choice', 'הפורמט לא בא אחרי האריזה');
 });
 
-test('קטע מצולם נשאר בבחירת סוג הקטע אחרי הרלוונטיות, לא בחידוד', () => {
+test('קטע מצולם נכנס ישר לליקוט אחרי הרלוונטיות, לא לבחירת סוג ולא לחידוד', () => {
   const s = nextStep({ ...INITIAL_STATE, screen: 'relevance-check', branch: 'footage' },
     { type: 'RELEVANCE_CONFIRMED' });
-  assert.equal(s.screen, 'footage-type-choice');
+  assert.equal(s.screen, 'footage-speech-find');
 });
 
 test('הזווית נשמרת עד הסוף גם כשעוברים דרך הפורמט', () => {

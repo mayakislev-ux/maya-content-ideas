@@ -541,6 +541,7 @@ async function renderOpening() {
       <button type="button" class="cosmic-btn" id="va-reference-btn">סרטון שאהבתי (שכפול)</button>
       <button type="button" class="cosmic-btn" id="va-footage-btn">יש לי קטע שצולם</button>
     </div>
+    <p class="muted" style="font-size:13px;margin-top:10px">קטע שצולם = ליקוט מתוך דיבור שכבר צילמתם. קטע בלי דיבור (תהליך, לפני ואחרי)? בוחרים "יש לי רעיון" ובונים סביבו.</p>
   `);
   document.getElementById('va-footage-btn').addEventListener('click', () => dispatch({ type: 'CHOOSE_FOOTAGE' }));
   document.getElementById('va-reference-btn').addEventListener('click', () => dispatch({ type: 'CHOOSE_REFERENCE' }));

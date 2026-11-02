@@ -137,7 +137,11 @@ function step(state, action) {
 
     // ===== השער המשותף: "רלוונטי לקהל היעד, או משרת את המותג?" =====
     case 'RELEVANCE_CONFIRMED':
-      if (state.branch === 'footage') return { ...state, screen: 'footage-type-choice' };
+      /* 02/11/2026 (מאיה: "בואי נשאיר רק את הקטע שצולם דיבור, וזה פשוט לא
+         צריך את הבחירה של ה-2 כפתורים"). קטע שצולם הוא ליקוט: בוחרים ממנו
+         את הפואנטה. קטע ויזואלי בלי דיבור נבנה מ"יש לי רעיון". מסכי
+         הוויזואל נשארים בקוד רק כדי שסרטון שכבר באמצע יוכל להיגמר. */
+      if (state.branch === 'footage') return { ...state, screen: 'footage-speech-find', footageKind: 'speech' };
       if (state.branch === 'reference') return { ...state, screen: 'transcribe' };
       /* 23/10/2026 (מאיה): חידוד הרעיון קורה לפני בחירת הפורמט, כי אי
          אפשר לבחור פורמט לרעיון שעוד לא ברור. 26/10/2026: זה צ'אט
