@@ -55,7 +55,9 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
     match /allowlist/{email} {
-      allow read: if request.auth != null && request.auth.token.email == email;
+      /* 02/11/2026: מאיה קוראת רשומות של לקוחות כדי שתצוגת הלקוחה תראה בדיוק
+         מה הלקוחה רואה (שעון המנוי, לשונית המדריך). קריאה בלבד, הכתיבה נשארת חסומה. */
+      allow read: if isAdmin() || (request.auth != null && request.auth.token.email == email);
       allow write: if false;
     }
     match /feedback/{feedbackId} {

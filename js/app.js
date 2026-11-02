@@ -762,6 +762,13 @@ onAuthChange(async (user) => {
   }
   setGreeting(viewedNow ? (viewedNow.name || viewedNow.email) : user.displayName);
   if (viewedNow && viewedNow.plan === 'refs') document.body.dataset.plan = 'refs';
+  /* 02/11/2026 (מאיה: "בצפייה מהלקוחה לא רואה שנוספה לשונית המדריך"): הלשונית
+     נקבעת לפי הרשומה של הלקוחה, ולכן קוראים אותה גם כאן. */
+  if (viewedNow && viewedNow.email) {
+    getDoc(doc(db, 'allowlist', String(viewedNow.email).toLowerCase()))
+      .then((snap) => { document.body.dataset.cpGuide = snap.exists() && snap.data().contentPlanGuide === true ? '1' : ''; })
+      .catch((err) => console.error('client view allowlist read failed:', err));
+  }
   showPortalBackButton(user);
   if (user.photoURL) {
     const logo = document.querySelector('.app-logo');
