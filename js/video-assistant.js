@@ -200,9 +200,11 @@ function wireBuildMore(root) {
 }
 
 /* 31/10/2026 (מאיה: "את הפרומפט למציאת הוק תדגישי שזה לג'מיני, ותכתבי בקטן
-   שהוא טוב בהוקים וקריאייטיב, אבל את הכתיבה עצמה ה-ChatGPT לוקח"). */
+   שהוא טוב בהוקים וקריאייטיב, אבל את הכתיבה עצמה ה-ChatGPT לוקח").
+   02/11/2026 (מאיה: "תעשי סלאש ChatGPT, כי פעמים זה עושה יותר טוב ולפעמים
+   זה"): כל כפתור שהעתיק לג'מיני מציע עכשיו את שניהם. */
 function geminiHookNote() {
-  return `<div class="va-ai-note"><strong>✨ הפרומפט הזה הולך לג'מיני</strong><small>ג'מיני חזק במיוחד בהוקים ובקריאייטיב. את כתיבת התסריט עצמה ChatGPT לוקח, בהמשך.</small></div>`;
+  return `<div class="va-ai-note"><strong>✨ הפרומפט הזה הולך לג'מיני או ל-ChatGPT</strong><small>ג'מיני חזק במיוחד בהוקים ובקריאייטיב, ולפעמים ChatGPT מביא יותר. שווה לנסות את שניהם.</small></div>`;
 }
 
 /* טקסט שכבר נכתב חוזר לתיבה דרך הטיוטה ולא כערך של התיבה, כי ערך של התיבה גובר
@@ -1271,11 +1273,11 @@ async function renderPrompt1() {
     ${geminiHookNote()}
     <div class="cosmic-context-box"><span>ההוק שזיהינו מתוך התמלול שלך:</span>${escapeHtml(hookForPrompt)}</div>
     ${isReverseDup
-      ? `<p>ההוק המקורי + התסריט שלך נשלחים לג'מיני - הוא שולף מתוך התסריט שלך הוקים חזקים ומלביש אותם על מנגנון ההוק המקורי, ומביא לך 30 רעיונות.</p>`
-      : `<p>רק ההוק הזה נשלח לג'מיני - לא כל התמלול. הוא ישכפל אותו ויביא לך 30 הוקים חדשים באותו מנגנון.</p>`}
-    <p>להעתיק, להדביק בג'מיני, ולחזור עם ההוק שהכי קרץ לך מתוך ה-30</p>
+      ? `<p>ההוק המקורי + התסריט שלך נשלחים לג'מיני או ל-ChatGPT - הוא שולף מתוך התסריט שלך הוקים חזקים ומלביש אותם על מנגנון ההוק המקורי, ומביא לך 30 רעיונות.</p>`
+      : `<p>רק ההוק הזה נשלח לג'מיני או ל-ChatGPT - לא כל התמלול. הוא ישכפל אותו ויביא לך 30 הוקים חדשים באותו מנגנון.</p>`}
+    <p>להעתיק, להדביק בג'מיני או ב-ChatGPT, ולחזור עם ההוק שהכי קרץ לך מתוך ה-30</p>
     ${promptPeek(highlightPlaceholders(prompt, highlightValues))}
-    ${copyBtn(prompt, "להעתיק פרומפט לג'מיני")}
+    ${copyBtn(prompt, "להעתיק פרומפט לג'מיני / ChatGPT")}
     <textarea class="cosmic-textarea" id="va-hook-input" placeholder="להדביק כאן את ההוק שבחרת..." style="margin-top:14px"></textarea>
     <div class="cosmic-btn-row" style="margin-top:14px">
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-hook-chosen-btn">ממשיכים ←</button>
@@ -1621,10 +1623,10 @@ async function renderCreativePackaging() {
   const withBasics = state.branch !== 'footage';
   cosmicCard(`
     <h2>האריזה הקריאייטיבית</h2>
-    <p>איך מגישים את המסר בצורה מעניינת ולא בנאלית. להעתיק לג'מיני, לבחור מתוך ה-20 את הכיוון שהכי מדליק, ולהדביק אותו כאן.</p>
+    <p>איך מגישים את המסר בצורה מעניינת ולא בנאלית. להעתיק לג'מיני או ל-ChatGPT, לבחור מתוך ה-20 את הכיוון שהכי מדליק, ולהדביק אותו כאן.</p>
     <button type="button" class="va-text-link" id="va-what-creative-link">מה זה בעצם קריאייטיב?</button>
     ${promptPeek(highlightPlaceholders(prompt, [domain, audience, idea]))}
-    ${copyBtn(prompt, "להעתיק פרומפט לג'מיני")}
+    ${copyBtn(prompt, "להעתיק פרומפט לג'מיני / ChatGPT")}
     <textarea class="cosmic-textarea" id="va-packaging-input" placeholder="להדביק כאן את הכיוון שבחרת..." style="margin-top:14px">${state.packaging ? escapeHtml(state.packaging) : ''}</textarea>
     ${withBasics ? `
     <p class="cosmic-field-label" style="margin-top:16px">מה נקודת היציאה של הרעיון?</p>
@@ -1862,8 +1864,8 @@ async function renderScratchHook() {
     <h2>מציאת הוק</h2>
     ${geminiHookNote()}
     <p>${withRef
-      ? "ההוק של הסרטון שעבד + המגילה שלך: ג'מיני יביא 30 הוקים באותו מנגנון. להעתיק, להדביק, ולחזור עם ההוק שבחרת."
-      : "הפרומפט כולל בנק הוקים אמיתי מוטמע - ג'מיני יתאים לך ממנו הוק מדויק. להעתיק, להדביק, ולחזור עם ההוק שבחרת."}</p>
+      ? "ההוק של הסרטון שעבד + המגילה שלך: ג'מיני או ChatGPT יביאו 30 הוקים באותו מנגנון. להעתיק, להדביק, ולחזור עם ההוק שבחרת."
+      : "הפרומפט כולל בנק הוקים אמיתי מוטמע - ג'מיני או ChatGPT יתאימו לך ממנו הוק מדויק. להעתיק, להדביק, ולחזור עם ההוק שבחרת."}</p>
     ${withRef ? `<div class="cosmic-context-box"><span>ההוק שזיהינו מהסרטון:</span>${escapeHtml(state.openingHook)}</div>` : ''}
     <details class="va-more"${withRef ? ' open' : ''}>
       <summary>יש סרטון שעבד ושתרצו להיצמד אליו? (רשות)</summary>
@@ -1874,7 +1876,7 @@ async function renderScratchHook() {
       </div>
     </details>
     ${promptPeek(highlightPlaceholders(prompt, marks))}
-    ${copyBtn(prompt, "להעתיק פרומפט לג'מיני")}
+    ${copyBtn(prompt, "להעתיק פרומפט לג'מיני / ChatGPT")}
     <textarea class="cosmic-textarea" id="va-scratch-hook-input" placeholder="להדביק כאן את ההוק שבחרת..." style="margin-top:14px"></textarea>
     <div class="cosmic-btn-row" style="margin-top:14px">
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-scratch-hook-done-btn">ממשיכים ←</button>
@@ -1929,9 +1931,9 @@ async function renderScratchHookReinforce() {
   cosmicCard(`
     <h2>חיזוק ההוק</h2>
     ${geminiHookNote()}
-    <p>המשפט השני, שנותן סיבה ברורה להישאר. להעתיק, להדביק בג'מיני, ולחזור עם החיזוק שבחרת.</p>
+    <p>המשפט השני, שנותן סיבה ברורה להישאר. להעתיק, להדביק בג'מיני או ב-ChatGPT, ולחזור עם החיזוק שבחרת.</p>
     ${promptPeek(highlightPlaceholders(prompt, [state.ideaDescription, state.hook, state.rawDump]))}
-    ${copyBtn(prompt, "להעתיק פרומפט לג'מיני")}
+    ${copyBtn(prompt, "להעתיק פרומפט לג'מיני / ChatGPT")}
     <textarea class="cosmic-textarea" id="va-scratch-reinforce-input" placeholder="להדביק כאן את חיזוק ההוק שבחרת..." style="margin-top:14px"></textarea>
     <div class="cosmic-btn-row" style="margin-top:14px">
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-scratch-reinforce-done-btn">ממשיכים ←</button>

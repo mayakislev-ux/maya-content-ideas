@@ -65,21 +65,24 @@ test('"עוד": הכפתור מופיע ומחליף בין קצר למלא', ()
   assert.match(SRC, /wireBuildMore\(card\)/);
 });
 
-test("מציאת הוק הולכת לג'מיני, בשני המסלולים, והכתיבה ל-ChatGPT", () => {
+/* 02/11/2026 (מאיה: "תעשי סלאש ChatGPT, כי פעמים זה עושה יותר טוב ולפעמים
+   זה"): כפתור שהעתיק לג'מיני מציע את שניהם, ושום טקסט לידו לא אומר רק אחד. */
+test("מציאת הוק הולכת לג'מיני או ל-ChatGPT, בשני המסלולים, והכתיבה ל-ChatGPT", () => {
   for (const [a, b] of [['async function renderPrompt1', 'async function renderPrompt2'], ['async function renderScratchHook', 'async function renderScratchHookReinforce']]) {
     const screen = between(a, b);
     assert.match(screen, /geminiHookNote\(\)/, a);
-    assert.match(screen, /להעתיק פרומפט לג'מיני/, a);
-    assert.ok(!screen.includes('נשלח ל-ChatGPT') && !screen.includes('ChatGPT יביא') && !screen.includes('ChatGPT יתאים'), a);
+    assert.match(screen, /להעתיק פרומפט לג'מיני \/ ChatGPT/, a);
+    assert.ok(!/להדביק בג'מיני,|נשלח לג'מיני -|ג'מיני יביא|ג'מיני יתאים/.test(screen), a);
   }
   assert.match(between('async function renderPrompt2', 'function renderReadAloud'), /להעתיק פרומפט ל-ChatGPT/);
   assert.match(between('async function renderScratchDistill', '// ===== מסך הסיכום הסופי'), /להעתיק פרומפט ל-ChatGPT/);
 });
 
-test("חיזוק ההוק גם הוא בג'מיני (31/10/2026: \"חיזוק הוק תשאירי ג'מיני\")", () => {
+test("חיזוק ההוק גם הוא בג'מיני או ב-ChatGPT", () => {
   const screen = between('async function renderScratchHookReinforce', 'const CTA_TYPES');
   assert.match(screen, /geminiHookNote\(\)/);
-  assert.match(screen, /להעתיק פרומפט לג'מיני/);
+  assert.match(screen, /להעתיק פרומפט לג'מיני \/ ChatGPT/);
+  assert.ok(!screen.includes("להדביק בג'מיני,"));
 });
 
 test('משפך: נכנס לפרומפט רק כשנכתב', () => {
