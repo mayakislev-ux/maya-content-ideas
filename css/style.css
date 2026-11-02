@@ -6295,6 +6295,12 @@ body[data-plan="refs"] #login-portal-back { display: none !important; }
 .tab-refs-only { display: none !important; }
 body[data-plan="refs"] .tab-refs-only { display: inline-flex !important; }
 
+/* 02/11/2026 (מאיה: "לכל הבנות של המרתון תוכן שאין להן מנוי מלא... שתוסיפי
+   להן את הכפתור של איך בונים תכנית תוכן עצמאית"). רק מי שמסומנת ב-allowlist
+   עם contentPlanGuide, ולא כל מנוי הרפרנסים. */
+.tab-cpguide-only { display: none !important; }
+body[data-plan="refs"][data-cp-guide="1"] .tab-cpguide-only { display: inline-flex !important; }
+
 /* בלי הכפתורים התחתונים אין טעם בסרגל התחתון כולו */
 body[data-plan="refs"] .bottom-nav { display: none !important; }
 

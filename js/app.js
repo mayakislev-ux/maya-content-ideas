@@ -224,6 +224,8 @@ async function loadAccess(email) {
        ולכן מי שעליה רואה כמה ימים נשארו. למנוי מתחדש זה רעש ולא מידע. */
     showCountdown: data.showCountdown === true,
     renewOffer: data.renewOffer === true,
+    /* 02/11/2026: המדריך "איך בונים תכנית תוכן" כלשונית, לבנות מרתון התוכן */
+    contentPlanGuide: data.contentPlanGuide === true,
   };
 }
 
@@ -357,6 +359,8 @@ document.getElementById('hub-link-video-assistant').addEventListener('click', ()
 /* 20/10/2026: מנוית רפרנסים מגיעה לעוזר מהלשונית שלו, ואין לה מרכז למידה.
    החזרה שלה היא למאגר ההשראה. */
 document.getElementById('tab-video-assistant').addEventListener('click', () => showView('video-assistant'));
+/* 02/11/2026: לשונית המדריך לבנות מרתון התוכן במנוי רפרנסים (ראו tab-cpguide-only) */
+document.getElementById('tab-content-plan').addEventListener('click', () => showView('content-plan'));
 document.getElementById('video-assistant-back-btn').addEventListener('click', () => {
   if (document.body.dataset.plan === 'refs') {
     showView('inspiration');
@@ -673,6 +677,7 @@ onAuthChange(async (user) => {
   }
   /* מנוי רפרנסים: הגוף מסומן, וה-CSS מסתיר את כל מה שלא מאגר ההשראה */
   document.body.dataset.plan = access.refsOnly ? 'refs' : 'full';
+  document.body.dataset.cpGuide = access.contentPlanGuide ? '1' : '';
 
   showSubscriptionCountdown(access);
 
@@ -700,6 +705,7 @@ onAuthChange(async (user) => {
       try {
         const snap = await getDoc(doc(db, 'allowlist', asEmail));
         const d = snap.exists() ? (snap.data() || {}) : {};
+        document.body.dataset.cpGuide = d.contentPlanGuide === true ? '1' : '';
         showSubscriptionCountdown({
           showCountdown: d.showCountdown === true,
           renewOffer: d.renewOffer === true,
