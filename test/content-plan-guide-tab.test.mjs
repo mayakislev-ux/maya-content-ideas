@@ -9,7 +9,7 @@ const css = readFileSync(new URL('../css/style.css', import.meta.url), 'utf8');
 const app = readFileSync(new URL('../js/app.js', import.meta.url), 'utf8');
 
 test('הלשונית קיימת, ופותחת את מסך המדריך', () => {
-  assert.match(html, /<button id="tab-content-plan" class="tab-btn tab-cpguide-only">[\s\S]{0,400}איך בונים תכנית תוכן/);
+  assert.match(html, /<button id="tab-content-plan" class="tab-btn tab-cpguide-only">[\s\S]{0,400}המדריך לתכנית תוכן/);
   assert.match(app, /getElementById\('tab-content-plan'\)\.addEventListener\('click', \(\) => showView\('content-plan'\)\)/);
 });
 
