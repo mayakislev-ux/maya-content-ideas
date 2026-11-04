@@ -38,8 +38,8 @@ function chatAvatar() {
   avatar.src = AVATAR_SRC;
   avatar.srcset = AVATAR_SRCSET;
   avatar.alt = '';
-  avatar.width = 36;
-  avatar.height = 36;
+  avatar.width = 28;
+  avatar.height = 28;
   avatar.decoding = 'async';
   return avatar;
 }

@@ -1422,8 +1422,9 @@ h1, h2, h3 {
 
 .chat-avatar {
   flex-shrink: 0;
-  width: 36px;
-  height: 36px;
+  /* 04/11/2026 (מאיה: "את התמונה שלי בצ'אט אפשר להפוך לקצת יותר קטנה?") */
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   object-fit: cover;
   background: var(--accent);
