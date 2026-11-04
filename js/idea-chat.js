@@ -15,7 +15,7 @@ import { confirmDialog } from './confirm-dialog.js';
 import { updateIdea } from './ideas-store.js';
 import { showToast } from './toast.js';
 import { serverErrorText } from './server-error.js';
-import { actsAsOwner } from './client-view.js';
+import { actsAsOwner, viewedClient } from './client-view.js';
 
 // checkIdea used to be a plain httpsCallable - converted to a raw streaming
 // HTTP endpoint so the reply appears progressively instead of behind a single
@@ -159,9 +159,35 @@ export const ONBOARDING_QUESTIONS = {
   secondaryAudience: 'ומי קהל היעד המשני שלך (אם יש)?',
 };
 
+/* 04/11/2026 (מאיה): "אגב, כדאי למלא את הפרופיל במסך ההגדרות" ירד מהשרת.
+   "אולי במקום זה שבצ'אט עצמו ישאל אותי ואמלא לו אם חסר, ושלא יהיה ככה כל
+   פעם". מה שהפרומפט באמת צריך הוא התחום וקהל היעד העיקרי (ב-04/11: 36 מתוך
+   74 פרופילים בלי תחום, 28 בלי קהל). כשאחד מהם חסר, הצ'אט שואל עליו קודם,
+   שאלה אחת בכל פעם, שומר בפרופיל, ולא שואל שוב. התשובות לא נשלחות לשרת. */
+export const REQUIRED_PROFILE_STEPS = ['business', 'primaryAudience'];
+
+/** אילו שאלות לשאול לפני הפתיחה. פרופיל שלא קיים בכלל: ההיכרות המלאה.
+    מאיה עצמה (השרת מתעלם אצלה מהתחום ומהקהל) ותצוגה של לקוחה אחרת: כלום,
+    כדי לא לכתוב לפרופיל של מישהי אחרת דרך הצ'אט. */
+export function missingProfileSteps(p, { owner = false, viewing = false } = {}) {
+  if (owner || viewing) return [];
+  if (!p) return [...ONBOARDING_STEPS];
+  return REQUIRED_PROFILE_STEPS.filter((k) => !String(p[k] || '').trim());
+}
+
+/** הנוסח של שאלה חסרה בודדת, בלשון הפנייה אם ידועה. */
+export function missingStepQuestion(step, { first, pronoun } = {}) {
+  const lead = first ? 'רגע לפני שנתחיל: ' : '';
+  if (step === 'business') return `${lead}מה התחום שלך?`;
+  const sell = pronoun === 'אתה' ? 'למי אתה רוצה למכור' : (pronoun === 'את' ? 'למי את רוצה למכור' : 'למי את/ה רוצה למכור');
+  return `${first ? lead : 'ו'}מי קהל היעד העיקרי שלך? (${sell})`;
+}
+
 let history = [];
 let profile = null;
 let onboardingStep = null;
+let onboardingSteps = ONBOARDING_STEPS;
+let onboardingPartial = false;
 let draftProfile = {};
 let started = false;
 let originalIdeaText = null;
@@ -264,11 +290,18 @@ function resetChat() {
   pendingIdeaContext = null;
   newConversation();
   messagesEl().innerHTML = '';
-  greetAndAskForIdea();
+  continueAfterProfile();
 }
 
 function askOnboardingStep(step) {
   const input = document.getElementById('chat-input');
+  if (onboardingPartial) {
+    input.hidden = false;
+    input.focus();
+    const first = onboardingSteps.indexOf(step) === 0;
+    addBubble(messagesEl(), missingStepQuestion(step, { first, pronoun: (profile || {}).pronoun }), 'assistant');
+    return;
+  }
   if (step === 'pronoun') {
     input.hidden = true;
     addChoiceBubble(messagesEl(), 'איך נעים לך שאפנה אלייך?', ['את', 'אתה'], (choice) => {
@@ -283,8 +316,8 @@ function askOnboardingStep(step) {
 }
 
 function advanceOnboarding() {
-  const idx = ONBOARDING_STEPS.indexOf(onboardingStep);
-  const nextStep = ONBOARDING_STEPS[idx + 1];
+  const idx = onboardingSteps.indexOf(onboardingStep);
+  const nextStep = onboardingSteps[idx + 1];
   if (nextStep) {
     onboardingStep = nextStep;
     askOnboardingStep(onboardingStep);
@@ -294,11 +327,15 @@ function advanceOnboarding() {
 }
 
 async function finishOnboarding() {
-  profile = { ...draftProfile };
+  /* רק מה שנשאל נכתב (saveProfile ממזג), ושאר הפרופיל נשאר כמו שהיה */
+  const answers = { ...draftProfile };
+  profile = { ...(profile || {}), ...answers };
   onboardingStep = null;
+  onboardingPartial = false;
+  draftProfile = {};
   // לא מחכים לשמירה: כתיבה ל-Firestore על חיבור תקוע יכולה לא להסתיים אף פעם,
   // והצ'אט היה נשאר בלי תשובה אחרי השאלה האחרונה
-  withTimeout(saveProfile(profile), 10000).catch((err) => console.error('saveProfile failed:', err));
+  withTimeout(saveProfile(answers), 10000).catch((err) => console.error('saveProfile failed:', err));
   document.getElementById('chat-input').hidden = false;
   greetAndAskForIdea();
 }
@@ -313,10 +350,11 @@ function greetAndAskForIdea() {
   /* 27/10/2026: ברירת המחדל כאן הייתה נקבה, ולכן המשפט הראשון שגבר בלי
      פרופיל ראה היה בלשון נקבה - בדיוק מה שתוקן בצד השרת. כשלא ידוע,
      צורה כפולה. */
-  const registerVerb = profile.pronoun === 'אתה' ? 'רשום' : (profile.pronoun === 'את' ? 'רשמי' : 'רשמ/י');
+  const who = profile || {};
+  const registerVerb = who.pronoun === 'אתה' ? 'רשום' : (who.pronoun === 'את' ? 'רשמי' : 'רשמ/י');
   addBubble(
     messagesEl(),
-    `${profile.name ? `${profile.name}, ` : ''}${registerVerb} לי מה הרעיון שלך ואדייק אותך.`,
+    `${who.name ? `${who.name}, ` : ''}${registerVerb} לי מה הרעיון שלך ואדייק אותך.`,
     'assistant'
   );
 }
@@ -328,9 +366,12 @@ function greetAndAskForIdea() {
 let chatGen = 0;
 function newConversation() {
   chatGen += 1;
+  onboardingStep = null;
+  onboardingPartial = false;
+  draftProfile = {};
   const input = document.getElementById('chat-input');
   const newIdeaBtn = document.getElementById('new-idea-btn');
-  if (input) input.disabled = false;
+  if (input) { input.disabled = false; input.hidden = false; }
   if (newIdeaBtn) newIdeaBtn.disabled = false;
 }
 
@@ -469,10 +510,22 @@ function showThinkingStatus(bubble) {
   };
 }
 
-function startOnboarding() {
-  addBubble(messagesEl(), 'לפני שנתחיל - יהיה עכשיו רצף קצר של כמה שאלות היכרות (חד-פעמי, לא אצטרך לשאול שוב בפעם הבאה).', 'assistant');
-  onboardingStep = ONBOARDING_STEPS[0];
+function startOnboarding(steps = ONBOARDING_STEPS) {
+  onboardingSteps = steps;
+  onboardingPartial = steps !== ONBOARDING_STEPS && Boolean(profile);
+  draftProfile = {};
+  if (!onboardingPartial) {
+    addBubble(messagesEl(), 'לפני שנתחיל - יהיה עכשיו רצף קצר של כמה שאלות היכרות (חד-פעמי, לא אצטרך לשאול שוב בפעם הבאה).', 'assistant');
+  }
+  onboardingStep = steps[0];
   askOnboardingStep(onboardingStep);
+}
+
+/* אחרי שהפרופיל נטען: קודם מה שחסר בו, ורק אז הפתיחה (או הרעיון שהגיע מהעוזר) */
+function continueAfterProfile() {
+  const steps = missingProfileSteps(profile, { owner: isAdmin(), viewing: Boolean(viewedClient()) });
+  if (steps.length) startOnboarding(profile ? steps : ONBOARDING_STEPS);
+  else greetAndAskForIdea();
 }
 
 export async function startIdeaChat() {
@@ -488,11 +541,7 @@ export async function startIdeaChat() {
   try {
     profile = await withTimeout(getProfile(), 10000);
     loadingBubble.closest('.chat-row').remove();
-    if (profile) {
-      greetAndAskForIdea();
-    } else {
-      startOnboarding();
-    }
+    continueAfterProfile();
   } catch (err) {
     console.error('startIdeaChat failed:', err);
     loadingBubble.closest('.chat-row').remove();
@@ -545,7 +594,7 @@ export async function startIdeaChatWithExistingIdea(idea) {
   messagesEl().innerHTML = '';
 
   if (started && profile) {
-    greetAndAskForIdea();
+    continueAfterProfile();
     return;
   }
 
@@ -554,11 +603,7 @@ export async function startIdeaChatWithExistingIdea(idea) {
   try {
     profile = await withTimeout(getProfile(), 10000);
     loadingBubble.closest('.chat-row').remove();
-    if (profile) {
-      greetAndAskForIdea();
-    } else {
-      startOnboarding(); // finishOnboarding() -> greetAndAskForIdea() picks up pendingIdeaToCheck
-    }
+    continueAfterProfile(); // finishOnboarding() -> greetAndAskForIdea() picks up pendingIdeaToCheck
   } catch (err) {
     console.error('startIdeaChatWithExistingIdea failed:', err);
     loadingBubble.closest('.chat-row').remove();
@@ -637,7 +682,7 @@ async function openIdeaChat(seed = {}, { onBack, handoff = false, backLabel = ''
   messagesEl().innerHTML = '';
 
   if (started && profile) {
-    greetAndAskForIdea();
+    continueAfterProfile();
     return;
   }
   started = true;
@@ -645,8 +690,7 @@ async function openIdeaChat(seed = {}, { onBack, handoff = false, backLabel = ''
   try {
     profile = await withTimeout(getProfile(), 10000);
     loadingBubble.closest('.chat-row').remove();
-    if (profile) greetAndAskForIdea();
-    else startOnboarding();
+    continueAfterProfile();
   } catch (err) {
     console.error('openIdeaChat failed:', err);
     loadingBubble.closest('.chat-row').remove();
