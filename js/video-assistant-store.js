@@ -35,8 +35,9 @@ export async function classifyContentType(idea, timeoutMs = 8000) {
 
 /** רעיונות פעילים של הלקוחה הנוכחית - קריאה חד-פעמית, לא listener */
 export async function fetchIdeas() {
-  /* 20/10/2026: במנוי הרפרנסים הקריאה חסומה בכללים. רשימה ריקה ולא שגיאה */
-  if (document.body.dataset.plan === 'refs') return [];
+  /* 20/10/2026: במנוי הרפרנסים הקריאה הייתה חסומה בכללים, ולכן כאן חזרה רשימה ריקה.
+     04/11/2026: מ-23/10 בנק הרעיונות פתוח גם להן (כללי ideas), והשורה הזאת נשארה
+     ו"תמצאו לי רעיון" אמר להן תמיד שאין רעיונות. */
   const q = query(collection(db, 'ideas'), where('ownerUid', '==', subjectUid(auth.currentUser.uid)));
   const snap = await getDocs(q);
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }));

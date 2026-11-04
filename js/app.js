@@ -829,7 +829,10 @@ onAuthChange(async (user) => {
      כדי שקישור לא יפתח מסך שאין לה. */
   } else if (deepLinkView(window.location.search)) {
     const view = deepLinkView(window.location.search);
-    showView(view);
+    /* 04/11/2026: העוזר מצייר את עצמו רק בלחיצה על הכרטיס שלו, ולכן קישור
+       מה-SOS בפורטל נחת על מסך כהה וריק. אותה לחיצה בדיוק, ולא רק showView. */
+    if (view === 'video-assistant') document.getElementById('hub-link-video-assistant').click();
+    else showView(view);
     if (view === 'inspiration') openInspirationView();
   } else {
     const restorableViews = ['guide', 'inspiration', 'feedback', 'roadmap', 'content-plan', 'archive'];
