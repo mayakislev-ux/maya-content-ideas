@@ -321,7 +321,7 @@ function renderCards(videos) {
 /* 04/11/2026 (מאיה): "לשכפול הסרטון" ליד כל רפרנס. פותח את העוזר ישר
    בשכפול, עם הלינק והתמלול בפנים, במקום להעתיק כל אחד מהם ביד. */
 function startDuplication(video) {
-  duplicateFromBank(video, { loadSubtitles }).catch((err) => {
+  return duplicateFromBank(video, { loadSubtitles }).catch((err) => {
     console.error('duplicateFromBank failed:', err);
     showToast('לא הצלחתי לפתוח את השכפול. נסו שוב');
   });
@@ -336,7 +336,14 @@ function duplicateButton(video) {
     /* הכרטיס עצמו הוא קישור */
     e.preventDefault();
     e.stopPropagation();
-    startDuplication(video);
+    /* לחיצה שנייה בזמן שזה נפתח לא עושה כלום, ורואים שזה בדרך */
+    if (btn.disabled) return;
+    btn.disabled = true;
+    btn.textContent = 'פותחים…';
+    startDuplication(video).finally(() => {
+      btn.disabled = false;
+      btn.textContent = '🎬 לשכפול הסרטון';
+    });
   });
   return btn;
 }

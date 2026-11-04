@@ -186,9 +186,17 @@ export function hasContent(state) {
 
 /** השם של הסרטון ברשימה: הרעיון, ואם אין, הדבר הראשון שנכתב. */
 export function scriptTitle(state) {
-  const pick = (state.ideaTopic || state.ideaBeforePackaging || state.ideaDescription || state.hook
-    || Object.values(state.drafts || {}).find((v) => String(v || '').trim()) || '').trim();
-  return pick ? clip(pick.split('\n')[0], 70) : 'סרטון בלי שם';
+  const main = String(state.ideaTopic || state.ideaBeforePackaging || state.ideaDescription || state.hook || '').trim();
+  if (main) return clip(main.split('\n')[0], 70);
+  /* 04/11/2026: שכפול שעוד אין לו הוק. בלי זה כל השכפולים נקראו "סרטון
+     בלי שם", ולא היה אפשר להבדיל ביניהם ברשימה. */
+  if (state.branch === 'reference') {
+    const about = String(state.referenceTitle || '').trim()
+      || String(state.transcript || '').trim().split(/\s+/).slice(0, 8).join(' ');
+    if (about) return clip(`שכפול: ${about.split('\n')[0]}`, 70);
+  }
+  const draft = String(Object.values(state.drafts || {}).find((v) => String(v || '').trim()) || '').trim();
+  return draft ? clip(draft.split('\n')[0], 70) : 'סרטון בלי שם';
 }
 
 /** המסמך שנשמר ב-videoAssistantScripts/{uid}/items/{id}. */
