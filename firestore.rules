@@ -120,5 +120,11 @@ service cloud.firestore {
       allow read: if isAllowed() && notExpired();
       allow write: if isAdmin();
     }
+    // 04/11/2026: מטמון "✨ תמלול מדויק" (transcribeReference). רק הפונקציה
+    // קוראת וכותבת אותו (Admin SDK). לקוחה לא קוראת תמלולים של אחרות דרכו
+    // ולא יכולה להרעיל אותו בתמלול שגוי.
+    match /transcriptCache/{key} {
+      allow read, write: if false;
+    }
   }
 }

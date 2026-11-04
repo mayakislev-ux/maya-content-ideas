@@ -43,6 +43,8 @@ import { getProfile, saveProfile } from './user-profile.js';
 /* 04/11/2026: צ'אט דיוק הרעיון חזר, כקפיצה לצ'אט עצמו ולא כעותק בתוך המסך */
 import { startIdeaChatFromAssistant } from './idea-chat.js';
 import { showView } from './view-router.js';
+import { auth } from './firebase-init.js';
+import { actsAsOwner } from './client-view.js';
 import { duplicationText, duplicationNotice, readyForHook } from './reference-duplication.js';
 import { showToast } from './toast.js';
 import { serverErrorText } from './server-error.js';
@@ -1113,7 +1115,16 @@ function bankNoticeHtml({ withEditLink = false } = {}) {
     <strong>${escapeHtml(notice.title)}</strong>
     <p>${escapeHtml(notice.body)}</p>
     ${withEditLink ? '<button type="button" class="va-text-link" id="va-bank-edit-link">לבדוק ולתקן את התמלול</button>' : ''}
+    ${!withEditLink && cachedForOwner() ? '<button type="button" class="va-text-link" id="va-accurate-refresh">🔄 התמלול הזה נשמר מתמלול קודם. לתמלל מחדש (רק לך)</button>' : ''}
   </div>`;
+}
+
+/* 04/11/2026: תמלול שהגיע ממטמון השרת ונראה שגוי: רק מאיה יכולה לבקש
+   תמלול חדש שידרוס אותו (refresh, והשרת בודק את המייל בעצמו). */
+function cachedForOwner() {
+  const info = state.bankNotice;
+  const me = auth.currentUser;
+  return Boolean(info && info.reason === 'accurate' && info.cached && me && actsAsOwner(me.email));
 }
 
 function bankDescribeMode() {
@@ -1273,7 +1284,10 @@ async function runAccurate(payload) {
   const link = payload.link || (linkInput ? linkInput.value.trim() : '');
   setAccurateBusy(true);
   try {
+    /* מהמאגר: גם המזהה שלו, והשרת בודק שהלינק באמת שלו (מטמון התמלולים) */
     let request = { link: payload.link };
+    if (state.referenceBankId) request.bankId = state.referenceBankId;
+    if (payload.refresh) request.refresh = true;
     if (payload.file) {
       const uploading = (pct) => `<p>${SPINNER}מעלים את הסרטון... ${pct}%</p>`;
       showAccurateStatus(uploading(0));
@@ -1345,6 +1359,17 @@ function wireAccurateTranscribe() {
     }
     if (!(await okToReplaceTranscript())) return;
     runAccurate({ link });
+  });
+  const refreshBtn = document.getElementById('va-accurate-refresh');
+  if (refreshBtn) refreshBtn.addEventListener('click', async () => {
+    const link = document.getElementById('va-reference-link').value.trim();
+    if (accurateBusy) return;
+    if (!linkPlatform(link)) {
+      showAccurateStatus('<p>אין למעלה לינק של טיקטוק או אינסטגרם לתמלל מחדש</p>', { kind: 'error' });
+      return;
+    }
+    if (!(await okToReplaceTranscript())) return;
+    runAccurate({ link, refresh: true });
   });
   document.getElementById('va-accurate-upload-btn').addEventListener('click', () => fileInput.click());
   fileInput.addEventListener('change', async () => {
@@ -1430,6 +1455,8 @@ async function renderPrompt1() {
   /* ההודעה רק כל עוד התמלול הוא זה שהגיע מהמאגר. אחרי שתוקן, הוא שלה. */
   const bankUntouched = state.bankNotice && state.bankNotice.reason === 'ok'
     && state.transcript === state.bankNotice.text;
+  /* ההוק שכבר הודבק חוזר לתיבה בחזרה אחורה (04/11) */
+  if (state.screen === 'prompt1') seedDraft('va-hook-input', state.hook);
   cosmicCard(`
     <h2>מציאת הוק</h2>
     ${bankUntouched ? bankNoticeHtml({ withEditLink: true }) : ''}
@@ -1476,7 +1503,9 @@ async function renderPrompt1() {
 // הרפרנס חייב להיות מזוהה ומוצג *כאן*, לפני שהיא כותבת את המגילה - לא
 // רק במסך הפרומפט הבא - כדי שתדע למה היא בעצם כותבת.
 async function renderHerWords() {
-  const isPreHookMegillah = state.branch === 'idea-search' && !state.hook;
+  /* בשכפול הפוך המגילה תמיד לפני ההוק (HOOK_CHOSEN ממשיך משם לפרומפט 2).
+     הוק שנשמר בחזרה אחורה לא הופך אותה למסך "אחרי ההוק". */
+  const isPreHookMegillah = state.branch === 'idea-search';
   if (isPreHookMegillah && !state.openingHook) {
     cosmicCard(`<p>מזהים את ההוק מתוך התמלול...</p>`, { showProgress: false });
     await ensureOpeningHook();
@@ -1494,6 +1523,7 @@ async function renderHerWords() {
      של ה-SOS ממש ממש ממש יבלוט כי הרבה כותבות מגילה מעפנה ואז זה יוצא
      גרוע"). הכותרת היא מגילת אסתר בשני המסלולים, ה-SOS הוא כפתור גדול
      ובולט, ו"להמשיך" עוצר קודם בפופאפ שבודק שהמגילה באמת מפורטת. */
+  if (state.screen === 'her-words') seedDraft('va-herwords-input', state.herWords);
   cosmicCard(`
     <h2>מגילת אסתר - מה יש לך להגיד?</h2>
     ${context ? `<div class="cosmic-context-box"><span>${isPreHookMegillah ? 'ההוק שזיהינו מהרפרנס:' : 'ההוק/הרעיון שבחרת:'}</span>${escapeHtml(context)}</div>` : ''}
@@ -1504,7 +1534,7 @@ async function renderHerWords() {
       <span class="va-sos-big__icon" aria-hidden="true">🆘</span>
       <span class="va-sos-big__text"><strong>נתקעים? לא ברור מה לכתוב?</strong><span>לחיצה כאן, ו-ChatGPT ישאל אותך שאלות שיוציאו ממך מגילה מלאה</span></span>
     </button>
-    <textarea class="cosmic-textarea" id="va-herwords-input" style="min-height:160px">${isPreHookMegillah && state.herWords ? escapeHtml(state.herWords) : ''}</textarea>
+    <textarea class="cosmic-textarea" id="va-herwords-input" style="min-height:160px"></textarea>
     ${megillahMeterHtml('va-herwords')}
     <div class="cosmic-btn-row" style="margin-top:14px">
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-herwords-done-btn">ממשיכים ←</button>
@@ -1521,6 +1551,7 @@ async function renderHerWords() {
 }
 
 function renderDuplicationAddOn(context) {
+  if (state.screen === 'her-words') seedDraft('va-dupadd-input', state.herWords);
   cosmicCard(`
     <h2>מה יש לך להוסיף לשכפול?</h2>
     ${context ? `<div class="cosmic-context-box"><span>ההוק שבחרת:</span>${escapeHtml(context)}</div>` : ''}
@@ -1645,6 +1676,8 @@ async function renderPrompt2() {
   // הסתמכות על ש-ChatGPT "זוכר" אותו מפרומפט 1 באותה שיחה; ראה
   // video-assistant-prompts.js, buildScriptPrompt.
   const prompt = buildScriptPrompt({ hook, herWords: state.herWords, originalScript: state.transcript || '', domain: await myDomain(), audience: await myAudience() });
+  /* 04/11: התסריט שהודבק חוזר לתיבה כשחוזרים מ"להקריא בקול" */
+  if (state.screen === 'prompt2') seedDraft('va-prompt2-script-input', state.finalScript);
   cosmicCard(`
     <h2>כתיבת התסריט</h2>
     <p>להעתיק, להדביק ב-ChatGPT, ולקבל תסריט מלא</p>
@@ -2116,6 +2149,7 @@ async function renderScratchHook() {
   const marks = withRef
     ? [audience, domain, state.openingHook, state.rawDump]
     : [state.ideaDescription, state.rawDump, audience];
+  if (state.screen === 'scratch-hook') seedDraft('va-scratch-hook-input', state.hook);
   cosmicCard(`
     <h2>מציאת הוק</h2>
     ${geminiHookNote()}
@@ -2184,6 +2218,7 @@ async function renderScratchHook() {
 
 async function renderScratchHookReinforce() {
   const prompt = buildHookReinforcementPrompt({ idea: state.ideaDescription || '', hook: state.hook || '', script: state.rawDump || '', audience: await myAudience(), domain: await myDomain() });
+  if (state.screen === 'scratch-hook-reinforce') seedDraft('va-scratch-reinforce-input', state.hookReinforcement);
   cosmicCard(`
     <h2>חיזוק ההוק</h2>
     ${geminiHookNote()}
@@ -2522,6 +2557,7 @@ async function runDuplicateFromBank(video, { loadSubtitles } = {}) {
   const start = () => dispatch({
     type: 'START_FROM_BANK',
     link: video.url,
+    bankId: video.id || null,
     transcript: info.text,
     ready: readyForHook(info),
     /* השם ב"התסריטים שלי" עד שנבחר הוק: על מה הסרטון, לפי המאגר */

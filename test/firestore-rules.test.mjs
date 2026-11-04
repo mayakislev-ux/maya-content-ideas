@@ -155,3 +155,12 @@ test('בנק הרעיונות פתוח למנוי בתוקף, ותמיד מוג�
     'יש שורת allow בלי הגבלת בעלות'
   );
 });
+
+/* 04/11/2026: מטמון התמלולים נכתב ונקרא רק מהשרת. לקוחה שכותבת לשם
+   הייתה יכולה להחזיר לכולן תמלול שגוי לסרטון. */
+test('מטמון התמלולים סגור לגמרי ללקוחות', () => {
+  const b = block('transcriptCache');
+  assert.ok(b.length > 0, 'הכלל קיים');
+  const allowLines = b.split(String.fromCharCode(10)).filter((l) => l.includes('allow '));
+  assert.deepEqual(allowLines.map((l) => l.trim()), ['allow read, write: if false;']);
+});

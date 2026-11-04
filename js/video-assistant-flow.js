@@ -52,6 +52,8 @@ export const INITIAL_STATE = {
   bankNotice: null,
   /* על מה הרפרנס ששוכפל מהמאגר (contentSummary), לשם ב"התסריטים שלי" */
   referenceTitle: null,
+  /* מזהה הסרטון במאגר, כדי ש"✨ תמלול מדויק" ימצא תמלול שכבר נעשה לו */
+  referenceBankId: null,
 };
 
 /* 31/10/2026: קרוסלה נכתבת לשקופיות ולא מדוברת, ולכן שלבי הסרטון לא חלים עליה. */
@@ -62,6 +64,26 @@ export function isCarousel(state) {
 function withoutHistory(state) {
   const { history, ...rest } = state;
   return rest;
+}
+
+/* מה שהיא מדביקה או כותבת בכל מסך של שלב הכתיבה, וסדר המסכים בכל מסלול.
+   חזרה אחורה לא מוחקת אותם (ראה BACK). */
+const PASTED_ON = {
+  prompt1: 'hook', 'her-words': 'herWords', prompt2: 'finalScript',
+  'scratch-dump': 'rawDump', 'scratch-hook': 'hook', 'scratch-hook-reinforce': 'hookReinforcement', 'scratch-distill': 'draftScript',
+};
+const WRITING_ORDER = {
+  reference: ['transcribe', 'prompt1', 'her-words', 'prompt2', 'read-aloud'],
+  'idea-search': ['transcribe', 'her-words', 'prompt1', 'prompt2', 'read-aloud'],
+  scratch: ['scratch-dump', 'scratch-hook', 'scratch-hook-reinforce', 'scratch-distill', 'scratch-scene'],
+};
+
+/** השדות שחזרה ל-prev שומרת: מה שהודבק במסך הזה ובמסכים שאחריו באותו מסלול. */
+export function keptOnBack(prev) {
+  const order = WRITING_ORDER[prev.branch];
+  const at = order ? order.indexOf(prev.screen) : -1;
+  if (at === -1) return [];
+  return order.slice(at).map((screen) => PASTED_ON[screen]).filter(Boolean);
 }
 
 function push(state) {
@@ -75,10 +97,20 @@ export function nextStep(state, action) {
     const back = { ...prev, history: state.history.slice(0, -1) };
     /* חזרה משחזרת סטייט מלפני שהתסריט נכתב, וגם הפריט ב"התסריטים שלי" נשמר
        ממנו. בלי זה תסריט שהודבק נמחק מכל מקום. */
-    if (state.screen === 'summary' && prev.screen === 'scratch-scene') {
+    const sceneBack = state.screen === 'summary' && prev.screen === 'scratch-scene';
+    if (sceneBack) {
       back.sceneRewrite = state.draftScript !== prev.draftScript ? state.draftScript : null;
-    } else if (state.draftScript && !prev.draftScript && String(prev.screen).startsWith('scratch-')) {
-      back.draftScript = state.draftScript;
+    }
+    /* 04/11/2026 (סקירה): חזרה מ"להקריא בקול" מחקה את התסריט שהודבק
+       (finalScript חזר ל-null), והשמירה שאחריה דרסה אותו גם ב"התסריטים
+       שלי". וחזרה מחיזוק ההוק רוקנה את ההוק. מה שהודבק במסך שאליו חוזרים,
+       ובמסכים שאחריו, נשאר בתיבה שלו ובפריט השמור עד שיוחלף. ריק שנשלח
+       בכוונה ("מה יש לך להוסיף") הוא גם תשובה.
+       חזרה אל מחוץ לשלב הכתיבה (מקור אחר, רעיון אחר, פתיחה) היא בסיס
+       חדש, ושם לא סוחבים הוק ותסריט שנכתבו על הבסיס הקודם. */
+    for (const f of keptOnBack(prev)) {
+      if (sceneBack && f === 'draftScript') continue;
+      if (state[f] != null && state[f] !== prev[f]) back[f] = state[f];
     }
     return back;
   }
@@ -94,6 +126,7 @@ export function nextStep(state, action) {
       branch: 'reference',
       referenceLink: action.link || null,
       referenceTitle: action.title || null,
+      referenceBankId: action.bankId || null,
       transcript: action.transcript || null,
       bankNotice: action.notice || null,
     };

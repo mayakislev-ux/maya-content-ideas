@@ -233,7 +233,8 @@ describe('בדפדפן (jsdom)', { skip: hasJsdom ? false : 'jsdom לא מותק
     calls.transcribe.length = 0;
     $('#va-accurate-btn').click();
     await until(() => calls.transcribe.length === 1, 'לא נשלח לשרת');
-    assert.deepEqual(calls.transcribe[0], { link: VISUAL.url });
+    /* 04/11/2026: גם המזהה במאגר, למטמון התמלולים בשרת */
+    assert.deepEqual(calls.transcribe[0], { link: VISUAL.url, bankId: 'vis1' });
     assert.ok(!$('#va-accurate-status').hidden);
     assert.match($('#va-accurate-status').textContent, /ג'מיני צופה בו/);
     assert.match($('#va-accurate-status').textContent, /20-60 שניות/);
@@ -337,5 +338,37 @@ describe('בדפדפן (jsdom)', { skip: hasJsdom ? false : 'jsdom לא מותק
     await new Promise((r) => setTimeout(r, 50));
     assert.equal($('#va-transcript-input').value, '', 'תמלול של הסרטון הקודם נכנס לסרטון החדש');
     assert.ok($('#va-accurate-status').hidden);
+  });
+
+  /* 04/11/2026: תמלול שהגיע ממטמון השרת. ללקוחה זה נראה בדיוק כמו תמלול
+     רגיל. רק מאיה רואה "לתמלל מחדש", והוא שולח refresh לשרת. */
+  test('מטמון: התוצאה נכנסת כרגיל, ורק מאיה מקבלת "לתמלל מחדש"', async () => {
+    const { auth } = await import('../js/firebase-init.js');
+    await openTranscribeScreen({ ...VISUAL, id: 'c1', url: 'https://www.instagram.com/reel/DZsJ0i7ymDy/' });
+    calls.transcribe.length = 0;
+    $('#va-accurate-btn').click();
+    await until(() => calls.transcribe.length === 1, 'לא נשלח');
+    pending.resolve({ ...HE_SPEECH, source: 'instagram', cached: true });
+    await until(() => $('#va-transcript-input').value === HE_SPEECH.spoken, 'התיבה לא התמלאה');
+    assert.equal($('#va-accurate-refresh'), null, 'לקוחה רואה את כפתור המנהלת');
+
+    auth.currentUser.email = 'mayakislev@gmail.com';
+    try {
+      await openTranscribeScreen({ ...VISUAL, id: 'c2', url: 'https://www.instagram.com/reel/DZsJ0i7ymDy/' });
+      calls.transcribe.length = 0;
+      $('#va-accurate-btn').click();
+      await until(() => calls.transcribe.length === 1, 'לא נשלח');
+      pending.resolve({ ...HE_SPEECH, source: 'instagram', cached: true });
+      await until(() => $('#va-accurate-refresh'), 'אין "לתמלל מחדש" למאיה');
+      calls.transcribe.length = 0;
+      $('#va-accurate-refresh').click();
+      await until(() => calls.transcribe.length === 1, 'לתמלל מחדש לא שלח כלום');
+      assert.deepEqual(calls.transcribe[0], { link: 'https://www.instagram.com/reel/DZsJ0i7ymDy/', bankId: 'c2', refresh: true });
+      pending.resolve({ ...HE_SPEECH, spoken: `${HE_SPEECH.spoken}\nותמלול חדש`, source: 'instagram' });
+      await until(() => $('#va-transcript-input').value.endsWith('ותמלול חדש'), 'התמלול החדש לא נכנס');
+      assert.equal($('#va-accurate-refresh'), null, 'תמלול טרי עדיין מוצג כמהמטמון');
+    } finally {
+      auth.currentUser.email = 'client@example.com';
+    }
   });
 });

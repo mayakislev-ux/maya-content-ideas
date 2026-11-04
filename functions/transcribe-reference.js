@@ -59,7 +59,8 @@ function parseReferenceLink(raw) {
       ? /^\/[A-Za-z0-9]+\/?$/.test(u.pathname)
       : /^\/(@[^/]+\/(video|photo)\/\d+|t\/[A-Za-z0-9]+)\/?$/.test(u.pathname);
     if (!ok) return null;
-    return { platform: 'tiktok', url: `https://${u.hostname.toLowerCase()}${u.pathname}` };
+    const id = (u.pathname.match(/\/(?:video|photo)\/(\d+)/) || [])[1] || null;
+    return { platform: 'tiktok', url: `https://${u.hostname.toLowerCase()}${u.pathname}`, id };
   }
   if (host === 'instagram.com') {
     const m = u.pathname.match(/^\/(?:[A-Za-z0-9._]+\/)?(?:p|reel|reels|tv)\/([A-Za-z0-9_-]{5,40})\/?$/);
@@ -67,6 +68,56 @@ function parseReferenceLink(raw) {
     return { platform: 'instagram', url: `https://www.instagram.com/p/${m[1]}/`, code: m[1] };
   }
   return null;
+}
+
+/* ---------------- מטמון תמלולים ----------------
+   04/11/2026 (מאיה): "אם מישהי אחרת כבר תמללה את אותו סרטון, למה לשלם שוב".
+   כל תמלול שהצליח נשמר בשרת לפי מזהה הסרטון עצמו, לא לפי הלינק: המספר של
+   הסרטון בטיקטוק (גם מלינק מקוצר), או הקוד של הפוסט באינסטגרם (/reel/, /p/
+   ו-/tv/ הם אותו קוד). האוסף transcriptCache סגור ללקוחות בכללים, רק
+   הפונקציה קוראת וכותבת. CACHE_VERSION עולה כשהפרומפט משתנה, ואז הישנים
+   פשוט לא נקראים. */
+const CACHE_VERSION = 1;
+
+/** המפתח הקנוני של הסרטון, או null כשצריך קודם לפתוח לינק מקוצר. */
+function cacheKeyFor(link) {
+  if (!link) return null;
+  if (link.platform === 'tiktok' && link.id) return `tiktok_${link.id}`;
+  if (link.platform === 'instagram' && link.code) return `instagram_${link.code}`;
+  return null;
+}
+
+const TIKTOK_ID_IN_PATH = /\/(?:video|photo|v)\/(\d{6,25})(?:\.html)?(?:[/?#]|$)/;
+
+function isTiktokHost(host) {
+  return host === 'tiktok.com' || host.endsWith('.tiktok.com');
+}
+
+/* לינק מקוצר (vt.tiktok.com/XYZ) מפנה לעמוד הסרטון, ושם המספר. הולכים
+   אחרי ההפניות ביד, רק בתוך טיקטוק, בלי להוריד את העמוד עצמו. */
+async function resolveTiktokId(url, fetchImpl = fetch) {
+  let current = url;
+  for (let hop = 0; hop < 4; hop += 1) {
+    let u;
+    try { u = new URL(current); } catch { return null; }
+    if (u.protocol !== 'https:' || !isTiktokHost(u.hostname.toLowerCase())) return null;
+    const m = u.pathname.match(TIKTOK_ID_IN_PATH);
+    if (m) return m[1];
+    const res = await fetchWithTimeout(fetchImpl, current, { headers: { 'user-agent': DESKTOP_UA }, redirect: 'manual' }, 6000);
+    const loc = res.headers && res.headers.get('location');
+    /* רק הכותרת מעניינת. הגוף נסגר כדי שהחיבור לא יישאר פתוח */
+    if (res.body && typeof res.body.cancel === 'function') res.body.cancel().catch(() => {});
+    if (!loc || res.status < 300 || res.status >= 400) return null;
+    current = new URL(loc, current).toString();
+  }
+  return null;
+}
+
+/** תוצאה ששווה לשמור או להחזיר מהמטמון: יש בה משהו. */
+function usableResult(r) {
+  return Boolean(r && typeof r === 'object'
+    && (String(r.spoken || '').trim() || (Array.isArray(r.onScreenText) && r.onScreenText.length)
+      || (Array.isArray(r.scenes) && r.scenes.length)));
 }
 
 /** הנתיב שהלקוחה העלתה: רק בתיקייה שלה, ורק שם קובץ פשוט. */
@@ -185,7 +236,10 @@ async function fetchTiktokVideo(url, fetchImpl = fetch) {
   const video = item && item.video;
   const play = video && (video.playAddr || video.downloadAddr);
   if (!play) throw new LinkFetchError('tiktok video address missing');
-  return downloadVideo(fetchImpl, play, { cookie: cookiesOf(page), referer: 'https://www.tiktok.com/' });
+  const video2 = await downloadVideo(fetchImpl, play, { cookie: cookiesOf(page), referer: 'https://www.tiktok.com/' });
+  /* המספר של הסרטון, למטמון, גם כשהלינק המקוצר לא נפתח מראש */
+  const videoId = /^\d{6,25}$/.test(String(item.id || '')) ? String(item.id) : null;
+  return { ...video2, videoId };
 }
 
 /* אינסטגרם: עמוד ההטמעה הציבורי מחזיק video_url בתוך JSON שמקודד
@@ -349,7 +403,7 @@ async function callGemini({ projectId, accessToken, fileUri, mimeType, fetchImpl
   const text = cand && cand.content && Array.isArray(cand.content.parts)
     ? cand.content.parts.map((p) => p.text || '').join('')
     : '';
-  return { result: parseGeminiResult(text), usage: json.usageMetadata || null };
+  return { result: parseGeminiResult(text), usage: json.usageMetadata || null, finishReason: (cand && cand.finishReason) || null };
 }
 
 /* מחירון Vertex ל-gemini-3.5-flash, דולר למיליון טוקנים. לרישום עלות
@@ -372,8 +426,30 @@ function randomName() {
  * deps:
  *   HttpsError, enforceAllowlist(email), checkRate(uid), incrementRate(uid),
  *   bucket: { name, file(path) -> { save, delete, getMetadata } },
- *   getAccessToken(), projectId, fetchImpl, logUsage(uid, info)
+ *   getAccessToken(), projectId, fetchImpl, logUsage(uid, info),
+ *   cache?: { get(key) -> doc|null, set(key, doc) }   (transcriptCache)
+ *   bankUrl?(bankId) -> string|null   הלינק של סרטון במאגר
+ *   isAdmin?(email)   רק מאיה יכולה לבקש refresh:true (לעקוף את המטמון)
+ *   logCacheHit?(uid, info), now?()
  */
+/* תקלה במטמון לא מפילה תמלול: קריאה שנכשלה היא החטאה, כתיבה שנכשלה נרשמת בלוג. */
+async function readCache(cache, key) {
+  try {
+    return (await cache.get(key)) || null;
+  } catch (err) {
+    console.warn('transcribeReference: cache read failed', key, err && err.message);
+    return null;
+  }
+}
+
+async function writeCache(cache, key, doc) {
+  try {
+    await cache.set(key, doc);
+  } catch (err) {
+    console.warn('transcribeReference: cache write failed', key, err && err.message);
+  }
+}
+
 function createTranscribeHandler(deps) {
   const { HttpsError } = deps;
   return async function transcribeReference(request) {
@@ -402,9 +478,55 @@ function createTranscribeHandler(deps) {
       }
     }
 
+    /* מטמון: לפני המכסה, כי תמלול שכבר קיים לא עולה כלום. רק ללינקים:
+       סרטון מהגלריה של שתי משתמשות כמעט אף פעם לא אותו קובץ בדיוק. */
+    const cache = link ? deps.cache : null;
+    const email = request.auth.token && request.auth.token.email;
+    const refresh = data.refresh === true && Boolean(deps.isAdmin && deps.isAdmin(email));
+    let cacheKey = null;
+    let aliasKey = null;
+    let fromAlias = false;
+    if (cache) {
+      cacheKey = cacheKeyFor(link);
+      const bankId = typeof data.bankId === 'string' && /^[A-Za-z0-9_-]{1,120}$/.test(data.bankId) ? data.bankId : '';
+      if (bankId && deps.bankUrl) {
+        /* המזהה במאגר נחשב רק כשהלינק שלו הוא באמת הלינק שנשלח, אחרת
+           אפשר היה לקשור תמלול של סרטון אחד לסרטון אחר במאגר. */
+        const bankUrl = await Promise.resolve(deps.bankUrl(bankId)).catch(() => null);
+        const bankLink = bankUrl ? parseReferenceLink(bankUrl) : null;
+        if (bankLink && bankLink.url === link.url) aliasKey = `bank_${bankId}`;
+      }
+      if (!cacheKey && aliasKey) {
+        const alias = await readCache(cache, aliasKey);
+        if (alias && /^(tiktok|instagram)_[A-Za-z0-9_-]+$/.test(String(alias.aliasOf || ''))) {
+          cacheKey = alias.aliasOf;
+          fromAlias = true;
+        }
+      }
+      if (!cacheKey && link.platform === 'tiktok') {
+        const id = await resolveTiktokId(link.url, deps.fetchImpl).catch((err) => {
+          console.warn('transcribeReference: short link not resolved', link.url, err && err.message);
+          return null;
+        });
+        if (id) cacheKey = `tiktok_${id}`;
+      }
+      if (cacheKey && !refresh) {
+        const hit = await readCache(cache, cacheKey);
+        if (hit && hit.version === CACHE_VERSION && usableResult(hit.result)) {
+          if (aliasKey && !fromAlias && !cacheKeyFor(link)) await writeCache(cache, aliasKey, { aliasOf: cacheKey, version: CACHE_VERSION });
+          if (deps.logCacheHit) {
+            await Promise.resolve(deps.logCacheHit(uid, { key: cacheKey, source: link.platform }))
+              .catch((err) => console.warn('transcribeReference: logCacheHit failed', err && err.message));
+          }
+          return { ...hit.result, source: link.platform, model: hit.model || MODEL, cached: true };
+        }
+      }
+    }
+
     let path = uploadPath;
     let mimeType = 'video/mp4';
     let cleanup = Boolean(uploadPath);
+    let videoId = null;
     try {
       /* בתוך ה-try: גם העלאה שנחסמה במכסה נמחקת */
       await deps.checkRate(uid);
@@ -432,6 +554,7 @@ function createTranscribeHandler(deps) {
             `לא הצלחנו להוריד את הסרטון ${where}. זה קורה לפעמים כשהפלטפורמה חוסמת. אפשר להעלות אותו מהגלריה וזה יעבוד`,
             { reason: 'link-fetch', platform: link.platform });
         }
+        videoId = video.videoId || null;
         path = `${UPLOAD_PREFIX}/${uid}/link-${randomName()}.mp4`;
         mimeType = video.contentType || 'video/mp4';
         cleanup = true;
@@ -453,6 +576,21 @@ function createTranscribeHandler(deps) {
         throw new HttpsError('internal', 'התמלול לא הצליח הפעם. לנסות שוב בעוד רגע');
       }
       await deps.incrementRate(uid);
+      /* נשמר רק מה שהצליח עד הסוף (finishReason STOP): תשובה שנחתכה או
+         שלא ברור איך הסתיימה לא נשמרת, גם אם יצא ממנה JSON. */
+      const key = cacheKey || (link && link.platform === 'tiktok' && videoId ? `tiktok_${videoId}` : null);
+      if (cache && key && usableResult(out.result) && out.finishReason === 'STOP') {
+        await writeCache(cache, key, {
+          version: CACHE_VERSION,
+          result: out.result,
+          model: MODEL,
+          platform: link.platform,
+          createdAt: deps.now ? deps.now() : Date.now(),
+          createdBy: uid,
+          refreshed: refresh,
+        });
+        if (aliasKey && !cacheKeyFor(link)) await writeCache(cache, aliasKey, { aliasOf: key, version: CACHE_VERSION });
+      }
       if (deps.logUsage) {
         await Promise.resolve(deps.logUsage(uid, {
           source: uploadPath ? 'upload' : link.platform,
@@ -481,6 +619,10 @@ module.exports = {
   TRANSCRIBE_PROMPT,
   RESPONSE_SCHEMA,
   LinkFetchError,
+  CACHE_VERSION,
+  cacheKeyFor,
+  resolveTiktokId,
+  usableResult,
   parseReferenceLink,
   validUploadPath,
   instagramVideoUrlFromEmbed,

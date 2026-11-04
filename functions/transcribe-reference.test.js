@@ -171,12 +171,13 @@ test('עלות: לפי טוקנים, כולל טוקני חשיבה', () => {
 /* ---------- הפונקציה עצמה ---------- */
 
 const GEMINI_OK = {
-  candidates: [{ content: { parts: [{ text: JSON.stringify({ language: 'he', kind: 'speech', spoken: 'שלום לכולן, היום נדבר על לקוחות.', spokenHe: '', onScreenText: ['3 טעויות'], scenes: ['אישה מדברת למצלמה'] }) }] } }],
+  candidates: [{ finishReason: 'STOP', content: { parts: [{ text: JSON.stringify({ language: 'he', kind: 'speech', spoken: 'שלום לכולן, היום נדבר על לקוחות.', spokenHe: '', onScreenText: ['3 טעויות'], scenes: ['אישה מדברת למצלמה'] }) }] } }],
   usageMetadata: { promptTokenCount: 5000, candidatesTokenCount: 500, thoughtsTokenCount: 1500 },
 };
 
-function harness({ allow = true, limitHit = false, fetchFails = false, gemini = GEMINI_OK, geminiStatus = 200, meta = { size: '5000000', contentType: 'video/mp4' } } = {}) {
-  const log = { checks: 0, increments: 0, saved: [], deleted: [], fetched: [], geminiCalls: [], usage: [] };
+function harness({ allow = true, limitHit = false, fetchFails = false, gemini = GEMINI_OK, geminiStatus = 200, meta = { size: '5000000', contentType: 'video/mp4' },
+  cache = null, redirects = {}, bank = {}, videoId = null, cacheBroken = false, email = 'client@example.com' } = {}) {
+  const log = { checks: 0, increments: 0, saved: [], deleted: [], fetched: [], geminiCalls: [], usage: [], hits: [], resolves: [] };
   const bucket = {
     name: 'test-bucket',
     file: (path) => ({
@@ -190,9 +191,9 @@ function harness({ allow = true, limitHit = false, fetchFails = false, gemini = 
   };
   const deps = {
     HttpsError: FakeHttpsError,
-    enforceAllowlist: async (email) => {
+    enforceAllowlist: async (got) => {
       if (!allow) throw new FakeHttpsError('permission-denied', 'המייל הזה לא רשום במערכת');
-      assert.equal(email, 'client@example.com');
+      assert.equal(got, email);
     },
     checkRate: async () => {
       log.checks += 1;
@@ -203,9 +204,14 @@ function harness({ allow = true, limitHit = false, fetchFails = false, gemini = 
     fetchLinkVideo: async (link) => {
       log.fetched.push(link);
       if (fetchFails) throw new Error('instagram embed 429');
-      return { buffer: Buffer.alloc(20000), contentType: 'video/mp4' };
+      return { buffer: Buffer.alloc(20000), contentType: 'video/mp4', videoId };
     },
     fetchImpl: async (url, opts) => {
+      if (/tiktok\.com/.test(url)) {
+        log.resolves.push(url);
+        assert.equal(opts.redirect, 'manual');
+        return redirects[url] ? res(301, '', { location: redirects[url] }) : res(200, '<html></html>');
+      }
       log.geminiCalls.push({ url, body: JSON.parse(opts.body) });
       return res(geminiStatus, JSON.stringify(gemini));
     },
@@ -213,6 +219,22 @@ function harness({ allow = true, limitHit = false, fetchFails = false, gemini = 
     projectId: 'content-ideas-becd7',
     logUsage: async (uid, info) => { log.usage.push(info); },
   };
+  if (cache) {
+    deps.cache = {
+      get: async (key) => {
+        if (cacheBroken) throw new Error('firestore down');
+        return cache.has(key) ? structuredClone(cache.get(key)) : null;
+      },
+      set: async (key, doc) => {
+        if (cacheBroken) throw new Error('firestore down');
+        cache.set(key, structuredClone(doc));
+      },
+    };
+    deps.bankUrl = async (id) => bank[id] || null;
+    deps.isAdmin = (e) => e === 'mayakislev@gmail.com';
+    deps.now = () => 1234;
+    deps.logCacheHit = async (uid, info) => { log.hits.push({ uid, ...info }); };
+  }
   return { handler: tr.createTranscribeHandler(deps), log };
 }
 
@@ -310,4 +332,193 @@ test('קובץ שהועלה: לא קיים, לא וידאו, או גדול מד�
   const huge = harness({ meta: { size: String(250 * 1024 * 1024), contentType: 'video/mp4' } });
   await assert.rejects(huge.handler(req({ uploadPath: 'transcribeUploads/u1/a.mp4' })), { code: 'invalid-argument' });
   assert.equal(huge.log.geminiCalls.length, 0);
+});
+
+/* ---------- מטמון תמלולים (04/11/2026) ---------- */
+
+test('מפתח המטמון: מזהה הסרטון, בלי קשר לצורת הלינק', () => {
+  const key = (u) => tr.cacheKeyFor(tr.parseReferenceLink(u));
+  assert.equal(key('https://www.tiktok.com/@a.b/video/7608083398443207956?is_from_webapp=1&sender_device=pc'), 'tiktok_7608083398443207956');
+  assert.equal(key('https://m.tiktok.com/@someone/video/7608083398443207956/'), 'tiktok_7608083398443207956');
+  assert.equal(key('https://www.tiktok.com/@x/photo/7608083398443207956'), 'tiktok_7608083398443207956');
+  /* לינק מקוצר: אין מספר עד שפותחים אותו */
+  assert.equal(key('https://vt.tiktok.com/ZSqhV8jmX/'), null);
+  assert.equal(key('https://www.tiktok.com/t/ZTabc123/'), null);
+  for (const u of ['https://www.instagram.com/reel/DW-2qXxDd_H/', 'https://www.instagram.com/p/DW-2qXxDd_H/?igsh=abc&utm_source=ig_web_copy_link',
+    'https://instagram.com/someone/reel/DW-2qXxDd_H', 'https://www.instagram.com/reels/DW-2qXxDd_H/', 'https://m.instagram.com/tv/DW-2qXxDd_H/?x=1#y']) {
+    assert.equal(key(u), 'instagram_DW-2qXxDd_H', u);
+  }
+  assert.equal(tr.cacheKeyFor(null), null);
+});
+
+test('לינק מקוצר של טיקטוק נפתח למספר, רק בתוך טיקטוק', async () => {
+  const hops = {
+    'https://vt.tiktok.com/ZSqhV8jmX/': 'https://www.tiktok.com/@a/video/7608083398443207956?_t=x&_r=1',
+  };
+  const f = async (url, opts) => {
+    assert.equal(opts.redirect, 'manual');
+    return hops[url] ? res(301, '', { location: hops[url] }) : res(200, '');
+  };
+  assert.equal(await tr.resolveTiktokId('https://vt.tiktok.com/ZSqhV8jmX/', f), '7608083398443207956');
+  /* הפניה החוצה: לא ממשיכים */
+  const evil = async () => res(302, '', { location: 'https://evil.example/video/7608083398443207956' });
+  assert.equal(await tr.resolveTiktokId('https://vt.tiktok.com/ZSabc/', evil), null);
+  assert.equal(await tr.resolveTiktokId('https://vt.tiktok.com/ZSabc/', async () => res(200, '<html>')), null);
+  /* לולאת הפניות נעצרת */
+  let n = 0;
+  const loop = async () => { n += 1; return res(301, '', { location: 'https://vt.tiktok.com/ZSabc/' }); };
+  assert.equal(await tr.resolveTiktokId('https://vt.tiktok.com/ZSabc/', loop), null);
+  assert.ok(n <= 5);
+});
+
+const HIT = (over = {}) => ({
+  version: tr.CACHE_VERSION, model: 'gemini-3.5-flash', platform: 'tiktok', createdAt: 1, createdBy: 'other',
+  result: { language: 'he', kind: 'speech', spoken: 'מהמטמון', spokenHe: '', onScreenText: [], scenes: ['אישה מדברת'] },
+  ...over,
+});
+
+test('תמלול שהצליח נשמר לפי מזהה הסרטון, והבא בתור מקבל אותו מיד, בלי ג\'מיני ובלי מכסה', async () => {
+  const cache = new Map();
+  const first = harness({ cache });
+  await first.handler(req({ link: 'https://www.instagram.com/reel/DZsJ0i7ymDy/?igsh=1' }));
+  assert.equal(first.log.geminiCalls.length, 1);
+  assert.equal(first.log.increments, 1);
+  const saved = cache.get('instagram_DZsJ0i7ymDy');
+  assert.ok(saved, 'לא נשמר במטמון');
+  assert.equal(saved.model, 'gemini-3.5-flash');
+  assert.equal(saved.createdAt, 1234);
+  assert.equal(saved.result.spoken, 'שלום לכולן, היום נדבר על לקוחות.');
+
+  /* משתמשת אחרת, לינק אחר לאותו פוסט, ומכסה שכבר נגמרה לה */
+  const second = harness({ cache, limitHit: true });
+  const out = await second.handler(req({ link: 'https://instagram.com/x/p/DZsJ0i7ymDy' }, { uid: 'u2', token: { email: 'client@example.com' } }));
+  assert.equal(out.cached, true);
+  assert.equal(out.spoken, 'שלום לכולן, היום נדבר על לקוחות.');
+  assert.equal(out.source, 'instagram');
+  assert.equal(second.log.geminiCalls.length, 0, 'שילמנו שוב על ג\'מיני');
+  assert.equal(second.log.fetched.length, 0, 'הורדנו שוב את הסרטון');
+  assert.equal(second.log.checks, 0, 'פגיעה במטמון נבדקה מול המכסה');
+  assert.equal(second.log.increments, 0, 'פגיעה במטמון נספרה במכסה');
+  assert.deepEqual(second.log.hits, [{ uid: 'u2', key: 'instagram_DZsJ0i7ymDy', source: 'instagram' }]);
+});
+
+test('לינק מקוצר: נפתח למספר ומוצא את התמלול של הלינק המלא', async () => {
+  const cache = new Map([['tiktok_7608083398443207956', HIT()]]);
+  const { handler, log } = harness({ cache, redirects: { 'https://vt.tiktok.com/ZSqhV8jmX/': 'https://www.tiktok.com/@a/video/7608083398443207956?_r=1' } });
+  const out = await handler(req({ link: 'https://vt.tiktok.com/ZSqhV8jmX/' }));
+  assert.equal(out.cached, true);
+  assert.equal(out.spoken, 'מהמטמון');
+  assert.equal(log.geminiCalls.length, 0);
+  assert.equal(log.increments, 0);
+});
+
+test('לינק מקוצר שלא נפתח מראש: נשמר לפי המספר שבעמוד הסרטון', async () => {
+  const cache = new Map();
+  const { handler } = harness({ cache, videoId: '7608083398443207956' });
+  await handler(req({ link: 'https://vt.tiktok.com/ZSnope/' }));
+  assert.ok(cache.has('tiktok_7608083398443207956'));
+});
+
+test('כישלון לא נשמר במטמון: ג\'מיני נכשל, תשובה ריקה, תשובה שנחתכה, והורדה שנכשלה', async () => {
+  const link = 'https://www.tiktok.com/@a/video/7608083398443207956';
+  for (const opts of [
+    { geminiStatus: 500, gemini: { error: { message: 'boom' } } },
+    { gemini: { candidates: [{ content: { parts: [{ text: '{"language":"none","kind":"music","spoken":"","spokenHe":"","onScreenText":[],"scenes":[]}' }] } }] } },
+    { fetchFails: true },
+  ]) {
+    const cache = new Map();
+    const { handler, log } = harness({ cache, ...opts });
+    await assert.rejects(handler(req({ link })));
+    assert.equal(cache.size, 0, JSON.stringify(opts).slice(0, 60));
+    assert.equal(log.increments, 0);
+  }
+  const truncated = { ...GEMINI_OK, candidates: [{ ...GEMINI_OK.candidates[0], finishReason: 'MAX_TOKENS' }] };
+  const cache = new Map();
+  const { handler } = harness({ cache, gemini: truncated });
+  const out = await handler(req({ link }));
+  assert.equal(out.kind, 'speech', 'התוצאה עצמה עדיין חוזרת אליה');
+  assert.equal(cache.size, 0, 'תשובה שנחתכה נשמרה');
+  const noReason = { ...GEMINI_OK, candidates: [{ content: GEMINI_OK.candidates[0].content }] };
+  const c2 = new Map();
+  await harness({ cache: c2, gemini: noReason }).handler(req({ link }));
+  assert.equal(c2.size, 0, 'תשובה בלי finishReason נשמרה');
+});
+
+test('רשומה פגומה או מגרסה ישנה במטמון לא מוחזרת, ומוחלפת בתקינה', async () => {
+  const link = 'https://www.instagram.com/reel/DZsJ0i7ymDy/';
+  for (const bad of [HIT({ version: 0 }), HIT({ result: { spoken: '', onScreenText: [], scenes: [] } }), { aliasOf: 'x' }]) {
+    const cache = new Map([['instagram_DZsJ0i7ymDy', bad]]);
+    const { handler, log } = harness({ cache });
+    const out = await handler(req({ link }));
+    assert.equal(out.cached, undefined);
+    assert.equal(log.geminiCalls.length, 1);
+    assert.equal(cache.get('instagram_DZsJ0i7ymDy').version, tr.CACHE_VERSION, 'לא הוחלפה ברשומה תקינה');
+  }
+});
+
+test('תקלה ב-Firestore של המטמון לא מפילה את התמלול', async () => {
+  const { handler, log } = harness({ cache: new Map(), cacheBroken: true });
+  const out = await handler(req({ link: 'https://www.instagram.com/reel/DZsJ0i7ymDy/' }));
+  assert.equal(out.kind, 'speech');
+  assert.equal(log.increments, 1);
+});
+
+test('refresh: רק מאיה עוקפת את המטמון ודורסת אותו', async () => {
+  const link = 'https://www.instagram.com/reel/DZsJ0i7ymDy/';
+  const cache = new Map([['instagram_DZsJ0i7ymDy', HIT({ platform: 'instagram' })]]);
+  const client = harness({ cache });
+  const out = await client.handler(req({ link, refresh: true }));
+  assert.equal(out.cached, true, 'לקוחה עקפה את המטמון');
+  assert.equal(client.log.geminiCalls.length, 0);
+
+  const maya = harness({ cache, email: 'mayakislev@gmail.com' });
+  const out2 = await maya.handler(req({ link, refresh: true }, { uid: 'm1', token: { email: 'mayakislev@gmail.com' } }));
+  assert.equal(out2.cached, undefined);
+  assert.equal(maya.log.geminiCalls.length, 1);
+  assert.equal(cache.get('instagram_DZsJ0i7ymDy').result.spoken, 'שלום לכולן, היום נדבר על לקוחות.', 'התמלול השגוי לא הוחלף');
+  assert.equal(cache.get('instagram_DZsJ0i7ymDy').refreshed, true);
+});
+
+test('סרטון מהמאגר: המזהה שלו נקשר לתמלול, רק כשהלינק באמת שלו', async () => {
+  const short = 'https://vt.tiktok.com/ZSqhV8jmX/';
+  const cache = new Map();
+  const redirects = { [short]: 'https://www.tiktok.com/@a/video/7608083398443207956' };
+  const first = harness({ cache, redirects, bank: { bank1: short } });
+  await first.handler(req({ link: short, bankId: 'bank1' }));
+  assert.ok(cache.has('tiktok_7608083398443207956'));
+  assert.deepEqual(cache.get('bank_bank1'), { aliasOf: 'tiktok_7608083398443207956', version: tr.CACHE_VERSION });
+
+  /* הפעם הבאה מהמאגר: בלי לפתוח את הלינק המקוצר בכלל */
+  const second = harness({ cache, bank: { bank1: short } });
+  const out = await second.handler(req({ link: short, bankId: 'bank1' }));
+  assert.equal(out.cached, true);
+  assert.equal(second.log.resolves.length, 0, 'פתח שוב את הלינק המקוצר');
+  /* פגיעה דרך המזהה במאגר לא כותבת אותו שוב */
+  const writes = [];
+  const realSet = Map.prototype.set;
+  const watched = new Map(cache);
+  watched.set = function (k, v) { writes.push(k); return realSet.call(this, k, v); };
+  await harness({ cache: watched, bank: { bank1: short } }).handler(req({ link: short, bankId: 'bank1' }));
+  assert.deepEqual(writes, []);
+
+  /* מזהה של סרטון אחר במאגר עם הלינק הזה: לא נקשר */
+  const other = new Map();
+  const third = harness({ cache: other, redirects, bank: { bank2: 'https://vt.tiktok.com/OTHER/' } });
+  await third.handler(req({ link: short, bankId: 'bank2' }));
+  assert.equal(other.has('bank_bank2'), false, 'נקשר מזהה של סרטון אחר');
+  assert.ok(other.has('tiktok_7608083398443207956'));
+
+  /* מזהה עם תווים לא חוקיים לא נקרא בכלל */
+  const weird = new Map();
+  const fourth = harness({ cache: weird, redirects, bank: { 'a/b': short } });
+  await fourth.handler(req({ link: short, bankId: 'a/b' }));
+  assert.deepEqual([...weird.keys()], ['tiktok_7608083398443207956']);
+});
+
+test('העלאה מהגלריה לא נוגעת במטמון', async () => {
+  const cache = new Map();
+  const { handler, log } = harness({ cache });
+  await handler(req({ uploadPath: 'transcribeUploads/u1/abc.mov', refresh: true }));
+  assert.equal(cache.size, 0);
+  assert.equal(log.increments, 1);
 });

@@ -2760,6 +2760,29 @@ exports.syncRefsSubscriptions = require('./refs-subscription').syncRefsSubscript
       const t = await client.getAccessToken();
       return t && t.token ? t.token : t;
     },
+    /* 04/11/2026: מטמון לפי מזהה הסרטון (transcriptCache, סגור ללקוחות
+       בכללים). ראה cacheKeyFor ב-transcribe-reference.js. */
+    cache: {
+      get: async (key) => {
+        const snap = await db.collection('transcriptCache').doc(key).get();
+        return snap.exists ? snap.data() : null;
+      },
+      set: (key, doc) => db.collection('transcriptCache').doc(key).set(doc),
+    },
+    bankUrl: async (bankId) => {
+      const snap = await db.collection('inspirationBank').doc(bankId).get();
+      return snap.exists ? (snap.data().url || null) : null;
+    },
+    /* "refresh" (לתמלל מחדש ולדרוס את המטמון) רק למאיה */
+    isAdmin: (email) => String(email || '').toLowerCase() === ADMIN_EMAIL,
+    now: () => admin.firestore.FieldValue.serverTimestamp(),
+    logCacheHit: async (uid, info) => {
+      await db.collection('tokenUsage').doc('transcribeReference').set({
+        cacheHits: admin.firestore.FieldValue.increment(1),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+      console.log('transcribeReference cache hit', { uid, key: info.key, source: info.source });
+    },
     logUsage: async (uid, info) => {
       const u = info.usage || {};
       await db.collection('tokenUsage').doc('transcribeReference').set({

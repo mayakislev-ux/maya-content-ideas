@@ -122,6 +122,8 @@ export function accurateNotice(r, text) {
     foreign,
     language: (r && r.language) || '',
     onScreen: onScreenWithoutCaptions(r && r.onScreenText, [r && r.spoken, r && r.spokenHe]).length > 0,
+    /* 04/11/2026: הגיע ממטמון התמלולים בשרת (מישהי כבר תמללה את הסרטון) */
+    cached: Boolean(r && r.cached),
     text,
   };
 }
