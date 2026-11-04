@@ -33,7 +33,12 @@ import {
   fetchIdeas, fetchInspirationBank, getSavedDomain, guessDomain, saveDomain, saveSession, loadSession,
   saveScript, listScripts, deleteScript,
   extractOpeningHook, classifyContentType,
+  transcribeReference,
 } from './video-assistant-store.js';
+import { uploadForTranscription, discardUpload } from './transcribe-upload.js';
+import {
+  linkPlatform, uploadProblem, composeTranscript, accurateNotice, accurateNoticeText, transcribeErrorInfo,
+} from './reference-transcribe.js';
 import { getProfile, saveProfile } from './user-profile.js';
 /* 04/11/2026: צ'אט דיוק הרעיון חזר, כקפיצה לצ'אט עצמו ולא כעותק בתוך המסך */
 import { startIdeaChatFromAssistant } from './idea-chat.js';
@@ -105,6 +110,7 @@ function dispatch(action) {
   /* שכפול מהמאגר הוא סרטון חדש, כמו "להתחיל מחדש": בלי זה הוא היה נשמר
      על הפריט של הסרטון הקודם ב"התסריטים שלי". */
   const fresh = action.type === 'RESTART' || action.type === 'START_FROM_BANK';
+  if (fresh) resetAccurateRuns();
   if (!fresh && scriptId && !state.scriptId && state.branch) state = { ...state, scriptId, scriptCreatedAt };
   /* מה שהוקלד במסך שעזבנו כבר הפך לסטייט אמיתי, ולכן הטיוטה שלו מיותרת.
      אם היא תישאר, היא עלולה למלא מחדש תיבה שנוקתה בכוונה. */
@@ -1100,7 +1106,8 @@ function wireCopyButtons(root) {
 /* 04/11/2026: שכפול שנפתח מהמאגר אומר מאיפה בא התמלול והאם לסמוך עליו.
    ויזואלי, שיר או חסר: אומרים את זה במקום להעביר הלאה תמלול מטעה. */
 function bankNoticeHtml({ withEditLink = false } = {}) {
-  const notice = duplicationNotice(state.bankNotice);
+  const info = state.bankNotice;
+  const notice = info && info.reason === 'accurate' ? accurateNoticeText(info) : duplicationNotice(info);
   if (!notice) return '';
   return `<div class="va-bank-notice" role="note">
     <strong>${escapeHtml(notice.title)}</strong>
@@ -1119,10 +1126,11 @@ function renderTranscribe() {
   const describe = bankDescribeMode();
   cosmicCard(`
     <h2>${describe ? 'מה קורה ברפרנס?' : 'לתמלל את הרפרנס'}</h2>
-    ${fromBank ? bankNoticeHtml() : `<p>להוריד את הסרטון, ולתמלל אותו (לעברית אם צריך) בעזרת ג'מיני - ואז להדביק כאן את התמלול</p>`}
+    ${fromBank ? bankNoticeHtml() : `<p>להדביק לינק לסרטון וללחוץ על "✨ תמלול מדויק", או להדביק כאן את התמלול בעצמכם</p>`}
     <input type="url" class="cosmic-textarea" id="va-reference-link" style="min-height:auto"
-      inputmode="url" dir="ltr" placeholder="לינק לסרטון שמשכפלים (רשות)"
+      inputmode="url" dir="ltr" placeholder="לינק לסרטון מטיקטוק או מאינסטגרם"
       value="${state.referenceLink ? escapeHtml(state.referenceLink) : ''}">
+    ${accurateBlockHtml()}
     <textarea class="cosmic-textarea" id="va-transcript-input" style="margin-top:8px" placeholder="${describe ? 'לתאר כאן מה קורה בסרטון...' : 'להדביק כאן את התמלול...'}">${state.transcript ? escapeHtml(state.transcript) : ''}</textarea>
     <div class="cosmic-btn-row" style="margin-top:14px">
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-transcribe-done-btn">ממשיכים ←</button>
@@ -1141,6 +1149,215 @@ function renderTranscribe() {
     state.transcript = text;
     state.referenceLink = document.getElementById('va-reference-link').value.trim() || null;
     dispatch({ type: 'CONFIRM_DONE' });
+  });
+  wireAccurateTranscribe();
+}
+
+/* 04/11/2026 (מאיה): "✨ תמלול מדויק". ג'מיני צופה בסרטון עצמו, מהלינק או
+   מקובץ מהגלריה, ומחזיר מה שנאמר, מה שכתוב על המסך ומה רואים. התוצאה
+   נכנסת לתיבה ונשארת לעריכה. כשהלינק לא עובד (אינסטגרם חוסם לפעמים)
+   אומרים את זה, וההעלאה מהגלריה במרחק לחיצה אחת. */
+let accurateRun = 0;
+let accurateTimer = null;
+/* ריצה שעוד לא חזרה. נשמרת גם כשעוזבים את המסך וחוזרים, כדי שהכפתורים
+   לא ייפתחו באמצע ולא תצא קריאה שנייה בתשלום. */
+let accurateBusy = false;
+let accurateWaitLabel = '';
+let accurateStartedAt = 0;
+/* תוצאה שהגיעה כשהמסך כבר לא היה מסך התמלול. שולמה, ולכן לא נזרקת:
+   כשחוזרים למסך מציעים להכניס אותה לתיבה. */
+let accurateStash = null;
+
+/* סרטון חדש (שכפול מהמאגר או "להתחיל מחדש"): כל מה שבדרך שייך לסרטון
+   הקודם, ולא ייכנס לתיבה של החדש. */
+function resetAccurateRuns() {
+  accurateRun += 1;
+  accurateBusy = false;
+  accurateStash = null;
+  stopAccurateTimer();
+}
+
+function accurateBlockHtml() {
+  return `<div class="va-accurate" id="va-accurate">
+    <button type="button" class="cosmic-btn va-accurate-btn" id="va-accurate-btn">✨ תמלול מדויק</button>
+    <p class="va-accurate-hint">ג'מיני צופה בסרטון ומחזיר מה שנאמר, מה שכתוב על המסך ומה רואים בו. לוקח בדרך כלל 20-60 שניות.</p>
+    <button type="button" class="va-text-link" id="va-accurate-upload-btn">📤 להעלות את הסרטון מהגלריה</button>
+    <input type="file" accept="video/*" id="va-accurate-file" hidden>
+    <div class="va-accurate-status" id="va-accurate-status" role="status" aria-live="polite" hidden></div>
+  </div>`;
+}
+
+function setAccurateBusy(busy) {
+  accurateBusy = busy;
+  ['va-accurate-btn', 'va-accurate-upload-btn', 'va-transcribe-done-btn'].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = busy;
+  });
+  /* מה שמוקלד בזמן ההמתנה היה נדרס כשהתמלול נכנס */
+  const box = document.getElementById('va-transcript-input');
+  if (box) box.readOnly = busy;
+  const wrap = document.getElementById('va-accurate');
+  if (wrap) wrap.classList.toggle('is-busy', busy);
+}
+
+function showAccurateStatus(html, { kind = 'info' } = {}) {
+  const box = document.getElementById('va-accurate-status');
+  if (!box) return;
+  box.hidden = !html;
+  box.className = `va-accurate-status va-accurate-status--${kind}`;
+  box.innerHTML = html;
+  const fallback = document.getElementById('va-accurate-upload-fallback');
+  if (fallback) fallback.addEventListener('click', () => document.getElementById('va-accurate-file').click());
+}
+
+function uploadOfferHtml(message) {
+  return `<p>${escapeHtml(message)}</p>
+    <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-accurate-upload-fallback">📤 להעלות את הסרטון מהגלריה</button>`;
+}
+
+const SPINNER = '<span class="va-accurate-spinner" aria-hidden="true"></span>';
+
+function stopAccurateTimer() {
+  if (accurateTimer) clearInterval(accurateTimer);
+  accurateTimer = null;
+}
+
+function paintWaiting() {
+  const secs = Math.round((Date.now() - accurateStartedAt) / 1000);
+  showAccurateStatus(`<p>${SPINNER}${escapeHtml(accurateWaitLabel)}</p>
+    <p class="va-accurate-wait">זה לוקח בדרך כלל 20-60 שניות. אפשר להישאר כאן, התמלול ייכנס לתיבה לבד. (${secs} שניות)</p>`);
+}
+
+/* השעון ממשיך גם כשעוזבים את המסך (אז אין מה לצבוע), ונעצר רק כשהריצה נגמרת */
+function startWatchingStatus(label) {
+  stopAccurateTimer();
+  accurateWaitLabel = label;
+  accurateStartedAt = Date.now();
+  paintWaiting();
+  accurateTimer = setInterval(paintWaiting, 1000);
+}
+
+/* מה שכבר כתוב בתיבה, ולא הגיע מהמאגר או מתמלול קודם, הוא עבודה של
+   המשתמשת. לא דורסים אותו בלי לשאול. */
+async function okToReplaceTranscript() {
+  const box = document.getElementById('va-transcript-input');
+  const current = box ? box.value.trim() : '';
+  if (!current) return true;
+  const fromMachine = state.bankNotice && state.bankNotice.text && current === String(state.bankNotice.text).trim();
+  if (fromMachine) return true;
+  return confirmDialog('התמלול המדויק יחליף את מה שכתוב עכשיו בתיבה. להמשיך?', { okLabel: 'כן, להחליף', cancelLabel: 'לא' });
+}
+
+function applyAccurateResult(result, link) {
+  const text = composeTranscript(result);
+  if (!text) {
+    showAccurateStatus(uploadOfferHtml("ג'מיני לא מצא בסרטון דיבור, טקסט או תמונה לתאר. אפשר לנסות קובץ אחר."), { kind: 'error' });
+    return;
+  }
+  if (text !== state.transcript) state.openingHook = null;
+  state.transcript = text;
+  state.referenceLink = link || state.referenceLink || null;
+  state.bankNotice = accurateNotice(result, text);
+  state.drafts = withDraft(state.drafts, 'transcribe', 'va-transcript-input', text);
+  saveAll().catch((err) => console.error('saveSession failed:', err));
+  render();
+  showToast('התמלול מוכן ✓ אפשר לעבור עליו ולתקן');
+  /* צליל שלא התנגן (דפדפן בלי AudioContext) הוא לא כישלון של התמלול */
+  try { playSuccess(); } catch (err) { console.warn('playSuccess failed:', err); }
+}
+
+async function runAccurate(payload) {
+  const run = ++accurateRun;
+  accurateStash = null;
+  const linkInput = document.getElementById('va-reference-link');
+  const link = payload.link || (linkInput ? linkInput.value.trim() : '');
+  setAccurateBusy(true);
+  try {
+    let request = { link: payload.link };
+    if (payload.file) {
+      const uploading = (pct) => `<p>${SPINNER}מעלים את הסרטון... ${pct}%</p>`;
+      showAccurateStatus(uploading(0));
+      const path = await uploadForTranscription(payload.file, (pct) => {
+        if (run === accurateRun) showAccurateStatus(uploading(pct));
+      });
+      /* התחיל סרטון אחר בזמן ההעלאה: הקובץ כבר לא צריך */
+      if (run !== accurateRun) {
+        discardUpload(path).catch((err) => console.warn('discardUpload failed:', err));
+        return;
+      }
+      request = { uploadPath: path };
+    }
+    startWatchingStatus(payload.file ? "ג'מיני צופה בסרטון ומתמלל..." : "מורידים את הסרטון וג'מיני צופה בו...");
+    const result = await transcribeReference(request);
+    if (run !== accurateRun) return;
+    stopAccurateTimer();
+    if (state.screen !== 'transcribe') {
+      accurateStash = { run, result, link };
+      showToast('התמלול המדויק מוכן. הוא מחכה במסך התמלול');
+      return;
+    }
+    accurateBusy = false;
+    applyAccurateResult(result, link);
+  } catch (err) {
+    if (run !== accurateRun) return;
+    stopAccurateTimer();
+    console.error('transcribeReference failed:', err);
+    const info = transcribeErrorInfo(err);
+    const message = info.message || serverErrorText(err, 'התמלול');
+    /* לינק שלא ירד, או כל תקלה אחרת בלינק: ההעלאה היא הדרך החלופית.
+       מכסה שנגמרה חלה גם על העלאה, ולכן שם לא מציעים אותה. */
+    const offerUpload = info.linkFailed || (!payload.file && !info.quota);
+    showAccurateStatus(offerUpload ? uploadOfferHtml(message) : `<p>${escapeHtml(message)}</p>`, { kind: 'error' });
+    if (state.screen !== 'transcribe') showToast(message);
+  } finally {
+    if (run === accurateRun) setAccurateBusy(false);
+  }
+}
+
+function wireAccurateTranscribe() {
+  const btn = document.getElementById('va-accurate-btn');
+  if (!btn) return;
+  const fileInput = document.getElementById('va-accurate-file');
+  /* חזרה למסך באמצע ריצה: אותו מצב המתנה, בלי אפשרות לשלוח שוב */
+  if (accurateBusy) {
+    setAccurateBusy(true);
+    if (accurateTimer) paintWaiting();
+  } else if (accurateStash && accurateStash.run === accurateRun) {
+    showAccurateStatus(`<p>✨ התמלול המדויק הגיע בזמן שהייתם במסך אחר.</p>
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-accurate-apply">להכניס אותו לתיבה</button>`);
+    document.getElementById('va-accurate-apply').addEventListener('click', async () => {
+      if (!accurateStash || !(await okToReplaceTranscript())) return;
+      const { result, link } = accurateStash;
+      accurateStash = null;
+      applyAccurateResult(result, link);
+    });
+  }
+  btn.addEventListener('click', async () => {
+    if (accurateBusy) return;
+    const link = document.getElementById('va-reference-link').value.trim();
+    if (!link) {
+      showAccurateStatus(uploadOfferHtml('אין עדיין לינק. להדביק למעלה לינק לסרטון מטיקטוק או מאינסטגרם, או להעלות את הסרטון מהגלריה.'), { kind: 'error' });
+      return;
+    }
+    if (!linkPlatform(link)) {
+      showAccurateStatus(uploadOfferHtml('תמלול מלינק עובד רק עם לינק לסרטון מטיקטוק או מאינסטגרם. לסרטון אחר, להעלות אותו מהגלריה.'), { kind: 'error' });
+      return;
+    }
+    if (!(await okToReplaceTranscript())) return;
+    runAccurate({ link });
+  });
+  document.getElementById('va-accurate-upload-btn').addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', async () => {
+    const file = fileInput.files && fileInput.files[0];
+    fileInput.value = '';
+    if (!file || accurateBusy) return;
+    const problem = uploadProblem(file);
+    if (problem) {
+      showAccurateStatus(`<p>${escapeHtml(problem)}</p>`, { kind: 'error' });
+      return;
+    }
+    if (!(await okToReplaceTranscript())) return;
+    runAccurate({ file });
   });
 }
 

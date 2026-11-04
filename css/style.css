@@ -7975,6 +7975,49 @@ body.feed-open { overflow: hidden; }
 .va-bank-notice p { margin: 0; }
 .va-bank-notice .va-text-link { margin-top: 6px; }
 
+/* 04/11/2026: "✨ תמלול מדויק" במסך התמלול של השכפול */
+.va-accurate {
+  margin: 10px 0 4px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #eef6ff;
+  border: 1.5px solid #b9d7f5;
+  text-align: start;
+}
+.va-accurate .va-accurate-btn { width: 100%; font-weight: 700; }
+.va-accurate-hint { margin: 8px 0 2px; font-size: 13.5px; line-height: 1.5; color: var(--va-muted, #5d7d99); }
+.va-accurate.is-busy .va-accurate-btn,
+.va-accurate.is-busy .va-text-link { opacity: 0.55; cursor: progress; }
+.va-accurate-status {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid #d5e5f5;
+  color: var(--va-ink, #0f2340);
+  font-size: 14.5px;
+  line-height: 1.55;
+}
+.va-accurate-status p { margin: 0; }
+.va-accurate-status p + p { margin-top: 4px; }
+.va-accurate-status .cosmic-btn { margin-top: 10px; width: 100%; }
+.va-accurate-status--error { background: #fff4f2; border-color: #f2c3b9; }
+.va-accurate-wait { font-size: 13px; color: var(--va-muted, #5d7d99); }
+.va-accurate-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  margin-inline-end: 8px;
+  vertical-align: -2px;
+  border: 2px solid #b9d7f5;
+  border-top-color: #0b6fa8;
+  border-radius: 50%;
+  animation: va-accurate-spin 0.9s linear infinite;
+}
+.va-accurate-spinner[hidden], .va-accurate-status[hidden] { display: none; }
+@keyframes va-accurate-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .va-accurate-spinner { animation: none; } }
+
 /* החזרה מהצ'אט לעוזר: הדבר הראשון בסרגל, ולא עוד כפתור טקסט אפור */
 .chat-back-assistant {
   font: inherit;

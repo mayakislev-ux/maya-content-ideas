@@ -7,7 +7,7 @@ const NAMES = {
   'firebase-auth.js': ['getAuth', 'GoogleAuthProvider', 'signInWithPopup', 'signInWithRedirect', 'getRedirectResult', 'signOut', 'onAuthStateChanged', 'signInWithCustomToken'],
   'firebase-firestore.js': ['getFirestore', 'enableIndexedDbPersistence', 'doc', 'getDoc', 'getDocs', 'setDoc', 'addDoc', 'updateDoc', 'deleteDoc', 'collection', 'query', 'where', 'orderBy', 'limit', 'onSnapshot', 'serverTimestamp'],
   'firebase-functions.js': ['getFunctions', 'httpsCallable'],
-  'firebase-storage.js': ['getStorage', 'ref', 'uploadBytes', 'getDownloadURL', 'deleteObject', 'listAll', 'getMetadata', 'updateMetadata'],
+  'firebase-storage.js': ['getStorage', 'ref', 'uploadBytes', 'uploadBytesResumable', 'getDownloadURL', 'deleteObject', 'listAll', 'getMetadata', 'updateMetadata'],
 };
 
 export async function load(url, context, nextLoad) {

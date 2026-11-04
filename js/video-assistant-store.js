@@ -14,6 +14,16 @@ const guessClientDomainFn = httpsCallable(functions, 'guessClientDomain');
 const suggestSearchKeywordsFn = httpsCallable(functions, 'suggestSearchKeywords');
 const extractOpeningHookFn = httpsCallable(functions, 'extractOpeningHook');
 const classifyIdeaFn = httpsCallable(functions, 'classifyIdea');
+/* 04/11/2026: ג'מיני צופה בסרטון שלם, 20-60 שניות ולפעמים יותר. ברירת
+   המחדל של הקריאה היא 70 שניות, ואז היא הייתה נכשלת בזמן שהשרת עוד עובד. */
+const transcribeReferenceFn = httpsCallable(functions, 'transcribeReference', { timeout: 300000 });
+
+/** "✨ תמלול מדויק". payload: { link } או { uploadPath }. */
+export async function transcribeReference(payload) {
+  const result = await transcribeReferenceFn(payload);
+  return result.data;
+}
+
 
 /* 31/10/2026 (מאיה: "שיידע לזהות לבד ויקליד"). אותו סיווג שמסך הרעיונות
    כבר משתמש בו, והוא מחזיר רק את שלושת הסוגים. תקלה או המתנה ארוכה מחזירות

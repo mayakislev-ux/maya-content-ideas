@@ -29,6 +29,19 @@ service firebase.storage {
       allow delete: if isMaya() && request.auth.uid == uid;
     }
 
+    // 04/11/2026: "✨ תמלול מדויק" בשכפול. כל אחת מעלה סרטון רק לתיקייה
+    // שלה, הפונקציה transcribeReference קוראת אותו ומוחקת. אין קריאה מהדפדפן
+    // בכלל. מה שנשאר (העלאה שלא נשלחה לתמלול) נמחק אחרי יום בכלל של ה-bucket
+    // (lifecycle על transcribeUploads/). ההרשאה למנוי נבדקת בפונקציה.
+    match /transcribeUploads/{uid}/{file} {
+      allow create: if request.auth != null
+        && request.auth.uid == uid
+        && request.auth.token.email_verified == true
+        && request.resource.size < 200 * 1024 * 1024
+        && request.resource.contentType.matches('video/.*');
+      allow delete: if request.auth != null && request.auth.uid == uid;
+    }
+
     // כל השאר סגור
     match /{path=**} {
       allow read, write: if false;

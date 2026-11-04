@@ -68,6 +68,8 @@ const DAILY_LIMITS = {
   generateContentPlan: 20,
   matchInspirationQuery: 40,
   extractOpeningHook: 40,
+  /* 04/11/2026: כל קריאה צופה בסרטון שלם, 2-6 סנט. */
+  transcribeReference: 15,
 };
 
 // checkIdea/classifyIdea/generateWarmingPlan/generateContentPlan עד עכשיו רק
@@ -2734,3 +2736,41 @@ exports.draftScriptFeedback = require('./draftScriptFeedback').draftScriptFeedba
 
 // 15/10/2026: מנוי רפרנסים חודשי שמחובר למורנינג. paidUntil מתעדכן כל בוקר
 exports.syncRefsSubscriptions = require('./refs-subscription').syncRefsSubscriptions;
+
+// 04/11/2026 (מאיה): "✨ תמלול מדויק" במסך התמלול של השכפול. ג'מיני צופה
+// בסרטון עצמו (מלינק של טיקטוק/אינסטגרם, או מקובץ שהועלה מהגלריה) ומחזיר
+// מה שנאמר, מה שכתוב על המסך ומה רואים. ראה transcribe-reference.js.
+// המכסה נספרת רק על תמלול שהצליח, כמו checkIdea.
+{
+  const tr = require('./transcribe-reference');
+  const { GoogleAuth } = require('google-auth-library');
+  const auth = new GoogleAuth({ scopes: ['https://www.googleapis.com/auth/cloud-platform'] });
+  const TRANSCRIBE_BUCKET = 'content-ideas-becd7-story-assets';
+  const handler = tr.createTranscribeHandler({
+    HttpsError,
+    enforceAllowlist: (email) => enforceAllowlist(email, { allowRefs: true }),
+    checkRate: (uid) => checkRateLimitNotExceeded(uid, 'transcribeReference'),
+    incrementRate: (uid) => incrementRateLimit(uid, 'transcribeReference'),
+    get bucket() { return admin.storage().bucket(TRANSCRIBE_BUCKET); },
+    fetchLinkVideo: tr.fetchLinkVideo,
+    fetchImpl: (...args) => fetch(...args),
+    projectId: 'content-ideas-becd7',
+    getAccessToken: async () => {
+      const client = await auth.getClient();
+      const t = await client.getAccessToken();
+      return t && t.token ? t.token : t;
+    },
+    logUsage: async (uid, info) => {
+      const u = info.usage || {};
+      await db.collection('tokenUsage').doc('transcribeReference').set({
+        inputTokens: admin.firestore.FieldValue.increment(u.promptTokenCount || 0),
+        outputTokens: admin.firestore.FieldValue.increment((u.candidatesTokenCount || 0) + (u.thoughtsTokenCount || 0)),
+        costUsd: admin.firestore.FieldValue.increment(info.costUsd || 0),
+        calls: admin.firestore.FieldValue.increment(1),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+      console.log('transcribeReference ok', { uid, source: info.source, kind: info.kind, language: info.language, costUsd: info.costUsd, usage: u });
+    },
+  });
+  exports.transcribeReference = onCall({ region: 'us-central1', timeoutSeconds: 300, memory: '1GiB' }, handler);
+}
