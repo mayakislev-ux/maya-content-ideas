@@ -33,6 +33,10 @@ import {
   extractOpeningHook, classifyContentType,
 } from './video-assistant-store.js';
 import { getProfile, saveProfile } from './user-profile.js';
+/* 04/11/2026: צ'אט דיוק הרעיון חזר, כקפיצה לצ'אט עצמו ולא כעותק בתוך המסך */
+import { startIdeaChatFromAssistant } from './idea-chat.js';
+import { showView } from './view-router.js';
+import { duplicationText, duplicationNotice, readyForHook } from './reference-duplication.js';
 import { showToast } from './toast.js';
 import {
   pickEncouragement, domainTheme, formatElapsed,
@@ -95,10 +99,14 @@ function dispatch(action) {
   state = nextStep(state, action);
   /* חזרה אחורה משחזרת סטייט מלפני שהפריט ב"התסריטים שלי" נוצר. בלי זה
      אותו סרטון היה נשמר שוב כפריט חדש. רק "להתחיל מחדש" פותח פריט חדש. */
-  if (action.type !== 'RESTART' && scriptId && !state.scriptId && state.branch) state = { ...state, scriptId, scriptCreatedAt };
+  /* שכפול מהמאגר הוא סרטון חדש, כמו "להתחיל מחדש": בלי זה הוא היה נשמר
+     על הפריט של הסרטון הקודם ב"התסריטים שלי". */
+  const fresh = action.type === 'RESTART' || action.type === 'START_FROM_BANK';
+  if (!fresh && scriptId && !state.scriptId && state.branch) state = { ...state, scriptId, scriptCreatedAt };
   /* מה שהוקלד במסך שעזבנו כבר הפך לסטייט אמיתי, ולכן הטיוטה שלו מיותרת.
      אם היא תישאר, היא עלולה למלא מחדש תיבה שנוקתה בכוונה. */
-  state.drafts = state.screen === leaving ? drafts : clearScreenDrafts(drafts, leaving);
+  state.drafts = action.type === 'START_FROM_BANK' ? {}
+    : (state.screen === leaving ? drafts : clearScreenDrafts(drafts, leaving));
   saveAll().catch((err) => console.error('saveSession failed:', err));
   // 17/10/2026 (מאיה: "המעבר בין המסכים עושה סחרחורת"): מעבר הפורטל (#32)
   // הוסר - render ישיר, בלי אנימציית scale/blur בין מסכים.
@@ -1177,14 +1185,33 @@ function wireCopyButtons(root) {
   });
 }
 
+/* 04/11/2026: שכפול שנפתח מהמאגר אומר מאיפה בא התמלול והאם לסמוך עליו.
+   ויזואלי, שיר או חסר: אומרים את זה במקום להעביר הלאה תמלול מטעה. */
+function bankNoticeHtml({ withEditLink = false } = {}) {
+  const notice = duplicationNotice(state.bankNotice);
+  if (!notice) return '';
+  return `<div class="va-bank-notice" role="note">
+    <strong>${escapeHtml(notice.title)}</strong>
+    <p>${escapeHtml(notice.body)}</p>
+    ${withEditLink ? '<button type="button" class="va-text-link" id="va-bank-edit-link">לבדוק ולתקן את התמלול</button>' : ''}
+  </div>`;
+}
+
+function bankDescribeMode() {
+  const reason = state.bankNotice && state.bankNotice.reason;
+  return reason === 'visual' || reason === 'song' || reason === 'short';
+}
+
 function renderTranscribe() {
+  const fromBank = Boolean(state.bankNotice);
+  const describe = bankDescribeMode();
   cosmicCard(`
-    <h2>לתמלל את הרפרנס</h2>
-    <p>להוריד את הסרטון, ולתמלל אותו (לעברית אם צריך) בעזרת ג'מיני - ואז להדביק כאן את התמלול</p>
+    <h2>${describe ? 'מה קורה ברפרנס?' : 'לתמלל את הרפרנס'}</h2>
+    ${fromBank ? bankNoticeHtml() : `<p>להוריד את הסרטון, ולתמלל אותו (לעברית אם צריך) בעזרת ג'מיני - ואז להדביק כאן את התמלול</p>`}
     <input type="url" class="cosmic-textarea" id="va-reference-link" style="min-height:auto"
       inputmode="url" dir="ltr" placeholder="לינק לסרטון שמשכפלים (רשות)"
       value="${state.referenceLink ? escapeHtml(state.referenceLink) : ''}">
-    <textarea class="cosmic-textarea" id="va-transcript-input" style="margin-top:8px" placeholder="להדביק כאן את התמלול...">${state.transcript ? escapeHtml(state.transcript) : ''}</textarea>
+    <textarea class="cosmic-textarea" id="va-transcript-input" style="margin-top:8px" placeholder="${describe ? 'לתאר כאן מה קורה בסרטון...' : 'להדביק כאן את התמלול...'}">${state.transcript ? escapeHtml(state.transcript) : ''}</textarea>
     <div class="cosmic-btn-row" style="margin-top:14px">
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-transcribe-done-btn">ממשיכים ←</button>
     </div>
@@ -1194,9 +1221,11 @@ function renderTranscribe() {
     // כאן בדיוק היה חסר הוולידציה הזו, היחידה מכל שדות הטקסט שלא נבדקה.
     const text = document.getElementById('va-transcript-input').value.trim();
     if (!text) {
-      showToast('צריך להדביק את התמלול קודם');
+      showToast(describe ? 'צריך לתאר קודם מה קורה בסרטון' : 'צריך להדביק את התמלול קודם');
       return;
     }
+    /* תמלול שהשתנה צריך הוק מזוהה מחדש, ולא את זה של הנוסח הקודם */
+    if (text !== state.transcript) state.openingHook = null;
     state.transcript = text;
     state.referenceLink = document.getElementById('va-reference-link').value.trim() || null;
     dispatch({ type: 'CONFIRM_DONE' });
@@ -1269,8 +1298,12 @@ async function renderPrompt1() {
   const highlightValues = isReverseDup
     ? [audience, domain, hookForPrompt, reverseDupScript]
     : [audience, domain, hookForPrompt];
+  /* ההודעה רק כל עוד התמלול הוא זה שהגיע מהמאגר. אחרי שתוקן, הוא שלה. */
+  const bankUntouched = state.bankNotice && state.bankNotice.reason === 'ok'
+    && state.transcript === state.bankNotice.text;
   cosmicCard(`
     <h2>מציאת הוק</h2>
+    ${bankUntouched ? bankNoticeHtml({ withEditLink: true }) : ''}
     ${geminiHookNote()}
     <div class="cosmic-context-box"><span>ההוק שזיהינו מתוך התמלול שלך:</span>${escapeHtml(hookForPrompt)}</div>
     ${isReverseDup
@@ -1285,6 +1318,8 @@ async function renderPrompt1() {
     </div>
   `);
   wireCopyButtons(screenEl());
+  const bankEdit = document.getElementById('va-bank-edit-link');
+  if (bankEdit) bankEdit.addEventListener('click', () => dispatch({ type: 'BACK' }));
   document.getElementById('va-hook-chosen-btn').addEventListener('click', () => {
     const hook = document.getElementById('va-hook-input').value.trim();
     if (!hook) {
@@ -1557,6 +1592,10 @@ function renderIdeaSharpen() {
   /* מסלול "יש לי רעיון" מתחיל כאן ישר מהפתיחה, ולכן רק בו יש קישור
      להגרלה ותיבת סימון של בדיקת הרלוונטיות (שהיו פעם מסכים נפרדים). */
   const fromIdea = state.branch === 'idea';
+  /* 04/11/2026 (מאיה): צ'אט דיוק הרעיון, רק ביצירה מ-0 ("רק שם מעניין דיוק
+     הרעיון") ורק באפליקציה המלאה. מנוי רפרנסים לא רואה אותו, וגם השרת
+     חוסם לו את הצ'אט. */
+  const showAngleChat = fromIdea && !refsPlan();
 
   /* 28/10/2026 (מאיה): "כל החלק של הרעיון שלך במשפט אחד מסובך, מיליון
      טקסט, מבלבל ועושה כאב ראש, חייב לפשט הכל". ירדו פסקת הפתיחה, שלושת
@@ -1573,7 +1612,12 @@ function renderIdeaSharpen() {
     <label class="cosmic-field-label va-punch-label" for="va-idea-punch">⭐ מה הפואנטה שורה תחתונה מהסרטון? מה אתם רוצים שהקהל שלכם יבין? מה המסר?</label>
     <textarea class="cosmic-textarea va-punch-box" id="va-idea-punch" style="min-height:96px">${escapeHtml(punch)}</textarea>`}
 
-
+    ${showAngleChat ? `<div class="va-angle-cta">
+      <p class="va-angle-cta__lead">🎯 דיוק רעיון ממוקד, חזק וספציפי הוא הסוד לסרטון מוצלח.</p>
+      <p class="va-angle-cta__warn">רעיון לא מדויק יהרוס את כל הכתיבה.</p>
+      <button type="button" class="cosmic-btn cosmic-btn--primary va-angle-cta__btn" id="va-angle-chat-btn">לא בטוחים שהרעיון חזק? לחצו כאן</button>
+      <small class="va-angle-cta__safe">ואל דאגה, כל מה שתכתבו כאן נשמר אוטומטית ויחכה לכם כשתחזרו.</small>
+    </div>` : ''}
     ${fromIdea ? `<label class="va-check-row">
       <input type="checkbox" id="va-relevance-check" ${state.relevanceConfirmed ? 'checked' : ''}>
       <span>הרעיון רלוונטי לקהל היעד שלי, או משרת את המותג (מציג את האישיות, הערכים או תפיסת העולם שלי)</span>
@@ -1620,6 +1664,8 @@ function renderIdeaSharpen() {
       ? { type: 'IDEA_SHARPENED', idea: text, topic: box.value.trim(), punchline: punchBox.value.trim() }
       : { type: 'IDEA_SHARPENED', idea: text });
   });
+  const angleBtn = document.getElementById('va-angle-chat-btn');
+  if (angleBtn) angleBtn.addEventListener('click', () => openAngleChat({ box, punchBox, angleBtn }));
   const pullLink = document.getElementById('va-pull-idea-link');
   if (pullLink) pullLink.addEventListener('click', async () => {
     if (!ideasCache) ideasCache = await fetchIdeas();
@@ -1631,6 +1677,50 @@ function renderIdeaSharpen() {
     currentPickId = picked.id;
     dispatch({ type: 'CHOOSE_PULL_IDEA' });
   });
+}
+
+/* 04/11/2026: לפני שעוזבים את המסך, מה שכתוב בשתי התיבות (ותיבת הסימון)
+   נכתב לסשן ונשמר בפועל. השמירה הרגילה רצה 800ms אחרי הקלדה, ולחיצה מהירה
+   אחרי ההקלדה הייתה עוזבת לפני שהיא רצה. */
+const SAVE_BEFORE_LEAVE_MS = 5000;
+async function openAngleChat({ box, punchBox, angleBtn }) {
+  const screen = 'idea-sharpen';
+  let drafts = withDraft(state.drafts || {}, screen, 'va-idea-sharp', box.value);
+  if (punchBox) drafts = withDraft(drafts, screen, 'va-idea-punch', punchBox.value);
+  state.drafts = drafts;
+  const relevance = document.getElementById('va-relevance-check');
+  if (relevance) state.relevanceConfirmed = relevance.checked;
+  angleBtn.disabled = true;
+  let timer = null;
+  try {
+    await Promise.race([
+      saveAll(),
+      new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('save timeout')), SAVE_BEFORE_LEAVE_MS); }),
+    ]);
+  } catch (err) {
+    /* נאמר ולא נבלע. מה שנכתב עדיין כאן בזיכרון, והחזרה בכפתור תציג אותו. */
+    console.error('saveSession before idea chat failed:', err);
+    showToast('השמירה בענן לא עברה. מה שכתבתם יחכה כאן כל עוד לא מרעננים את הדף');
+  } finally {
+    clearTimeout(timer);
+    angleBtn.disabled = false;
+  }
+  startIdeaChatFromAssistant(
+    { topic: box.value, punchline: punchBox ? punchBox.value : '' },
+    { onBack: returnFromAngleChat },
+  );
+}
+
+/* החזרה מהצ'אט. עם רעיון מדויק הוא נכנס לתיבה "על מה הסרטון?", והמסר
+   נשאר כמו שנכתב. בלי רעיון חוזרים בדיוק למה שהיה. */
+function returnFromAngleChat(idea) {
+  showView('video-assistant');
+  if (idea && state.screen === 'idea-sharpen') {
+    state.drafts = withDraft(state.drafts || {}, 'idea-sharpen', 'va-idea-sharp', idea);
+    saveAll().catch((err) => console.error('saveSession failed:', err));
+  }
+  render();
+  if (idea && state.screen === 'idea-sharpen') showToast('הרעיון המדויק נכנס לתיבה "על מה הסרטון?"');
 }
 
 /* 28/10/2026 (מאיה): "זהו הצ'אט בתכלס זה הזווית הקריאייטיבית, אבל הוא
@@ -2248,6 +2338,52 @@ function render() {
   if (state.screen === 'scratch-scene') return renderScratchScene();
   if (state.screen === 'summary') return renderSummary();
   cosmicCard(`<p>מסך לא מוכר: "${state.screen}"</p>`);
+}
+
+/* 04/11/2026 (מאיה): "לשכפול הסרטון" ליד כל רפרנס במאגר. פותח את העוזר
+   ישר בשכפול, עם הלינק והתמלול בפנים, ונוחת על המסך הבא (מציאת הוק).
+   כשאין תמלול שאפשר לסמוך עליו, נוחת על מסך התמלול עם הסבר מה לכתוב.
+   פתוח גם למנוי רפרנסים: השכפול הוא בדיוק הכלי שלהן.
+   loadSubtitles(id) מגיע מהמאגר, שכבר מחזיק את הכתוביות בזיכרון. */
+const SUBS_TIMEOUT_MS = 8000;
+export async function duplicateFromBank(video, { loadSubtitles } = {}) {
+  if (!video || !video.url) return;
+  let segments = null;
+  if (video.hasSubtitles && video.id && typeof loadSubtitles === 'function') {
+    let timer = null;
+    try {
+      segments = await Promise.race([
+        loadSubtitles(video.id),
+        new Promise((resolve) => { timer = setTimeout(() => resolve(null), SUBS_TIMEOUT_MS); }),
+      ]);
+    } catch (err) {
+      /* בלי כתוביות נופלים לטקסט הקריאה, ולא עוצרים */
+      console.error('loadSubtitles for duplication failed:', err);
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  const info = duplicationText(video, segments);
+  showView('video-assistant');
+  currentPickId = null;
+  sessionStartTs = Date.now();
+  const start = () => dispatch({
+    type: 'START_FROM_BANK',
+    link: video.url,
+    transcript: info.text,
+    ready: readyForHook(info),
+    notice: { reason: info.reason, source: info.source, foreign: info.foreign, text: info.text },
+  });
+  /* כמו בפתיחה הרגילה: בלי תחום וקהל הפרומפט יוצא בלי הקשר, ולכן קודם
+     ממלאים אותם (פעם אחת), ורק אז נכנסים לשכפול. */
+  let incomplete = false;
+  try {
+    incomplete = profileIncomplete(await getProfile());
+  } catch (err) {
+    console.error('getProfile before duplication failed:', err);
+  }
+  if (incomplete) renderProfileSetup(start);
+  else start();
 }
 
 export function wireVideoAssistantView() {

@@ -46,6 +46,10 @@ export const INITIAL_STATE = {
   /* 31/10/2026: האם התסריט עבר את פרומפט "השלכה לתוך סצנה" (שורה בסיכום),
      והגרסה ששוכתבה כשחוזרים מהסיכום, כדי שלא תאבד בדרך. */
   sceneRewritten: false, sceneRewrite: null,
+  /* 04/11/2026: שכפול שנפתח מתוך המאגר. { reason, source, foreign, text }
+     מ-reference-duplication.js, כדי שמסכי התמלול וההוק יגידו אם אפשר
+     לסמוך על התמלול. null בכל כניסה אחרת. */
+  bankNotice: null,
 };
 
 /* 31/10/2026: קרוסלה נכתבת לשקופיות ולא מדוברת, ולכן שלבי הסרטון לא חלים עליה. */
@@ -75,6 +79,26 @@ export function nextStep(state, action) {
       back.draftScript = state.draftScript;
     }
     return back;
+  }
+
+  /* 04/11/2026 (מאיה): "לשכפול הסרטון" מתוך מאגר ההשראה. נכנסים ישר
+     לשכפול עם הלינק והתמלול, בלי "יש לך רפרנס?" ובלי לתמלל ביד.
+     שכפול חדש מתחיל נקי, כמו "להתחיל מחדש". ההיסטוריה נבנית כאילו עברו
+     במסכים, כדי שהחץ אחורה יוביל למסך התמלול (לבדוק ולתקן) ומשם לפתיחה.
+     בלי תמלול שאפשר לסמוך עליו נוחתים על מסך התמלול עצמו, עם הסבר. */
+  if (action.type === 'START_FROM_BANK') {
+    const base = {
+      ...INITIAL_STATE,
+      branch: 'reference',
+      referenceLink: action.link || null,
+      transcript: action.transcript || null,
+      bankNotice: action.notice || null,
+    };
+    const opening = withoutHistory({ ...INITIAL_STATE });
+    const transcribe = { ...withoutHistory(base), screen: 'transcribe' };
+    return action.ready && base.transcript
+      ? { ...base, screen: 'prompt1', history: [opening, transcribe] }
+      : { ...base, screen: 'transcribe', history: [opening] };
   }
 
   const next = step(state, action);

@@ -59,6 +59,9 @@ let soundOn = false;
 /* תרגום פתוח מראש בסרטון זר. מי שסגרה אותו, הוא נשאר סגור עד היציאה. */
 let readOpen = true;
 let loadSubs = null;
+/* 04/11/2026: "לשכפול הסרטון" גם בגלילה. מגיע מבחוץ, כדי שהקובץ הזה לא
+   יטען את העוזר כולו (והבדיקות מריצות אותו ישירות). */
+let onDuplicate = null;
 let subs = null;
 let subsOn = true;
 /* באינסטגרם הנגן לא מדווח באיזו שנייה הוא, אז סופרים לבד מרגע הלחיצה עליו */
@@ -164,6 +167,16 @@ function fillSlide(i) {
       if (!subsOn) host.querySelectorAll('.feed-sub').forEach((n) => n.remove());
     });
     bottom.appendChild(toggle);
+  }
+  if (onDuplicate) {
+    const dup = el('button', 'feed-dup', '🎬 לשכפול הסרטון');
+    dup.type = 'button';
+    dup.addEventListener('click', () => {
+      const go = onDuplicate;
+      closeFeed();
+      go(video);
+    });
+    bottom.appendChild(dup);
   }
   const read = textPanel(video, slide);
   if (read) bottom.appendChild(read);
@@ -465,6 +478,7 @@ export function openFeed(videos, start = 0, options = {}) {
   if (host) closeFeed();
   list = videos.slice();
   loadSubs = options.loadSubtitles || null;
+  onDuplicate = typeof options.onDuplicate === 'function' ? options.onDuplicate : null;
   active = -1;
   target = null;
   lastFocus = document.activeElement;

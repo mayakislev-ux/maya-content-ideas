@@ -116,9 +116,9 @@ describe('אותו מסך, שני מסלולים', () => {
   const tplTo = SHARPEN.indexOf('\n  `);', tplFrom);
   const render = (forFootage) => {
     assert.ok(tplTo > tplFrom, 'לא נמצאה תבנית המסך');
-    const build = new Function('forFootage', 'refsOnly', 'escapeHtml', 'idea', 'punch', 'fromIdea', 'state',
+    const build = new Function('forFootage', 'refsOnly', 'escapeHtml', 'idea', 'punch', 'fromIdea', 'state', 'showAngleChat',
       'return `' + SHARPEN.slice(tplFrom, tplTo) + '`');
-    return build(forFootage, false, (s) => s, 'הרעיון הגולמי שלי', 'הפואנטה הגולמית שלי', !forFootage, {});
+    return build(forFootage, false, (s) => s, 'הרעיון הגולמי שלי', 'הפואנטה הגולמית שלי', !forFootage, {}, !forFootage);
   };
 
   /* 29/10/2026 (מאיה): "יש שם בשקוף דוגמה של החלקות, תבטלי, זה מבלבל". */
@@ -186,8 +186,8 @@ describe('הכותרת תואמת את המסך', () => {
 describe('הפואנטה: הסעיף הכי קריטי', () => {
   const tplFrom = SHARPEN.indexOf('cosmicCard(`') + 'cosmicCard(`'.length;
   const tplTo = SHARPEN.indexOf('\n  `);', tplFrom);
-  const render = (forFootage) => new Function('forFootage', 'refsOnly', 'escapeHtml', 'idea', 'punch', 'fromIdea', 'state',
-    'return `' + SHARPEN.slice(tplFrom, tplTo) + '`')(forFootage, false, (s) => s, 'נושא', 'הפואנטה שלי', !forFootage, {});
+  const render = (forFootage) => new Function('forFootage', 'refsOnly', 'escapeHtml', 'idea', 'punch', 'fromIdea', 'state', 'showAngleChat',
+    'return `' + SHARPEN.slice(tplFrom, tplTo) + '`')(forFootage, false, (s) => s, 'נושא', 'הפואנטה שלי', !forFootage, {}, !forFootage);
 
   /* 28/10/2026 (מאיה: "עומס מנטלי"): "מאיפה הרעיון?" ו"בודקים לפני
      שממשיכים" היו מסכים נפרדים, ועכשיו הם קישור ותיבת סימון כאן. */

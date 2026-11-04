@@ -192,10 +192,12 @@ function messagesEl() {
 // timeout guarantees the user always gets SOME outcome instead of a
 // permanently frozen "מקליד..." indicator.
 function withTimeout(promise, ms) {
+  /* הטיימר מתבטל כשהתשובה הגיעה, ולא נשאר לרוץ לחינם עוד 15 שניות */
+  let timer;
   return Promise.race([
     promise,
-    new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms)),
-  ]);
+    new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('timeout')), ms); }),
+  ]).finally(() => clearTimeout(timer));
 }
 
 async function saveFinalIdea(finalizedText) {
@@ -240,6 +242,16 @@ function addPostIdeaButtons(bubble, finalizedText, ideaSummary) {
   saveBtn.addEventListener('click', () => saveFinalIdea(finalizedText));
   bubble.appendChild(saveBtn);
 
+  /* נפתח מתוך העוזר: הדרך הטבעית היא לחזור אליו עם הרעיון המדויק */
+  if (assistantReturn) {
+    const backBtn = document.createElement('button');
+    backBtn.type = 'button';
+    backBtn.className = 'chat-cta-btn chat-back-assistant-btn';
+    backBtn.textContent = '↩ לחזור לעוזר עם הרעיון המדויק';
+    const idea = (ideaSummary && ideaSummary.idea) || finalizedText;
+    backBtn.addEventListener('click', () => returnToAssistant(idea));
+    bubble.appendChild(backBtn);
+  }
 }
 
 function resetChat() {
@@ -530,7 +542,74 @@ export async function startIdeaChatWithExistingIdea(idea) {
   }
 }
 
+/* 04/11/2026 (מאיה): "צריך להחזיר את הצ'אט דיוק זווית הנגשה למוח השיווקי,
+   אבל רק לבנות שיש להן את האפליקציה המלאה... בתהליך היצירה מ-0, בחלק
+   שכותבים רעיון ומסר". זה אותו צ'אט בדיוק, באותו מסך, ולא עותק: העוזר
+   פותח אותו עם מה שכבר נכתב אצלו, וכפתור קבוע למעלה מחזיר אליו.
+   onBack(idea) נקרא עם הרעיון המדויק כשבוחרים להעביר אותו, ובלעדיו
+   (null) כשרק חוזרים. */
+let assistantReturn = null;
+
+function backToAssistantBtn() {
+  return document.getElementById('chat-back-to-assistant');
+}
+
+function returnToAssistant(idea = null) {
+  const onBack = assistantReturn;
+  assistantReturn = null;
+  const btn = backToAssistantBtn();
+  if (btn) btn.hidden = true;
+  if (onBack) onBack(idea);
+}
+
+/** מה נשלח לצ'אט מתוך שתי התיבות של העוזר. ריק = הצ'אט פשוט מברך. */
+export function assistantSeedText({ topic = '', punchline = '' } = {}) {
+  const t = String(topic || '').trim();
+  const p = String(punchline || '').trim();
+  if (t && p) return `על מה הסרטון: ${t}\nהמסר: ${p}`;
+  return t || p;
+}
+
+export async function startIdeaChatFromAssistant(seed = {}, { onBack } = {}) {
+  assistantReturn = typeof onBack === 'function' ? onBack : null;
+  showView('chat');
+  const btn = backToAssistantBtn();
+  if (btn) btn.hidden = !assistantReturn;
+  document.getElementById('edit-profile-btn').hidden = !isAdmin();
+  document.getElementById('replay-tour-btn').hidden = !isAdmin();
+
+  /* שיחה נקייה: מה שנשאר מרעיון קודם לא שייך לרעיון הזה */
+  history = [];
+  originalIdeaText = null;
+  lastIdeaSummary = null;
+  editingIdeaId = null;
+  pendingIdeaContext = null;
+  pendingIdeaToCheck = assistantSeedText(seed) || null;
+  messagesEl().innerHTML = '';
+
+  if (started && profile) {
+    greetAndAskForIdea();
+    return;
+  }
+  started = true;
+  const loadingBubble = addThinkingBubble(messagesEl());
+  try {
+    profile = await withTimeout(getProfile(), 10000);
+    loadingBubble.closest('.chat-row').remove();
+    if (profile) greetAndAskForIdea();
+    else startOnboarding();
+  } catch (err) {
+    console.error('startIdeaChatFromAssistant failed:', err);
+    loadingBubble.closest('.chat-row').remove();
+    started = false;
+    addBubble(messagesEl(), 'משהו השתבש בטעינת הצ\'אט. אפשר לחזור לעוזר בכפתור למעלה ולנסות שוב.', 'assistant');
+  }
+}
+
 export function wireIdeaChat() {
+  const backBtn = backToAssistantBtn();
+  if (backBtn) backBtn.addEventListener('click', () => returnToAssistant(null));
+
   const form = document.getElementById('chat-form');
   const input = document.getElementById('chat-input');
   const voiceInput = wireVoiceInput({ buttonId: 'chat-mic-btn', textareaId: 'chat-input' });
