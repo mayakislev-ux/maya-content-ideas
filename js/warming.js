@@ -431,12 +431,16 @@ function autosaveNewPlan() {
       currentPlanId = ref.id;
       markUnsaved(false);
       showToast('💾 התוכנית נשמרה ב"תוכניות שמורות"');
+      // כמו בשמירה ידנית: הצירוף הזה נשמר, והביקור הבא מתחיל טופס נקי
+      try { localStorage.removeItem(WARMING_DRAFT_KEY); } catch { /* אין אחסון */ }
+      document.dispatchEvent(new CustomEvent('warming-plan-saved'));
       // עריכה שנעשתה בזמן שהשמירה הראשונה עוד הייתה באוויר
       if (editedWhileCreating) {
         editedWhileCreating = false;
         updateWarmingPlan(currentPlanId, { plan }).catch((err) => {
           console.error('Warming post-create update failed:', err);
           markUnsaved(true);
+          showToast('העריכה האחרונה לא נשמרה - בדקו חיבור לאינטרנט ולחצו "שמירה"');
         });
       }
     })
@@ -452,6 +456,13 @@ function autosaveNewPlan() {
   pendingCreate = job;
   return job;
 }
+
+/* "חזרה לטבלה" (story-table.js) שואלת אם לזרוק תוכנית שלא נשמרה. כשהשמירה
+   האוטומטית עוד באוויר היא מחכה לה קודם, אחרת השאלה הייתה אומרת "לא
+   נשמרה" על תוכנית שנשמרת שנייה אחר כך. */
+document.addEventListener('warming-before-leave', (e) => {
+  if (e.detail && pendingCreate) e.detail.wait = pendingCreate;
+});
 
 export function wireWarmingView() {
   const form = document.getElementById('warming-form');
@@ -674,6 +685,11 @@ export function wireWarmingView() {
       savedListEl.textContent = 'משהו השתבש בטעינת התוכניות השמורות.';
     }
   }
+
+  // רשימה פתוחה מתעדכנת כשתוכנית חדשה נשמרת לבד
+  document.addEventListener('warming-plan-saved', () => {
+    if (!savedListEl.hidden) refreshSavedList();
+  });
 
   savedToggleBtn.addEventListener('click', () => {
     const opening = savedListEl.hidden;

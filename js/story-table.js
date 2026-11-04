@@ -306,6 +306,13 @@ function wirePlanOutcome() {
     /* 04/11/2026 (ביקורת): החזרה מחקה מהמסך תוכנית שלקחה דקה לבנות,
        בלי שום אזהרה. התוכנית נשמרת עכשיו לבד כשהיא מוכנה (warming.js),
        וכאן שואלים רק כשהשמירה הזאת לא הצליחה. */
+    const leave = { wait: null };
+    document.dispatchEvent(new CustomEvent('warming-before-leave', { detail: leave }));
+    if (leave.wait) {
+      showStatus('שומרים את התוכנית...');
+      await leave.wait;
+      showStatus('');
+    }
     const result = el('warming-result');
     if (result && result.dataset.unsaved === '1') {
       const ok = await confirmDialog(

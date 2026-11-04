@@ -18,6 +18,7 @@ const hasJsdom = existsSync(JSDOM_PATH);
 const store = new Map();
 const calls = { addDoc: [], updateDoc: [], setDoc: [] };
 const fail = { addDoc: null, updateDoc: null };
+const gate = { addDoc: null };
 let nextId = 1;
 
 const USER = { uid: 'u1', email: 'client@example.com', getIdToken: async () => 'tok' };
@@ -48,6 +49,7 @@ function installFirebaseStub() {
     },
     addDoc: async (col, data) => {
       calls.addDoc.push({ path: col.path, data: structuredClone(data) });
+      if (gate.addDoc) await gate.addDoc;
       if (fail.addDoc) throw fail.addDoc;
       const id = `d${nextId++}`;
       store.set(`${col.path}/${id}`, structuredClone(data));
@@ -194,6 +196,25 @@ describe('עבודה של לקוחה לא הולכת לאיבוד (jsdom)', { sk
       assert.equal(mods.update.hasUnsavedWork(), false);
     } finally {
       fail.addDoc = null;
+    }
+  });
+
+  test('1. חזרה בזמן שהשמירה האוטומטית באוויר מחכה לה, ולא שואלת "לא נשמרה"', async () => {
+    let release;
+    gate.addDoc = new Promise((r) => { release = r; });
+    try {
+      const before = calls.addDoc.length;
+      await buildPlan();
+      await until(() => calls.addDoc.length === before + 1, 'השמירה לא התחילה');
+      $('#st-back-to-table').click();
+      await tick();
+      assert.equal(confirmOpen(), false, 'שאלה "לא נשמרה" על תוכנית שבאמצע שמירה');
+      assert.ok($('.warming-day-row'), 'המסך נזרק לפני שהשמירה הסתיימה');
+      release();
+      await until(() => $('#warming-result').innerHTML === '', 'החזרה לא בוצעה אחרי השמירה');
+      assert.equal(confirmOpen(), false);
+    } finally {
+      gate.addDoc = null;
     }
   });
 

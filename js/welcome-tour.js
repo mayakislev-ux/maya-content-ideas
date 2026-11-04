@@ -154,7 +154,8 @@ function positionForTarget(targetEl) {
 }
 
 function renderStep() {
-  localStorage.setItem(LAST_STEP_KEY, String(currentStep));
+  // 04/11/2026: נשמרת הכותרת ולא המספר, כי רשימת השלבים תלויה במנוי
+  localStorage.setItem(LAST_STEP_KEY, steps[currentStep].title);
   const step = steps[currentStep];
   callout.querySelector('.tour-callout-emoji').textContent = step.emoji;
   callout.querySelector('h3').textContent = step.title;
@@ -224,8 +225,8 @@ export async function hasCompletedTour() {
 export function showWelcomeTour(onDone) {
   onDoneCallback = onDone || null;
   steps = stepsForPlan(document.body.dataset.plan);
-  const savedStep = Number(localStorage.getItem(LAST_STEP_KEY) || '0');
-  currentStep = savedStep >= 0 && savedStep < steps.length ? savedStep : 0;
+  const savedTitle = localStorage.getItem(LAST_STEP_KEY);
+  currentStep = Math.max(0, steps.findIndex((s) => s.title === savedTitle));
   buildElements();
   renderStep();
   resizeHandler = () => renderStep();
