@@ -1,4 +1,4 @@
-﻿// שינוי כאן גורם לכל מי שפתוחה על גרסה ישנה לקבל את הודעת "גרסה חדשה מוכנה" (18/09: הכנסת update-check.js)
+// שינוי כאן גורם לכל מי שפתוחה על גרסה ישנה לקבל את הודעת "גרסה חדשה מוכנה" (18/09: הכנסת update-check.js)
 const CACHE_NAME = 'moach-hashiveki-v139';
 const APP_SHELL = ['./', './index.html', './css/style.css', './js/app.js', './manifest.json', './assets/favicon.png'];
 
