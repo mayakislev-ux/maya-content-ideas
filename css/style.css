@@ -1423,9 +1423,11 @@ h1, h2, h3 {
 .chat-avatar {
   flex-shrink: 0;
   /* 04/11/2026 (מאיה: "את התמונה שלי בצ'אט אפשר להפוך לקצת יותר קטנה?",
-     ואחר כך "יותר קטנה וממורכזת"): 24px, והחיתוך בקובץ ממרכז את הפנים */
-  width: 24px;
-  height: 24px;
+     ואחר כך "יותר קטנה וממורכזת"): 20px, ובאמצע הגובה של הבועה ולא בתחתית שלה
+     (השורה היא align-items: flex-end). החיתוך בקובץ ממרכז את הפנים. */
+  width: 20px;
+  height: 20px;
+  align-self: center;
   border-radius: 50%;
   object-fit: cover;
   background: var(--accent);
