@@ -29,8 +29,8 @@ function appendWithBold(container, text) {
  *   stripping trailing punctuation.
  */
 /* 04/11/2026 (מאיה): במקום הרובוט, תמונה עגולה קטנה שלה. */
-export const AVATAR_SRC = 'assets/maya-avatar-160.webp';
-export const AVATAR_SRCSET = 'assets/maya-avatar-160.webp 1x, assets/maya-avatar-320.webp 2x';
+export const AVATAR_SRC = 'assets/maya-face-160.webp';
+export const AVATAR_SRCSET = 'assets/maya-face-160.webp 1x, assets/maya-face-320.webp 2x';
 
 function chatAvatar() {
   const avatar = document.createElement('img');

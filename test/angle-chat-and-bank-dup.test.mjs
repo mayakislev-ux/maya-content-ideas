@@ -461,10 +461,10 @@ describe('בדפדפן (jsdom)', { skip: hasJsdom ? false : 'jsdom לא מותק
     assert.match($('.chat-view-title').textContent, /צ'אט לבדיקת רעיון/);
     const img = $('#chat-messages .chat-avatar');
     assert.equal(img.tagName, 'IMG', 'עדיין הרובוט');
-    assert.equal(img.getAttribute('src'), 'assets/maya-avatar-160.webp');
-    assert.match(img.getAttribute('srcset'), /maya-avatar-320\.webp 2x/);
-    assert.ok(existsSync(new URL('../assets/maya-avatar-160.webp', import.meta.url)));
-    assert.ok(existsSync(new URL('../assets/maya-avatar-320.webp', import.meta.url)));
+    assert.equal(img.getAttribute('src'), 'assets/maya-face-160.webp');
+    assert.match(img.getAttribute('srcset'), /maya-face-320\.webp 2x/);
+    assert.ok(existsSync(new URL('../assets/maya-face-160.webp', import.meta.url)));
+    assert.ok(existsSync(new URL('../assets/maya-face-320.webp', import.meta.url)));
 
     const back = $('#chat-back-to-assistant');
     assert.ok(!back.hidden);
