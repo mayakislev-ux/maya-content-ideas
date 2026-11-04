@@ -262,6 +262,7 @@ function resetChat() {
   pendingIdeaToCheck = null;
   // ההקשר שייך לרעיון שנפתח מהמאגר בלבד, ולא נגרר לשיחה הבאה
   pendingIdeaContext = null;
+  newConversation();
   messagesEl().innerHTML = '';
   greetAndAskForIdea();
 }
@@ -320,12 +321,28 @@ function greetAndAskForIdea() {
   );
 }
 
+/* 04/11/2026 (סקירה): כל שיחה שמתחילה מחדש מקבלת מספר. בקשה שעוד רצה
+   משיחה קודמת (למשל: חזרו לעוזר באמצע תשובה ופתחו שוב עם רעיון אחר)
+   לא כותבת להיסטוריה של השיחה החדשה ולא משחררת את תיבת הכתיבה באמצע
+   התשובה החדשה. התיבה משתחררת כאן, כי הבקשה הישנה כבר לא תשחרר אותה. */
+let chatGen = 0;
+function newConversation() {
+  chatGen += 1;
+  const input = document.getElementById('chat-input');
+  const newIdeaBtn = document.getElementById('new-idea-btn');
+  if (input) input.disabled = false;
+  if (newIdeaBtn) newIdeaBtn.disabled = false;
+}
+
 // Shared between the chat form's own submit handler and
 // startIdeaChatWithExistingIdea (which auto-sends an existing idea's text
 // as if the user had just typed and submitted it).
 async function sendIdeaMessage(text) {
   const input = document.getElementById('chat-input');
   const newIdeaBtn = document.getElementById('new-idea-btn');
+  const gen = chatGen;
+  const convo = history;
+  const stale = () => gen !== chatGen;
   input.disabled = true;
   newIdeaBtn.disabled = true;
   addBubble(messagesEl(), text, 'user');
@@ -369,11 +386,11 @@ async function sendIdeaMessage(text) {
         // clearing it immediately would blank that out before anything
         // has even started streaming.
         if (attempt > 1) setBubbleText(thinkingBubble, '');
-        finalReply = await streamCheckIdea(history, profile, onDelta(liveTextRef), pendingIdeaContext);
+        finalReply = await streamCheckIdea(convo, profile, onDelta(liveTextRef), pendingIdeaContext);
         break;
       } catch (err) {
         const hasHebrewText = /[֐-׿]/.test(err.message || '');
-        if (hasHebrewText || attempt >= 2) throw err;
+        if (hasHebrewText || attempt >= 2 || stale()) throw err;
         console.error(`checkIdea stream failed, retrying (attempt ${attempt}):`, err);
       }
     }
@@ -381,6 +398,7 @@ async function sendIdeaMessage(text) {
     // From here on, use finalReply (the server-confirmed canonical text) -
     // not liveText - since a rare corrective Hebrew rewrite can change the
     // final text after streaming already displayed the original.
+    if (stale()) return;
     let reply = finalReply;
     if (reply.startsWith(RECOGNIZED_MARKER)) {
       reply = reply.slice(RECOGNIZED_MARKER.length).trimStart();
@@ -403,6 +421,7 @@ async function sendIdeaMessage(text) {
     history.push({ role: 'assistant', content: visibleReply });
   } catch (err) {
     console.error('checkIdea failed:', err);
+    if (stale()) return;
     // אף פעם לא להציג טקסט אנגלי גולמי כמו "Load failed" (שגיאת דפדפן
     // מובנית של iOS Safari על stream שנקטע - זו לא הודעה שהקוד שלנו כתב) -
     // רק הודעות עברית שהשרת שלח בכוונה מוצגות כמו שהן.
@@ -410,9 +429,11 @@ async function sendIdeaMessage(text) {
     setBubbleText(thinkingBubble, serverErrorText(err, 'הבדיקה'));
   } finally {
     stopStatus();
-    input.disabled = false;
-    newIdeaBtn.disabled = false;
-    input.focus();
+    if (!stale()) {
+      input.disabled = false;
+      newIdeaBtn.disabled = false;
+      input.focus();
+    }
   }
 }
 
@@ -517,6 +538,7 @@ export async function startIdeaChatWithExistingIdea(idea) {
     persuasionStage: idea.persuasionStage || '',
     audienceScope: idea.audienceScope || '',
   };
+  newConversation();
   messagesEl().innerHTML = '';
 
   if (started && profile) {
@@ -585,6 +607,7 @@ export async function startIdeaChatFromAssistant(seed = {}, { onBack } = {}) {
   editingIdeaId = null;
   pendingIdeaContext = null;
   pendingIdeaToCheck = assistantSeedText(seed) || null;
+  newConversation();
   messagesEl().innerHTML = '';
 
   if (started && profile) {
@@ -615,6 +638,7 @@ export function wireIdeaChat() {
   const voiceInput = wireVoiceInput({ buttonId: 'chat-mic-btn', textareaId: 'chat-input' });
 
   document.getElementById('edit-profile-btn').addEventListener('click', () => {
+    newConversation();
     messagesEl().innerHTML = '';
     draftProfile = {};
     /* המסך מתנקה, ולכן גם מה שמאחוריו: בלי זה ההקשר של הרעיון הקודם

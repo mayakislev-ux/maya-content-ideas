@@ -50,6 +50,8 @@ export const INITIAL_STATE = {
      מ-reference-duplication.js, כדי שמסכי התמלול וההוק יגידו אם אפשר
      לסמוך על התמלול. null בכל כניסה אחרת. */
   bankNotice: null,
+  /* על מה הרפרנס ששוכפל מהמאגר (contentSummary), לשם ב"התסריטים שלי" */
+  referenceTitle: null,
 };
 
 /* 31/10/2026: קרוסלה נכתבת לשקופיות ולא מדוברת, ולכן שלבי הסרטון לא חלים עליה. */
@@ -91,6 +93,7 @@ export function nextStep(state, action) {
       ...INITIAL_STATE,
       branch: 'reference',
       referenceLink: action.link || null,
+      referenceTitle: action.title || null,
       transcript: action.transcript || null,
       bankNotice: action.notice || null,
     };

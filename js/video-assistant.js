@@ -2226,8 +2226,23 @@ function render() {
    פתוח גם למנוי רפרנסים: השכפול הוא בדיוק הכלי שלהן.
    loadSubtitles(id) מגיע מהמאגר, שכבר מחזיק את הכתוביות בזיכרון. */
 const SUBS_TIMEOUT_MS = 8000;
-export async function duplicateFromBank(video, { loadSubtitles } = {}) {
-  if (!video || !video.url) return;
+/* 04/11/2026 (סקירה): לחיצה כפולה הריצה שני שכפולים, והשני נשאר
+   ב"התסריטים שלי" כפריט יתום. שכפול אחד בכל רגע, ומיד רואים שזה נפתח. */
+let duplicating = false;
+export async function duplicateFromBank(video, opts = {}) {
+  if (!video || !video.url || duplicating) return;
+  duplicating = true;
+  try {
+    await runDuplicateFromBank(video, opts);
+  } finally {
+    duplicating = false;
+  }
+}
+
+async function runDuplicateFromBank(video, { loadSubtitles } = {}) {
+  /* הכתוביות יכולות לקחת כמה שניות. העוזר נפתח מיד, עם הודעה. */
+  showView('video-assistant');
+  screenEl().innerHTML = '<div class="cosmic-card" id="va-card"><p>פותחים את השכפול…</p></div>';
   let segments = null;
   if (video.hasSubtitles && video.id && typeof loadSubtitles === 'function') {
     let timer = null;
@@ -2244,7 +2259,6 @@ export async function duplicateFromBank(video, { loadSubtitles } = {}) {
     }
   }
   const info = duplicationText(video, segments);
-  showView('video-assistant');
   currentPickId = null;
   sessionStartTs = Date.now();
   const start = () => dispatch({
@@ -2252,6 +2266,8 @@ export async function duplicateFromBank(video, { loadSubtitles } = {}) {
     link: video.url,
     transcript: info.text,
     ready: readyForHook(info),
+    /* השם ב"התסריטים שלי" עד שנבחר הוק: על מה הסרטון, לפי המאגר */
+    title: String(video.contentSummary || '').trim() || null,
     notice: { reason: info.reason, source: info.source, foreign: info.foreign, text: info.text },
   });
   /* כמו בפתיחה הרגילה: בלי תחום וקהל הפרומפט יוצא בלי הקשר, ולכן קודם

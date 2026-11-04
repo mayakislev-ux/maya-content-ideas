@@ -100,6 +100,8 @@ const hasJsdom = existsSync(JSDOM_PATH);
 const store = new Map();
 const calls = { fetch: [], extractOpeningHook: 0 };
 let REPLY = '';
+let HOLD = false;
+const HELD = [];
 
 function installFirebaseStub() {
   const path = (...parts) => parts.filter((p) => typeof p === 'string').join('/');
@@ -182,6 +184,8 @@ describe('בדפדפן (jsdom)', { skip: hasJsdom ? false : 'jsdom לא מותק
     }
     globalThis.fetch = async (url, opts) => {
       calls.fetch.push({ url, body: JSON.parse(opts.body) });
+      /* מצב מושהה: התשובה יוצאת רק כשהבדיקה משחררת אותה */
+      if (HOLD) return new Promise((resolve) => { HELD.push((reply) => resolve(sseResponse(reply))); });
       return sseResponse(REPLY);
     };
     w.HTMLMediaElement && (w.HTMLMediaElement.prototype.play = () => Promise.resolve());
@@ -274,6 +278,44 @@ describe('בדפדפן (jsdom)', { skip: hasJsdom ? false : 'jsdom לא מותק
     assert.equal($('#va-idea-sharp').value, 'נושא אחר');
   });
 
+  /* סקירה, 04/11: חזרה לעוזר באמצע תשובה ופתיחה מחדש עם רעיון אחר. התשובה
+     הישנה לא נכנסת לשיחה החדשה, ולא משחררת את התיבה באמצע התשובה החדשה. */
+  test('תשובה ישנה שמגיעה אחרי שהתחילה שיחה חדשה לא נוגעת בה', async () => {
+    HOLD = true;
+    calls.fetch.length = 0;
+    type($('#va-idea-sharp'), 'רעיון ראשון');
+    $('#va-angle-chat-btn').click();
+    await until(() => calls.fetch.length === 1, 'הבקשה הראשונה לא יצאה');
+    $('#chat-back-to-assistant').click();
+    await until(() => visible('video-assistant-view') && $('#va-idea-sharp'), 'לא חזרנו');
+    type($('#va-idea-sharp'), 'רעיון שני');
+    $('#va-angle-chat-btn').click();
+    await until(() => calls.fetch.length === 2, 'הבקשה השנייה לא יצאה');
+    assert.equal(calls.fetch[1].body.messages.length, 1, 'השיחה החדשה נשלחה עם היסטוריה ישנה');
+    assert.match(calls.fetch[1].body.messages[0].content, /רעיון שני/);
+
+    HELD.shift()('תשובה-ישנה-על-הרעיון-הראשון');
+    await tick(30);
+    assert.ok($('#chat-input').disabled, 'התשובה הישנה שחררה את התיבה באמצע התשובה החדשה');
+    assert.ok(!$('#chat-messages').textContent.includes('תשובה-ישנה'), 'התשובה הישנה הופיעה בשיחה החדשה');
+
+    HELD.shift()('תשובה על הרעיון השני');
+    await until(() => !$('#chat-input').disabled, 'התיבה לא השתחררה בסוף');
+    HOLD = false;
+    REPLY = 'המשך';
+    $('#chat-input').value = 'ועוד שאלה';
+    $('#chat-form').requestSubmit();
+    await until(() => calls.fetch.length === 3, 'ההודעה הבאה לא יצאה');
+    const contents = calls.fetch[2].body.messages.map((m) => m.content);
+    assert.equal(contents.length, 3, contents.join(' | '));
+    assert.ok(!contents.some((c) => c.includes('תשובה-ישנה')), 'התשובה הישנה נכנסה להיסטוריה');
+    await until(() => !$('#chat-input').disabled, 'התיבה נתקעה');
+    $('#chat-back-to-assistant').click();
+    await until(() => visible('video-assistant-view') && $('#va-idea-sharp'), 'לא חזרנו');
+    type($('#va-idea-sharp'), 'נושא אחר');
+    await until(() => store.get('videoAssistantSessions/u1').drafts['idea-sharpen|va-idea-sharp'] === 'נושא אחר', 'לא נשמר', 400);
+  });
+
   test('רענון: העוזר נפתח שוב עם מה שנכתב', async () => {
     /* מודול טרי של העוזר, כמו אחרי טעינת דף, מול אותו סשן שמור */
     const before = store.get('videoAssistantSessions/u1');
@@ -304,7 +346,7 @@ describe('בדפדפן (jsdom)', { skip: hasJsdom ? false : 'jsdom לא מותק
   });
 
   const BANK = {
-    talk: { url: 'https://www.instagram.com/reel/TALK1/', platform: 'instagram', domain: 'שיווק', order: 1, audioKind: 'speech', sourceLanguage: 'he', transcriptHe: `טקסט קריאה ישן.\n${LONG}`, hasSubtitles: true, thumbnailUrl: '' },
+    talk: { url: 'https://www.instagram.com/reel/TALK1/', platform: 'instagram', domain: 'שיווק', order: 1, contentSummary: 'הוק על טעויות בעמוד', audioKind: 'speech', sourceLanguage: 'he', transcriptHe: `טקסט קריאה ישן.\n${LONG}`, hasSubtitles: true, thumbnailUrl: '' },
     visual: { url: 'https://www.tiktok.com/@a/video/222', platform: 'tiktok', domain: 'שיווק', order: 2, audioKind: 'silent', sourceLanguage: 'he', transcript: '', thumbnailUrl: '' },
   };
   const SUBS = [{ s: 0, e: 2, t: 'שלוש טעויות שמבריחות לקוחות,' }, { s: 2, e: 9, t: LONG }];
@@ -363,6 +405,28 @@ describe('בדפדפן (jsdom)', { skip: hasJsdom ? false : 'jsdom לא מותק
     $('#va-transcribe-done-btn').click();
     await until(() => $('#va-hook-input'), 'לא המשיך להוק');
     assert.equal($('.va-bank-notice'), null, 'ההודעה על תמלול מהמאגר מופיעה על תיאור שהיא כתבה');
+  });
+
+  /* סקירה, 04/11: לחיצה כפולה יצרה שני שכפולים ופריט יתום "סרטון בלי שם". */
+  test('לחיצה כפולה: שכפול אחד, הכפתור אומר שזה נפתח, ולפריט יש שם', async () => {
+    setPlan('full');
+    await openBank();
+    const items = () => [...store.keys()].filter((k) => k.startsWith('videoAssistantScripts/u1/items/'));
+    const before = items().length;
+    const btn = cardOf(BANK.talk.url).querySelector('.inspiration-card-dup-btn');
+    btn.click();
+    assert.ok(btn.disabled, 'הכפתור לא ננעל');
+    assert.equal(btn.textContent, 'פותחים…');
+    btn.click();
+    /* גם קריאה ישירה (כמו ממצב גלילה) בזמן שהראשונה רצה לא פותחת שנייה */
+    mods.va.duplicateFromBank(BANK.visual, {});
+    await until(() => $('#va-hook-input') && !btn.disabled, 'השכפול לא נפתח');
+    await tick(30);
+    const added = items().slice(before);
+    assert.equal(items().length - before, 1, `נוצרו ${items().length - before} פריטים`);
+    const title = store.get(added[0] || items().at(-1)).title;
+    assert.equal(title, 'שכפול: הוק על טעויות בעמוד', title);
+    assert.equal(btn.textContent, '🎬 לשכפול הסרטון');
   });
 
   test('מצב גלילה: הכפתור סוגר את הגלילה ומעביר את הסרטון', async () => {
