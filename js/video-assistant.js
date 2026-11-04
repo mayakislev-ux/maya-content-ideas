@@ -19,7 +19,7 @@ import { pickIdea, pickReference } from './video-assistant-picker.js';
 import { buildParts, hasContent, scriptDoc } from './video-assistant-build.js';
 import { confirmDialog } from './confirm-dialog.js';
 import { openModal, closeModal, requestCloseModal } from './video-assistant-modal.js';
-import { createScriptsLibrary } from './video-assistant-library.js';
+import { createScriptsLibrary, withLiveEdit } from './video-assistant-library.js';
 import { buildDuplicationPrompt, buildReverseDuplicationPrompt, buildScriptPrompt, buildCreativePackagingPrompt } from './video-assistant-prompts.js';
 import {
   FORMATS, FORMAT_EXAMPLES, SCRIPT_STRUCTURE, STARTING_POINTS, CONTENT_TYPES,
@@ -344,7 +344,8 @@ const scriptsLibrary = createScriptsLibrary({
   /* עריכה ב"התסריטים שלי" של הסרטון שפתוח עכשיו: עוברת גם לעוזר, אחרת
      המסך שמאחורי החלון היה ממשיך להחזיק את הטקסט הישן ודורס את העריכה. */
   applyLive: (changes) => {
-    state = { ...state, ...changes };
+    /* גם הטיוטות של השדות שנערכו, אחרת המסך מציג את הנוסח הישן */
+    state = withLiveEdit(state, changes);
     saveSession(state).catch((err) => console.error('saveSession failed:', err));
     render();
   },

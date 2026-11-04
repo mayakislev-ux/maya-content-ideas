@@ -95,6 +95,49 @@ export function scriptJourney(state) {
   return out;
 }
 
+/* תיבות במסכי העוזר שמחזיקות עותק של שדה בסטייט, כטיוטה (state.drafts,
+   "מסך|id"). טיוטה גוברת על הערך השמור כשהמסך מצויר (seedDraft,
+   renderIdeaSharpen), ולכן עריכה של הסרטון הפתוח חייבת לעדכן גם אותה.
+   אחרת התיבה ממשיכה להציג את הנוסח הישן, ו"ממשיכים ←" דורס את העריכה. */
+const DRAFT_SOURCES = [
+  { ids: ['va-idea-sharp', 'va-type-idea-input'], fields: ['ideaTopic', 'ideaDescription', 'ideaBeforePackaging'], value: (s) => s.ideaTopic || s.ideaDescription || '' },
+  { ids: ['va-idea-punch'], fields: ['ideaPunchline'] },
+  { ids: ['va-packaging-input'], fields: ['packaging'] },
+  { ids: ['va-reference-link'], fields: ['referenceLink'] },
+  { ids: ['va-transcript-input', 'va-hook-ref-input'], fields: ['transcript'] },
+  { ids: ['va-hook-input', 'va-scratch-hook-input'], fields: ['hook'] },
+  { ids: ['va-scratch-reinforce-input'], fields: ['hookReinforcement'] },
+  { ids: ['va-herwords-input'], fields: ['herWords'] },
+  { ids: ['va-scratch-dump-input'], fields: ['rawDump'] },
+  { ids: ['va-scratch-script-input'], fields: ['draftScript'] },
+  { ids: ['va-prompt2-script-input'], fields: ['finalScript'] },
+];
+
+/**
+ * הסטייט של העוזר אחרי עריכה של הסרטון הפתוח ב"התסריטים שלי": השדות
+ * החדשים, והטיוטות של אותם שדות בכל מסך מוחלפות בנוסח החדש.
+ */
+export function withLiveEdit(state, changes) {
+  const out = { ...state, ...changes };
+  const drafts = { ...(state.drafts || {}) };
+  const edited = Object.keys(changes);
+  for (const src of DRAFT_SOURCES) {
+    if (!src.fields.some((f) => edited.includes(f))) continue;
+    const value = src.value ? src.value(out) : (out[src.fields[0]] || '');
+    for (const k of Object.keys(drafts)) {
+      if (src.ids.includes(k.slice(k.indexOf('|') + 1))) drafts[k] = value;
+    }
+  }
+  /* גרסת "השלכה לסצנה" שהודבקה קודם נבנתה על התסריט הישן. אם תישאר,
+     "ממשיכים ←" במסך הסצנה יחליף בה את התסריט שנערך עכשיו. */
+  if (edited.includes('draftScript')) {
+    for (const k of Object.keys(drafts)) if (k.endsWith('|va-scratch-scene-input')) delete drafts[k];
+    out.sceneRewrite = null;
+  }
+  out.drafts = drafts;
+  return out;
+}
+
 export function escapeHtml(str) {
   return String(str)
     .replace(/&/g, '&amp;')
@@ -259,6 +302,11 @@ export function createScriptsLibrary(deps) {
           if (ta.value === String(s[field] || '')) return;
           s = syncIdea({ ...s, [field]: ta.value }, field);
           changes[field] = ta.value;
+          /* כמו במסך התמלול: תמלול שהשתנה צריך הוק פותח שמזוהה מחדש */
+          if (field === 'transcript') {
+            s.openingHook = null;
+            changes.openingHook = null;
+          }
         });
         saveBtn.disabled = true;
         saveBtn.textContent = 'שומרים...';
