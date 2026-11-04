@@ -4936,6 +4936,9 @@ textarea:focus-visible,
   font-size: 0.75rem;
   color: #d8cfa4;
 }
+.st-slot__body {
+  display: contents;
+}
 .st-slot .st-bullets {
   padding: 0 1.1rem 0.2rem;
   color: #f4ecd2;
@@ -6294,6 +6297,11 @@ body[data-plan="refs"] #login-portal-back { display: none !important; }
 /* 20/10/2026: לשונית העוזר ליצירת סרטון קיימת רק במנוי הרפרנסים */
 .tab-refs-only { display: none !important; }
 body[data-plan="refs"] .tab-refs-only { display: inline-flex !important; }
+/* 04/11/2026: כפתור החזרה בעוזר מוביל אצלה למאגר ההשראה (app.js), ולכן
+   גם הנוסח שלו. אצל כל השאר הוא חוזר למרכז הלמידה. */
+.va-back-refs { display: none; }
+body[data-plan="refs"] .va-back-full { display: none; }
+body[data-plan="refs"] .va-back-refs { display: inline; }
 
 /* 02/11/2026 (מאיה: "לכל הבנות של המרתון תוכן שאין להן מנוי מלא... שתוסיפי
    להן את הכפתור של איך בונים תכנית תוכן עצמאית"). רק מי שמסומנת ב-allowlist

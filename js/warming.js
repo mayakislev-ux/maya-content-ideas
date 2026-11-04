@@ -90,6 +90,9 @@ let currentPlan = null;
 let currentMeta = null;
 let currentPlanId = null;
 let countdownInterval = null;
+// שמירה אוטומטית של תוכנית שנבנתה עכשיו, כל עוד היא באוויר (04/11/2026)
+let pendingCreate = null;
+let editedWhileCreating = false;
 
 // 01/10/2026 (מאיה): "בניית תוכנית לוקחת יותר מדי זמן, ואז שבונה לא ברור
 // לי איפה זה", ואחר כך "שבזמן שזה בונה יהיה טיימר ספירה לאחורה כמה זמן זה
@@ -145,11 +148,46 @@ function stopCountdown() {
 // again herself. Once a plan has been saved once (currentPlanId exists),
 // every checkbox toggle now persists immediately on its own.
 function autosaveCheckboxChange() {
-  if (!currentPlanId || !currentPlan) return;
+  if (!currentPlanId || !currentPlan) {
+    if (pendingCreate) editedWhileCreating = true;
+    return;
+  }
   updateWarmingPlan(currentPlanId, { plan: currentPlan }).catch((err) => {
     console.error('Warming checkbox autosave failed:', err);
     showToast('הסימון לא נשמר - בדקו חיבור לאינטרנט ונסו שוב');
   });
+}
+
+/* 04/11/2026 (ביקורת): עריכת טקסט בתוכנית שמורה נשמרה רק בזיכרון, ונעלמה
+   ביציאה מהמסך. רק תיבות הסימון נשמרו לבד. עכשיו כל עריכה שבאמת שינתה
+   משהו נשמרת מיד, בדיוק כמו סימון. */
+function autosaveTextEdit() {
+  if (!currentPlanId || !currentPlan) {
+    if (pendingCreate) editedWhileCreating = true;
+    markUnsaved(Boolean(currentPlan));
+    return;
+  }
+  updateWarmingPlan(currentPlanId, { plan: currentPlan }).catch((err) => {
+    console.error('Warming text autosave failed:', err);
+    markUnsaved(true);
+    showToast('העריכה לא נשמרה - בדקו חיבור לאינטרנט ולחצו "שמירה"');
+  });
+}
+
+/* עריכה שמשנה ערך שומרת. blur בלי שינוי לא כותב לשרת. */
+function commitField(obj, key, value) {
+  if ((obj[key] || '') === value) return;
+  obj[key] = value;
+  autosaveTextEdit();
+}
+
+/* סימון על המסך שיש תוכנית שלא נשמרה. "חזרה לטבלה" ובדיקת העדכון
+   (update-check.js) קוראים את הסימון הזה לפני שהם זורקים את המסך. */
+function markUnsaved(on) {
+  const result = document.getElementById('warming-result');
+  if (!result) return;
+  if (on) result.dataset.unsaved = '1';
+  else delete result.dataset.unsaved;
 }
 
 function renderDayRow(item) {
@@ -183,14 +221,14 @@ function renderDayRow(item) {
   // makeEditable שומר בדיוק את הטקסט שמוצג ברגע ה-blur - אם השדה ריק
   // ומוצג בו ה"-" הזמני, לחיצה ויציאה בלי הקלדה הייתה שומרת את המקף
   // עצמו כערך אמיתי. "-" נחשב "בעצם ריק", לא ערך אמיתי שנכתב.
-  makeEditable(law, (val) => (item.law = val === '-' ? '' : val));
+  makeEditable(law, (val) => commitField(item, 'law', val === '-' ? '' : val));
   textWrap.appendChild(law);
 
   const idea = document.createElement('div');
   idea.className = 'warming-day-idea';
   idea.textContent = item.idea || '';
   idea.title = 'לחיצה עורכת';
-  makeEditable(idea, (val) => (item.idea = val));
+  makeEditable(idea, (val) => commitField(item, 'idea', val));
   textWrap.appendChild(idea);
 
   row.appendChild(textWrap);
@@ -240,9 +278,7 @@ function renderBlock(block) {
     stageTag,
     Object.keys(STAGE_LABELS),
     block.stage || '',
-    (val) => {
-      block.stage = val;
-    },
+    (val) => commitField(block, 'stage', val),
     (value) => document.createTextNode(value ? STAGE_LABELS[value] || value : '-')
   );
   header.appendChild(stageTag);
@@ -251,7 +287,7 @@ function renderBlock(block) {
   label.className = 'warming-block-label';
   label.textContent = block.label || '';
   label.title = 'לחיצה עורכת';
-  makeEditable(label, (val) => (block.label = val));
+  makeEditable(label, (val) => commitField(block, 'label', val));
   header.appendChild(label);
 
   wrap.appendChild(header);
@@ -277,7 +313,7 @@ function renderBlock(block) {
     // סוגריים ("((ערך))" ואז "(((ערך)))"...), ו"-" היה נשמר כערך אמיתי.
     makeEditable(format, (val) => {
       const cleaned = val.replace(/^\(|\)$/g, '').trim();
-      story.format = cleaned === '-' ? '' : cleaned;
+      commitField(story, 'format', cleaned === '-' ? '' : cleaned);
     });
     storyRow.appendChild(format);
 
@@ -285,7 +321,7 @@ function renderBlock(block) {
     idea.className = 'warming-story-idea';
     idea.textContent = story.idea || '';
     idea.title = 'לחיצה עורכת';
-    makeEditable(idea, (val) => (story.idea = val));
+    makeEditable(idea, (val) => commitField(story, 'idea', val));
     storyRow.appendChild(idea);
 
     stories.appendChild(storyRow);
@@ -384,6 +420,39 @@ function renderSavedList(plans, onOpen, onDelete) {
 
 const WARMING_DRAFT_KEY = 'warming-form-draft';
 
+function autosaveNewPlan() {
+  const plan = currentPlan;
+  editedWhileCreating = false;
+  markUnsaved(true);
+  const job = saveWarmingPlan({ ...currentMeta, plan })
+    .then((ref) => {
+      // בינתיים נבנתה או נפתחה תוכנית אחרת: המזהה הזה לא שלה
+      if (currentPlan !== plan) return;
+      currentPlanId = ref.id;
+      markUnsaved(false);
+      showToast('💾 התוכנית נשמרה ב"תוכניות שמורות"');
+      // עריכה שנעשתה בזמן שהשמירה הראשונה עוד הייתה באוויר
+      if (editedWhileCreating) {
+        editedWhileCreating = false;
+        updateWarmingPlan(currentPlanId, { plan }).catch((err) => {
+          console.error('Warming post-create update failed:', err);
+          markUnsaved(true);
+        });
+      }
+    })
+    .catch((err) => {
+      console.error('Warming plan autosave failed:', err);
+      if (currentPlan === plan) {
+        showToast('התוכנית לא נשמרה אוטומטית. לחצו "שמירה" כדי לא לאבד אותה');
+      }
+    })
+    .finally(() => {
+      if (pendingCreate === job) pendingCreate = null;
+    });
+  pendingCreate = job;
+  return job;
+}
+
 export function wireWarmingView() {
   const form = document.getElementById('warming-form');
   const errorEl = document.getElementById('warming-error');
@@ -449,6 +518,7 @@ export function wireWarmingView() {
     generateBtn.disabled = true;
     loadingEl.hidden = false;
     document.getElementById('warming-result').innerHTML = '';
+    markUnsaved(false);
     document.getElementById('warming-missing-info').hidden = true;
     truncationNoteEl.hidden = true;
     saveBtn.hidden = true;
@@ -488,6 +558,10 @@ export function wireWarmingView() {
       currentPlanId = null;
       renderPlan(currentPlan);
       renderMissingInfo(result.missingInfo);
+      /* 04/11/2026 (ביקורת): תוכנית שלקחה דקה לבנות נשמרה רק בלחיצה על
+         "שמירה", ו"חזרה לטבלה" מחקה אותה בלי מילה. עכשיו היא נשמרת מיד
+         כשהיא מוכנה, ומופיעה ב"תוכניות שמורות". */
+      autosaveNewPlan();
       // 01/10/2026: מי שהגיעה מהטבלה צריכה שיקחו אותה לתוכנית, ולא תחפש
       // אותה מתחת לטבלה ארוכה
       document.dispatchEvent(new CustomEvent('warming-plan-ready'));
@@ -516,12 +590,15 @@ export function wireWarmingView() {
     saveBtn.disabled = true;
     saveBtnTop.disabled = true;
     try {
+      // שמירה אוטומטית שעוד באוויר: מחכים לה, אחרת נוצר מסמך כפול
+      if (pendingCreate) await pendingCreate.catch(() => {});
       if (currentPlanId) {
         await updateWarmingPlan(currentPlanId, { plan: currentPlan });
       } else {
         const ref = await saveWarmingPlan({ ...currentMeta, plan: currentPlan });
         currentPlanId = ref.id;
       }
+      markUnsaved(false);
       showToast('💾 התוכנית נשמרה בהצלחה');
       // The draft (product/audience/context) used to keep auto-filling the
       // form on every future visit, saved or not - so "building a new plan"
@@ -552,6 +629,7 @@ export function wireWarmingView() {
           currentPlan = p.plan;
           currentMeta = { product: p.product, audience: p.audience, extraContext: p.extraContext };
           currentPlanId = p.id;
+          markUnsaved(false);
           document.getElementById('warming-product').value = p.product;
           document.getElementById('warming-audience').value = p.audience;
           document.getElementById('warming-context').value = p.extraContext || '';
@@ -576,6 +654,7 @@ export function wireWarmingView() {
               currentPlanId = null;
               currentPlan = null;
               currentMeta = null;
+              markUnsaved(false);
               document.getElementById('warming-result').innerHTML = '';
               document.getElementById('warming-missing-info').hidden = true;
               truncationNoteEl.hidden = true;

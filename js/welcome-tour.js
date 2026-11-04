@@ -7,8 +7,12 @@ const STEPS = [
     title: 'ברוכות וברוכים הבאים!',
     body: '"המוח השיווקי שנמצא איתך 24/7" - בואו נכיר ב-30 שניות מה יש כאן ואיך להשתמש בזה נכון. לחצו על "הבא" כדי להתחיל.',
   },
+  /* 04/11/2026: hideFor/onlyFor לפי המנוי (body[data-plan]). למנוי רפרנסים
+     אין בית, מרכז למידה וחוות דעת (style.css), והסיור הצביע אצלה על לשוניות
+     שלא קיימות. במקומן היא רואה את שתי הלשוניות שיש רק לה. */
   {
     target: '#tab-home',
+    hideFor: 'refs',
     emoji: '✨',
     title: 'בית',
     body: 'כאן מתחילים - ברגע שעולה לכם רעיון, כותבים אותו כאן ישר, בלי טפסים ובלי לחשוב על קטגוריה או דירוג. את זה משלימים אחר כך.',
@@ -21,14 +25,29 @@ const STEPS = [
   },
   {
     target: '#tab-guide',
+    hideFor: 'refs',
     emoji: '📖',
     title: 'מרכז למידה',
-    body: 'כל הכלים והמדריכים במקום אחד - איפה למצוא רעיונות, בניית תכנית תוכן, ואפשרות לשתף חוות דעת.',
+    body: 'כל הכלים והמדריכים במקום אחד - חימום בסטורי, העוזר ליצירת סרטון, איפה למצוא רעיונות ואיך בונים תכנית תוכן.',
+  },
+  {
+    target: '#tab-inspiration',
+    onlyFor: 'refs',
+    emoji: '🎞️',
+    title: 'מאגר להשראה',
+    body: 'סרטונים אמיתיים לשכפול, מסודרים לפי תחום ופורמט.',
+  },
+  {
+    target: '#tab-video-assistant',
+    onlyFor: 'refs',
+    emoji: '🎬',
+    title: 'העוזר ליצירת סרטון',
+    body: 'מסע שלב אחר שלב מרעיון לתסריט מוכן.',
   },
   {
     emoji: '💜',
     title: 'זהו, בואו נתחיל!',
-    body: 'עכשיו את/ה מכיר/ה את כל האפליקציה. בהצלחה!',
+    body: 'עכשיו אתם מכירים את כל האפליקציה. בהצלחה!',
   },
 ];
 
@@ -36,6 +55,12 @@ const CURRENT_TOUR_VERSION = 3;
 const LAST_STEP_KEY = 'welcome-tour-last-step';
 
 let currentStep = 0;
+let steps = STEPS;
+
+/** השלבים שרלוונטיים למנוי שנכנס עכשיו */
+export function stepsForPlan(plan) {
+  return STEPS.filter((s) => (!s.hideFor || s.hideFor !== plan) && (!s.onlyFor || s.onlyFor === plan));
+}
 let blocker, spotlight, callout;
 let resizeHandler = null;
 let keydownHandler = null;
@@ -130,21 +155,21 @@ function positionForTarget(targetEl) {
 
 function renderStep() {
   localStorage.setItem(LAST_STEP_KEY, String(currentStep));
-  const step = STEPS[currentStep];
+  const step = steps[currentStep];
   callout.querySelector('.tour-callout-emoji').textContent = step.emoji;
   callout.querySelector('h3').textContent = step.title;
   callout.querySelector('p').textContent = step.body;
 
   const dots = callout.querySelector('.tour-callout-dots');
   dots.innerHTML = '';
-  STEPS.forEach((_, i) => {
+  steps.forEach((_, i) => {
     const dot = document.createElement('span');
     dot.className = 'tour-callout-dot' + (i === currentStep ? ' active' : '');
     dots.appendChild(dot);
   });
 
   const nextBtn = callout.querySelector('.tour-next-btn');
-  nextBtn.textContent = currentStep === STEPS.length - 1 ? 'בואו נתחיל! 🚀' : 'הבא ←';
+  nextBtn.textContent = currentStep === steps.length - 1 ? 'בואו נתחיל! 🚀' : 'הבא ←';
 
   const needsDrawer = step.target && step.target.startsWith('#tab-') && isMobile();
   setDrawerOpen(Boolean(needsDrawer));
@@ -162,7 +187,7 @@ function renderStep() {
 }
 
 function advance() {
-  if (currentStep < STEPS.length - 1) {
+  if (currentStep < steps.length - 1) {
     currentStep++;
     renderStep();
     return;
@@ -198,8 +223,9 @@ export async function hasCompletedTour() {
 
 export function showWelcomeTour(onDone) {
   onDoneCallback = onDone || null;
+  steps = stepsForPlan(document.body.dataset.plan);
   const savedStep = Number(localStorage.getItem(LAST_STEP_KEY) || '0');
-  currentStep = savedStep >= 0 && savedStep < STEPS.length ? savedStep : 0;
+  currentStep = savedStep >= 0 && savedStep < steps.length ? savedStep : 0;
   buildElements();
   renderStep();
   resizeHandler = () => renderStep();

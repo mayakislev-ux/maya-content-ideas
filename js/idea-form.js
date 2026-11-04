@@ -3,13 +3,34 @@ import { addIdea, updateIdea, deleteIdea, restoreIdea } from './ideas-store.js';
 import { functions } from './firebase-init.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
 import { showToast } from './toast.js';
-import { alertDialog } from './confirm-dialog.js';
+import { alertDialog, confirmDialog } from './confirm-dialog.js';
 import { getCurrentIdeas } from './archive-view.js';
 
 const classifyIdea = httpsCallable(functions, 'classifyIdea');
 const AI_OPTION = '__ai__';
 
 let editingId = null;
+// מצב הטופס ברגע הפתיחה, כדי לדעת אם נכתב בו משהו (04/11/2026)
+let openedSnapshot = '';
+
+const FORM_FIELD_IDS = [
+  'field-title', 'field-category', 'field-rating', 'field-link', 'field-persuasion',
+  'field-audience-scope', 'field-format', 'field-series-name', 'field-series-order',
+];
+
+function formSnapshot() {
+  const values = FORM_FIELD_IDS.map((id) => {
+    const el = document.getElementById(id);
+    return el ? el.value : '';
+  });
+  const series = document.getElementById('field-is-series');
+  values.push(series && series.checked ? '1' : '');
+  return JSON.stringify(values);
+}
+
+function formChanged() {
+  return formSnapshot() !== openedSnapshot;
+}
 
 function setCategoryChip(value) {
   document.getElementById('field-category').value = value;
@@ -82,6 +103,7 @@ export function openAddModal(prefillTitle = '') {
   document.getElementById('form-error').hidden = true;
   document.getElementById('idea-modal').hidden = false;
   updateIdeaPreview();
+  openedSnapshot = formSnapshot();
 }
 
 export function openEditModal(idea, overrideTitle = '') {
@@ -105,11 +127,26 @@ export function openEditModal(idea, overrideTitle = '') {
   document.getElementById('form-error').hidden = true;
   document.getElementById('idea-modal').hidden = false;
   updateIdeaPreview();
+  openedSnapshot = formSnapshot();
 }
 
 export function closeModal() {
   document.getElementById('idea-modal').hidden = true;
   editingId = null;
+}
+
+/* 04/11/2026 (ביקורת): בטלפון הטופס הארוך נסגר בנגיעה ברקע, וכל מה
+   שנכתב נעלם. סגירה בלי שמירה (רקע, ביטול או X) שואלת עכשיו קודם, אם
+   באמת נכתב או השתנה משהו. */
+async function closeModalAsking() {
+  if (formChanged()) {
+    const ok = await confirmDialog('לסגור בלי לשמור? מה שנכתב כאן יימחק.', {
+      okLabel: 'לסגור בלי לשמור',
+      cancelLabel: 'להמשיך לכתוב',
+    });
+    if (!ok) return;
+  }
+  closeModal();
 }
 
 function openInfoModal(title, definitions) {
@@ -185,12 +222,12 @@ async function runAiClassification() {
 
 export function wireIdeaForm() {
   wireInfoModal();
-  document.getElementById('cancel-idea-btn').addEventListener('click', closeModal);
-  document.getElementById('idea-modal-close-x').addEventListener('click', closeModal);
+  document.getElementById('cancel-idea-btn').addEventListener('click', closeModalAsking);
+  document.getElementById('idea-modal-close-x').addEventListener('click', closeModalAsking);
 
   const ideaModal = document.getElementById('idea-modal');
   ideaModal.addEventListener('click', (e) => {
-    if (e.target === ideaModal) closeModal();
+    if (e.target === ideaModal) closeModalAsking();
   });
 
   const titleInput = document.getElementById('field-title');

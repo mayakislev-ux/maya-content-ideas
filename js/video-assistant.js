@@ -40,6 +40,7 @@ import { startIdeaChatFromAssistant } from './idea-chat.js';
 import { showView } from './view-router.js';
 import { duplicationText, duplicationNotice, readyForHook } from './reference-duplication.js';
 import { showToast } from './toast.js';
+import { serverErrorText } from './server-error.js';
 import {
   pickEncouragement, domainTheme, formatElapsed,
   burstConfetti, flipReveal, startParticleTrail,
@@ -397,7 +398,9 @@ async function renderProfileSetup(onDone) {
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-pf-save-btn">שמירה והמשך</button>
     </div>
   `, { showProgress: false });
-  document.getElementById('va-pf-save-btn').addEventListener('click', async () => {
+  const saveBtn = document.getElementById('va-pf-save-btn');
+  saveBtn.addEventListener('click', async () => {
+    if (saveBtn.disabled) return;
     const business = document.getElementById('va-pf-domain').value.trim();
     const primaryAudience = document.getElementById('va-pf-aud1').value.trim();
     const secondaryAudience = document.getElementById('va-pf-aud2').value.trim();
@@ -405,7 +408,20 @@ async function renderProfileSetup(onDone) {
       showToast('צריך למלא את התחום ואת קהל היעד העיקרי');
       return;
     }
-    await saveProfile({ business, primaryAudience, secondaryAudience: secondaryAudience || null });
+    /* 04/11/2026 (ביקורת): בלי נעילה ובלי catch, שמירה שנכשלה השאירה
+       כפתור שלא עושה כלום, ולחיצות חוזרות שלחו כמה שמירות. */
+    saveBtn.disabled = true;
+    const label = saveBtn.textContent;
+    saveBtn.textContent = 'שומרים...';
+    try {
+      await saveProfile({ business, primaryAudience, secondaryAudience: secondaryAudience || null });
+    } catch (err) {
+      console.error('saveProfile failed:', err);
+      saveBtn.disabled = false;
+      saveBtn.textContent = label;
+      showToast(serverErrorText(err, 'שמירת הפרטים'));
+      return;
+    }
     playSuccess();
     onDone();
   });
@@ -461,6 +477,22 @@ function refsPlan() {
   return document.body.dataset.plan === 'refs';
 }
 
+/* 04/11/2026 (ביקורת): הרשימה נטענה פעם אחת ונשמרה עד רענון הדף. רעיון
+   שנוסף אחר כך לא הופיע, ורעיון שנמחק או סומן כבוצע עדיין הוגרל. עכשיו
+   היא נטענת מחדש בכל פתיחה של הבחירה. אם הטעינה נכשלת ויש רשימה קודמת,
+   משתמשים בה; אם אין, אומרים את זה במקום כפתור שלא עושה כלום. */
+async function refreshIdeas() {
+  try {
+    ideasCache = await fetchIdeas();
+    return true;
+  } catch (err) {
+    console.error('fetchIdeas failed:', err);
+    if (ideasCache) return true;
+    showToast('לא הצלחנו לטעון את בנק הרעיונות כרגע. כדאי לנסות שוב בעוד רגע.');
+    return false;
+  }
+}
+
 function renderIdeaSourceChoice() {
   cosmicCard(`
     <h2>מאיפה הרעיון?</h2>
@@ -473,7 +505,7 @@ function renderIdeaSourceChoice() {
   /* 23/10/2026: בנק הרעיונות נפתח גם למנוי רפרנסים, ולכן הכפתור חוזר
      לכולן. מי שאין לה עדיין רעיונות מקבלת את מסך "אין עדיין רעיונות". */
   document.getElementById('va-pull-idea-btn').addEventListener('click', async () => {
-    if (!ideasCache) ideasCache = await fetchIdeas();
+    if (!(await refreshIdeas())) return;
     const picked = pickIdea(ideasCache, null);
     if (!picked) {
       cosmicCard(`
@@ -1548,7 +1580,7 @@ function renderIdeaSharpen() {
   if (angleBtn) angleBtn.addEventListener('click', () => openAngleChat({ box, punchBox, angleBtn }));
   const pullLink = document.getElementById('va-pull-idea-link');
   if (pullLink) pullLink.addEventListener('click', async () => {
-    if (!ideasCache) ideasCache = await fetchIdeas();
+    if (!(await refreshIdeas())) return;
     const picked = pickIdea(ideasCache, null);
     if (!picked) {
       showToast('אין עדיין רעיונות שמורים בבנק הרעיונות');

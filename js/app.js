@@ -442,9 +442,12 @@ document.addEventListener('keydown', (e) => {
     closeMobileMenu();
     return;
   }
-  const openModal = document.querySelector('.modal:not([hidden])');
+  // 04/11/2026: החלון העליון (האחרון ב-DOM), כדי ש-Escape בשאלת "לסגור בלי
+  // לשמור?" יסגור את השאלה ולא יפתח אותה שוב מהטופס שמתחתיה
+  const openModals = document.querySelectorAll('.modal:not([hidden])');
+  const openModal = openModals[openModals.length - 1];
   if (openModal) {
-    const closeBtn = openModal.querySelector('[id$="-close-btn"], [id$="-cancel-btn"], #cancel-idea-btn');
+    const closeBtn = openModal.querySelector('[id$="-close-btn"], [id$="-cancel-btn"], #cancel-idea-btn, #confirm-dialog-cancel');
     if (closeBtn) closeBtn.click();
     else openModal.hidden = true;
   }

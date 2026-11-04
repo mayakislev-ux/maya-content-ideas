@@ -2,6 +2,7 @@ import { filterIdeas, sortIdeas, categoryColorVar, categoryIcon, CATEGORIES } fr
 import { getInstantThumbnail, fetchThumbnail } from './video-preview.js';
 import { addQuickIdea, markIdeaCompleted, uncompleteIdea, deleteIdea, restoreIdea } from './ideas-store.js';
 import { showToast } from './toast.js';
+import { serverErrorText } from './server-error.js';
 import { animateCountUp } from './count-up.js';
 import { burstConfetti } from './confetti.js';
 import { getProfile } from './user-profile.js';
@@ -376,13 +377,37 @@ export function wireArchiveControls(onItemClick) {
     showDraftSaved();
   });
 
+  /* 04/11/2026 (ביקורת): התיבה התרוקנה והטיוטה נמחקה *לפני* השמירה. שמירה
+     שנדחתה (למשל מנוי שפג) מחקה את הרעיון בשקט. עכשיו מנקים רק אחרי
+     שהשמירה הצליחה, ובכישלון הטקסט נשאר והיא רואה למה. */
+  let quickAddBusy = false;
   const submitQuickAdd = async () => {
     const title = quickAddInput.value.trim();
-    if (!title) return;
-    quickAddInput.value = '';
-    localStorage.removeItem(QUICK_ADD_DRAFT_KEY);
+    if (!title || quickAddBusy) return;
+    quickAddBusy = true;
+    quickAddBtn.disabled = true;
+    try {
+      await addQuickIdea(title);
+    } catch (err) {
+      console.error('addQuickIdea failed:', err);
+      const denied = String(err && err.code).endsWith('permission-denied');
+      showToast(
+        denied
+          ? 'הרעיון לא נשמר: אין כרגע הרשאה לשמור (אולי המנוי הסתיים). הטקסט נשאר בתיבה.'
+          : `${serverErrorText(err, 'שמירת הרעיון')} הטקסט נשאר בתיבה.`,
+        { duration: 7000 }
+      );
+      return;
+    } finally {
+      quickAddBusy = false;
+      quickAddBtn.disabled = false;
+    }
+    // מנקים רק אם בינתיים לא הקלידו משהו חדש
+    if (quickAddInput.value.trim() === title) {
+      quickAddInput.value = '';
+      localStorage.removeItem(QUICK_ADD_DRAFT_KEY);
+    }
     if (navigator.vibrate) navigator.vibrate(15);
-    await addQuickIdea(title);
     showToast(`⭐ ${todaysIdeaCountLabel()} ${QUICK_ADD_TOASTS[Math.floor(Math.random() * QUICK_ADD_TOASTS.length)]}`);
   };
   quickAddBtn.addEventListener('click', submitQuickAdd);
@@ -414,7 +439,7 @@ function applyFilters(onItemClick) {
     const empty = document.createElement('li');
     empty.className = 'archive-empty-state';
     if (currentIdeas.length === 0) {
-      empty.innerHTML = '<div class="archive-empty-emoji">🌱</div><p>עדיין שקט כאן - הרעיון הראשון מחכה שיכתבו אותו בהוספה המהירה למעלה</p>';
+      empty.innerHTML = '<div class="archive-empty-emoji">🌱</div><p>עדיין שקט כאן - הרעיון הראשון מחכה שיכתבו אותו ב"+ רעיון מלא" למעלה</p>';
     } else {
       empty.innerHTML = '<div class="archive-empty-emoji">🔍</div><p>כלום לא תואם את החיפוש הזה - נסו מילה אחרת או נקו את הסינון</p>';
     }

@@ -4,13 +4,17 @@
 // הפתרון: GitHub Pages מחתים כל קובץ באתר בזמן הפרסום האחרון (Last-Modified
 // זהה לכל הקבצים). שומרים את החותמת שהייתה כשהדף נטען, ובודקים שוב כשחוזרים
 // לאפליקציה ופעם בכמה דקות. חותמת אחרת = גרסה חדשה עלתה.
-// החלון חוזר עד שמעדכנים: אפשר לדחות פעמיים, בפעם השלישית אין "אחר כך".
+// החלון חוזר עד שמעדכנים. "אחר כך" דוחה אותו ל-10 דקות, והוא חוזר.
 
 const STAMP_URL = './manifest.json';
 const CHECK_EVERY_MS = 5 * 60 * 1000;
 const SNOOZE_MS = 10 * 60 * 1000;
-// 19/09/2026 (מאיה: "שיקפוץ תמיד עד שמעדכנים"): בלי "אחר כך" בכלל
-const MAX_SNOOZES = 0;
+// 19/09/2026 (מאיה: "שיקפוץ תמיד עד שמעדכנים"): היה כאן MAX_SNOOZES = 0,
+// כלומר בלי "אחר כך" בכלל. 04/11/2026 (ביקורת): חלון על כל המסך בלי
+// דרך החוצה, באמצע עבודה שלא נשמרה, דחף ללחוץ "לעדכן" ולאבד אותה. עכשיו
+// "אחר כך" תמיד קיים, והחלון חוזר כל 10 דקות עד שמעדכנים - כלומר הוא
+// עדיין קופץ עד שמעדכנים. אחרי שתי דחיות הנוסח נעשה חד יותר.
+const STRONG_TEXT_AFTER_SNOOZES = 2;
 
 let loadedStamp = null;
 let snoozedUntil = 0;
@@ -76,8 +80,15 @@ const AUTO_AFTER_MS = 90 * 1000;
 let autoTimer = null;
 const AUTO_COOLDOWN_MS = 2 * 60 * 1000;
 
-// לא לעדכן מתחת לידיים: באמצע הקלדה, או כשיש טקסט שלא נשמר בשום שדה
+// לא לעדכן מתחת לידיים: באמצע הקלדה, או כשיש טקסט שלא נשמר בשום שדה.
+// 04/11/2026: וגם כשמסך סימן במפורש שיש אצלו עבודה שלא נשמרה
+// (data-unsaved="1", למשל תוכנית חימום שהשמירה האוטומטית שלה נכשלה).
+export function hasUnsavedWork() {
+  return Boolean(document.querySelector('[data-unsaved="1"]'));
+}
+
 function safeToReload() {
+  if (hasUnsavedWork()) return false;
   const el = document.activeElement;
   if (el && (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT' || el.isContentEditable)) return false;
   for (const field of document.querySelectorAll('textarea, input[type="text"]')) {
@@ -122,14 +133,12 @@ function buildDialog() {
       <h2 id="update-dialog-title" class="up2-title">יש גרסה חדשה</h2>
       <p class="up2-text" id="update-dialog-text">כדי שהכול יעבוד כמו שצריך צריך לעדכן. זה לוקח שנייה, ושום דבר לא נמחק.</p>
       <button type="button" class="up2-btn" id="update-dialog-now">לעדכן עכשיו</button>
-      <button type="button" class="up2-later" id="update-dialog-later">עוד 10 דקות</button>
+      <button type="button" class="up2-later" id="update-dialog-later">אחר כך</button>
     </div>`;
   document.body.appendChild(wrap);
   wrap.querySelector('#update-dialog-now').addEventListener('click', (e) => updateNow(e.currentTarget));
-  // 06/10/2026: הייתה כאן לחיצה על הרקע כ"עוד 10 דקות", אבל MAX_SNOOZES=0
-  // מסתיר את "אחר כך" תמיד, ולכן הקוד הזה לא יכול היה לרוץ אף פעם. מאיה
-  // ביקשה במפורש חלון שאי אפשר להתעלם ממנו, אז הדרך החוצה לא חוזרת - רק
-  // הקוד המת יורד, ובמקומו החלון לא מופיע כשיש טקסט שלא נשמר (showUpdateDialog).
+  // 06/10/2026: הייתה כאן לחיצה על הרקע כ"עוד 10 דקות". היא לא חוזרת:
+  // הדרך החוצה היא רק הכפתור המפורש "אחר כך" (04/11/2026).
   wrap.querySelector('#update-dialog-later').addEventListener('click', () => {
     snoozes += 1;
     snoozedUntil = Date.now() + SNOOZE_MS;
@@ -167,8 +176,8 @@ function showUpdateDialog() {
   if (el && (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT' || el.isContentEditable)) return;
   const dialog = document.getElementById('update-dialog') || buildDialog();
   const later = dialog.querySelector('#update-dialog-later');
-  const mustUpdate = snoozes >= MAX_SNOOZES;
-  later.hidden = mustUpdate;
+  const mustUpdate = snoozes >= STRONG_TEXT_AFTER_SNOOZES;
+  later.hidden = false;
   /* 15/10/2026 (מאיה: "שגם לה יופיע עדכון גרסה, אבל רק של החלקים האלה"):
      מנוית רפרנסים רואה רק את מאגר ההשראה, ולכן הנוסח מדבר רק עליו ולא על
      בדיקת הרעיונות שאין לה. */
@@ -178,6 +187,11 @@ function showUpdateDialog() {
     : mustUpdate
       ? 'הגרסה שפתוחה אצלך כבר לא מעודכנת, וחלק מהדברים עלולים לא לעבוד. לחיצה אחת ומעדכנים.'
       : 'כדי שהכול יעבוד כמו שצריך (כולל בדיקת הרעיונות), צריך לעדכן. זה לוקח שנייה, ושום דבר לא נמחק.';
+  // 04/11/2026: "שום דבר לא נמחק" לא נכון כשיש עבודה פתוחה שלא נשמרה
+  if (hasUnsavedWork()) {
+    dialog.querySelector('#update-dialog-text').textContent =
+      'יש כאן עבודה שעוד לא נשמרה. כדאי לשמור אותה קודם וללחוץ "אחר כך", ולעדכן אחרי השמירה.';
+  }
   dialog.hidden = false;
   dialogOpen = true;
   dialog.querySelector('#update-dialog-now').focus();

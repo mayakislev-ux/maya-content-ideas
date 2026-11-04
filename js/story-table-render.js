@@ -234,16 +234,23 @@ function groupHtml(group) {
 // נוסף כקבוצה משלה. הקובץ נשאר המקור, ושום דבר שנשלף ממנו לא נמחק.
 // 30/09/2026 (מאיה): "תוסיפי כאן עוד כפתור שיצטרכו להשלים לבד". משבצת
 // ידנית היא כותרת עם כפתור משלה, ומה שהיא כותבת בה נשמר בנפרד מהשורה.
-function slotHtml(slot, row, audience, saved) {
-  const value = ((saved.overrides || {})[audience.id] || {})[slot.key] || '';
-  const items = value.split(String.fromCharCode(10)).map((l) => l.trim()).filter(Boolean);
+/** 04/11/2026: גוף המשבצת לבד, כדי ששמירה תעדכן רק אותה ולא תצייר את כל
+    הטבלה מחדש (זה סגר את השדה שהיא עברה אליו באמצע הקלדה). */
+export function slotBodyHtml(value) {
+  const items = String(value || '').split(String.fromCharCode(10)).map((l) => l.trim()).filter(Boolean);
   const body = items.length
     ? `<ul class="st-bullets">${items.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>`
     : '<p class="st-slot__empty">עוד לא הוספת כאן</p>';
+  return { body, addLabel: items.length ? "לערוך" : "להוסיף" };
+}
+
+function slotHtml(slot, row, audience, saved) {
+  const value = ((saved.overrides || {})[audience.id] || {})[slot.key] || '';
+  const { body, addLabel } = slotBodyHtml(value);
   return `<div class="st-slot" data-slot="${esc(slot.key)}">
       <div class="st-slot__head"><span class="st-slot__label">${esc(slot.label)}</span>
-      <button type="button" class="st-slot__add" data-row="${esc(slot.key)}">${items.length ? "לערוך" : "להוסיף"}</button></div>
-      ${body}
+      <button type="button" class="st-slot__add" data-row="${esc(slot.key)}">${addLabel}</button></div>
+      <div class="st-slot__body">${body}</div>
       <label class="st-field" hidden>
         <span class="st-field__label">${esc(slot.label)}</span>
         <textarea class="st-input" rows="4" data-row="${esc(slot.key)}" data-kind="override">${esc(value)}</textarea>

@@ -18,6 +18,7 @@ import {
 } from './story-table-store.js';
 import {
   addedGroupHtml,
+  slotBodyHtml,
   renderStoryTable,
   planChoicesHtml,
   planInputs,
@@ -25,6 +26,7 @@ import {
   defaultTable,
 } from './story-table-render.js';
 import { showToast } from './toast.js';
+import { confirmDialog } from './confirm-dialog.js';
 import { auth } from './firebase-init.js';
 import { onAuthChange } from './auth.js';
 import { wireStoryAssets } from './story-assets.js';
@@ -80,8 +82,14 @@ async function persist(input) {
     // רק השורה שנגעו בה.
     const inSlot = input.closest(".st-slot");
     if (inSlot) {
-      // משבצת ידנית מציגה את מה שנכתב בה, ומתעדכנת לבדה
-      refresh({ keepFocus: null });
+      // משבצת ידנית מציגה את מה שנכתב בה, ומתעדכנת לבדה.
+      // 04/11/2026: כאן היה refresh מלא, שסגר את השדה שהיא עברה אליו
+      // באמצע הקלדה. עכשיו מתעדכנת רק המשבצת הזאת, והשאר לא נוגע.
+      const { body, addLabel } = slotBodyHtml(text);
+      const bodyEl = inSlot.querySelector('.st-slot__body');
+      if (bodyEl) bodyEl.innerHTML = body;
+      const addBtn = inSlot.querySelector('.st-slot__add');
+      if (addBtn) addBtn.textContent = addLabel;
     } else {
       const host = input.closest(".st-row");
       const box = host && host.querySelector("[data-added]");
@@ -294,7 +302,19 @@ function wirePlanOutcome() {
     showStatus((e.detail && e.detail.message) || 'לא הצלחנו לבנות את התוכנית. אפשר לנסות שוב.', true);
   });
 
-  back.addEventListener('click', () => {
+  back.addEventListener('click', async () => {
+    /* 04/11/2026 (ביקורת): החזרה מחקה מהמסך תוכנית שלקחה דקה לבנות,
+       בלי שום אזהרה. התוכנית נשמרת עכשיו לבד כשהיא מוכנה (warming.js),
+       וכאן שואלים רק כשהשמירה הזאת לא הצליחה. */
+    const result = el('warming-result');
+    if (result && result.dataset.unsaved === '1') {
+      const ok = await confirmDialog(
+        'התוכנית הזאת עוד לא נשמרה. לחזור לטבלה בלי לשמור? אפשר לבטל וללחוץ "שמירה".',
+        { okLabel: 'לחזור בלי לשמור', cancelLabel: 'ביטול' }
+      );
+      if (!ok) return;
+      delete result.dataset.unsaved;
+    }
     back.hidden = true;
     el('warming-result').innerHTML = '';
     el('warming-missing-info').hidden = true;
