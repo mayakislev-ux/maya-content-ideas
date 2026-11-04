@@ -8059,7 +8059,7 @@ body[data-plan="refs"] .hub-full-only { display: none !important; }
    כי חלק מהתיבות נושאות min-height בתוך ה-HTML. שתי תיבות הרעיון הקצרות
    ושדות שורה אחת (input) נשארים כמו שהם. */
 @media (max-width: 720px) {
-  textarea.cosmic-textarea:not(#va-idea-sharp):not(#va-idea-punch) {
+  textarea.cosmic-textarea:not(#va-idea-sharp):not(#va-idea-punch):not(.va-lib-field) {
     min-height: 45vh !important;
   }
 }
