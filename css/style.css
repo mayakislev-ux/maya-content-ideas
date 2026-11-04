@@ -7693,6 +7693,68 @@ body[data-plan="refs"] .view-tabs-scroll { justify-content: center; }
 .cosmic-modal-overlay .va-lib-delete { color: #b42318; align-self: center; }
 .cosmic-modal-overlay .cosmic-field-label { color: #0f2340; font-weight: 700; display: block; margin: 6px 0 6px; }
 
+/* 04/11/2026: כל תהליך היצירה של סרטון, שלב אחרי שלב, וכפתור לערוך. */
+.va-lib-journey { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.va-lib-step {
+  background: #fff;
+  border: 1px solid #d3e6f2;
+  border-radius: 16px;
+  padding: 12px 14px;
+  color: #0f2340;
+}
+.va-lib-step.is-script { border-color: #16205a; border-width: 1.5px; }
+.va-lib-step__head,
+.va-lib-step summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 14px;
+  color: #0f2340;
+}
+.va-lib-step summary { cursor: pointer; list-style: none; }
+.va-lib-step summary::-webkit-details-marker { display: none; }
+.va-lib-step summary::after { content: '⌄'; margin-inline-start: auto; opacity: .6; }
+.va-lib-step details[open] summary::after { content: '⌃'; }
+.va-lib-step__num {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #e6f2fa;
+  color: #16205a;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.va-lib-step__count { font-weight: 400; font-size: 12px; color: #5d7d99; }
+.va-lib-step__text {
+  margin-top: 6px;
+  font-size: 15px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.va-lib-step.is-big .va-lib-step__text { font-size: 17px; font-weight: 700; }
+.va-lib-step__text a { color: #0b6fa8; }
+.va-lib-step__note { margin: 6px 0 0; font-size: 13px; color: #5d7d99; }
+.va-lib-step.is-editing .va-lib-field { margin: 8px 0 0; width: 100%; box-sizing: border-box; }
+.va-lib-edit {
+  display: block;
+  margin: 4px 0 10px;
+  padding: 10px 16px;
+  border-radius: 12px;
+  border: 1.5px solid #16205a;
+  background: transparent;
+  color: #16205a;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.cosmic-modal-overlay .va-lib-cancel { background: transparent; color: #16205a; }
+.va-lib-saved.is-error { color: #b42318; }
+
 /* 29/10/2026: דוגמאות לכל פורמט, בפופאפ בתוך האפליקציה */
 #video-assistant-view .cosmic-examples-btn {
   display: block;

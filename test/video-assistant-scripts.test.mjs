@@ -66,7 +66,7 @@ test('הכפתור בראש העוזר מחובר לחלון', () => {
   const va = read('js', 'video-assistant.js');
   assert.match(html, /id="video-assistant-scripts-btn"[^>]*>📝 התסריטים שלי</);
   assert.match(va, /getElementById\('video-assistant-scripts-btn'\)\.addEventListener\('click', openScriptsLibrary\)/);
-  assert.match(va, /confirmDialog\('למחוק את הסרטון הזה\?/, 'מחיקה בלי שאלת אישור');
+  assert.match(read('js', 'video-assistant-library.js'), /confirmDialog\('למחוק את הסרטון הזה\?/, 'מחיקה בלי שאלת אישור');
 });
 
 test('אין יותר שורת "לשמור עכשיו", והשמירה כוללת את הפריט', () => {
@@ -100,9 +100,9 @@ test('חזרה עד מסך הפתיחה לא מצמידה את הפריט היש
 
 /* 29/10/2026 (מאיה): "נכנסתי לתסריטים ולא נותן לי ללחוץ X". */
 test('ה-X מחובר לחלון שלו, והסגירה מורידה כל חלון פתוח', () => {
-  const va = read('js', 'video-assistant.js');
-  assert.match(va, /overlay\.querySelector\('\.cosmic-modal-close'\)\.addEventListener\('click', closeModal\)/);
-  assert.doesNotMatch(va, /getElementById\('va-modal-close'\)/);
-  assert.match(va, /function closeModal\(\) \{\s*document\.querySelectorAll\('\.cosmic-modal-overlay'\)\.forEach/);
-  assert.match(va, /if \(libraryOpening\) return;/);
+  const modal = read('js', 'video-assistant-modal.js');
+  assert.match(modal, /overlay\.querySelector\('\.cosmic-modal-close'\)\.addEventListener\('click', \(\) => overlay\.vaTryClose\(\)\)/);
+  assert.doesNotMatch(read('js', 'video-assistant.js') + modal, /getElementById\('va-modal-close'\)/);
+  assert.match(modal, /function closeModal\(\) \{\s*document\.querySelectorAll\('\.cosmic-modal-overlay'\)\.forEach/);
+  assert.match(read('js', 'video-assistant-library.js'), /if \(opening\) return;/);
 });

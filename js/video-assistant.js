@@ -16,8 +16,10 @@
 import { mountDrafts, clearScreenDrafts, draftKey, withDraft } from './video-assistant-drafts.js';
 import { INITIAL_STATE, isCarousel, nextStep } from './video-assistant-flow.js';
 import { pickIdea, pickReference } from './video-assistant-picker.js';
-import { buildParts, hasContent, scriptDoc, scriptFields, scriptTitle, syncIdea } from './video-assistant-build.js';
+import { buildParts, hasContent, scriptDoc } from './video-assistant-build.js';
 import { confirmDialog } from './confirm-dialog.js';
+import { openModal, closeModal, requestCloseModal } from './video-assistant-modal.js';
+import { createScriptsLibrary } from './video-assistant-library.js';
 import { buildDuplicationPrompt, buildReverseDuplicationPrompt, buildScriptPrompt, buildCreativePackagingPrompt } from './video-assistant-prompts.js';
 import {
   FORMATS, FORMAT_EXAMPLES, SCRIPT_STRUCTURE, STARTING_POINTS, CONTENT_TYPES,
@@ -312,134 +314,16 @@ function applyDomainTheme(domain) {
 
 /* #22 (מסקוט SOS שקפץ לבד אחרי 25 שניות) הוסר ב-28/10/2026: הוא הציע רק
    חזרה או התחלה מחדש, ששתיהן כבר על המסך, והיה צורה שלישית של עזרה.
-   העזרה האמיתית היא כפתורי ה-SOS במסכי המגילה. */
-function openModal(innerHtml) {
-  const overlay = document.createElement('div');
-  overlay.className = 'cosmic-modal-overlay';
-  overlay.id = 'va-modal-overlay';
-  overlay.innerHTML = `<div class="cosmic-modal">
-    <button type="button" class="cosmic-modal-close" id="va-modal-close" aria-label="סגירה">✕</button>
-    ${innerHtml}
-  </div>`;
-  overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); });
-  document.body.appendChild(overlay);
-  /* 29/10/2026 (מאיה: "נכנסתי לתסריטים ולא נותן לי ללחוץ X"). שתי לחיצות על
-     הכפתור פתחו שני חלונות עם אותו id, וה-X של העליון היה מחובר לחלון
-     התחתון. עכשיו כל X מחובר לחלון שלו, והסגירה מורידה את כולם. */
-  overlay.querySelector('.cosmic-modal-close').addEventListener('click', closeModal);
-  return overlay;
-}
+   העזרה האמיתית היא כפתורי ה-SOS במסכי המגילה.
+   openModal ו-closeModal נמצאים ב-video-assistant-modal.js. */
 
-function closeModal() {
-  document.querySelectorAll('.cosmic-modal-overlay').forEach((o) => o.remove());
-}
-
-// ===== "התסריטים שלי" =====
-/* 29/10/2026 (מאיה): "שיהיה בצד כפתור 'התסריטים שלי', ואז כל פעם זה ישמור
-   את כל מה שהיא כותבת, ויהיה לה אופציה גם לערוך/למחוק". חלון אחד: רשימה,
-   ובלחיצה על סרטון כל החלקים שלו לעריכה, להמשיך לבנות או למחוק. */
-function libDate(ms) {
-  if (!ms) return '';
-  const d = new Date(ms);
-  return `${d.toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' })} · ${d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', hour12: false })}`;
-}
-
-let libraryOpening = false;
-async function openScriptsLibrary() {
-  if (libraryOpening) return;
-  libraryOpening = true;
-  closeModal();
-  await saveAll().catch((err) => console.error('saveSession failed:', err));
-  libraryOpening = false;
-  closeModal();
-  const overlay = openModal(`<div id="va-lib"><h2 style="margin-top:0">📝 התסריטים שלי</h2><p>טוענים...</p></div>`);
-  overlay.querySelector('.cosmic-modal').classList.add('va-lib-modal');
-  let items;
-  try {
-    items = await listScripts();
-  } catch (err) {
-    console.error('listScripts failed:', err);
-    overlay.querySelector('#va-lib').innerHTML = '<h2 style="margin-top:0">📝 התסריטים שלי</h2><p>לא הצלחנו לטעון את הרשימה. כדאי לבדוק שיש אינטרנט ולנסות שוב.</p>';
-    return;
-  }
-  renderLibraryList(overlay, items);
-}
-
-function renderLibraryList(overlay, items) {
-  const box = overlay.querySelector('#va-lib');
-  box.innerHTML = `<h2 style="margin-top:0">📝 התסריטים שלי</h2>
-    ${items.length ? `<ul class="va-lib-list">${items.map((it) => `
-      <li><button type="button" class="va-lib-item" data-id="${escapeHtml(it.id)}">
-        <span class="va-lib-item__title">${escapeHtml(it.title || 'סרטון בלי שם')}</span>
-        <span class="va-lib-item__meta">${it.done ? '✓ מוכן' : 'בבנייה'} · ${escapeHtml(libDate(it.updatedAt))}</span>
-      </button></li>`).join('')}</ul>`
-      : '<p>עוד אין כאן תסריטים. כל סרטון שמתחילים לבנות נשמר כאן לבד, תוך כדי כתיבה.</p>'}`;
-  box.querySelectorAll('.va-lib-item').forEach((btn) => btn.addEventListener('click', () => {
-    const item = items.find((it) => it.id === btn.getAttribute('data-id'));
-    if (item) renderLibraryItem(overlay, items, item);
-  }));
-}
-
-function renderLibraryItem(overlay, items, item) {
-  const box = overlay.querySelector('#va-lib');
-  /* הסרטון שפתוח עכשיו בעוזר נערך בעוזר עצמו. אם היה נערך גם כאן, המסך
-     שמאחורי החלון היה ממשיך להחזיק את הטקסט הישן ודורס את העריכה. */
-  const live = state.scriptId === item.id;
-  let s = live ? { ...state } : { ...(item.state || {}) };
-  const fields = scriptFields(s);
-  const script = fields.find((f) => f.key === 'script');
-  box.innerHTML = `
-    <button type="button" class="va-text-link" id="va-lib-back">→ לכל התסריטים</button>
-    <h2 style="margin-top:4px">${escapeHtml(item.title || 'סרטון בלי שם')}</h2>
-    <p class="va-lib-item__meta">${item.done ? '✓ מוכן' : 'בבנייה'} · ${escapeHtml(libDate(item.updatedAt))}</p>
-    ${live ? '<p class="va-lib-live">זה הסרטון שפתוח עכשיו בעוזר, ולכן עורכים אותו שם.</p>' : ''}
-    ${fields.length ? fields.map((f) => `
-      <label class="cosmic-field-label" for="va-lib-${f.key}">${escapeHtml(f.label)}</label>
-      <textarea class="cosmic-textarea va-lib-field" id="va-lib-${f.key}" data-field="${f.field}" rows="${f.key === 'script' || f.key === 'dump' ? 8 : 2}"${live ? ' readonly' : ''}>${escapeHtml(f.value)}</textarea>`).join('')
-      : '<p>עוד לא נכתב כאן חלק שלם. אפשר להמשיך לבנות מאיפה שעצרת.</p>'}
-    <p class="va-lib-saved" id="va-lib-saved" role="status" aria-live="polite"></p>
-    ${script ? copyBtn(script.value, 'להעתיק את התסריט') : ''}
-    <div class="cosmic-btn-row" style="margin-top:12px">
-      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-lib-resume">${live ? 'חזרה לעוזר ←' : (item.done ? 'לפתוח בעוזר' : 'להמשיך לבנות ←')}</button>
-      <button type="button" class="va-text-link va-lib-delete" id="va-lib-delete">למחוק את הסרטון הזה</button>
-    </div>`;
-  wireCopyButtons(box);
-  /* עריכה נשמרת לבד, רגע אחרי ההקלדה, כמו בעוזר עצמו. */
-  let timer = null;
-  const savedEl = box.querySelector('#va-lib-saved');
-  const flush = async () => {
-    timer = null;
-    item.title = scriptTitle(s);
-    item.updatedAt = Date.now();
-    item.state = { ...s };
-    try {
-      await saveScript(item.id, { ...scriptDoc(s), createdAt: item.createdAt || item.updatedAt });
-      savedEl.textContent = 'נשמר ✓';
-    } catch (err) {
-      console.error('saveScript failed:', err);
-      savedEl.textContent = 'השמירה לא עברה. כדאי לבדוק שיש אינטרנט';
-    }
-  };
-  box.querySelector('#va-lib-back').addEventListener('click', async () => {
-    if (timer) { clearTimeout(timer); await flush(); }
-    renderLibraryList(overlay, items);
-  });
-  if (!live) box.querySelectorAll('.va-lib-field').forEach((ta) => ta.addEventListener('input', () => {
-    const field = ta.getAttribute('data-field');
-    s = syncIdea({ ...s, [field]: ta.value }, field);
-    /* כפתור ההעתקה מחזיק את הטקסט שצויר, ולכן מתעדכן יחד עם התיבה */
-    if (ta.id === 'va-lib-script') {
-      const copy = box.querySelector('[data-copy-text]');
-      if (copy) copy.setAttribute('data-copy-text', encodeURIComponent(ta.value));
-    }
-    savedEl.textContent = '';
-    clearTimeout(timer);
-    timer = setTimeout(flush, 800);
-  }));
-
-  box.querySelector('#va-lib-resume').addEventListener('click', async () => {
-    if (live) { closeModal(); return; }
-    if (timer) { clearTimeout(timer); await flush(); }
+// ===== "התסריטים שלי" (video-assistant-library.js) =====
+const scriptsLibrary = createScriptsLibrary({
+  getState: () => state,
+  saveAll: () => saveAll(),
+  store: { listScripts, saveScript, deleteScript },
+  openModal, closeModal, copyBtn, wireCopyButtons, confirmDialog, showToast,
+  resume: (s, item) => {
     state = { ...s, scriptId: item.id, scriptCreatedAt: item.createdAt };
     if (!state.history) state.history = [];
     resumedNotice = false;
@@ -448,30 +332,25 @@ function renderLibraryItem(overlay, items, item) {
     closeModal();
     saveSession(state).catch((err) => console.error('saveSession failed:', err));
     render();
-  });
-  box.querySelector('#va-lib-delete').addEventListener('click', async () => {
-    const ok = await confirmDialog('למחוק את הסרטון הזה? אי אפשר להחזיר אותו אחר כך.', { okLabel: 'למחוק', cancelLabel: 'לא, להשאיר' });
-    if (!ok) return;
-    clearTimeout(timer);
-    try {
-      await deleteScript(item.id);
-    } catch (err) {
-      console.error('deleteScript failed:', err);
-      showToast('המחיקה לא עברה. כדאי לבדוק שיש אינטרנט');
-      return;
-    }
-    /* הסרטון שפתוח עכשיו בעוזר נמחק: מתחילים נקי, אחרת השמירה הבאה הייתה
-       מחזירה אותו לרשימה. */
-    if (state.scriptId === item.id) {
-      state = { ...INITIAL_STATE, history: [] };
-      currentPickId = null;
-      sessionStartTs = Date.now();
-      saveSession(state).catch((err) => console.error('saveSession failed:', err));
-      render();
-    }
-    renderLibraryList(overlay, items.filter((it) => it.id !== item.id));
-    showToast('נמחק');
-  });
+  },
+  /* עריכה ב"התסריטים שלי" של הסרטון שפתוח עכשיו: עוברת גם לעוזר, אחרת
+     המסך שמאחורי החלון היה ממשיך להחזיק את הטקסט הישן ודורס את העריכה. */
+  applyLive: (changes) => {
+    state = { ...state, ...changes };
+    saveSession(state).catch((err) => console.error('saveSession failed:', err));
+    render();
+  },
+  liveDeleted: () => {
+    state = { ...INITIAL_STATE, history: [] };
+    currentPickId = null;
+    sessionStartTs = Date.now();
+    saveSession(state).catch((err) => console.error('saveSession failed:', err));
+    render();
+  },
+});
+
+function openScriptsLibrary() {
+  return scriptsLibrary.open();
 }
 
 // ===== מסך פתיחה: שלושת מסלולי הפתיחה, ניסוח מדויק של מאיה (16/10) =====
@@ -2263,7 +2142,7 @@ export function wireVideoAssistantView() {
   startParticleTrail(document.getElementById('video-assistant-view'));
   window.addEventListener('resize', fitView);
   document.getElementById('video-assistant-scripts-btn').addEventListener('click', openScriptsLibrary);
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') requestCloseModal(); });
   // 17/10/2026 (רעיון #22, "SOS כשאין אינטראקציה"): כל קליק/הקלדה בתוך
   // התצוגה מאפסים את טיימר ה-idle, כדי שהמסקוט לא יקפוץ בזמן שבפועל
   // כן עובדים (רק כשבאמת נתקעים זמן-מה).
