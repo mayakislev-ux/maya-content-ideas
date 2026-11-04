@@ -2,6 +2,8 @@ import { db, functions } from './firebase-init.js';
 import { openVideoPopup } from './inspiration-popup.js';
 import { accuracyNoteOf, readabilityOf, languageName, readableTextOf } from './inspiration-readability.js';
 import { openFeed } from './inspiration-feed.js';
+import { duplicateFromBank } from './video-assistant.js';
+import { showToast } from './toast.js';
 import { collection, doc, getDoc, getDocs } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
 import { serverErrorText } from './server-error.js';
@@ -316,6 +318,29 @@ function renderCards(videos) {
   }
 }
 
+/* 04/11/2026 (מאיה): "לשכפול הסרטון" ליד כל רפרנס. פותח את העוזר ישר
+   בשכפול, עם הלינק והתמלול בפנים, במקום להעתיק כל אחד מהם ביד. */
+function startDuplication(video) {
+  duplicateFromBank(video, { loadSubtitles }).catch((err) => {
+    console.error('duplicateFromBank failed:', err);
+    showToast('לא הצלחתי לפתוח את השכפול. נסו שוב');
+  });
+}
+
+function duplicateButton(video) {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'inspiration-card-dup-btn';
+  btn.textContent = '🎬 לשכפול הסרטון';
+  btn.addEventListener('click', (e) => {
+    /* הכרטיס עצמו הוא קישור */
+    e.preventDefault();
+    e.stopPropagation();
+    startDuplication(video);
+  });
+  return btn;
+}
+
 function buildCard(video) {
   {
     const card = document.createElement('a');
@@ -375,6 +400,7 @@ function buildCard(video) {
     }
     if ((video.angleTags || []).length) info.appendChild(angleChips(video, pickAngle));
     info.appendChild(cta);
+    info.appendChild(duplicateButton(video));
 
     // Readable text for the "שכפול" workflow - clients read the exact wording
     // instead of watching. Two sources, both pre-computed in advance (never
@@ -582,7 +608,7 @@ export function wireInspirationView() {
   });
 
   const feedBtn = document.getElementById('inspiration-feed-btn');
-  if (feedBtn) feedBtn.addEventListener('click', () => openFeed(shownVideos, 0, { loadSubtitles }));
+  if (feedBtn) feedBtn.addEventListener('click', () => openFeed(shownVideos, 0, { loadSubtitles, onDuplicate: startDuplication }));
 
   document.getElementById('inspiration-search-clear-btn').addEventListener('click', () => {
     activeAngle = null;
