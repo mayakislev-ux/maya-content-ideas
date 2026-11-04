@@ -8053,3 +8053,13 @@ body.feed-open { overflow: hidden; }
 
 /* 04/11/2026 (מאיה): "צ'אט לבדיקת רעיון" במרכז הלמידה, למנוי המלא בלבד */
 body[data-plan="refs"] .hub-full-only { display: none !important; }
+
+/* 04/11/2026 (מאיה: "המסך של הכתיבה מאוד מאוד קטן" מהמובייל): תיבות הכתיבה
+   היו 90px, שלוש שורות. בטלפון הן תופסות עכשיו כמעט חצי מסך. important
+   כי חלק מהתיבות נושאות min-height בתוך ה-HTML. שתי תיבות הרעיון הקצרות
+   ושדות שורה אחת (input) נשארים כמו שהם. */
+@media (max-width: 720px) {
+  textarea.cosmic-textarea:not(#va-idea-sharp):not(#va-idea-punch) {
+    min-height: 45vh !important;
+  }
+}
