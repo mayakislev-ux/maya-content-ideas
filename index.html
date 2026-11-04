@@ -338,14 +338,14 @@
     <main id="chat-view" class="view" hidden>
     <div class="chat-toolbar">
       <button type="button" id="chat-back-to-assistant" class="chat-back-assistant" hidden>→ חזרה לעוזר ליצירת סרטון <small>(כל מה שכתבתם שמור)</small></button>
-      <h2 class="chat-view-title">🔍 בדיקת רעיון</h2>
+      <h2 class="chat-view-title">🔍 צ'אט לבדיקת רעיון</h2>
       <button id="new-idea-btn" class="btn-text">🔄 רעיון חדש</button>
       <button id="edit-profile-btn" class="btn-text edit-profile-btn" hidden>✏️ ערכי פרטים (מנהלת)</button>
       <button id="replay-tour-btn" class="btn-text edit-profile-btn" hidden>🎓 הצגת הסיור (מנהלת)</button>
     </div>
     <div class="chat-messages" id="chat-messages" role="log" aria-live="polite"></div>
     <form id="chat-form" class="chat-input-row">
-      <textarea id="chat-input" enterkeyhint="send" placeholder="כתיבה כאן..." required aria-label="הודעה לצ'אט בדיקת רעיון"></textarea>
+      <textarea id="chat-input" enterkeyhint="send" placeholder="כתיבה כאן..." required aria-label="הודעה לצ'אט לבדיקת רעיון"></textarea>
       <button type="button" id="chat-mic-btn" class="mic-btn" aria-label="הקלטה קולית" hidden>🎤</button>
       <button type="submit" class="btn-primary">שליחה</button>
     </form>
@@ -362,6 +362,11 @@
           <span class="hub-action-icon">🔥</span>
           <span class="hub-action-label">חימום בסטורי</span>
           <span class="hub-action-desc">חממו קהל לפני מכירה</span>
+        </button>
+        <button type="button" id="hub-link-idea-chat" class="hub-action-card hub-full-only">
+          <span class="hub-action-icon">🔍</span>
+          <span class="hub-action-label">צ'אט לבדיקת רעיון</span>
+          <span class="hub-action-desc">מדייקים רעיון ומסר אחד חזק לסרטון</span>
         </button>
         <button type="button" id="hub-link-video-assistant" class="hub-action-card">
           <span class="hub-action-icon">🎬</span>
@@ -978,10 +983,10 @@
     <h2 id="policy-modal-title">מדיניות פרטיות ותנאי שימוש</h2>
 
     <h3>איזה מידע נשמר</h3>
-    <p>האפליקציה שומרת: שם, תחום עיסוק וקהל היעד שסיפקת בשיחת ההיכרות; הרעיונות לתוכן שהוספת (כותרת, קטגוריה וכו'); וההודעות שאת/ה כותב/ת בלשונית "בדיקת רעיון". פידבק שנשלח דרך לשונית "חוות דעת" נשמר בלי כל פרט מזהה - אנונימי לחלוטין.</p>
+    <p>האפליקציה שומרת: שם, תחום עיסוק וקהל היעד שסיפקת בשיחת ההיכרות; הרעיונות לתוכן שהוספת (כותרת, קטגוריה וכו'); וההודעות שאת/ה כותב/ת ב"צ'אט לבדיקת רעיון". פידבק שנשלח דרך לשונית "חוות דעת" נשמר בלי כל פרט מזהה - אנונימי לחלוטין.</p>
 
     <h3>איך המידע משמש</h3>
-    <p>המידע משמש אך ורק להפעלת האפליקציה עבורך: שמירת הרעיונות שלך והצגתם, והפעלת הצ'אט עם ה-AI. כדי לספק את שירות ה-AI, הטקסט ששולח/ת בלשונית "בדיקת רעיון" מועבר לעיבוד אצל חברת Anthropic (ספקית מודל ה-AI Claude) - כמו כל שירות AI, יש לה גישה לטקסט הזה לצורך יצירת התשובה בלבד.</p>
+    <p>המידע משמש אך ורק להפעלת האפליקציה עבורך: שמירת הרעיונות שלך והצגתם, והפעלת הצ'אט עם ה-AI. כדי לספק את שירות ה-AI, הטקסט ששולח/ת ב"צ'אט לבדיקת רעיון" מועבר לעיבוד אצל חברת Anthropic (ספקית מודל ה-AI Claude) - כמו כל שירות AI, יש לה גישה לטקסט הזה לצורך יצירת התשובה בלבד.</p>
 
     <h3>איפה המידע נשמר</h3>
     <p>המידע נשמר בתשתית Google Firebase, עם הרשאות גישה המוגבלות לחשבון Google שלך בלבד. הגישה לאפליקציה כולה מוגבלת לרשימת משתמשים מאושרת מראש.</p>

@@ -438,4 +438,91 @@ describe('בדפדפן (jsdom)', { skip: hasJsdom ? false : 'jsdom לא מותק
     assert.equal(got[0].url, BANK.talk.url);
     assert.equal(document.getElementById('inspiration-feed'), null, 'הגלילה נשארה פתוחה מעל העוזר');
   });
+  /* ---------- 04/11/2026, סבב שני של מאיה על הצ'אט ---------- */
+
+  const greeting = () => {
+    const first = $('#chat-messages .chat-bubble-assistant');
+    return first ? first.textContent : '';
+  };
+
+  test('מרכז הלמידה: כרטיס "צ׳אט לבדיקת רעיון", ופתיחה בלי הטיפ', async () => {
+    setPlan('full');
+    mods.router.showView('guide');
+    const card = $('#hub-link-idea-chat');
+    assert.ok(card, 'אין כרטיס במרכז הלמידה');
+    assert.match(card.textContent, /צ'אט לבדיקת רעיון/);
+    assert.doesNotMatch(card.textContent, /זווית הנגשה|דיוק זווית/, 'השם עדיין מדבר על זווית');
+    assert.ok(card.classList.contains('hub-full-only'));
+    calls.fetch.length = 0;
+    card.click();
+    await until(() => visible('chat-view') && greeting(), 'הצ׳אט לא נפתח מהמרכז');
+    assert.equal(greeting(), 'מיכל, רשמי לי מה הרעיון שלך ואדייק אותך.');
+    assert.equal(calls.fetch.length, 0, 'נשלח משהו לפני שכתבה רעיון');
+    assert.match($('.chat-view-title').textContent, /צ'אט לבדיקת רעיון/);
+    const img = $('#chat-messages .chat-avatar');
+    assert.equal(img.tagName, 'IMG', 'עדיין הרובוט');
+    assert.equal(img.getAttribute('src'), 'assets/maya-avatar-160.webp');
+    assert.match(img.getAttribute('srcset'), /maya-avatar-320\.webp 2x/);
+    assert.ok(existsSync(new URL('../assets/maya-avatar-160.webp', import.meta.url)));
+    assert.ok(existsSync(new URL('../assets/maya-avatar-320.webp', import.meta.url)));
+
+    const back = $('#chat-back-to-assistant');
+    assert.ok(!back.hidden);
+    assert.match(back.textContent, /חזרה למרכז למידה/);
+    back.click();
+    assert.ok(visible('guide-view'), 'החזרה לא הובילה למרכז הלמידה');
+    assert.ok(!visible('chat-view'));
+  });
+
+  test('מנוי רפרנסים: הכרטיס מוסתר, ולחיצה לא פותחת את הצ׳אט', async () => {
+    const css = readFileSync(new URL('../css/style.css', import.meta.url), 'utf8');
+    assert.match(css, /body\[data-plan="refs"\] \.hub-full-only \{ display: none !important; \}/);
+    setPlan('refs');
+    mods.router.showView('guide');
+    $('#hub-link-idea-chat').click();
+    await tick();
+    assert.ok(!visible('chat-view'), 'מנוי רפרנסים נכנס לצ׳אט');
+    setPlan('full');
+  });
+
+  const FINAL = 'מעולה, סגרנו.\n\n**הרעיון:** תלמידה שמפחדת לגבות מחיר מלא ועובדת חודשים בחינם\n**המסר האחד:** הלקוחה משלמת על התוצאה, לא על הוותק שלך\n**הזווית:** דעה לא פופולרית - לומר שוותק הוא לא הקריטריון\n**לקהל:** נשים שרק סיימו קורס\n\nזה רעיון עם עמדה. https://mayakislev-ux.github.io/lehiyot-brand/מפת-דרכים-ליצירת-תוכן.html\n[[IDEA_SUMMARY]]תלמידה שמפחדת לגבות מחיר מלא ועובדת חודשים בחינם||דעה לא פופולרית||||הלקוחה משלמת על התוצאה, לא על הוותק שלך';
+
+  test('התוצאה הסופית: בלי כפתור מפת הדרכים, והרעיון והמסר חוזרים לעוזר', async () => {
+    setPlan('full');
+    await openAssistantFresh();
+    $('#va-idea-btn').click();
+    await until(() => $('#va-idea-sharp'), 'מסך הרעיון');
+    type($('#va-idea-sharp'), 'ביטחון עצמי');
+    type($('#va-idea-punch'), 'משהו כללי');
+    REPLY = FINAL;
+    const sentBefore = calls.fetch.length;
+    $('#va-angle-chat-btn').click();
+    await until(() => calls.fetch.length > sentBefore && visible('chat-view'), 'לא נשלח');
+    await until(() => $('.chat-back-assistant-btn'), 'אין תוצאה סופית');
+    const bubble = $('.chat-back-assistant-btn').closest('.chat-bubble');
+    const buttons = [...bubble.querySelectorAll('button')].map((b) => b.textContent);
+    assert.ok(!buttons.some((t) => t.includes('מפת הדרכים')), buttons.join(' | '));
+    assert.equal(buttons.length, 2, buttons.join(' | '));
+    assert.ok(!bubble.textContent.includes('IDEA_SUMMARY'));
+    assert.match(bubble.textContent, /המסר האחד:/);
+    assert.match($('#chat-back-to-assistant').textContent, /חזרה לעוזר ליצירת סרטון/);
+    $('.chat-back-assistant-btn').click();
+    await until(() => visible('video-assistant-view') && $('#va-idea-sharp'), 'לא חזרנו לעוזר');
+    assert.equal($('#va-idea-sharp').value, 'תלמידה שמפחדת לגבות מחיר מלא ועובדת חודשים בחינם');
+    assert.equal($('#va-idea-punch').value, 'הלקוחה משלמת על התוצאה, לא על הוותק שלך');
+  });
+
+  test('בלי השורה הטכנית: הרעיון והמסר נקראים מהסעיפים', async () => {
+    type($('#va-idea-sharp'), 'משהו');
+    REPLY = FINAL.split('[[IDEA_SUMMARY]]')[0];
+    /* הבועה מהבדיקה הקודמת עוד יושבת בצ׳אט המוסתר, ולכן מחכים לבקשה החדשה */
+    const sentBefore = calls.fetch.length;
+    $('#va-angle-chat-btn').click();
+    await until(() => calls.fetch.length > sentBefore && visible('chat-view'), 'לא נשלח');
+    await until(() => $('.chat-back-assistant-btn'), 'אין כפתור חזרה בלי השורה הטכנית');
+    $('.chat-back-assistant-btn').click();
+    await until(() => visible('video-assistant-view') && $('#va-idea-sharp'), 'לא חזרנו לעוזר');
+    assert.equal($('#va-idea-sharp').value, 'תלמידה שמפחדת לגבות מחיר מלא ועובדת חודשים בחינם');
+    assert.equal($('#va-idea-punch').value, 'הלקוחה משלמת על התוצאה, לא על הוותק שלך');
+  });
 });

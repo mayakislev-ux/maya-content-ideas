@@ -28,6 +28,22 @@ function appendWithBold(container, text) {
  *   (e.g. the roadmap link in idea-chat). Matched by exact URL after
  *   stripping trailing punctuation.
  */
+/* 04/11/2026 (מאיה): במקום הרובוט, תמונה עגולה קטנה שלה. */
+export const AVATAR_SRC = 'assets/maya-avatar-160.webp';
+export const AVATAR_SRCSET = 'assets/maya-avatar-160.webp 1x, assets/maya-avatar-320.webp 2x';
+
+function chatAvatar() {
+  const avatar = document.createElement('img');
+  avatar.className = 'chat-avatar';
+  avatar.src = AVATAR_SRC;
+  avatar.srcset = AVATAR_SRCSET;
+  avatar.alt = '';
+  avatar.width = 36;
+  avatar.height = 36;
+  avatar.decoding = 'async';
+  return avatar;
+}
+
 export function setBubbleText(bubble, text, specialLinks = []) {
   bubble.innerHTML = '';
   const parts = text.split(URL_PATTERN);
@@ -70,10 +86,7 @@ export function addBubble(messagesEl, text, role, specialLinks = []) {
   row.className = `chat-row chat-row-${role}`;
 
   if (role === 'assistant') {
-    const avatar = document.createElement('div');
-    avatar.className = 'chat-avatar';
-    avatar.textContent = '🤖';
-    row.appendChild(avatar);
+    row.appendChild(chatAvatar());
   }
 
   const bubble = document.createElement('div');
@@ -90,10 +103,7 @@ export function addThinkingBubble(messagesEl) {
   const row = document.createElement('div');
   row.className = 'chat-row chat-row-assistant';
 
-  const avatar = document.createElement('div');
-  avatar.className = 'chat-avatar';
-  avatar.textContent = '🤖';
-  row.appendChild(avatar);
+  row.appendChild(chatAvatar());
 
   const bubble = document.createElement('div');
   bubble.className = 'chat-bubble chat-bubble-assistant';
@@ -109,10 +119,7 @@ export function addChoiceBubble(messagesEl, text, choices, onPick) {
   const row = document.createElement('div');
   row.className = 'chat-row chat-row-assistant';
 
-  const avatar = document.createElement('div');
-  avatar.className = 'chat-avatar';
-  avatar.textContent = '🤖';
-  row.appendChild(avatar);
+  row.appendChild(chatAvatar());
 
   const wrap = document.createElement('div');
   wrap.className = 'chat-bubble chat-bubble-assistant chat-choice-bubble';

@@ -9,7 +9,7 @@ import { addBubble, addThinkingBubble, addChoiceBubble, setBubbleText, playSucce
 import { wireVoiceInput } from './voice-input.js';
 /* 26/10/2026: פענוח התשובה חי במקום אחד, והעוזר ליצירת סרטון
    מייבא מאותו קובץ - אחרת הוא הציג את השורה הטכנית למשתמשת. */
-import { extractIdeaSummary, ideaTextOnly, RECOGNIZED_MARKER } from './idea-reply.js';
+import { extractIdeaSummary, ideaTextOnly, labeledIdea, RECOGNIZED_MARKER } from './idea-reply.js';
 import { burstConfetti } from './confetti.js';
 import { confirmDialog } from './confirm-dialog.js';
 import { updateIdea } from './ideas-store.js';
@@ -179,7 +179,6 @@ let pendingIdeaContext = null;
 // startIdeaChatWithExistingIdea, consumed by greetAndAskForIdea.
 let pendingIdeaToCheck = null;
 
-const ROADMAP_URL = 'https://mayakislev-ux.github.io/lehiyot-brand/מפת-דרכים-ליצירת-תוכן.html';
 
 function messagesEl() {
   return document.getElementById('chat-messages');
@@ -242,14 +241,15 @@ function addPostIdeaButtons(bubble, finalizedText, ideaSummary) {
   saveBtn.addEventListener('click', () => saveFinalIdea(finalizedText));
   bubble.appendChild(saveBtn);
 
-  /* נפתח מתוך העוזר: הדרך הטבעית היא לחזור אליו עם הרעיון המדויק */
-  if (assistantReturn) {
+  /* נפתח מתוך העוזר: הדרך הטבעית היא לחזור אליו עם הרעיון והמסר המדויקים */
+  if (chatReturn && chatReturn.handoff) {
     const backBtn = document.createElement('button');
     backBtn.type = 'button';
     backBtn.className = 'chat-cta-btn chat-back-assistant-btn';
     backBtn.textContent = '↩ לחזור לעוזר עם הרעיון המדויק';
     const idea = (ideaSummary && ideaSummary.idea) || finalizedText;
-    backBtn.addEventListener('click', () => returnToAssistant(idea));
+    const message = (ideaSummary && ideaSummary.message) || '';
+    backBtn.addEventListener('click', () => returnFromChat({ idea, message }));
     bubble.appendChild(backBtn);
   }
 }
@@ -316,7 +316,7 @@ function greetAndAskForIdea() {
   const registerVerb = profile.pronoun === 'אתה' ? 'רשום' : (profile.pronoun === 'את' ? 'רשמי' : 'רשמ/י');
   addBubble(
     messagesEl(),
-    `${profile.name ? `${profile.name}, ` : ''}${registerVerb} לי מה הרעיון שלך ואדייק אותך.\n\n💡 טיפ: אם קשה לך להמציא רעיון מ-0 (וזה רוב האנשים!) - הכי מומלץ להתחיל משכפול רעיון וזווית הנגשה שראית ברשת ומצאו חן בעיניך. ככה לא צריך לשבור את הראש על רעיון חדש, לא צריך לחשוב לבד איך לצלם כי הפורמט כבר מוכח, וזה גם עוזר לפתח הבנה שיווקית של מה עובד. מדריך מלא לשכפול תוכן: https://docs.google.com/document/d/16E3UA0ukElNLcxHT_5C84XrWUZJ3iN0AVPD4BiNphx8/edit?tab=t.0`,
+    `${profile.name ? `${profile.name}, ` : ''}${registerVerb} לי מה הרעיון שלך ואדייק אותך.`,
     'assistant'
   );
 }
@@ -406,16 +406,19 @@ async function sendIdeaMessage(text) {
       playSuccessSound();
       burstConfetti();
     }
-    const { visibleReply, summary, idea, angle, story } = extractIdeaSummary(reply);
-    const specialLinks = [
-      { label: '🗺️ למפת הדרכים ליצירת תוכן', url: ROADMAP_URL, onClick: () => showView('roadmap') },
-    ];
-    setBubbleText(thinkingBubble, visibleReply, specialLinks);
+    const { visibleReply, summary, idea, angle, story, message } = extractIdeaSummary(reply);
+    /* 04/11/2026 (מאיה): כפתור "למפת הדרכים" ירד מהתוצאה הסופית. */
+    setBubbleText(thinkingBubble, visibleReply);
     if (summary) {
-      lastIdeaSummary = { idea, angle, story };
+      lastIdeaSummary = { idea, angle, story, message };
       addPostIdeaButtons(thinkingBubble, summary, lastIdeaSummary);
-    } else if (visibleReply.includes(ROADMAP_URL)) {
-      addPostIdeaButtons(thinkingBubble, visibleReply.split(ROADMAP_URL)[0].trim(), lastIdeaSummary);
+    } else {
+      /* השורה הטכנית חסרה, אבל הרעיון כתוב בסעיפים: עדיין אפשר לשמור ולחזור */
+      const labeled = labeledIdea(visibleReply);
+      if (labeled.idea && labeled.message) {
+        lastIdeaSummary = { idea: labeled.idea, angle: labeled.angle, story: '', message: labeled.message };
+        addPostIdeaButtons(thinkingBubble, labeled.idea, lastIdeaSummary);
+      }
     }
     messagesEl().scrollTop = messagesEl().scrollHeight;
     history.push({ role: 'assistant', content: visibleReply });
@@ -494,7 +497,7 @@ export async function startIdeaChat() {
     console.error('startIdeaChat failed:', err);
     loadingBubble.closest('.chat-row').remove();
     started = false;
-    addBubble(messagesEl(), 'משהו השתבש בטעינת הצ\'אט (יכול לקרות אחרי שהאפליקציה הייתה ברקע זמן ארוך) - נסו לצאת וללחוץ שוב על "בדיקת רעיון", ואם זה חוזר - רעננו את הדף.', 'assistant');
+    addBubble(messagesEl(), 'משהו השתבש בטעינת הצ\'אט (יכול לקרות אחרי שהאפליקציה הייתה ברקע זמן ארוך) - נסו לצאת וללחוץ שוב על "צ\'אט לבדיקת רעיון", ואם זה חוזר - רעננו את הדף.', 'assistant');
   }
 }
 
@@ -560,7 +563,7 @@ export async function startIdeaChatWithExistingIdea(idea) {
     console.error('startIdeaChatWithExistingIdea failed:', err);
     loadingBubble.closest('.chat-row').remove();
     started = false;
-    addBubble(messagesEl(), 'משהו השתבש בטעינת הצ\'אט - נסו לצאת וללחוץ שוב על "בדיקת רעיון".', 'assistant');
+    addBubble(messagesEl(), 'משהו השתבש בטעינת הצ\'אט - נסו לצאת וללחוץ שוב על "צ\'אט לבדיקת רעיון".', 'assistant');
   }
 }
 
@@ -570,18 +573,21 @@ export async function startIdeaChatWithExistingIdea(idea) {
    פותח אותו עם מה שכבר נכתב אצלו, וכפתור קבוע למעלה מחזיר אליו.
    onBack(idea) נקרא עם הרעיון המדויק כשבוחרים להעביר אותו, ובלעדיו
    (null) כשרק חוזרים. */
-let assistantReturn = null;
+/* 04/11/2026: הצ'אט נפתח גם מכרטיס במרכז הלמידה, ואז החזרה היא לשם.
+   { onBack, handoff }: handoff = נפתח מהעוזר, ויש כפתור שמחזיר אליו את
+   הרעיון והמסר. */
+let chatReturn = null;
 
 function backToAssistantBtn() {
   return document.getElementById('chat-back-to-assistant');
 }
 
-function returnToAssistant(idea = null) {
-  const onBack = assistantReturn;
-  assistantReturn = null;
+function returnFromChat(result = null) {
+  const ret = chatReturn;
+  chatReturn = null;
   const btn = backToAssistantBtn();
   if (btn) btn.hidden = true;
-  if (onBack) onBack(idea);
+  if (ret && ret.onBack) ret.onBack(result);
 }
 
 /** מה נשלח לצ'אט מתוך שתי התיבות של העוזר. ריק = הצ'אט פשוט מברך. */
@@ -592,11 +598,31 @@ export function assistantSeedText({ topic = '', punchline = '' } = {}) {
   return t || p;
 }
 
-export async function startIdeaChatFromAssistant(seed = {}, { onBack } = {}) {
-  assistantReturn = typeof onBack === 'function' ? onBack : null;
+export function startIdeaChatFromAssistant(seed = {}, { onBack } = {}) {
+  return openIdeaChat(seed, {
+    onBack, handoff: true, backLabel: '→ חזרה לעוזר ליצירת סרטון', backNote: '(כל מה שכתבתם שמור)',
+  });
+}
+
+/* 04/11/2026 (מאיה): כרטיס עצמאי במרכז הלמידה, למנוי המלא בלבד */
+export function startIdeaChatFromHub() {
+  if (document.body.dataset.plan === 'refs') return Promise.resolve();
+  return openIdeaChat({}, { onBack: () => showView('guide'), handoff: false, backLabel: '→ חזרה למרכז למידה' });
+}
+
+async function openIdeaChat(seed = {}, { onBack, handoff = false, backLabel = '', backNote = '' } = {}) {
+  chatReturn = typeof onBack === 'function' ? { onBack, handoff } : null;
   showView('chat');
   const btn = backToAssistantBtn();
-  if (btn) btn.hidden = !assistantReturn;
+  if (btn) {
+    btn.hidden = !chatReturn;
+    btn.textContent = backLabel;
+    if (backNote) {
+      const small = document.createElement('small');
+      small.textContent = ` ${backNote}`;
+      btn.appendChild(small);
+    }
+  }
   document.getElementById('edit-profile-btn').hidden = !isAdmin();
   document.getElementById('replay-tour-btn').hidden = !isAdmin();
 
@@ -622,16 +648,18 @@ export async function startIdeaChatFromAssistant(seed = {}, { onBack } = {}) {
     if (profile) greetAndAskForIdea();
     else startOnboarding();
   } catch (err) {
-    console.error('startIdeaChatFromAssistant failed:', err);
+    console.error('openIdeaChat failed:', err);
     loadingBubble.closest('.chat-row').remove();
     started = false;
-    addBubble(messagesEl(), 'משהו השתבש בטעינת הצ\'אט. אפשר לחזור לעוזר בכפתור למעלה ולנסות שוב.', 'assistant');
+    addBubble(messagesEl(), 'משהו השתבש בטעינת הצ\'אט. אפשר לחזור בכפתור למעלה ולנסות שוב.', 'assistant');
   }
 }
 
 export function wireIdeaChat() {
   const backBtn = backToAssistantBtn();
-  if (backBtn) backBtn.addEventListener('click', () => returnToAssistant(null));
+  if (backBtn) backBtn.addEventListener('click', () => returnFromChat(null));
+  const hubCard = document.getElementById('hub-link-idea-chat');
+  if (hubCard) hubCard.addEventListener('click', () => { startIdeaChatFromHub(); });
 
   const form = document.getElementById('chat-form');
   const input = document.getElementById('chat-input');

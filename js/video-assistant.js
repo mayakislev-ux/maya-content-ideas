@@ -1623,16 +1623,25 @@ async function openAngleChat({ box, punchBox, angleBtn }) {
   );
 }
 
-/* החזרה מהצ'אט. עם רעיון מדויק הוא נכנס לתיבה "על מה הסרטון?", והמסר
-   נשאר כמו שנכתב. בלי רעיון חוזרים בדיוק למה שהיה. */
-function returnFromAngleChat(idea) {
+/* החזרה מהצ'אט. הרעיון המדויק נכנס לתיבה "על מה הסרטון?", והמסר האחד
+   (04/11/2026: הצ'אט מזקק עכשיו גם אותו) לתיבת המסר. מה שלא חזר נשאר
+   כמו שנכתב. בלי תוצאה חוזרים בדיוק למה שהיה. */
+function returnFromAngleChat(result) {
   showView('video-assistant');
-  if (idea && state.screen === 'idea-sharpen') {
-    state.drafts = withDraft(state.drafts || {}, 'idea-sharpen', 'va-idea-sharp', idea);
+  const r = typeof result === 'string' ? { idea: result } : (result || {});
+  const idea = String(r.idea || '').trim();
+  const message = String(r.message || '').trim();
+  const here = state.screen === 'idea-sharpen';
+  if (here && (idea || message)) {
+    let drafts = state.drafts || {};
+    if (idea) drafts = withDraft(drafts, 'idea-sharpen', 'va-idea-sharp', idea);
+    if (message && state.branch !== 'footage') drafts = withDraft(drafts, 'idea-sharpen', 'va-idea-punch', message);
+    state.drafts = drafts;
     saveAll().catch((err) => console.error('saveSession failed:', err));
   }
   render();
-  if (idea && state.screen === 'idea-sharpen') showToast('הרעיון המדויק נכנס לתיבה "על מה הסרטון?"');
+  if (here && idea && message) showToast('הרעיון והמסר המדויקים נכנסו לתיבות');
+  else if (here && idea) showToast('הרעיון המדויק נכנס לתיבה "על מה הסרטון?"');
 }
 
 /* 28/10/2026 (מאיה): "זהו הצ'אט בתכלס זה הזווית הקריאייטיבית, אבל הוא

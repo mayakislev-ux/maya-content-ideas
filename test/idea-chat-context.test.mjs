@@ -205,3 +205,33 @@ test('בנק הזוויות זהה בשרת ובלקוח, ומופיע בפרו�
   const p = buildSystemPrompt({ name: 'נועה', pronoun: 'את' });
   SERVER_ANGLES.forEach((a, i) => assert.ok(p.includes(`${i + 1}. ${a.name} - ${a.desc}`), a.name));
 });
+
+/* 04/11/2026 (מאיה): התוצאה הסופית בסעיפים, ושדה רביעי למסר האחד */
+test('השורה הטכנית: מסר אחד בשדה הרביעי, ושורה ישנה בלי מסר עדיין נקראת', async () => {
+  const { extractIdeaSummary } = await import('../js/idea-reply.js');
+  const r = extractIdeaSummary('טקסט\n[[IDEA_SUMMARY]]רעיון||טעות נפוצה||||המסר האחד');
+  assert.equal(r.idea, 'רעיון');
+  assert.equal(r.message, 'המסר האחד');
+  assert.equal(r.summary, 'רעיון | זווית: טעות נפוצה');
+  const old = extractIdeaSummary('טקסט\n[[IDEA_SUMMARY]]רעיון||טעות נפוצה||');
+  assert.equal(old.message, '');
+  const fromLabels = extractIdeaSummary('**הרעיון:** א\n**המסר האחד:** ב\n[[IDEA_SUMMARY]]א||טעות נפוצה||');
+  assert.equal(fromLabels.message, 'ב');
+});
+
+test('הסעיפים נקראים גם עם הדגשה, תבליט ואימוג׳י', async () => {
+  const { labeledIdea } = await import('../js/idea-reply.js');
+  assert.deepEqual(labeledIdea('**הרעיון:** א ב\n- **המסר האחד:** ג\n🎯 הזווית: השוואה - כך\n**לקהל:** נשים'), {
+    idea: 'א ב', message: 'ג', angle: 'השוואה - כך', audience: 'נשים',
+  });
+});
+
+test('הפרומפט: הסדר החדש, תוצאה בסעיפים, בלי מפת הדרכים', () => {
+  const p = buildSystemPrompt({ name: 'נועה', pronoun: 'את', business: 'ריסים', primaryAudience: 'נשים' });
+  for (const s of ["שלב א' (מה הרעיון)", "שלב ב' (להרחיב", "שלב ג' (המסר", "שלב ד' (זוויות", "שלב ו' (התוצאה הסופית"]) assert.ok(p.includes(s), s);
+  assert.ok(p.indexOf("שלב א' (מה הרעיון)") < p.indexOf("שלב ג' (המסר") && p.indexOf("שלב ג' (המסר") < p.indexOf("שלב ד' (זוויות"));
+  for (const label of ['**הרעיון:**', '**המסר האחד:**', '**הזווית:**', '**לקהל:**']) assert.ok(p.includes(label), label);
+  assert.doesNotMatch(p, /מפת-דרכים-ליצירת-תוכן/);
+  assert.match(p, /\|\|<המסר האחד/);
+  assert.match(p, /שאלה אחת בלבד בכל הודעה/);
+});

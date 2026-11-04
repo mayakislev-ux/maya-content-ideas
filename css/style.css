@@ -1425,11 +1425,8 @@ h1, h2, h3 {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--accent), var(--accent-700));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.1rem;
+  object-fit: cover;
+  background: var(--accent);
   box-shadow: 0 2px 8px rgba(38, 62, 168, 0.3);
 }
 
@@ -8006,3 +8003,6 @@ body.feed-open { overflow: hidden; }
 }
 .inspiration-card-dup-btn:hover { background: var(--accent-700, var(--accent)); }
 .feed-dup { font: inherit; font-size: 0.9rem; font-weight: 700; cursor: pointer; color: #111; background: #fff; border: 0; border-radius: 999px; padding: 8px 16px; min-height: 40px; }
+
+/* 04/11/2026 (מאיה): "צ'אט לבדיקת רעיון" במרכז הלמידה, למנוי המלא בלבד */
+body[data-plan="refs"] .hub-full-only { display: none !important; }

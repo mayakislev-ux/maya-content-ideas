@@ -34,7 +34,10 @@ export function extractIdeaSummary(reply) {
   // תמיד הדבר האחרון בתשובה, וחיתוך ב-"\n" הראשון היה משבש בשקט שדה
   // שמכיל ירידת שורה (למשל תמצית הסיפור).
   const rawTail = reply.slice(markerIndex + SUMMARY_MARKER.length).trim();
-  const [idea, rawAngle, story] = rawTail.split('||').map((part) => (part || '').trim());
+  /* 04/11/2026: שדה רביעי, המסר האחד. הוא נכנס לתיבת המסר בעוזר כשחוזרים
+     אליו. שורה ישנה עם שלושה שדות עדיין נקראת כמו שהייתה. */
+  const [idea, rawAngle, story, rawMessage] = rawTail.split('||').map((part) => (part || '').trim());
+  const message = rawMessage || labeledIdea(visibleReply).message || '';
 
   if (!idea) return { visibleReply, summary: null };
 
@@ -48,7 +51,31 @@ export function extractIdeaSummary(reply) {
   if (angle) composedTitle += ` | זווית: ${angle}`;
   if (story) composedTitle += ` | סיפור: ${story}`;
 
-  return { visibleReply, summary: composedTitle, idea, angle, story };
+  return { visibleReply, summary: composedTitle, idea, angle, story, message };
+}
+
+/* 04/11/2026 (מאיה): התוצאה הסופית כתובה בסעיפים ("הרעיון:", "המסר האחד:",
+   "הזווית:", "לקהל:"). כשהשורה הטכנית חסרה, הרעיון והמסר נקראים מכאן,
+   כדי שהחזרה לעוזר לא תיתקע על תשובה שהמודל שכח בה את השורה. */
+const LABELS = {
+  idea: /^(?:הרעיון|רעיון)$/,
+  message: /^(?:המסר האחד|המסר|הפואנטה|מסר)$/,
+  angle: /^(?:הזווית|הזוויות|זווית ההנגשה|זווית הנגשה|הזווית\/ות)$/,
+  audience: /^(?:לקהל|הקהל|למי)$/,
+};
+
+export function labeledIdea(text) {
+  const out = { idea: '', message: '', angle: '', audience: '' };
+  for (const raw of String(text || '').split('\n')) {
+    const line = raw.replace(/\*\*/g, '').replace(/^[\s\-•*🎯💡✨📌👥]+/u, '').trim();
+    const m = /^([^:：]{2,20})\s*[:：]\s*(.+)$/.exec(line);
+    if (!m) continue;
+    const label = m[1].trim();
+    for (const [key, re] of Object.entries(LABELS)) {
+      if (!out[key] && re.test(label)) out[key] = m[2].trim();
+    }
+  }
+  return out;
 }
 
 /** מסיר את סימון "רעיון חזק" מתחילת התשובה. { text, recognized } */
