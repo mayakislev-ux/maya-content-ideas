@@ -327,11 +327,13 @@ export function wireIdeaForm() {
     const submitBtn = e.currentTarget.querySelector('button[type="submit"]');
     if (submitBtn) submitBtn.disabled = true;
     try {
-      if (editingId) {
-        await updateIdea(editingId, data);
-      } else {
-        await addIdea(data);
-      }
+      /* 05/11/2026: בלי רשת Firestore לא מחזירה תשובה, והכפתור היה נשאר נעול
+         לתמיד. אחרי 15 שניות משחררים ומראים את הודעת השגיאה הקיימת. */
+      const write = editingId ? updateIdea(editingId, data) : addIdea(data);
+      await Promise.race([
+        write,
+        new Promise((_, reject) => { setTimeout(() => reject(new Error('save timeout')), 15000); }),
+      ]);
     } catch (err) {
       console.error('idea save failed:', err);
       errorEl.textContent = 'שמירת הרעיון נכשלה, בדקו חיבור ונסו שוב';

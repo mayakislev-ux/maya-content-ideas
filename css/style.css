@@ -8288,3 +8288,8 @@ body[data-plan="refs"] .hub-full-only { display: none !important; }
   border-radius: 10px;
   padding: 8px 12px;
 }
+
+/* 05/11/2026: בפס הספירה / פס תצוגת הלקוחה (z 9999) ה-✕ של חלון גבוה יכול
+   לשבת מתחתיו, ובדף הצילום ובתיאור אין סגירה בלחיצה בחוץ. */
+.cosmic-modal-overlay { padding-top: calc(16px + var(--top-bar-h, 0px)); }
+.cosmic-modal { max-height: calc(100svh - var(--top-bar-h, 0px) - 32px); }

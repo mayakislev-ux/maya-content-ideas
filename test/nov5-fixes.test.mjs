@@ -87,7 +87,9 @@ describe('השרת: מכסות ובדיקות קלט', () => {
   });
 });
 
-describe('storage.rules: העלאה לתמלול', () => {
+/* 05/11/2026: הכלל נשאר בחוץ עד שיש לחשבון השירות של Storage הרשאה לקרוא
+   מ-Firestore. בלעדיה כל העלאה של לקוחה נחסמת, ורק מאיה עוברת. */
+describe('storage.rules: העלאה לתמלול', { skip: 'ממתין להרשאת firestoreServiceAgent לפני פרסום' }, () => {
   const RULES = read('../storage.rules');
   test('רק מי שברשימה ובמנוי בתוקף, כמו isAllowed/notExpired ב-firestore.rules', () => {
     const block = RULES.slice(RULES.indexOf('match /transcribeUploads/'));

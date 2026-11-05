@@ -54,7 +54,7 @@ import {
   cacheDomainInfoLocally, readCachedDomainInfo, spinReveal,
 } from './video-assistant-fx.js';
 /* 05/11/2026: הדבקה חכמה, מיקרופון, מד אורך, דף צילום ותיאור לסרטון */
-import { mountSmartPaste } from './va-smart-paste.js';
+import { mountSmartPaste, parseOptions } from './va-smart-paste.js';
 import { attachMic } from './va-mic.js';
 import { lengthMeterHtml, duplicationRef } from './va-length.js';
 import { summaryToolsHtml, wireSummaryTools } from './va-summary-tools.js';
@@ -1193,6 +1193,14 @@ function promptPeek(html) {
   return `<details class="va-more va-prompt-peek"><summary>לראות את הפרומפט</summary><div class="cosmic-prompt-box">${html}</div></details>`;
 }
 
+/* 05/11/2026: אחרי "הדבקה חכמה" קל ללחוץ "ממשיכים" עם כל התשובה בתיבה, ואז
+   20 כיוונים או 30 הוקים נשמרים כ"מה שבחרת" ונכנסים לכל פרומפט אחריו. */
+function pastedManyOptions(text) {
+  if (parseOptions(text).length < 2) return false;
+  showToast('הודבקה תשובה שלמה. לבחור אחת מהאפשרויות בכרטיסים שמתחת לתיבה');
+  return true;
+}
+
 function copyBtn(text, label) {
   return `<button type="button" class="cosmic-btn va-copy-btn" data-copy-text="${encodeURIComponent(text)}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"></rect><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"></path></svg><span>${label}</span></button>`;
 }
@@ -1610,6 +1618,7 @@ async function renderPrompt1() {
   if (bankEdit) bankEdit.addEventListener('click', () => dispatch({ type: 'BACK' }));
   document.getElementById('va-hook-chosen-btn').addEventListener('click', () => {
     const hook = document.getElementById('va-hook-input').value.trim();
+    if (pastedManyOptions(hook)) return;
     if (!hook) {
       showToast('צריך להדביק את ההוק שבחרת קודם');
       return;
@@ -2089,6 +2098,7 @@ async function renderCreativePackaging() {
   wireChips('[data-start]', 'data-start', (v) => { startingPoint = v; });
   document.getElementById('va-packaging-done-btn').addEventListener('click', () => {
     const packaging = document.getElementById('va-packaging-input').value.trim();
+    if (pastedManyOptions(packaging)) return;
     if (!packaging) {
       showToast('צריך להדביק את הכיוון שבחרת קודם');
       return;
@@ -2370,6 +2380,7 @@ async function renderScratchHook() {
   });
   document.getElementById('va-scratch-hook-done-btn').addEventListener('click', () => {
     const hook = document.getElementById('va-scratch-hook-input').value.trim();
+    if (pastedManyOptions(hook)) return;
     if (!hook) {
       showToast('צריך להדביק את ההוק שבחרת קודם');
       return;
@@ -2402,6 +2413,7 @@ async function renderScratchHookReinforce() {
   mountSmartPaste(document.getElementById('va-scratch-reinforce-input'));
   document.getElementById('va-scratch-reinforce-done-btn').addEventListener('click', () => {
     const text = document.getElementById('va-scratch-reinforce-input').value.trim();
+    if (pastedManyOptions(text)) return;
     if (!text) {
       showToast('צריך להדביק את חיזוק ההוק קודם');
       return;
