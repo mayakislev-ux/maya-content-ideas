@@ -1,6 +1,6 @@
 import { onAuthChange, signInWithGoogle, signOutUser, portalHandoff } from './auth.js';
 import { loginErrorText } from './login-error-text.js';
-import { showSubscriptionCountdown, showExpiredNotice } from './subscription-notice.js';
+import { showSubscriptionCountdown, showExpiredNotice, syncTopBarHeight } from './subscription-notice.js';
 import { isInAppBrowser, showInAppBrowserWarning } from './inapp-browser.js';
 import { auth, db, functions } from './firebase-init.js';
 import { doc, getDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
@@ -584,7 +584,7 @@ async function loadClientsForView() {
   return (res.data && res.data.clients) || [];
 }
 
-function wireClientPick(pickBtn, viewed) {
+function wireClientPick(pickBtn, viewed, { enterView = false } = {}) {
   let clientsPromise = null;
   pickBtn.addEventListener('click', async () => {
     clientsPromise = clientsPromise || loadClientsForView();
@@ -604,12 +604,22 @@ function wireClientPick(pickBtn, viewed) {
       clients: list,
       currentUid: viewed ? viewed.uid : null,
       onPick: (chosen) => {
+        /* מהכפתור בתפריט: "החשבון שלי" אומר להישאר איפה שהיא, בלי טעינה */
+        if (enterView && !chosen) return;
+        if (enterView) setClientView(true);
         setViewedClient(chosen);
         window.location.reload();
       },
     });
   });
 }
+
+/* 05/11/2026 (מאיה: "כפתור באפליקציה שמאפשר לי להיכנס למוח השיווקי של כל
+   לקוחה, לראות את כל התוצרים שלה ולערוך אם צריך"). המנגנון היה קיים (תצוגה
+   כלקוחה ואז בחירת לקוחה בפס הסגול), אבל קבור בתחתית המסך ובשני שלבים. עכשיו
+   כפתור בתפריט, למנהלת בלבד (actsAsOwner, נבדק בהתחברות), שפותח ישר את
+   חלון החיפוש ונכנס ללקוחה שנבחרה בצעד אחד. */
+wireClientPick(document.getElementById('enter-client-btn'), null, { enterView: true });
 
 onAuthChange(async (user) => {
   if (!user && portalHandoffPending) return;
@@ -748,6 +758,7 @@ onAuthChange(async (user) => {
       window.location.reload();
     });
     document.body.prepend(bar);
+    syncTopBarHeight();
   }
 
   document.getElementById('login-screen').hidden = true;
@@ -797,6 +808,7 @@ onAuthChange(async (user) => {
   document.getElementById('token-usage-btn').hidden = !isAdmin;
   document.getElementById('view-feedback-btn').hidden = !isAdmin;
   document.getElementById('client-view-btn').hidden = !isAdmin;
+  document.getElementById('enter-client-btn').hidden = !isAdmin;
 
   /* 26/10/2026: שלושת הכפתורים שהמודולים האלה שירתו ירדו לבקשתה, ולכן
      אין יותר מה לחבר כאן. המודולים עצמם נשארו בריפו ולא נמחקו, כדי

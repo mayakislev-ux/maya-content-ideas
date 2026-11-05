@@ -7,6 +7,7 @@ import { animateCountUp } from './count-up.js';
 import { burstConfetti } from './confetti.js';
 import { getProfile } from './user-profile.js';
 import { showView } from './view-router.js';
+import { isClientView } from './client-view.js';
 
 // אימוג'י (📋/🔍) לא היו מובנים כאייקוני פעולה - במיוחד 🔍 (זכוכית
 // מגדלת), שנקרא באופן טבעי כ"חיפוש" ולא כ"בדיקה חוזרת בצ'אט". אייקוני
@@ -361,9 +362,17 @@ export function wireArchiveControls(onItemClick) {
   const quickAddInput = document.getElementById('quick-add-input');
   const quickAddBtn = document.getElementById('quick-add-btn');
   const draftSavedIndicator = document.getElementById('draft-saved-indicator');
-  const QUICK_ADD_DRAFT_KEY = 'quick-add-draft';
+  /* 05/11/2026: הטיוטה נשמרת במפתח אחד למכשיר. בתוך לקוחה (תצוגה כלקוחה)
+     מאיה ראתה בתיבה של הלקוחה את הטיוטה של עצמה, ומה שהקלידה שם דרס אותה.
+     בתצוגה כלקוחה הטיוטה פשוט לא נשמרת ולא משוחזרת. ללקוחות אין שינוי. */
+  const QUICK_ADD_DRAFT_KEY = isClientView() ? null : 'quick-add-draft';
+  const draftStore = {
+    get: () => { try { return QUICK_ADD_DRAFT_KEY ? localStorage.getItem(QUICK_ADD_DRAFT_KEY) : null; } catch { return null; } },
+    set: (v) => { try { if (QUICK_ADD_DRAFT_KEY) localStorage.setItem(QUICK_ADD_DRAFT_KEY, v); } catch { /* אין אחסון */ } },
+    clear: () => { try { if (QUICK_ADD_DRAFT_KEY) localStorage.removeItem(QUICK_ADD_DRAFT_KEY); } catch { /* אין אחסון */ } },
+  };
 
-  const savedDraft = localStorage.getItem(QUICK_ADD_DRAFT_KEY);
+  const savedDraft = draftStore.get();
   if (savedDraft) quickAddInput.value = savedDraft;
   const showDraftSaved = debounce(() => {
     if (!quickAddInput.value.trim()) return;
@@ -373,7 +382,7 @@ export function wireArchiveControls(onItemClick) {
     draftSavedIndicator.classList.add('draft-saved-pop');
   }, 400);
   quickAddInput.addEventListener('input', () => {
-    localStorage.setItem(QUICK_ADD_DRAFT_KEY, quickAddInput.value);
+    draftStore.set(quickAddInput.value);
     showDraftSaved();
   });
 
@@ -405,7 +414,7 @@ export function wireArchiveControls(onItemClick) {
     // מנקים רק אם בינתיים לא הקלידו משהו חדש
     if (quickAddInput.value.trim() === title) {
       quickAddInput.value = '';
-      localStorage.removeItem(QUICK_ADD_DRAFT_KEY);
+      draftStore.clear();
     }
     if (navigator.vibrate) navigator.vibrate(15);
     showToast(`⭐ ${todaysIdeaCountLabel()} ${QUICK_ADD_TOASTS[Math.floor(Math.random() * QUICK_ADD_TOASTS.length)]}`);

@@ -529,6 +529,7 @@ function continueAfterProfile() {
 }
 
 export async function startIdeaChat() {
+  clearChatReturn();
   // "עריכת פרטים" כאן מריץ מחדש את כל שיחת ההיכרות כולל "תחום העיסוק" -
   // זה נשאר כלי מנהלת בלבד בכוונה, כדי שמשתמשת רגילה לא תוכל לשנות את
   // התחום שהחשבון שלה מוגבל אליו. עדכון קהל יעד לכולן נעשה דרך מודל
@@ -574,6 +575,7 @@ export async function startIdeaChatWithExistingIdea(idea) {
     );
     if (!proceed) return;
   }
+  clearChatReturn();
   showView('chat');
 
   document.getElementById('edit-profile-btn').hidden = !isAdmin();
@@ -625,6 +627,17 @@ let chatReturn = null;
 
 function backToAssistantBtn() {
   return document.getElementById('chat-back-to-assistant');
+}
+
+/* 05/11/2026 (מאיה): חזרה לעוזר נשארה "תלויה" משיחה קודמת שנפתחה מהעוזר
+   ויצאו ממנה בתפריט התחתון. שיחה שנפתחת אחר כך מרעיון במאגר הציעה
+   "לחזור לעוזר עם הרעיון המדויק" ודחפה לעוזר רעיון לא נכון. כל כניסה
+   לצ'אט שלא מהעוזר מנקה את זה. function declaration, ולכן זמין גם
+   למעלה בקובץ למרות ש-chatReturn מוגדר כאן. */
+function clearChatReturn() {
+  chatReturn = null;
+  const btn = backToAssistantBtn();
+  if (btn) btn.hidden = true;
 }
 
 function returnFromChat(result = null) {

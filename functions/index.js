@@ -70,6 +70,11 @@ const DAILY_LIMITS = {
   extractOpeningHook: 40,
   /* 04/11/2026: כל קריאה צופה בסרטון שלם, 2-6 סנט. */
   transcribeReference: 15,
+  /* 05/11/2026: שתיהן קראו ל-enforceRateLimit בלי שורה כאן, ו-count >= undefined
+     תמיד false, כלומר בלי תקרה בכלל. guessClientDomain נקראת פעם אחת ללקוחה,
+     ואצל מאיה פעם לכל לקוחה שהיא נכנסת אליה, ולכן 20 ולא 3. */
+  guessClientDomain: 20,
+  suggestSearchKeywords: 40,
 };
 
 // checkIdea/classifyIdea/generateWarmingPlan/generateContentPlan עד עכשיו רק
@@ -111,53 +116,90 @@ function assertMaxLength(value, max, fieldLabel) {
   }
 }
 
+/* 05/11/2026: String(m.content) הפך מערך של בלוקים ל-"[object Object]" (15
+   תווים), כך שתוכן במבנה מערך עקף את תקרת 60 אלף התווים לגמרי. הצ'אט
+   באפליקציה שולח רק טקסט, ולכן כל מבנה אחר, וכל role שאינו user/assistant,
+   נדחה כאן לפני שמגיע ל-AI. */
 function assertMessagesWithinLimit(messages, maxTotalChars) {
-  const total = (messages || []).reduce((sum, m) => sum + String((m && m.content) || '').length, 0);
+  let total = 0;
+  for (const m of messages || []) {
+    if (!m || typeof m !== 'object' || (m.role !== 'user' && m.role !== 'assistant') || typeof m.content !== 'string') {
+      throw new HttpsError('invalid-argument', 'מבנה השיחה לא תקין, התחילו שיחה חדשה');
+    }
+    total += m.content.length;
+  }
   if (total > maxTotalChars) {
     throw new HttpsError('invalid-argument', 'השיחה ארוכה מדי, התחילו שיחה חדשה');
   }
 }
 
-async function enforceRateLimit(uid, fnName) {
-  const today = new Date().toISOString().slice(0, 10);
-  const ref = db.collection('rateLimits').doc(`${uid}_${today}_${fnName}`);
-  const limit = DAILY_LIMITS[fnName];
+/* 05/11/2026: שדות הפרופיל שהבקשה שולחת נכנסים ישר לפרומפט המערכת, ואת
+   האורך שלהם אף אחד לא מדד. רק מחרוזות, ועד 500 תווים לשדה. */
+const PROFILE_FIELD_MAX = 500;
+function clampProfile(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const out = {};
+  for (const [k, v] of Object.entries(raw).slice(0, 40)) {
+    if (typeof v === 'string') out[k] = v.slice(0, PROFILE_FIELD_MAX);
+    else if (typeof v === 'number' || typeof v === 'boolean') out[k] = v;
+  }
+  return out;
+}
 
+function dailyLimitFor(fnName) {
+  const limit = DAILY_LIMITS[fnName];
+  /* 05/11/2026: שם בלי שורה ב-DAILY_LIMITS היה בלי תקרה בשקט. עדיף שהפונקציה
+     תיפול מיד, בבדיקה הראשונה, מאשר שתעלה כסף בלי גבול. */
+  if (!Number.isFinite(limit)) {
+    throw new HttpsError('internal', `no DAILY_LIMITS entry for "${fnName}"`);
+  }
+  return limit;
+}
+
+function rateLimitRef(uid, fnName) {
+  const today = new Date().toISOString().slice(0, 10);
+  return db.collection('rateLimits').doc(`${uid}_${today}_${fnName}`);
+}
+
+const RATE_LIMIT_MESSAGE = 'הגעת למכסת השימוש היומית ב-AI, נסו שוב מחר';
+
+/* 05/11/2026: בדיקה בנפרד ועדכון רק בסוף אפשרו לכמה קריאות במקביל לעבור כולן
+   את הבדיקה (כולן ראו את אותה ספירה). עכשיו המקום נשמר מראש באותה טרנזקציה
+   שבודקת, וקריאה שלא הצליחה מחזירה אותו ב-release(). commit() מסמן הצלחה,
+   ואחריו release() לא עושה כלום. כך עדיין רק ייצור שהצליח נספר, כמו
+   שהפיצול הישן נועד (ניסיון חוזר אחרי ניתוק רשת לא שורף שתי יחידות). */
+async function reserveRateLimit(uid, fnName) {
+  const limit = dailyLimitFor(fnName);
+  const ref = rateLimitRef(uid, fnName);
   await db.runTransaction(async (tx) => {
     const snap = await tx.get(ref);
-    const count = snap.exists ? snap.data().count : 0;
+    const count = snap.exists ? snap.data().count || 0 : 0;
     if (count >= limit) {
-      throw new HttpsError('resource-exhausted', 'הגעת למכסת השימוש היומית ב-AI, נסו שוב מחר');
+      throw new HttpsError('resource-exhausted', RATE_LIMIT_MESSAGE);
     }
     tx.set(ref, { count: count + 1, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
   });
+  let settled = false;
+  return {
+    commit() {
+      settled = true;
+    },
+    async release() {
+      if (settled) return;
+      settled = true;
+      try {
+        await ref.update({ count: admin.firestore.FieldValue.increment(-1), updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+      } catch (err) {
+        console.error(`rate limit refund failed for ${fnName}:`, err.message);
+      }
+    },
+  };
 }
 
-// checkIdea/generateContentPlan/generateWarmingPlan עושות retry אוטומטי יחיד
-// בצד הלקוח על כשל רשת חולף (אותה "Load failed" ב-iOS Safari שמתועדת למעלה)
-// - עם enforceRateLimit הישן, כל ניסיון (גם כשל חולף) צורך יחידת מכסה, אז
-// לחיצה אחת שנתקלת בניתוק רשת רגעי שורפת 2 יחידות בלי שהמשתמשת יודעת. הפיצול
-// הזה מפריד בדיקה (לפני הקריאה היקרה ל-Anthropic) מספירה בפועל (רק אחרי
-// שהתשובה התקבלה בהצלחה) - כדי שרק ייצור אמיתי שהצליח ייספר נגד המכסה.
-async function checkRateLimitNotExceeded(uid, fnName) {
-  const today = new Date().toISOString().slice(0, 10);
-  const ref = db.collection('rateLimits').doc(`${uid}_${today}_${fnName}`);
-  const limit = DAILY_LIMITS[fnName];
-  const snap = await ref.get();
-  const count = snap.exists ? snap.data().count : 0;
-  if (count >= limit) {
-    throw new HttpsError('resource-exhausted', 'הגעת למכסת השימוש היומית ב-AI, נסו שוב מחר');
-  }
-}
-
-async function incrementRateLimit(uid, fnName) {
-  const today = new Date().toISOString().slice(0, 10);
-  const ref = db.collection('rateLimits').doc(`${uid}_${today}_${fnName}`);
-  await db.runTransaction(async (tx) => {
-    const snap = await tx.get(ref);
-    const count = snap.exists ? snap.data().count : 0;
-    tx.set(ref, { count: count + 1, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
-  });
+/* פונקציות onCall: נספר מראש וזהו (כמו עד היום), רק עכשיו גם שם לא מוכר נכשל. */
+async function enforceRateLimit(uid, fnName) {
+  const slot = await reserveRateLimit(uid, fnName);
+  slot.commit();
 }
 
 /* 27/10/2026: הסימן ל"כבר הצענו זוויות" היה קיומם של "1." ו-"2." ו-"3."
@@ -873,14 +915,17 @@ exports.checkIdea = onRequest(
       return;
     }
 
+    let rateSlot;
     try {
-      await checkRateLimitNotExceeded(uid, 'checkIdea');
+      rateSlot = await reserveRateLimit(uid, 'checkIdea');
     } catch (err) {
-      res.status(429).json({ error: err.message || 'הגעת למכסת השימוש היומית ב-AI, נסו שוב מחר' });
+      res.status(429).json({ error: err.message || RATE_LIMIT_MESSAGE });
       return;
     }
+    /* 05/11/2026: המקום במכסה כבר נשמר. כל יציאה בלי תשובה מחזירה אותו (finally בסוף). */
+    try {
 
-    const profile = (req.body && req.body.profile) || null;
+    const profile = clampProfile(req.body && req.body.profile);
     /* הרעיון נפתח מתוך המאגר: הקטגוריה, שלב השכנוע ופילוח הקהל כבר
        מתויגים עליו, ועד היום נשלחה רק הכותרת והם נזרקו.
        שלושתם רשימות סגורות, ומה שלא בהן נזרק: הערכים האלה נכנסים ישר
@@ -1056,7 +1101,7 @@ exports.checkIdea = onRequest(
       return;
     }
 
-    await incrementRateLimit(uid, 'checkIdea');
+    rateSlot.commit();
 
     // rewriteInHebrewIfNeeded already catches its own errors internally and
     // falls back to the original text - no try/catch needed here.
@@ -1070,6 +1115,9 @@ exports.checkIdea = onRequest(
       res.end();
     } finally {
       clearInterval(heartbeat);
+    }
+    } finally {
+      await rateSlot.release();
     }
   }
 );
@@ -1943,10 +1991,11 @@ exports.generateWarmingPlan = onRequest(
       return;
     }
 
+    let rateSlot;
     try {
-      await checkRateLimitNotExceeded(uid, 'generateWarmingPlan');
+      rateSlot = await reserveRateLimit(uid, 'generateWarmingPlan');
     } catch (err) {
-      res.status(429).json({ error: err.message || 'הגעת למכסת השימוש היומית ב-AI, נסו שוב מחר' });
+      res.status(429).json({ error: err.message || RATE_LIMIT_MESSAGE });
       return;
     }
 
@@ -2047,7 +2096,7 @@ exports.generateWarmingPlan = onRequest(
       // story) is very likely to show up from both generations.
       const missingInfo = [...new Set([...(ongoing.missingInfo || []), ...(presale.missingInfo || [])])];
 
-      await incrementRateLimit(uid, 'generateWarmingPlan');
+      rateSlot.commit();
 
       res.write(
         `data: ${JSON.stringify({
@@ -2063,6 +2112,7 @@ exports.generateWarmingPlan = onRequest(
       res.end();
     } finally {
       clearInterval(heartbeat);
+      await rateSlot.release();
     }
   }
 );
@@ -2128,10 +2178,11 @@ exports.breakdownStorySequence = onRequest(
       return;
     }
 
+    let rateSlot;
     try {
-      await checkRateLimitNotExceeded(uid, 'breakdownStorySequence');
+      rateSlot = await reserveRateLimit(uid, 'breakdownStorySequence');
     } catch (err) {
-      res.status(429).json({ error: err.message || 'הגעת למכסת השימוש היומית ב-AI, נסו שוב מחר' });
+      res.status(429).json({ error: err.message || RATE_LIMIT_MESSAGE });
       return;
     }
 
@@ -2370,17 +2421,15 @@ exports.breakdownStorySequence = onRequest(
         })}\n\n`
       );
       res.end();
-      try {
-        await incrementRateLimit(uid, 'breakdownStorySequence');
-      } catch (err) {
-        console.error('breakdownStorySequence: rate limit write failed after the result was sent:', err.message);
-      }
+      /* 05/11/2026: הספירה נעשתה מראש, וכאן רק מסמנים שהיא נשארת */
+      rateSlot.commit();
     } catch (err) {
       console.error('breakdownStorySequence: unexpected error:', err);
       res.write(`data: ${JSON.stringify({ error: err.message || 'משהו השתבש, נסו שוב' })}\n\n`);
       res.end();
     } finally {
       clearInterval(heartbeat);
+      await rateSlot.release();
     }
   }
 );
@@ -2456,12 +2505,15 @@ exports.generateContentPlan = onRequest(
       return;
     }
 
+    let rateSlot;
     try {
-      await checkRateLimitNotExceeded(uid, 'generateContentPlan');
+      rateSlot = await reserveRateLimit(uid, 'generateContentPlan');
     } catch (err) {
-      res.status(429).json({ error: err.message || 'הגעת למכסת השימוש היומית ב-AI, נסו שוב מחר' });
+      res.status(429).json({ error: err.message || RATE_LIMIT_MESSAGE });
       return;
     }
+    /* 05/11/2026: המקום במכסה כבר נשמר. כל יציאה בלי תכנית מחזירה אותו (finally בסוף). */
+    try {
 
     // הפרומפט עד עכשיו לא ידע בכלל מי קהל היעד האמיתי של בעלת העסק - רק
     // ראה תגית מופשטת ("עיקרי"/"משני") על כל רעיון, בלי שום תיאור אמיתי
@@ -2618,12 +2670,15 @@ exports.generateContentPlan = onRequest(
       return;
     }
 
-    await incrementRateLimit(uid, 'generateContentPlan');
+    rateSlot.commit();
 
     res.write(
       `data: ${JSON.stringify({ done: true, plan: { weeks: parsed.weeks, seriesNote: parsed.seriesNote || '' } })}\n\n`
     );
     res.end();
+    } finally {
+      await rateSlot.release();
+    }
   }
 );
 
@@ -2749,8 +2804,10 @@ exports.syncRefsSubscriptions = require('./refs-subscription').syncRefsSubscript
   const handler = tr.createTranscribeHandler({
     HttpsError,
     enforceAllowlist: (email) => enforceAllowlist(email, { allowRefs: true }),
-    checkRate: (uid) => checkRateLimitNotExceeded(uid, 'transcribeReference'),
-    incrementRate: (uid) => incrementRateLimit(uid, 'transcribeReference'),
+    /* 05/11/2026: שמירת מקום מראש, ספירה רק על הצלחה, החזרה על כישלון */
+    checkRate: (uid) => reserveRateLimit(uid, 'transcribeReference'),
+    incrementRate: (uid, slot) => slot.commit(),
+    releaseRate: (uid, slot) => slot.release(),
     get bucket() { return admin.storage().bucket(TRANSCRIBE_BUCKET); },
     fetchLinkVideo: tr.fetchLinkVideo,
     fetchImpl: (...args) => fetch(...args),

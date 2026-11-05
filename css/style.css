@@ -364,7 +364,9 @@ h1, h2, h3 {
   box-shadow: 0 6px 22px rgba(16, 22, 58, 0.4);
   border-radius: 0 0 24px 24px;
   position: sticky;
-  top: var(--offline-banner-height, 0px);
+  /* 05/11/2026: מתחת לפס המנוי / פס תצוגה כלקוחה, כשיש (--top-bar-h נכתב
+     מ-subscription-notice.js). בלי זה הפס כיסה את הכותרת ואת כפתורי התפריט. */
+  top: calc(var(--offline-banner-height, 0px) + var(--top-bar-h, 0px));
   z-index: 5;
 }
 
@@ -970,7 +972,9 @@ h1, h2, h3 {
 @media (max-width: 720px) {
   html { font-size: 18px; }
   :root {
-    --bottom-nav-h: calc(66px + env(safe-area-inset-bottom, 0px));
+    /* 05/11/2026: נמדד בפועל כ-74 פיקסל (ועכשיו תוויות 13px), לא 66. ההערכה
+       הנמוכה השאירה את הטוסט ואת שורת הקלט חלקית מתחת לתפריט. */
+    --bottom-nav-h: calc(75px + env(safe-area-inset-bottom, 0px));
     /* Dramatic shadows read as "premium depth" on a large desktop
        display, but the same shadow size relative to a small phone
        screen starts to look heavy/muddy rather than elegant - a
@@ -985,7 +989,7 @@ h1, h2, h3 {
        normal 1rem top padding isn't enough - the title renders partly behind
        the camera cutout. Push it down by the actual safe-area inset instead
        of guessing a fixed number. */
-    padding-top: calc(1rem + env(safe-area-inset-top, 0px));
+    padding-top: calc(1rem + var(--hdr-safe-top, env(safe-area-inset-top, 0px)));
     padding-bottom: 1rem;
     transition: padding 200ms ease;
   }
@@ -1020,7 +1024,7 @@ h1, h2, h3 {
      app.js) gives back that space without losing the "always reachable"
      guarantee. */
   .app-header.scrolled {
-    padding-top: calc(0.5rem + env(safe-area-inset-top, 0px));
+    padding-top: calc(0.5rem + var(--hdr-safe-top, env(safe-area-inset-top, 0px)));
     padding-bottom: 0.5rem;
   }
   .app-header.scrolled .greeting-line { display: none; }
@@ -1038,7 +1042,7 @@ h1, h2, h3 {
   .mobile-menu-btn {
     display: flex;
     position: absolute;
-    top: calc(1rem + env(safe-area-inset-top, 0px));
+    top: calc(1rem + var(--hdr-safe-top, env(safe-area-inset-top, 0px)));
     right: 1rem;
     transition: width 200ms ease, height 200ms ease, top 200ms ease, font-size 200ms ease;
   }
@@ -1047,12 +1051,12 @@ h1, h2, h3 {
     width: 2rem;
     height: 2rem;
     font-size: 0.95rem;
-    top: calc(0.5rem + env(safe-area-inset-top, 0px));
+    top: calc(0.5rem + var(--hdr-safe-top, env(safe-area-inset-top, 0px)));
   }
   .app-header #signout-btn { display: none; }
   .theme-toggle-btn {
     position: absolute;
-    top: calc(1rem + env(safe-area-inset-top, 0px));
+    top: calc(1rem + var(--hdr-safe-top, env(safe-area-inset-top, 0px)));
     left: 1rem;
     transition: width 200ms ease, height 200ms ease, top 200ms ease, font-size 200ms ease, background 150ms ease, transform 150ms var(--ease-snap);
   }
@@ -1079,7 +1083,8 @@ h1, h2, h3 {
     border: none;
     color: var(--muted);
     font-family: inherit;
-    font-size: 0.7rem;
+    /* 05/11/2026: 0.7rem היו 12.6 פיקסל, קטן מדי לתווית יחידה של כפתור */
+    font-size: 13px;
     font-weight: 600;
     padding: 0.4rem 0.2rem;
     border-radius: 12px;
@@ -1136,7 +1141,7 @@ h1, h2, h3 {
        "top" below - otherwise on a notched phone the button (pushed down by
        the inset) ends up tall enough to dip into this padding zone and
        overlap the first tab button instead of sitting cleanly above it. */
-    padding: calc(5rem + env(safe-area-inset-top, 0px)) 1.2rem 2rem;
+    padding: calc(5rem + var(--hdr-safe-top, env(safe-area-inset-top, 0px))) 1.2rem 2rem;
     overflow-y: auto;
     height: 100%;
     box-sizing: border-box;
@@ -1180,7 +1185,7 @@ h1, h2, h3 {
   .close-menu-btn {
     display: block;
     position: absolute;
-    top: calc(1rem + env(safe-area-inset-top, 0px));
+    top: calc(1rem + var(--hdr-safe-top, env(safe-area-inset-top, 0px)));
     left: 1rem;
     background: rgba(255, 255, 255, 0.15);
     border: none;
@@ -1249,14 +1254,17 @@ h1, h2, h3 {
     pointer-events: auto;
   }
 
-  .fab {
+  /* 05/11/2026: שני הכללים האלה הפסידו לכללי הבסיס שבהמשך הקובץ (אותה
+     ספציפיות, מופיעים אחר כך). בשורת הקלט זה השאיר את ריפוד ה-safe-area
+     של הבסיס, רצועה מתה של כ-48 פיקסל מעל התפריט התחתון, שכבר מטפל בו. */
+  .fab.fab {
     font-size: 1.05rem;
     padding: 1.1rem 1.5rem;
     box-shadow: 0 6px 22px rgba(38, 62, 168, 0.55);
   }
 
-  .chat-input-row {
-    padding: 1rem 1.2rem 1.6rem;
+  .chat-input-row.chat-input-row {
+    padding: 0.8rem 1.2rem;
     gap: 0.8rem;
   }
 
@@ -1273,7 +1281,7 @@ h1, h2, h3 {
     bottom: calc(var(--bottom-nav-h, 70px) + var(--vv-bottom-gap, 0px));
   }
 
-  .chat-input-row textarea {
+  .chat-input-row.chat-input-row textarea {
     min-height: 54px;
     font-size: 1.05rem;
   }
@@ -2244,8 +2252,9 @@ textarea:focus-visible,
      this session), found while sweeping for this bug class. */
   .category-chip.category-chip { font-size: 1rem; padding: 0.6rem 1.1rem; }
   .category-chips.category-chips { gap: 0.8rem; }
-  .rating-chip { font-size: 1rem; padding: 0.6rem 1.1rem; }
-  .rating-chips { gap: 0.8rem; }
+  /* 05/11/2026: אותה תקלה בדיוק, ולכן גם כאן המחלקה פעמיים */
+  .rating-chip.rating-chip { font-size: 1rem; padding: 0.6rem 1.1rem; min-height: 44px; }
+  .rating-chips.rating-chips { gap: 0.8rem; }
   .archive-item-header { gap: 0.7rem; }
   .copy-idea-btn,
   .recheck-idea-btn,
@@ -3151,6 +3160,13 @@ textarea:focus-visible,
   font-weight: bold;
   cursor: pointer;
   white-space: nowrap;
+  /* 05/11/2026: "בטלו" היה גבוה כ-20 פיקסל, קשה לפגוע בו באצבע */
+  min-height: 44px;
+  padding: 0 12px;
+}
+/* 05/11/2026: בטלפון הטוסט ישב מתחת לתפריט התחתון */
+@media (max-width: 720px) {
+  .toast { bottom: calc(var(--bottom-nav-h, 75px) + 12px); }
 }
 
 .tour-blocker {
@@ -5282,6 +5298,8 @@ textarea:focus-visible,
 
   .st-plan-sheet__card {
     max-height: 90vh;
+    /* 05/11/2026: בספארי 90vh כולל את שורת הכתובת, והחלון נחתך מלמטה */
+    max-height: calc(100svh - 2.5rem);
     padding: 1.1rem 1rem 1.2rem;
   }
   .wl-modal__card {
@@ -6011,13 +6029,14 @@ body.ip-open { overflow: hidden; }
      זוויות הראה אחת בלבד - והחלוקה נראתה חלקית בדיוק מפני שהיא הוסתרה.
      התגיות נשארות, רק מתכווצות ונשברות לשורה. */
   .inspiration-card-angles { flex-wrap: wrap; row-gap: 4px; }
-  .inspiration-card-angle { font-size: 10.5px; padding: 2px 6px; }
+  /* 05/11/2026: מינימום 13 פיקסל לכל טקסט */
+  .inspiration-card-angle { font-size: 13px; padding: 2px 6px; }
   .inspiration-card-read { font-size: 11px; padding: 2px 7px; }
   .inspiration-card-info { padding: 0.6rem; gap: 0.35rem; }
 
   /* האזהרה על דיוק התרגום תופסת שליש מכרטיס בטלפון. היא חשובה, אבל
      מקומה אחרי שהיא פתחה את הטקסט ולא לפני */
-  .inspiration-card-accuracy-warning { font-size: 10.5px; line-height: 1.35; }
+  .inspiration-card-accuracy-warning { font-size: 13px; line-height: 1.35; }
 
   .inspiration-intro { font-size: 14px; }
   .inspiration-examples { gap: 6px; }
@@ -6181,6 +6200,9 @@ body.ip-open { overflow: hidden; }
     font-size: max(16px, 1rem);
   }
   .table-cell-select { min-height: 44px; }
+  /* 05/11/2026: הרשימה בטבלת תכנית התוכן נושאת .table-cell-select פעמיים
+     (0.85rem = 15.3px בטלפון) וגברה על השורה שלמעלה. אייפון הגדיל את הדף. */
+  .table-cell-select.table-cell-select { font-size: max(16px, 1rem); }
 }
 
 /* חלון פתוח: הגלילה בפנים לא נמשכת לדף שמאחור */
@@ -6296,6 +6318,15 @@ body[data-plan="refs"] #portal-back-btn,
 body[data-plan="refs"] #login-portal-back { display: none !important; }
 
 /* 20/10/2026: לשונית העוזר ליצירת סרטון קיימת רק במנוי הרפרנסים */
+/* 05/11/2026: כניסה ללקוחה, מנהלת בלבד. בולט בכוונה, כדי שמאיה תמצא אותו */
+.enter-client-btn.enter-client-btn {
+  background: #f0d6a3;
+  color: #2a1640;
+  font-weight: 800;
+}
+.enter-client-btn.enter-client-btn:hover { background: #f6e3be; color: #2a1640; }
+.tab-btn[hidden],
+.enter-client-btn[hidden] { display: none !important; }
 .tab-refs-only { display: none !important; }
 body[data-plan="refs"] .tab-refs-only { display: inline-flex !important; }
 /* 04/11/2026: כפתור החזרה בעוזר מוביל אצלה למאגר ההשראה (app.js), ולכן
@@ -6420,8 +6451,21 @@ body[data-plan="refs"] .view-tabs-scroll { justify-content: center; }
   position: sticky; top: 0; z-index: 9999;
   display: flex; align-items: center; justify-content: center; gap: 10px;
   flex-wrap: wrap; padding: 9px 16px;
+  /* 05/11/2026: באפליקציה המותקנת (black-translucent) הפס ישב מתחת לשעון
+     ולסוללה. עכשיו הוא זה שמפנה את מקום פס המצב, והכותרת שמתחתיו לא צריכה. */
+  padding-top: calc(9px + env(safe-area-inset-top, 0px));
   background: linear-gradient(135deg, #7b3799 0%, #531e62 100%);
   color: #fff; font-size: 0.85rem; font-weight: 600; text-align: center;
+}
+/* כשיש פס למעלה הוא כבר מפנה את מקום פס המצב, ולכן הכותרת, התפריט והכפתורים
+   שלה לא מוסיפים את המרווח הזה פעם שנייה */
+body:has(> .sub-countdown),
+body:has(> .preview-bar) { --hdr-safe-top: 0px; }
+@media (max-width: 720px) {
+  .view-tabs.view-tabs {
+    top: var(--top-bar-h, 0px);
+    height: calc(100vh - var(--top-bar-h, 0px));
+  }
 }
 .sub-countdown b { color: #f0d6a3; font-weight: 800; }
 .sub-countdown.is-urgent { background: linear-gradient(135deg, #b3341f 0%, #7d1f12 100%); }
@@ -6433,6 +6477,7 @@ body[data-plan="refs"] .view-tabs-scroll { justify-content: center; }
   position: sticky; top: 0; z-index: 9999;
   display: flex; align-items: center; justify-content: center; gap: 14px;
   flex-wrap: wrap; padding: 9px 16px;
+  padding-top: calc(9px + env(safe-area-inset-top, 0px));
   background: linear-gradient(135deg, #7b3799 0%, #531e62 100%);
   color: #fff; font-size: 0.85rem; font-weight: 600; text-align: center;
 }
@@ -6599,8 +6644,9 @@ body[data-plan="refs"] .view-tabs-scroll { justify-content: center; }
   background: rgba(255,255,255,.12);
   border: none;
   border-radius: 50%;
-  width: 36px;
-  height: 36px;
+  /* 05/11/2026: 36 -> 44, גודל מגע מינימלי */
+  width: 44px;
+  height: 44px;
   color: #fff;
   cursor: pointer;
   font-size: 16px;
@@ -6656,7 +6702,8 @@ body[data-plan="refs"] .view-tabs-scroll { justify-content: center; }
 }
 .cosmic-context-box span {
   display: block;
-  font-size: 11px;
+  /* 05/11/2026: "ההוק שבחרת:" היה 11 פיקסל */
+  font-size: 13px;
   font-weight: 600;
   opacity: .7;
   margin-bottom: 2px;
@@ -6767,7 +6814,7 @@ body[data-plan="refs"] .view-tabs-scroll { justify-content: center; }
 .cosmic-accordion-item summary::-webkit-details-marker { display: none; }
 .cosmic-accordion-item summary::after { content: '⌄'; font-size: 16px; opacity: .7; }
 .cosmic-accordion-item[open] summary::after { content: '⌃'; }
-.cosmic-accordion-body { padding: 0 14px 14px; font-size: 13px; line-height: 1.6; opacity: .9; }
+.cosmic-accordion-body { padding: 0 14px 14px; font-size: 14px; line-height: 1.6; opacity: .9; }
 .cosmic-accordion-body .cosmic-angle-example {
   margin-top: 8px;
   padding: 10px;
@@ -6857,6 +6904,8 @@ body[data-plan="refs"] .view-tabs-scroll { justify-content: center; }
   width: 100%;
   max-height: 85vh;
   overflow-y: auto;
+  /* 05/11/2026: גלילה עד הסוף בחלון לא ממשיכה לגלול את המסך שמאחוריו */
+  overscroll-behavior: contain;
   background: linear-gradient(160deg, #14184a 0%, #1c2f82 100%);
   border: 1px solid rgba(255,255,255,.25);
   border-radius: 20px;
@@ -6877,13 +6926,14 @@ body[data-plan="refs"] .view-tabs-scroll { justify-content: center; }
 }
 .cosmic-modal-close {
   position: absolute;
-  top: 14px;
-  left: 14px;
+  top: 10px;
+  left: 10px;
   background: rgba(255,255,255,.12);
   border: none;
   border-radius: 50%;
-  width: 32px;
-  height: 32px;
+  /* 05/11/2026: ה-✕ של "התסריטים שלי" היה 32 פיקסל */
+  width: 44px;
+  height: 44px;
   color: #fff;
   font-size: 16px;
   cursor: pointer;
@@ -7198,7 +7248,7 @@ body[data-plan="refs"] .view-tabs-scroll { justify-content: center; }
 }
 .cosmic-howto li { margin: 0 0 2px; }
 .cosmic-hint {
-  font-size: 12.5px;
+  font-size: 13px;
   opacity: .7;
   margin: 6px 0 0;
   line-height: 1.55;
@@ -7551,6 +7601,12 @@ body[data-plan="refs"] .view-tabs-scroll { justify-content: center; }
 
 /* תיבות תוכן */
 #video-assistant-view .cosmic-prompt-box { background: #eef6fb; color: var(--va-ink); }
+/* 05/11/2026: התסריט להקראה בקול היה 13 פיקסל בתיבה של 260 פיקסל (max-height
+   של .cosmic-prompt-box גבר על 46vh של .va-read-script). גם התסריט הסופי
+   במסך "מוכן!" יושב באותה תיבה. svh ולא vh, כדי שבספארי לא ייחתך. */
+#video-assistant-view .cosmic-prompt-box { font-size: 16px; }
+.va-read-script.cosmic-prompt-box,
+#video-assistant-view .cosmic-summary-list ~ .cosmic-prompt-box { max-height: 46vh; max-height: 46svh; }
 #video-assistant-view .cosmic-context-box { background: #fff4cc; color: var(--va-ink); }
 #video-assistant-view .cosmic-accordion-item { border-color: var(--va-line); background: #fff; }
 #video-assistant-view .cosmic-accordion-item.is-selected { border-color: var(--va-blue); background: #eef6fb; }
@@ -7578,6 +7634,9 @@ body[data-plan="refs"] .view-tabs-scroll { justify-content: center; }
 }
 .cosmic-modal-overlay .cosmic-modal-close { background: #e6f2fa; color: #0f2340; }
 .cosmic-modal-overlay .cosmic-textarea { background: #fff; border: 1.5px solid #cfe2ee; color: #0f2340; }
+/* 05/11/2026: שדות העריכה ב"התסריטים שלי" ירשו 14px מ-.cosmic-textarea (הכלל
+   שמופיע אחרי הכלל של 16px לטלפון ולכן גובר), ואייפון הגדיל את כל הדף בנגיעה */
+.cosmic-modal-overlay .cosmic-textarea { font-size: 16px; }
 .cosmic-modal-overlay .cosmic-textarea::placeholder { color: #a7bccf; }
 .cosmic-modal-overlay .cosmic-btn { background: #16205a; border: 1px solid #16205a; color: #fff; }
 .cosmic-modal-overlay .cosmic-btn--primary { background: #16205a; border-color: #16205a; color: #fff; }
@@ -7922,20 +7981,21 @@ body.feed-open { overflow: hidden; }
 .feed-slide__bottom { width: 100%; max-width: 560px; flex: none; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; }
 .feed-sub { position: absolute; inset-inline: 10px; bottom: 58px; z-index: 2; width: fit-content; max-width: calc(100% - 20px); margin: 0 auto; box-sizing: border-box; pointer-events: none; text-align: center; color: #fff; font-size: 1.02rem; font-weight: 700; line-height: 1.35; background: rgba(0,0,0,.62); border-radius: 8px; padding: 4px 10px; }
 .feed-sub-start { position: absolute; top: 10px; inset-inline-end: 10px; z-index: 2; font: inherit; font-size: 0.8rem; font-weight: 700; cursor: pointer; color: #111; background: #fff; border: 0; border-radius: 999px; padding: 7px 12px; }
-.feed-sub-toggle { font: inherit; font-size: 0.78rem; font-weight: 700; cursor: pointer; color: #fff; background: transparent; border: 1px solid rgba(255,255,255,.35); border-radius: 999px; padding: 4px 12px; }
+.feed-sub-toggle { font: inherit; font-size: 0.78rem; font-weight: 700; cursor: pointer; color: #fff; background: transparent; border: 1px solid rgba(255,255,255,.35); border-radius: 999px; padding: 4px 12px; min-height: 40px; }
 .feed-tag { margin: 0; font-size: 0.8rem; opacity: .85; }
 .feed-note { margin: 0; font-size: 0.85rem; font-weight: 700; }
 .feed-read { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 6px; }
-.feed-read__btn { font: inherit; font-size: 0.85rem; font-weight: 700; cursor: pointer; color: #fff; background: rgba(255,255,255,.16); border: 0; border-radius: 999px; padding: 6px 14px; }
+.feed-read__btn { font: inherit; font-size: 0.85rem; font-weight: 700; cursor: pointer; color: #fff; background: rgba(255,255,255,.16); border: 0; border-radius: 999px; padding: 6px 14px; min-height: 40px; }
 .feed-read__panel { width: 100%; box-sizing: border-box; max-height: 34vh; overflow-y: auto; overscroll-behavior: contain; background: #1d1824; border-radius: 10px; padding: 10px 12px; text-align: start; }
 .feed-read__panel[hidden] { display: none; }
 .feed-read--auto .feed-read__panel { max-height: 24vh; }
 .feed-sound { position: absolute; top: 10px; inset-inline-start: 10px; z-index: 2; font: inherit; font-size: 0.85rem; font-weight: 700; cursor: pointer; color: #111; background: #fff; border: 0; border-radius: 999px; padding: 8px 14px; }
 .feed-read__warning { margin: 0 0 8px; font-size: 0.78rem; line-height: 1.45; opacity: .85; }
 .feed-read__text { margin: 0 0 8px; font-size: 0.9rem; line-height: 1.55; white-space: pre-wrap; }
-.feed-read__copy { font: inherit; font-size: 0.8rem; font-weight: 700; cursor: pointer; color: #111; background: #fff; border: 0; border-radius: 8px; padding: 5px 10px; }
+.feed-read__copy { font: inherit; font-size: 0.8rem; font-weight: 700; cursor: pointer; color: #111; background: #fff; border: 0; border-radius: 8px; padding: 5px 10px; min-height: 40px; }
 .feed-nav {
-  position: absolute; z-index: 3; inset-inline-end: 4px; width: 28px; height: 56px; border: 0; border-radius: 8px;
+  /* 05/11/2026: החצים היו 28 פיקסל רוחב, ושלושת כפתורי הקריאה 26-30 גובה (min-height 40) */
+  position: absolute; z-index: 3; inset-inline-end: 4px; width: 40px; height: 56px; border: 0; border-radius: 8px;
   background: rgba(255,255,255,.14); color: #fff; font-size: 13px; cursor: pointer;
 }
 .feed-nav--prev { top: calc(50% - 62px); }
