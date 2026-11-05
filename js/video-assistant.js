@@ -53,6 +53,11 @@ import {
   burstConfetti, flipReveal, startParticleTrail,
   cacheDomainInfoLocally, readCachedDomainInfo, spinReveal,
 } from './video-assistant-fx.js';
+/* 05/11/2026: הדבקה חכמה, מיקרופון, מד אורך, דף צילום ותיאור לסרטון */
+import { mountSmartPaste } from './va-smart-paste.js';
+import { attachMic } from './va-mic.js';
+import { lengthMeterHtml, duplicationRef } from './va-length.js';
+import { summaryToolsHtml, wireSummaryTools } from './va-summary-tools.js';
 
 const SUBCATEGORIES_BY_DOMAIN = {
   'יופי וקוסמטיקה': ['טיפול פנים', 'איפור קבוע', 'עיצוב גבות', 'קורס עיצוב גבות', 'הרמת גבות', 'מיקרובליידינג', 'הלחמת ריסים', 'קורס הלחמת ריסים', 'הרמת ריסים', 'ציפורניים', 'קורס ציפורניים', 'קורס איפור קבוע ומיקרובליידינג', 'קוסמטיקאית: אקנה ופיגמנטציה', 'אידוי לתלתלים', 'שיער אפרו', 'החלקות שיער', 'שיער', 'איפור', 'לייזר והסרת שיער', 'אסתטיקה רפואית', 'טיפולי גוף', 'שיזוף'],
@@ -357,6 +362,12 @@ const scriptsLibrary = createScriptsLibrary({
     state = withLiveEdit(state, changes);
     saveSession(state).catch((err) => console.error('saveSession failed:', err));
     render();
+  },
+  /* 05/11/2026: סימון בדף הצילום של הסרטון הפתוח. בלי render, כדי שהמסך
+     שמאחורי החלון לא יצויר מחדש בכל סימון. */
+  patchLive: (changes) => {
+    state = { ...state, ...changes };
+    saveAll().catch((err) => console.error('saveSession failed:', err));
   },
   liveDeleted: () => {
     state = { ...INITIAL_STATE, history: [] };
@@ -1474,6 +1485,7 @@ async function renderPrompt1() {
     </div>
   `);
   wireCopyButtons(screenEl());
+  mountSmartPaste(document.getElementById('va-hook-input'));
   const bankEdit = document.getElementById('va-bank-edit-link');
   if (bankEdit) bankEdit.addEventListener('click', () => dispatch({ type: 'BACK' }));
   document.getElementById('va-hook-chosen-btn').addEventListener('click', () => {
@@ -1541,6 +1553,7 @@ async function renderHerWords() {
     </div>
   `);
   prepareExtractionHelper();
+  attachMic('va-herwords-input');
   document.getElementById('va-herwords-help-btn').addEventListener('click', openExtractionHelperModal);
   wireMegillahGate({
     prefix: 'va-herwords',
@@ -1715,7 +1728,7 @@ function renderReadAloud() {
     <p>לבדוק שהכל מתחבר, שאין פספוסים, ושהאורך מרגיש נכון</p>
     <p class="cosmic-context-box">נא לבדוק את האורך של התסריט, שהוא לא ארוך משמעותית מאורך הסרטון המשוכפל</p>
     ${script
-      ? `<div class="cosmic-prompt-box va-read-script">${escapeHtml(script)}</div>`
+      ? `<div class="cosmic-prompt-box va-read-script">${escapeHtml(script)}</div>${lengthMeterHtml(script, duplicationRef(state))}`
       : '<p style="opacity:.75">התסריט לא נשמר בשלב הקודם, אפשר לחזור אחורה ולהדביק אותו</p>'}
     <div class="cosmic-btn-row">
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-read-done-btn">ממשיכים ←</button>
@@ -1791,6 +1804,7 @@ function renderIdeaSharpen() {
   `);
 
   const box = document.getElementById('va-idea-sharp');
+  attachMic('va-idea-sharp');
   /* 28/10/2026 (מאיה): "חייב עוד סעיף שהוא הכי קריטי - מה הפואנטה של
      הסרטון? מה המסר? ואז הפואנטה הופכת להיות הרעיון, ורק אז הצ'אט".
      בלי מסך נוסף: הפואנטה יושבת באותו מסך, מתחת לנושא. היא חובה, הצ'אט
@@ -1926,6 +1940,7 @@ async function renderCreativePackaging() {
     </div>
   `);
   wireCopyButtons(screenEl());
+  mountSmartPaste(document.getElementById('va-packaging-input'));
   /* 29/10/2026 (מאיה): "שתהיה אופציה למי שלא הבין מה זה קריאייטיב", ו"מה
      נקודת היציאה של הרעיון, ואז אופציה לפופאפ להסביר מה זה אומר". */
   document.getElementById('va-what-creative-link').addEventListener('click', () => openModal(`
@@ -2124,6 +2139,7 @@ function renderScratchDump() {
     </div>
   `);
   prepareExtractionHelper();
+  attachMic('va-scratch-dump-input');
   document.getElementById('va-scratch-help-btn').addEventListener('click', openExtractionHelperModal);
   // 28/10/2026: אותו מחסום כמו במגילה של השכפול. כאן נכתבו 40 ו-46 מילים
   wireMegillahGate({
@@ -2173,6 +2189,7 @@ async function renderScratchHook() {
     </div>
   `);
   wireCopyButtons(screenEl());
+  mountSmartPaste(document.getElementById('va-scratch-hook-input'));
   document.getElementById('va-hook-ref-btn').addEventListener('click', async () => {
     const text = document.getElementById('va-hook-ref-input').value.trim();
     if (!text) {
@@ -2231,6 +2248,7 @@ async function renderScratchHookReinforce() {
     </div>
   `);
   wireCopyButtons(screenEl());
+  mountSmartPaste(document.getElementById('va-scratch-reinforce-input'));
   document.getElementById('va-scratch-reinforce-done-btn').addEventListener('click', () => {
     const text = document.getElementById('va-scratch-reinforce-input').value.trim();
     if (!text) {
@@ -2337,6 +2355,9 @@ async function renderScratchDistill() {
       showToast('צריך להדביק את התסריט קודם');
       return;
     }
+    /* 05/11/2026: ההנעה לפעולה נשמרת, כדי שהתיאור לסרטון ימלא אותה לבד */
+    state.ctaType = cta || null;
+    state.ctaFunnel = cta === 'משפך' ? funnelInput.value.trim() : '';
     dispatch({ type: 'SCRATCH_SCRIPT_READY', text });
   });
 }
@@ -2383,7 +2404,8 @@ async function renderScratchScene() {
    הסיכום כאן עצר ב"לצלם ואז לערוך" והשמיט את שני האחרונים, כך שמי
    שסיימה כאן חשבה שהיא סיימה. */
 const CLOSING_STEPS = [
-  'לפני ההעלאה: לעבור על הצ\'קליסט לריל מנצח.',
+  /* 05/11/2026: הצ'קליסט לא היה קיים בשום מקום. עכשיו יש דף אמיתי. */
+  'לפני הצילום ולפני ההעלאה: לעבור על "דף צילום" (הכפתור 🎬 למטה), ולסמן שם כל מה שבוצע.',
   'להעלות לכל הפלטפורמות, ולא רק לאינסטגרם: גם יוטיוב שורטס, טיקטוק ופייסבוק.',
 ];
 
@@ -2455,7 +2477,9 @@ function renderSummary() {
     <ul class="cosmic-summary-list">${stepsHtml}</ul>
     ${script ? `<p style="font-weight:700;text-align:right;margin-bottom:8px">הטקסט/תסריט הסופי שלך:</p>
       <div class="cosmic-prompt-box">${escapeHtml(script)}</div>
-      ${copyBtn(script, 'להעתיק את הטקסט')}` : ''}
+      ${copyBtn(script, 'להעתיק את הטקסט')}
+      ${lengthMeterHtml(script, duplicationRef(state))}` : ''}
+    ${summaryToolsHtml()}
     ${state.referenceLink ? `<p style="font-weight:700;text-align:right;margin:14px 0 6px">הסרטון ששוכפל:</p>
       <p class="cosmic-context-box" dir="ltr" style="text-align:left;word-break:break-all">
         <a href="${escapeHtml(state.referenceLink)}" target="_blank" rel="noopener">${escapeHtml(state.referenceLink)}</a>
@@ -2471,6 +2495,13 @@ function renderSummary() {
   // 17/10/2026 (רעיון #2): קונפטי אמיתי בסיום.
   burstConfetti(card);
   if (script) wireCopyButtons(screenEl());
+  wireSummaryTools(screenEl(), {
+    getState: () => state,
+    patch: (changes) => { state = { ...state, ...changes }; saveAll().catch((err) => console.error('saveSession failed:', err)); },
+    script: script || '',
+    getContext: async () => ({ domain: await myDomain(), audience: await myAudience() }),
+    openModal, copyBtn, wireCopyButtons, showToast, serverErrorText,
+  });
   document.getElementById('va-restart-btn').addEventListener('click', restart);
 }
 

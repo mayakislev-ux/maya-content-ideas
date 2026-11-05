@@ -70,6 +70,8 @@ const DAILY_LIMITS = {
   extractOpeningHook: 40,
   /* 04/11/2026: כל קריאה צופה בסרטון שלם, 2-6 סנט. */
   transcribeReference: 15,
+  /* 05/11/2026: "✍️ תיאור לסרטון" בסיכום העוזר לסרטון. קריאה קטנה של Haiku. */
+  writeVideoDescription: 30,
 };
 
 // checkIdea/classifyIdea/generateWarmingPlan/generateContentPlan עד עכשיו רק
@@ -2736,6 +2738,26 @@ exports.draftScriptFeedback = require('./draftScriptFeedback').draftScriptFeedba
 
 // 15/10/2026: מנוי רפרנסים חודשי שמחובר למורנינג. paidUntil מתעדכן כל בוקר
 exports.syncRefsSubscriptions = require('./refs-subscription').syncRefsSubscriptions;
+
+/* 05/11/2026 (מאיה): "✍️ תיאור לסרטון" במסך הסיכום של העוזר לסרטון. תיאור
+   אחד ושלושה הוקים של טקסט על המסך, לפי הכללים שלה (בלי האשטגים ובלי קאבר).
+   פתוח גם למנוי הרפרנסים, כמו שאר העוזר. ראה video-description.js. */
+{
+  const vd = require('./video-description');
+  exports.writeVideoDescription = onCall({ secrets: [anthropicApiKey], region: 'us-central1', timeoutSeconds: 60 }, vd.createVideoDescriptionHandler({
+    HttpsError,
+    enforceAllowlist: (email) => enforceAllowlist(email, { allowRefs: true }),
+    enforceRateLimit: (uid) => enforceRateLimit(uid, 'writeVideoDescription'),
+    callModel: async (prompt) => {
+      const data = await callAnthropic(
+        anthropicApiKey.value(),
+        { model: 'claude-haiku-4-5-20251001', max_tokens: 900, messages: [{ role: 'user', content: prompt }] },
+        'writeVideoDescription'
+      );
+      return getResponseText(data);
+    },
+  }));
+}
 
 // 04/11/2026 (מאיה): "✨ תמלול מדויק" במסך התמלול של השכפול. ג'מיני צופה
 // בסרטון עצמו (מלינק של טיקטוק/אינסטגרם, או מקובץ שהועלה מהגלריה) ומחזיר

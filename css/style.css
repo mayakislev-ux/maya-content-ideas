@@ -8063,3 +8063,157 @@ body[data-plan="refs"] .hub-full-only { display: none !important; }
     min-height: 45vh !important;
   }
 }
+
+/* 05/11/2026 (מאיה): כלים חדשים בעוזר לסרטון. מה שבתוך הכרטיס מתחת ל-
+   #video-assistant-view. דף הצילום והתיאור לסרטון נפתחים בפופאפ שמוצמד
+   ל-body, ולכן הם מתחת ל-.cosmic-modal-overlay, כמו שאר הפופאפים של העוזר. */
+
+/* הדבקה חכמה: האפשרויות מהתשובה הארוכה, ככרטיסים */
+#video-assistant-view .va-smart-paste {
+  margin-top: 10px;
+  padding: 12px;
+  background: var(--va-fill);
+  border: 1px solid var(--va-line);
+  border-radius: 16px;
+  text-align: right;
+}
+#video-assistant-view .va-smart-paste[hidden] { display: none; }
+#video-assistant-view .va-smart-paste__title { margin: 0 0 8px; font-weight: 700; color: var(--va-ink); font-size: 15px; }
+#video-assistant-view .va-smart-paste__hint { margin: 8px 0 0; font-size: 13px; color: var(--va-muted); }
+#video-assistant-view .va-smart-paste__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 55vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+#video-assistant-view .va-smart-paste__card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  background: #fff;
+  border: 1.5px solid var(--va-line);
+  border-radius: 12px;
+  color: var(--va-ink);
+  font: inherit;
+  font-size: 16px;
+  line-height: 1.45;
+  text-align: right;
+  white-space: pre-line;
+  cursor: pointer;
+}
+#video-assistant-view .va-smart-paste__card:hover { border-color: var(--va-blue); }
+#video-assistant-view .va-smart-paste__card.is-picked {
+  border-color: var(--va-navy);
+  box-shadow: 0 0 0 3px #7fc8f0;
+}
+#video-assistant-view .va-smart-paste__num {
+  flex: 0 0 auto;
+  min-width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--va-navy);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+#video-assistant-view .va-smart-paste__card.is-picked .va-smart-paste__num { background: #1f8f5a; }
+
+/* מיקרופון מתחת לתיבות הכתיבה הארוכות */
+#video-assistant-view .va-mic-row { display: flex; justify-content: flex-start; margin-top: 8px; }
+#video-assistant-view .va-mic-row[hidden] { display: none; }
+#video-assistant-view .va-mic-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 16px;
+  border: 1.5px solid var(--va-blue);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--va-blue);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+#video-assistant-view .va-mic-btn[hidden] { display: none; }
+#video-assistant-view .va-mic-btn.mic-btn-active {
+  background: #ff5c5c;
+  border-color: #ff5c5c;
+  color: #fff;
+  animation: mic-pulse 1.2s infinite;
+}
+
+/* מד אורך: מילים ושניות */
+#video-assistant-view .va-length {
+  margin: 10px 0 0;
+  padding: 10px 14px;
+  background: var(--va-fill);
+  border-radius: 14px;
+  text-align: right;
+}
+#video-assistant-view .va-length__row { margin: 2px 0; font-size: 15px; color: var(--va-ink); }
+#video-assistant-view .va-length__row span { color: var(--va-muted); }
+#video-assistant-view .va-length.is-long { background: #fdecec; box-shadow: inset 0 0 0 1.5px #d64545; }
+#video-assistant-view .va-length.is-long .va-length__row strong:first-of-type { color: #b42318; }
+#video-assistant-view .va-length__warn { margin: 6px 0 0; font-size: 14px; font-weight: 700; color: #b42318; }
+
+/* שני הכלים בסוף הסיכום */
+#video-assistant-view .va-summary-tools,
+.cosmic-modal-overlay .va-lib-filming { margin-top: 14px; }
+#video-assistant-view .va-summary-tools { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+#video-assistant-view .va-tool-btn,
+.cosmic-modal-overlay .va-tool-btn { min-height: 52px; font-size: 16px; font-weight: 700; width: 100%; }
+@media (max-width: 380px) {
+  #video-assistant-view .va-summary-tools { grid-template-columns: 1fr; }
+}
+
+/* דף צילום (פופאפ) */
+.cosmic-modal-overlay .va-filming-modal { max-width: 560px; }
+.cosmic-modal-overlay .va-filming__lede { color: #3d5878; margin: 0 0 6px; }
+.cosmic-modal-overlay .va-filming__count { font-weight: 700; color: #1f8f5a; margin: 0 0 8px; }
+.cosmic-modal-overlay .va-filming__checks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.cosmic-modal-overlay .va-filming__check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-height: 44px;
+  padding: 10px 12px;
+  background: #fff;
+  border: 1px solid #d3e6f2;
+  border-radius: 12px;
+  font-size: 16px;
+  line-height: 1.4;
+  cursor: pointer;
+}
+.cosmic-modal-overlay .va-filming__check input { width: 22px; height: 22px; flex: 0 0 auto; margin: 0; accent-color: #16205a; }
+.cosmic-modal-overlay .va-filming__check:has(input:checked) { background: #eaf7f0; border-color: #9fd6b8; }
+.cosmic-modal-overlay .va-filming__h { margin: 18px 0 6px; font-size: 17px; color: #0f2340; }
+.cosmic-modal-overlay .va-filming__format { margin: 0 0 8px; color: #3d5878; }
+.cosmic-modal-overlay .va-filming__shots { margin: 0; padding-inline-start: 22px; display: flex; flex-direction: column; gap: 8px; }
+.cosmic-modal-overlay .va-filming__shots small { color: #5d7d99; font-weight: 700; }
+.cosmic-modal-overlay .va-filming__shots p { margin: 2px 0 0; white-space: pre-line; }
+.cosmic-modal-overlay .va-filming__empty { color: #5d7d99; }
+
+/* תיאור לסרטון (פופאפ) */
+.cosmic-modal-overlay .va-desc__lede { color: #3d5878; margin: 0 0 10px; }
+.cosmic-modal-overlay .cosmic-chip-btn { background: #fff; border: 1.5px solid #cfe2ee; color: #0f2340; }
+.cosmic-modal-overlay .cosmic-chip-btn--on { background: #16205a; border-color: #16205a; color: #fff; font-weight: 700; box-shadow: 0 0 0 3px #7fc8f0; }
+.cosmic-modal-overlay .cosmic-chip-btn--on::before { content: "✓ "; }
+.cosmic-modal-overlay .va-desc__cta { margin-top: 10px; }
+.cosmic-modal-overlay .va-desc__input { width: 100%; min-height: 48px; font-size: 16px; }
+.cosmic-modal-overlay .va-desc__label { font-weight: 700; margin: 14px 0 6px; }
+.cosmic-modal-overlay .va-desc__text { white-space: pre-line; text-align: right; }
+.cosmic-modal-overlay .va-desc__hooks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.cosmic-modal-overlay .va-desc__hooks li { background: #fff; border: 1px solid #d3e6f2; border-radius: 12px; padding: 10px 12px; }
+.cosmic-modal-overlay .va-desc__hooks p { margin: 0 0 8px; font-weight: 700; }
+.cosmic-modal-overlay .va-desc__wait { color: #5d7d99; }
+.cosmic-modal-overlay .va-desc__error { color: #b42318; font-weight: 600; }

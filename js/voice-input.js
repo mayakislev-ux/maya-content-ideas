@@ -28,19 +28,23 @@ export function voiceInputSupported() {
 
 /**
  * Wires a mic button to append live speech-to-text into a textarea.
- * @param {{buttonId: string, textareaId: string}} opts
+ * @param {{buttonId: string, textareaId: string, onText?: (textarea: HTMLTextAreaElement) => void, hintIfUnsupported?: boolean}} opts
+ *   onText: נקרא אחרי כל עדכון של הטקסט מהדיבור (05/11/2026: בעוזר לסרטון
+ *   התיבות נשמרות ונמדדות לפי אירועי input, ושינוי value מקוד לא מפעיל אותם).
+ *   hintIfUnsupported: false = רק להסתיר את הכפתור, בלי שורת ההסבר.
  * @returns {{ stop: () => void }} - stop() force-ends any in-progress
  *   recognition; callers should invoke it when the message is actually sent,
  *   otherwise a still-running recognition session can keep writing
  *   transcribed text into the textarea (or re-triggering the mic's "active"
  *   state) after the message it belonged to has already gone out.
  */
-export function wireVoiceInput({ buttonId, textareaId }) {
+export function wireVoiceInput({ buttonId, textareaId, onText = null, hintIfUnsupported = true }) {
   const button = document.getElementById(buttonId);
   const textarea = document.getElementById(textareaId);
   if (!button || !textarea) return { stop: () => {} };
   if (!voiceInputSupported()) {
     button.hidden = true;
+    if (!hintIfUnsupported) return { stop: () => {} };
     // כשל שקט לגמרי עד עכשיו - הכפתור פשוט נעלם, בלי שום הסבר. חיווי קטן
     // וחד-פעמי כדי שמי שכן מצפה למיקרופון (בדפדפן שלא תומך, כמו Firefox
     // בטלפון) תדע שהיא לא "מפספסת" משהו - זו לא בעיה חוסמת, תמיד אפשר לכתוב.
@@ -97,6 +101,7 @@ export function wireVoiceInput({ buttonId, textareaId }) {
         else interimText += transcript;
       }
       textarea.value = baseText + finalText + interimText;
+      if (onText) onText(textarea);
     };
 
     recognition.onerror = (event) => {

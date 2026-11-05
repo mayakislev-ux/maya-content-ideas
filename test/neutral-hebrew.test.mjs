@@ -29,6 +29,13 @@ const FILES = [
   'video-assistant-flow.js',
   'video-assistant-prompts.js',
   'video-assistant-picker.js',
+  /* 05/11/2026: הכלים החדשים בעוזר */
+  'va-smart-paste.js',
+  'va-mic.js',
+  'va-length.js',
+  'va-filming.js',
+  'va-description.js',
+  'va-summary-tools.js',
 ];
 
 const PAIR = /([א-ת]{2,})\/([א-ת]{1,})/g;
