@@ -1,4 +1,6 @@
 import { auth } from './firebase-init.js';
+import { onAuthChange } from './auth.js';
+import { subjectUid, isClientView } from './client-view.js';
 import { getCurrentIdeas } from './archive-view.js';
 import { saveWarmingPlan, updateWarmingPlan, listWarmingPlans, deleteWarmingPlan } from './warming-store.js';
 import { showToast } from './toast.js';
@@ -418,7 +420,21 @@ function renderSavedList(plans, onOpen, onDelete) {
   }
 }
 
-const WARMING_DRAFT_KEY = 'warming-form-draft';
+/* 05/11/2026 (מאיה): הטיוטה נשמרה במפתח אחד לכל המכשיר, ולכן כשמאיה נכנסה
+   ללקוחה היא ראתה בטופס של הלקוחה את הטיוטה של עצמה. עכשיו מפתח לכל חשבון,
+   לפי subjectUid: בתוך לקוחה, הטיוטה שלה. */
+const LEGACY_WARMING_DRAFT_KEY = 'warming-form-draft';
+export function warmingDraftKey(uid) {
+  return uid ? `${LEGACY_WARMING_DRAFT_KEY}:${uid}` : null;
+}
+function currentDraftKey() {
+  const me = auth.currentUser && auth.currentUser.uid;
+  return me ? warmingDraftKey(subjectUid(me)) : null;
+}
+function clearWarmingDraft() {
+  const key = currentDraftKey();
+  try { if (key) localStorage.removeItem(key); } catch { /* אין אחסון */ }
+}
 
 function autosaveNewPlan() {
   const plan = currentPlan;
@@ -432,7 +448,7 @@ function autosaveNewPlan() {
       markUnsaved(false);
       showToast('💾 התוכנית נשמרה ב"תוכניות שמורות"');
       // כמו בשמירה ידנית: הצירוף הזה נשמר, והביקור הבא מתחיל טופס נקי
-      try { localStorage.removeItem(WARMING_DRAFT_KEY); } catch { /* אין אחסון */ }
+      clearWarmingDraft();
       document.dispatchEvent(new CustomEvent('warming-plan-saved'));
       // עריכה שנעשתה בזמן שהשמירה הראשונה עוד הייתה באוויר
       if (editedWhileCreating) {
@@ -479,22 +495,41 @@ export function wireWarmingView() {
   const audienceInput = document.getElementById('warming-audience');
   const contextInput = document.getElementById('warming-context');
 
-  try {
-    const draft = JSON.parse(localStorage.getItem(WARMING_DRAFT_KEY) || 'null');
-    if (draft) {
-      productInput.value = draft.product || '';
-      audienceInput.value = draft.audience || '';
-      contextInput.value = draft.extraContext || '';
+  /* הטופס נבנה לפני שההתחברות ידועה, ולכן הטיוטה משוחזרת רק כשיש משתמשת */
+  onAuthChange((user) => {
+    if (!user) return;
+    const key = currentDraftKey();
+    if (!key) return;
+    try {
+      let raw = localStorage.getItem(key);
+      /* טיוטה מהמפתח הישן שייכת למי שהשתמשה במכשיר בחשבון שלה. היא עוברת
+         למפתח של החשבון המחובר, אבל לעולם לא לתוך לקוחה. */
+      const legacy = localStorage.getItem(LEGACY_WARMING_DRAFT_KEY);
+      if (legacy !== null && !isClientView()) {
+        if (raw === null) {
+          raw = legacy;
+          localStorage.setItem(key, legacy);
+        }
+        localStorage.removeItem(LEGACY_WARMING_DRAFT_KEY);
+      }
+      const draft = JSON.parse(raw || 'null');
+      productInput.value = (draft && draft.product) || '';
+      audienceInput.value = (draft && draft.audience) || '';
+      contextInput.value = (draft && draft.extraContext) || '';
+    } catch (err) {
+      console.error('Failed to restore warming form draft:', err);
     }
-  } catch (err) {
-    console.error('Failed to restore warming form draft:', err);
-  }
+  });
 
   const saveDraft = () => {
-    localStorage.setItem(
-      WARMING_DRAFT_KEY,
-      JSON.stringify({ product: productInput.value, audience: audienceInput.value, extraContext: contextInput.value })
-    );
+    const key = currentDraftKey();
+    if (!key) return;
+    try {
+      localStorage.setItem(
+        key,
+        JSON.stringify({ product: productInput.value, audience: audienceInput.value, extraContext: contextInput.value })
+      );
+    } catch { /* אין אחסון */ }
   };
   productInput.addEventListener('input', saveDraft);
   audienceInput.addEventListener('input', saveDraft);
@@ -618,7 +653,7 @@ export function wireWarmingView() {
       // new." Once a plan is actually saved, that input combination is
       // done - clear the draft so the next visit starts blank and ready for
       // a genuinely new product/audience, instead of stuck on repeat.
-      localStorage.removeItem(WARMING_DRAFT_KEY);
+      clearWarmingDraft();
     } catch (err) {
       console.error('saveWarmingPlan failed:', err);
       showToast('משהו השתבש בשמירה, נסו שוב');

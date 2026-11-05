@@ -293,8 +293,13 @@ export function wireIdeaForm() {
     }
   });
 
+  /* 05/11/2026 (מאיה): לחיצה כפולה, או Enter ואז לחיצה, בחיבור איטי שמרה
+     את אותו רעיון פעמיים. כל עוד הכתיבה הראשונה לא חזרה, שליחה נוספת לא
+     עושה כלום, וכפתור השמירה מושבת. */
+  let savingIdea = false;
   document.getElementById('idea-form').addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (savingIdea) return;
     const isSeries = document.getElementById('field-is-series').checked;
     const seriesName = document.getElementById('field-series-name').value.trim();
     const seriesOrderRaw = document.getElementById('field-series-order').value;
@@ -318,6 +323,9 @@ export function wireIdeaForm() {
       errorEl.hidden = false;
       return;
     }
+    savingIdea = true;
+    const submitBtn = e.currentTarget.querySelector('button[type="submit"]');
+    if (submitBtn) submitBtn.disabled = true;
     try {
       if (editingId) {
         await updateIdea(editingId, data);
@@ -329,6 +337,9 @@ export function wireIdeaForm() {
       errorEl.textContent = 'שמירת הרעיון נכשלה, בדקו חיבור ונסו שוב';
       errorEl.hidden = false;
       return;
+    } finally {
+      savingIdea = false;
+      if (submitBtn) submitBtn.disabled = false;
     }
     closeModal();
     showToast('✓ הרעיון נשמר בהצלחה');

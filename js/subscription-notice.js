@@ -32,6 +32,27 @@ export function showSubscriptionCountdown(access, now = Date.now()) {
     ? `<span>הגישה שלך נגמרת ${left} <b>(${date})</b>. ${RENEW_OFFER}</span>${renewLink()}`
     : `<span>המנוי שלך למאגר הרפרנסים נגמר ${left} <b>(${date})</b></span>`;
   document.body.prepend(bar);
+  syncTopBarHeight();
+}
+
+/* 05/11/2026: הפס הזה (וגם הפס הסגול של תצוגה כלקוחה) דביק למעלה ב-z 9999,
+   והכותרת הדביקה של האפליקציה נדחפה מתחתיו, יחד עם כפתורי התפריט שלה.
+   הגובה האמיתי של הפסים נכתב ל---top-bar-h, והכותרת יושבת מתחתיו. */
+const TOP_BARS = '.sub-countdown, .preview-bar';
+let topBarObserver = null;
+export function syncTopBarHeight() {
+  const root = document.documentElement;
+  if (!root || !root.style || typeof root.style.setProperty !== 'function') return;
+  const measure = () => {
+    let h = 0;
+    document.querySelectorAll(TOP_BARS).forEach((b) => { h += b.offsetHeight || 0; });
+    root.style.setProperty('--top-bar-h', `${h}px`);
+  };
+  measure();
+  if (typeof ResizeObserver === 'function') {
+    if (!topBarObserver) topBarObserver = new ResizeObserver(measure);
+    document.querySelectorAll(TOP_BARS).forEach((b) => topBarObserver.observe(b));
+  }
 }
 
 /** ההודעה במסך ההתחברות אחרי שהתאריך עבר. */

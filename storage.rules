@@ -33,10 +33,27 @@ service firebase.storage {
     // שלה, הפונקציה transcribeReference קוראת אותו ומוחקת. אין קריאה מהדפדפן
     // בכלל. מה שנשאר (העלאה שלא נשלחה לתמלול) נמחק אחרי יום בכלל של ה-bucket
     // (lifecycle על transcribeUploads/). ההרשאה למנוי נבדקת בפונקציה.
-    match /transcribeUploads/{uid}/{file} {
-      allow create: if request.auth != null
-        && request.auth.uid == uid
+    //
+    // 05/11/2026: עד היום כל חשבון גוגל מאומת יכול היה להעלות לכאן עד 200MB
+    // בכל פעם, גם בלי שום מנוי. עכשיו רק מי שרשומה ב-allowlist ובמנוי בתוקף,
+    // באותה בדיקה בדיוק כמו isAllowed() ו-notExpired() ב-firestore.rules
+    // (כאן דרך firestore.exists/get, כללים בין-שירותיים). מנוי רפרנסים כן
+    // מורשה, כמו בפונקציה (allowRefs).
+    function allowlistDoc() {
+      return /databases/(default)/documents/allowlist/$(request.auth.token.email);
+    }
+    function canTranscribe() {
+      return request.auth != null
         && request.auth.token.email_verified == true
+        && (isMaya()
+          || (firestore.exists(allowlistDoc())
+            && (firestore.get(allowlistDoc()).data.get('paidUntil', null) == null
+              || firestore.get(allowlistDoc()).data.paidUntil > request.time)));
+    }
+
+    match /transcribeUploads/{uid}/{file} {
+      allow create: if canTranscribe()
+        && request.auth.uid == uid
         && request.resource.size < 200 * 1024 * 1024
         && request.resource.contentType.matches('video/.*');
       allow delete: if request.auth != null && request.auth.uid == uid;

@@ -424,7 +424,8 @@ function randomName() {
 
 /**
  * deps:
- *   HttpsError, enforceAllowlist(email), checkRate(uid), incrementRate(uid),
+ *   HttpsError, enforceAllowlist(email), checkRate(uid) -> slot, incrementRate(uid, slot),
+ *   releaseRate(uid, slot) (אופציונלי: מחזיר מקום שנשמר כשהתמלול נכשל),
  *   bucket: { name, file(path) -> { save, delete, getMetadata } },
  *   getAccessToken(), projectId, fetchImpl, logUsage(uid, info),
  *   cache?: { get(key) -> doc|null, set(key, doc) }   (transcriptCache)
@@ -527,9 +528,16 @@ function createTranscribeHandler(deps) {
     let mimeType = 'video/mp4';
     let cleanup = Boolean(uploadPath);
     let videoId = null;
+    let rateSlot = null;
+    let rateReserved = false;
+    let rateCounted = false;
     try {
       /* בתוך ה-try: גם העלאה שנחסמה במכסה נמחקת */
-      await deps.checkRate(uid);
+      /* 05/11/2026: checkRate שומר את המקום במכסה מראש (טרנזקציה), כדי
+         ששתי קריאות במקביל לא יעברו שתיהן. אם התמלול לא מגיע לסוף, המקום
+         מוחזר ב-finally דרך releaseRate. */
+      rateSlot = await deps.checkRate(uid);
+      rateReserved = true;
       if (uploadPath) {
         const file = deps.bucket.file(uploadPath);
         let meta;
@@ -575,7 +583,8 @@ function createTranscribeHandler(deps) {
         console.error('transcribeReference: gemini failed', err && err.message);
         throw new HttpsError('internal', 'התמלול לא הצליח הפעם. לנסות שוב בעוד רגע');
       }
-      await deps.incrementRate(uid);
+      await deps.incrementRate(uid, rateSlot);
+      rateCounted = true;
       /* נשמר רק מה שהצליח עד הסוף (finishReason STOP): תשובה שנחתכה או
          שלא ברור איך הסתיימה לא נשמרת, גם אם יצא ממנה JSON. */
       const key = cacheKey || (link && link.platform === 'tiktok' && videoId ? `tiktok_${videoId}` : null);
@@ -602,6 +611,11 @@ function createTranscribeHandler(deps) {
       }
       return { ...out.result, source: uploadPath ? 'upload' : link.platform, model: MODEL };
     } finally {
+      if (rateReserved && !rateCounted && deps.releaseRate) {
+        await Promise.resolve(deps.releaseRate(uid, rateSlot)).catch((err) => {
+          console.warn('transcribeReference: rate refund failed', err && err.message);
+        });
+      }
       if (cleanup) {
         await deps.bucket.file(path).delete().catch((err) => {
           console.warn('transcribeReference: delete failed', path, err && err.message);

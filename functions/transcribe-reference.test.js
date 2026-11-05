@@ -235,7 +235,7 @@ function harness({ allow = true, limitHit = false, fetchFails = false, gemini = 
     deps.now = () => 1234;
     deps.logCacheHit = async (uid, info) => { log.hits.push({ uid, ...info }); };
   }
-  return { handler: tr.createTranscribeHandler(deps), log };
+  return { handler: tr.createTranscribeHandler(deps), log, deps };
 }
 
 const req = (data, auth = { uid: 'u1', token: { email: 'client@example.com' } }) => ({ auth, data });
@@ -521,4 +521,33 @@ test('העלאה מהגלריה לא נוגעת במטמון', async () => {
   await handler(req({ uploadPath: 'transcribeUploads/u1/abc.mov', refresh: true }));
   assert.equal(cache.size, 0);
   assert.equal(log.increments, 1);
+});
+
+/* 05/11/2026: המכסה נשמרת מראש (checkRate מחזיר מקום) כדי ששתי קריאות במקביל לא
+   יעברו שתיהן, ומקום של תמלול שנכשל חוזר דרך releaseRate. הצלחה לא מחזירה כלום. */
+test('מכסה: מקום שנשמר מוחזר כשהתמלול נכשל, ונשאר כשהצליח', async () => {
+  const run = async (opts) => {
+    const h = harness(opts);
+    const released = [];
+    const slots = [];
+    const deps = { ...h.deps };
+    deps.checkRate = async () => { const slot = { id: slots.length + 1 }; slots.push(slot); return slot; };
+    deps.incrementRate = async (uid, slot) => { h.log.increments += 1; assert.equal(slot, slots[0], 'הספירה מקבלת את המקום שנשמר'); };
+    deps.releaseRate = async (uid, slot) => { released.push(slot); };
+    const handler = tr.createTranscribeHandler(deps);
+    let error = null;
+    try { await handler(req({ uploadPath: 'transcribeUploads/u1/abc.mov' })); } catch (err) { error = err; }
+    return { error, released, slots, log: h.log };
+  };
+  const failed = await run({ geminiStatus: 500, gemini: { error: { message: 'boom' } } });
+  assert.equal(failed.error.code, 'internal');
+  assert.deepEqual(failed.released, failed.slots, 'המקום הוחזר');
+  assert.equal(failed.log.increments, 0);
+  const ok = await run({});
+  assert.equal(ok.error, null);
+  assert.deepEqual(ok.released, [], 'הצלחה לא מחזירה את המקום');
+  assert.equal(ok.log.increments, 1);
+  const blocked = await run({ meta: { size: String(500 * 1024 * 1024), contentType: 'video/mp4' } });
+  assert.equal(blocked.error.code, 'invalid-argument');
+  assert.deepEqual(blocked.released, blocked.slots, 'גם קובץ שנדחה אחרי השמירה מחזיר את המקום');
 });
