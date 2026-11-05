@@ -338,14 +338,40 @@ export function contextHeader({ domain, audience } = {}) {
   return lines.length ? `${lines.join('\n')}\n\n` : '';
 }
 
+/* 05/11/2026 (מאיה): "עושים קריאייטיב עם ג'מיני לדרך מסוימת לפתוח סרטון
+   ואז בפרומפטים להוק, לחיזוק, ובכללי המבנה של התסריט לא מחובר בכלל
+   לקריאייטיב... צריך לתת הכל בהתאמה ולא להתעלם, כי הלקוחות לא תמיד
+   זוכרות, אבל עדיין להיצמד לשיטה ולהנחיות שלי".
+
+   הכיוון שנבחר באריזה הקריאייטיבית נכנס לכל פרומפט שאחריו במסלול מ-0,
+   מיד אחרי התחום והקהל, עם שורה שאומרת מה זה אומר בפרומפט הזה. הנוסח
+   שלה בפרומפט עצמו לא משתנה. בלי קריאייטיב אין בלוק בכלל. */
+export const CREATIVE_FOCUS = {
+  extraction: 'השאלות צריכות לכוון גם לקריאייטיב הזה: מה הפעולה או הוויזואל שבפתיחה אומרים על המסר, ומה עובר עליי ברגע הזה, כדי שהמגילה תתחבר אליו.',
+  hook: 'ההוקים חייבים להיבנות סביב הקריאייטיב הזה: משפטים שנאמרים תוך כדי הפעולה או הוויזואל שבפתיחה, או מיד אחריהם, ומתחברים אליהם. למשל, אם הקריאייטיב הוא לקרוע תלוש משכורת מול המצלמה, ההוק הוא מה שאומרים בזמן הקריעה או מיד אחריה. גם הוק בטקסט וגם הוק ויזואלי צריכים להתאים לקריאייטיב.',
+  reinforcement: 'חיזוק ההוק ממשיך את אותה סצנה של הקריאייטיב ולא מתנתק ממנה.',
+  script: 'התסריט נפתח בקריאייטיב הזה: ההוק נאמר תוך כדי הפעולה או הוויזואל שבפתיחה, או מיד אחריהם, וכל התסריט נשאר עקבי איתו ולא מתנתק ממנו.',
+  scene: 'הסצנה שהתסריט נפתח בה היא הקריאייטיב הזה. בשכתוב שומרים עליו: הפתיחה נשארת הפעולה או הוויזואל האלה, והמשפט הראשון נאמר תוך כדי או מיד אחריהם.',
+};
+
+export function creativeBlock(creative, focus) {
+  const c = String(creative || '').trim();
+  if (!c) return '';
+  return `הקריאייטיב שבחרתי לסרטון הזה (חובה להיצמד אליו): ${c}
+${focus}
+אסור להתעלם מהקריאייטיב או להחליף אותו בפתיחה אחרת. כל שאר ההנחיות כאן נשארות בדיוק כמו שהן.
+
+`;
+}
+
 function fillBracket(value, placeholder) {
   const v = value && value.trim();
   return v ? v : placeholder;
 }
 
 // פרומפט 1 מתוך "כתיבה מאפס": חילוץ תוכן (מגילת אסתר), למי שתקועה
-export function buildExtractionPrompt({ idea, contentType, startingPoint, audience, domain }) {
-  return `${contextHeader({ domain, audience })}אתה מומחה ללהוציא תוכן מדויק מאנשים לרילסים, להיכנס להם למוח ולהוציא מהם בדיוק את מה שהם רוצים להגיד
+export function buildExtractionPrompt({ idea, contentType, startingPoint, audience, domain, creative }) {
+  return `${contextHeader({ domain, audience })}${creativeBlock(creative, CREATIVE_FOCUS.extraction)}אתה מומחה ללהוציא תוכן מדויק מאנשים לרילסים, להיכנס להם למוח ולהוציא מהם בדיוק את מה שהם רוצים להגיד
 
 אני מצרפת:
 רעיון של התוכן
@@ -395,8 +421,8 @@ export function buildExtractionPrompt({ idea, contentType, startingPoint, audien
 // המסמך האמיתי שלה, שהחסירה בדיוק את הפירוט שגורם למודל להבין נכון
 // (ההסבר על 3 סוגי ההוק, דוגמת ה"סיסמתיים" הפסולים, ושלב השאלות המלא
 // כשאין מספיק נתונים בתסריט) - הוחלפה במלואה במסמך המקורי, מילה במילה.
-export function buildHookFindingPrompt({ idea, script, audience, domain }) {
-  return `${contextHeader({ domain, audience })}למי שתקוע בלמצוא משפט פתיחה חזק - עוצר גלילה
+export function buildHookFindingPrompt({ idea, script, audience, domain, creative }) {
+  return `${contextHeader({ domain, audience })}${creativeBlock(creative, CREATIVE_FOCUS.hook)}למי שתקוע בלמצוא משפט פתיחה חזק - עוצר גלילה
 ריכזתי לכם כאן בחוברת כמויות של הוקים שאתם יכולים לשכפל ולהשתמש בסרטונים שלכם, כמובן אתם לא חייבים - ברגע שהבנתם את הפואנטה אתם יכולים גם לחשוב לבד על הוק או יותר מזה? תשכפלו הוקים מהרשת!!!!
 אם ראיתם סרטון שהתפוצץ(לא שלכם) , אתם לגמרי יכולים להעתיק אחד לאחד את ההוק של אותו יוצר, כמובן לא את שאר התוכן, כי אם לו זה עבד כנראה שזה יעבוד גם לכם.
 
@@ -535,8 +561,8 @@ ${HOOK_TEMPLATES.join('\n')}
 // הוחלף במלואו במסמך המקורי שלה - הגרסה הקודמת תמצתה את 3 המנגנונים
 // בלי הדוגמאות שממחישות כל אחד מהם, בלי "🎯 המטרה"/"📥 הקלט", ובלי כל
 // חוק הטון המלא (שלב 6/7) - בדיוק הפירוט שעוזר למודל "להבין את ההיגיון".
-export function buildHookReinforcementPrompt({ idea, hook, script, audience, domain }) {
-  return `${contextHeader({ domain, audience })}למי שתקוע בלמצוא את המשפט שמגיע אחרי ההוק שמטרתו להדביק את הצופה למסך
+export function buildHookReinforcementPrompt({ idea, hook, script, audience, domain, creative }) {
+  return `${contextHeader({ domain, audience })}${creativeBlock(creative, CREATIVE_FOCUS.reinforcement)}למי שתקוע בלמצוא את המשפט שמגיע אחרי ההוק שמטרתו להדביק את הצופה למסך
 המשימה שלך היא ביצוע בלבד.
 אין לנתח את הפרומפט.
 אין לתת חוות דעת על ההוראות.
@@ -710,8 +736,8 @@ const CAROUSEL_OUTPUT = `
 // הוחלף במלואו במסמך המקורי שלה - הגרסה הקודמת תמצתה כל שלב לשורה אחת
 // והחסירה שלם את פירוט 4 סוגי ההנעה לפעולה (מטרה/מתי להשתמש/אחוז
 // מהתוכן לכל סוג) - בלעדיו למודל אין בכלל לפי מה לבחור הנעה לפעולה.
-export function buildScriptDistillationPrompt({ idea, hook, hookReinforcement, rawScript, ctaType, funnel, audience, domain, carousel }) {
-  return `${contextHeader({ domain, audience })}אחרי שיש לכם מגילת אסתר + הוק + חיזוק - הפרומט הזה עוזר לכם לזקק את זה לתסריט שעובד לפי מבנה נכון של סרטון(חוסך לכם זמן לעשות את זה לבד)
+export function buildScriptDistillationPrompt({ idea, hook, hookReinforcement, rawScript, ctaType, funnel, audience, domain, carousel, creative }) {
+  return `${contextHeader({ domain, audience })}${creativeBlock(creative, CREATIVE_FOCUS.script)}אחרי שיש לכם מגילת אסתר + הוק + חיזוק - הפרומט הזה עוזר לכם לזקק את זה לתסריט שעובד לפי מבנה נכון של סרטון(חוסך לכם זמן לעשות את זה לבד)
 אתה מומחה בזיקוק ועריכת תסריטי רילס חדים, דרמטיים ומדויקים.
 המטרה שלך:
 להפוך תסריט גולמי לתסריט סופי קצר, זורם, מסקרן ובנוי לפי מבנה נכון –
@@ -911,9 +937,9 @@ export function buildScriptDistillationPrompt({ idea, hook, hookReinforcement, r
    יצא קצת מסביר/פחות סיפורי... שגם יעשה את ההשלמה אוטומטי אבל ל-ChatGPT").
    הנוסח שלה מילה במילה. הכאב ומילת הקוד לא נשמרים בשום מקום בעוזר, ולכן
    ChatGPT לוקח אותם מהתסריט עצמו, ולא נשאר מקום ריק למלא. */
-export function buildSceneRewritePrompt({ script, audience, domain }) {
+export function buildSceneRewritePrompt({ script, audience, domain, creative }) {
   const who = String(audience || '').trim();
-  return `${contextHeader({ domain })}תפקיד:
+  return `${contextHeader({ domain })}${creativeBlock(creative, CREATIVE_FOCUS.scene)}תפקיד:
 
 אתה במאי תוכן ועורך תסריטים מומחה לווידאו קצר (Reels/TikTok) ברמת High-Status וסמכות שקטה.
 

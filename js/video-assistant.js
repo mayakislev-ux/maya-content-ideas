@@ -96,6 +96,10 @@ let sessionStartTs = null; // רעיון #47 - "בנית תוך X דקות"
    כתיבה, ממש מוזר"): סשן טרי משוחזר בשקט, ולכן נראה כאילו המסך נפתח
    באמצע במקרה. מעכשיו אומרים את זה במפורש, עם כפתור להתחיל מההתחלה. */
 let resumedNotice = false;
+/* 05/11/2026 (ביקורת): מסך שמחכה לשרת (פרופיל, זיהוי הוק, מאגר) צייר את
+   עצמו גם אם בינתיים כבר עברו למסך אחר, ואז הלחיצה הבאה נשלחה מהמסך הלא
+   נכון. כל ציור מקבל מספר, ומסך שהמספר שלו כבר לא האחרון לא מצייר. */
+let renderSeq = 0;
 
 function screenEl() {
   return document.getElementById('video-assistant-screen');
@@ -226,6 +230,25 @@ function geminiHookNote() {
   return `<div class="va-ai-note"><strong>✨ הפרומפט הזה הולך לג'מיני או ל-ChatGPT</strong><small>ג'מיני חזק במיוחד בהוקים ובקריאייטיב, ולפעמים ChatGPT מביא יותר. שווה לנסות את שניהם.</small></div>`;
 }
 
+/* 05/11/2026 (מאיה): במסלול מ-0 הקריאייטיב נעשה בג'מיני, ומשם הכל
+   ב-ChatGPT: ההוק, החיזוק, ה-SOS של המגילה והתסריט. השכפול (renderPrompt1)
+   נשאר עם שניהם. */
+function chatgptHookNote() {
+  return `<div class="va-ai-note"><strong>✨ הפרומפט הזה הולך ל-ChatGPT</strong><small>את הקריאייטיב עשינו בג'מיני. מכאן ממשיכים ב-ChatGPT: ההוק, החיזוק והתסריט.</small></div>`;
+}
+
+/* 05/11/2026 (מאיה: "הלקוחות לא תמיד זוכרות"): הכיוון שנבחר באריזה
+   הקריאייטיבית נוסע לכל פרומפט במסלול מ-0, ושורה קטנה במסך מראה שהוא
+   באמת נלקח. רק במסלול מ-0, כי רק שם נבחר קריאייטיב. */
+function creativeNow() {
+  return state.branch === 'scratch' && state.packaging ? String(state.packaging).trim() : '';
+}
+
+function creativeReminderHtml() {
+  const c = creativeNow();
+  return c ? `<p class="cosmic-hint va-creative-reminder">🎬 הקריאייטיב שבחרת: <strong>${escapeHtml(c)}</strong></p>` : '';
+}
+
 /* טקסט שכבר נכתב חוזר לתיבה דרך הטיוטה ולא כערך של התיבה, כי ערך של התיבה גובר
    על הטיוטה (valueFor), ואז עריכה או ניקוי שלה לא היו שורדים רענון. */
 function seedDraft(id, value) {
@@ -341,6 +364,9 @@ const scriptsLibrary = createScriptsLibrary({
   store: { listScripts, saveScript, deleteScript },
   openModal, closeModal, copyBtn, wireCopyButtons, confirmDialog, showToast,
   resume: (s, item) => {
+    /* 05/11/2026 (ביקורת): "✨ תמלול מדויק" שעוד רץ שייך לסרטון הקודם.
+       בלי האיפוס הוא היה נוחת בתיבה של הסרטון שנפתח עכשיו. */
+    if (item.id !== state.scriptId) resetAccurateRuns();
     state = { ...s, scriptId: item.id, scriptCreatedAt: item.createdAt };
     if (!state.history) state.history = [];
     resumedNotice = false;
@@ -359,6 +385,7 @@ const scriptsLibrary = createScriptsLibrary({
     render();
   },
   liveDeleted: () => {
+    resetAccurateRuns();
     state = { ...INITIAL_STATE, history: [] };
     currentPickId = null;
     sessionStartTs = Date.now();
@@ -383,7 +410,9 @@ function openScriptsLibrary() {
    הפרומפטים יצאו להן בלי הקשר. כאן הן ממלאות אותו פעם אחת, מתוך הכלי
    שכן פתוח להן. מי שכבר מילאה לא רואה את המסך הזה בכלל. */
 async function renderProfileSetup(onDone) {
+  const t = ++renderSeq;
   const profile = (await getProfile()) || {};
+  if (t !== renderSeq) return;
   cosmicCard(`
     <h2>רגע לפני שמתחילים</h2>
     <p>שתי שורות שנמלא פעם אחת, והן ייכנסו לבד לכל פרומפט שהכלי יכין. בלעדיהן ChatGPT מנחש מאיזה עולם מדובר.</p>
@@ -441,8 +470,11 @@ function profileIncomplete(profile) {
 }
 
 async function renderOpening() {
-  if (profileIncomplete(await getProfile())) {
-    renderProfileSetup(() => render());
+  const t = ++renderSeq;
+  const incomplete = profileIncomplete(await getProfile());
+  if (t !== renderSeq) return;
+  if (incomplete) {
+    await renderProfileSetup(() => render());
     return;
   }
   cosmicCard(`
@@ -472,9 +504,17 @@ function renderReferenceSourceChoice() {
   `);
   document.getElementById('va-has-ref-btn').addEventListener('click', () => dispatch({ type: 'CHOOSE_HAS_REFERENCE' }));
   document.getElementById('va-pull-ref-btn').addEventListener('click', () => {
-    currentPickId = null;
+    rememberPick('pickedReferenceId', null);
     dispatch({ type: 'CHOOSE_PULL_REFERENCE' });
   });
+}
+
+/* 05/11/2026 (ביקורת): מה שהוגרל נשמר גם בסטייט ולא רק במשתנה בזיכרון.
+   בלי זה, אחרי רענון או המשך מ"התסריטים שלי" מסך הרעיון קרס (המשתנה ריק
+   והמאגר עוד לא נטען), ומסך הרפרנס הגריל רפרנס אחר מזה שנבחר. */
+function rememberPick(field, id) {
+  currentPickId = id;
+  state = { ...state, [field]: id };
 }
 
 // ===== מסלול "יש לי רעיון" - איך מקבלים את הרעיון =====
@@ -526,7 +566,7 @@ function renderIdeaSourceChoice() {
       document.getElementById('va-ideas-back-btn').addEventListener('click', () => dispatch({ type: 'BACK' }));
       return;
     }
-    currentPickId = picked.id;
+    rememberPick('pickedIdeaId', picked.id);
     dispatch({ type: 'CHOOSE_PULL_IDEA' });
   });
 }
@@ -549,8 +589,39 @@ function renderTypeIdea() {
   });
 }
 
-function renderPulledIdea() {
-  const idea = ideasCache.find((i) => i.id === currentPickId);
+/* 05/11/2026 (ביקורת): המסך הניח שהמאגר כבר בזיכרון ושהרעיון עוד בו.
+   אחרי רענון, המשך מ"התסריטים שלי" או חזרה אחורה הוא קרס על null. עכשיו
+   הוא טוען את המאגר, מציג את אותו רעיון שנבחר, ואם הרעיון כבר לא שם
+   מגריל אחר. אם אין מה להציג, חוזרים מסך אחורה עם הסבר. */
+function leavePulledScreen(message) {
+  if (message) showToast(message);
+  if (state.history && state.history.length) dispatch({ type: 'BACK' });
+  else restart();
+}
+
+async function renderPulledIdea() {
+  const t = ++renderSeq;
+  if (!ideasCache) {
+    cosmicCard('<p>טוענים את הרעיון...</p>', { showProgress: false });
+    const ok = await refreshIdeas();
+    if (t !== renderSeq) return;
+    if (!ok) {
+      leavePulledScreen();
+      return;
+    }
+  }
+  let idea = ideasCache.find((i) => i.id === (state.pickedIdeaId || currentPickId));
+  if (!idea) {
+    idea = pickIdea(ideasCache, null);
+    if (!idea) {
+      leavePulledScreen('אין עדיין רעיונות שמורים בבנק הרעיונות');
+      return;
+    }
+    rememberPick('pickedIdeaId', idea.id);
+    saveAll().catch((err) => console.error('saveSession failed:', err));
+  } else {
+    currentPickId = idea.id;
+  }
   const card = cosmicCard(`
     <h2>🎲 הרעיון הזה</h2>
     <p style="font-size:17px;font-weight:700" id="va-idea-title">${escapeHtml(idea.title)}</p>
@@ -573,7 +644,7 @@ function renderPulledIdea() {
     playReroll();
     const picked = pickIdea(ideasCache, currentPickId);
     const nextTitle = picked ? picked.title : idea.title;
-    if (picked) currentPickId = picked.id;
+    if (picked) rememberPick('pickedIdeaId', picked.id);
     // 17/10/2026 (רעיון #1, "ספינר הגרלה"): לפני שמתיישב על הרעיון הסופי,
     // כמה רעיונות אמיתיים "מתערבבים" מהר על המסך - מתח של ממש, לא רק
     // החלפה מכנית.
@@ -963,11 +1034,23 @@ function renderDomainConfirm(guessedDomain, guessedSub, onConfirmed) {
   document.getElementById('va-domain-select').addEventListener('change', (e) => {
     document.getElementById('va-subcategory-wrap').innerHTML = subCategorySelectHtml(e.target.value, null);
   });
-  document.getElementById('va-domain-confirm-btn').addEventListener('click', async () => {
+  const confirmBtn = document.getElementById('va-domain-confirm-btn');
+  confirmBtn.addEventListener('click', async () => {
+    if (confirmBtn.disabled) return;
     const chosen = document.getElementById('va-domain-select').value;
     const subSelect = document.getElementById('va-subcategory-select');
     const chosenSub = subSelect ? subSelect.value || null : null;
-    await saveDomain(chosen, chosenSub);
+    /* 05/11/2026 (ביקורת): שמירה שנכשלה השאירה "מאשרים" שלא עושה כלום
+       ולא אומר כלום. נועלים בזמן השמירה, ובכישלון אומרים מה קרה. */
+    confirmBtn.disabled = true;
+    try {
+      await saveDomain(chosen, chosenSub);
+    } catch (err) {
+      console.error('saveDomain failed:', err);
+      confirmBtn.disabled = false;
+      showToast(serverErrorText(err, 'שמירת התחום'));
+      return;
+    }
     domainInfo = { domain: chosen, subCategory: chosenSub };
     cacheDomainInfoLocally(domainInfo);
     applyDomainTheme(chosen);
@@ -976,22 +1059,43 @@ function renderDomainConfirm(guessedDomain, guessedSub, onConfirmed) {
 }
 
 async function renderPulledReference() {
-  if (!videosCache) videosCache = await fetchInspirationBank();
-  const { domain, subCategory } = await resolveDomain();
+  const t = ++renderSeq;
+  let domain;
+  let subCategory;
+  /* 05/11/2026 (ביקורת): מאגר או תחום שלא נטענו השאירו את המסך הקודם
+     קפוא, בלי הודעה. עכשיו אומרים מה קרה, ויש כפתור לנסות שוב. */
+  try {
+    if (!videosCache) videosCache = await fetchInspirationBank();
+    ({ domain, subCategory } = await resolveDomain());
+  } catch (err) {
+    if (t !== renderSeq) return;
+    console.error('renderPulledReference load failed:', err);
+    const message = serverErrorText(err, 'טעינת הרפרנסים');
+    showToast(message);
+    cosmicCard(`<h2>לא הצלחנו לטעון רפרנס</h2><p>${escapeHtml(message)}</p>
+      <div class="cosmic-btn-row"><button type="button" class="cosmic-btn cosmic-btn--primary" id="va-ref-retry-btn">לנסות שוב</button></div>`);
+    document.getElementById('va-ref-retry-btn').addEventListener('click', () => render());
+    return;
+  }
+  if (t !== renderSeq) return;
   const needsConfirm = !domain || ((SUBCATEGORIES_BY_DOMAIN[domain] || []).length > 0 && !subCategory);
   if (needsConfirm) {
     renderDomainConfirm(domain, subCategory, () => render());
     return;
   }
-  if (!currentPickId) {
-    const picked = pickReference(videosCache, domain, subCategory, null);
-    if (!picked) {
+  /* הרפרנס שהוגרל נשמר בסטייט, כדי שרענון לא יחליף אותו באחר */
+  let video = videosCache.find((v) => v.id === (state.pickedReferenceId || currentPickId));
+  if (!video) {
+    video = pickReference(videosCache, domain, subCategory, null);
+    if (!video) {
       cosmicCard(`<h2>אין עדיין רפרנסים בתחום הזה</h2><p>לבחור "יש לי רעיון מ-0" במקום, או לחזור מאוחר יותר.</p>`);
       return;
     }
-    currentPickId = picked.id;
+    rememberPick('pickedReferenceId', video.id);
+    saveAll().catch((err) => console.error('saveSession failed:', err));
+  } else {
+    currentPickId = video.id;
   }
-  const video = videosCache.find((v) => v.id === currentPickId);
   const card = cosmicCard(`
     <h2>🎲 הרפרנס הזה</h2>
     ${video.thumbnailUrl
@@ -1058,7 +1162,7 @@ async function renderPulledReference() {
   document.getElementById('va-reroll-ref-btn').addEventListener('click', () => {
     playReroll();
     const picked = pickReference(videosCache, domain, subCategory, currentPickId);
-    if (picked) currentPickId = picked.id;
+    if (picked) rememberPick('pickedReferenceId', picked.id);
     // 17/10/2026 (רעיון #1): אין טקסט-כותרת אמיתי לרפרנסים (רק תמונה
     // ממוזערת), אז הספינר כאן מראה סימוני "הגרלה" קוסמיים ולא טקסט מזויף.
     const label = document.createElement('div');
@@ -1135,14 +1239,20 @@ function bankDescribeMode() {
 function renderTranscribe() {
   const fromBank = Boolean(state.bankNotice);
   const describe = bankDescribeMode();
+  /* 05/11/2026 (ביקורת): הלינק והתמלול נכתבו כערך של התיבה, וערך של
+     התיבה גובר על הטיוטה (valueFor). עריכה שלהם, למשל תיקון של תמלול
+     שהגיע מ"לשכפול הסרטון", נעלמה ברענון. עכשיו הם נכנסים דרך הטיוטה. */
+  if (state.screen === 'transcribe') {
+    seedDraft('va-reference-link', state.referenceLink);
+    seedDraft('va-transcript-input', state.transcript);
+  }
   cosmicCard(`
     <h2>${describe ? 'מה קורה ברפרנס?' : 'לתמלל את הרפרנס'}</h2>
     ${fromBank ? bankNoticeHtml() : `<p>להדביק לינק לסרטון וללחוץ על "✨ תמלול מדויק", או להדביק כאן את התמלול בעצמכם</p>`}
     <input type="url" class="cosmic-textarea" id="va-reference-link" style="min-height:auto"
-      inputmode="url" dir="ltr" placeholder="לינק לסרטון מטיקטוק או מאינסטגרם"
-      value="${state.referenceLink ? escapeHtml(state.referenceLink) : ''}">
+      inputmode="url" dir="ltr" placeholder="לינק לסרטון מטיקטוק או מאינסטגרם">
     ${accurateBlockHtml()}
-    <textarea class="cosmic-textarea" id="va-transcript-input" style="margin-top:8px" placeholder="${describe ? 'לתאר כאן מה קורה בסרטון...' : 'להדביק כאן את התמלול...'}">${state.transcript ? escapeHtml(state.transcript) : ''}</textarea>
+    <textarea class="cosmic-textarea" id="va-transcript-input" style="margin-top:8px" placeholder="${describe ? 'לתאר כאן מה קורה בסרטון...' : 'להדביק כאן את התמלול...'}"></textarea>
     <div class="cosmic-btn-row" style="margin-top:14px">
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-transcribe-done-btn">ממשיכים ←</button>
     </div>
@@ -1259,7 +1369,13 @@ async function okToReplaceTranscript() {
   return confirmDialog('התמלול המדויק יחליף את מה שכתוב עכשיו בתיבה. להמשיך?', { okLabel: 'כן, להחליף', cancelLabel: 'לא' });
 }
 
-function applyAccurateResult(result, link) {
+/* 05/11/2026 (ביקורת): scriptId הוא הסרטון שבו התחיל התמלול. אם בינתיים
+   נפתח סרטון אחר, התוצאה לא נכנסת לתיבה שלו. */
+function applyAccurateResult(result, link, scriptId = null) {
+  if (scriptId && state.scriptId !== scriptId) {
+    showToast('התמלול המדויק שייך לסרטון אחר, ולכן לא נכנס לכאן');
+    return;
+  }
   const text = composeTranscript(result);
   if (!text) {
     showAccurateStatus(uploadOfferHtml("ג'מיני לא מצא בסרטון דיבור, טקסט או תמונה לתאר. אפשר לנסות קובץ אחר."), { kind: 'error' });
@@ -1279,6 +1395,7 @@ function applyAccurateResult(result, link) {
 
 async function runAccurate(payload) {
   const run = ++accurateRun;
+  const scriptId = state.scriptId || null;
   accurateStash = null;
   const linkInput = document.getElementById('va-reference-link');
   const link = payload.link || (linkInput ? linkInput.value.trim() : '');
@@ -1306,12 +1423,12 @@ async function runAccurate(payload) {
     if (run !== accurateRun) return;
     stopAccurateTimer();
     if (state.screen !== 'transcribe') {
-      accurateStash = { run, result, link };
+      accurateStash = { run, result, link, scriptId };
       showToast('התמלול המדויק מוכן. הוא מחכה במסך התמלול');
       return;
     }
     accurateBusy = false;
-    applyAccurateResult(result, link);
+    applyAccurateResult(result, link, scriptId);
   } catch (err) {
     if (run !== accurateRun) return;
     stopAccurateTimer();
@@ -1341,9 +1458,9 @@ function wireAccurateTranscribe() {
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-accurate-apply">להכניס אותו לתיבה</button>`);
     document.getElementById('va-accurate-apply').addEventListener('click', async () => {
       if (!accurateStash || !(await okToReplaceTranscript())) return;
-      const { result, link } = accurateStash;
+      const { result, link, scriptId } = accurateStash;
       accurateStash = null;
-      applyAccurateResult(result, link);
+      applyAccurateResult(result, link, scriptId);
     });
   }
   btn.addEventListener('click', async () => {
@@ -1425,9 +1542,11 @@ async function myAudience() {
 }
 
 async function renderPrompt1() {
+  const t = ++renderSeq;
   const profile = await getProfile();
   const audience = profile && profile.primaryAudience ? profile.primaryAudience : '';
   const domain = await myDomain();
+  if (t !== renderSeq) return;
 
   // 19/10/2026 (מאיה: "קודם כל מדביקים לך את התסריט של הרפרנס ואז הוא
   // כבר מזהה הוק ואז בעצם צריך מגילת אסתר") - בשכפול הפוך ההוק כבר זוהה
@@ -1437,6 +1556,7 @@ async function renderPrompt1() {
   if (!state.openingHook) {
     cosmicCard(`<p>מזהים את ההוק מתוך התמלול...</p>`, { showProgress: false });
     await ensureOpeningHook();
+    if (t !== renderSeq) return;
   }
   const hookForPrompt = state.openingHook || state.transcript || '';
 
@@ -1505,10 +1625,12 @@ async function renderPrompt1() {
 async function renderHerWords() {
   /* בשכפול הפוך המגילה תמיד לפני ההוק (HOOK_CHOSEN ממשיך משם לפרומפט 2).
      הוק שנשמר בחזרה אחורה לא הופך אותה למסך "אחרי ההוק". */
+  const t = ++renderSeq;
   const isPreHookMegillah = state.branch === 'idea-search';
   if (isPreHookMegillah && !state.openingHook) {
     cosmicCard(`<p>מזהים את ההוק מתוך התמלול...</p>`, { showProgress: false });
     await ensureOpeningHook();
+    if (t !== renderSeq) return;
   }
   const context = isPreHookMegillah ? (state.openingHook || state.ideaDescription || '') : (state.hook || state.ideaDescription || '');
   /* 02/11/2026 (מאיה: "בגלל שזה שכפול תוכן לא צריך את ה-SOS... וגם לא צריך
@@ -1671,11 +1793,15 @@ function confirmMegillahDetailed(text, { inputId, onGo }) {
 }
 
 async function renderPrompt2() {
+  const t = ++renderSeq;
   const hook = state.hook || state.transcript || '';
   // 19/10/2026 (מאיה, אחרי אישור מפורש) - שדה "התסריט המקורי" מפורש, לא
   // הסתמכות על ש-ChatGPT "זוכר" אותו מפרומפט 1 באותה שיחה; ראה
   // video-assistant-prompts.js, buildScriptPrompt.
-  const prompt = buildScriptPrompt({ hook, herWords: state.herWords, originalScript: state.transcript || '', domain: await myDomain(), audience: await myAudience() });
+  const domain = await myDomain();
+  const audience = await myAudience();
+  if (t !== renderSeq) return;
+  const prompt = buildScriptPrompt({ hook, herWords: state.herWords, originalScript: state.transcript || '', domain, audience });
   /* 04/11: התסריט שהודבק חוזר לתיבה כשחוזרים מ"להקריא בקול" */
   if (state.screen === 'prompt2') seedDraft('va-prompt2-script-input', state.finalScript);
   cosmicCard(`
@@ -1836,8 +1962,9 @@ function renderIdeaSharpen() {
       showToast('אין עדיין רעיונות שמורים בבנק הרעיונות');
       return;
     }
-    currentPickId = picked.id;
+    rememberPick('pickedIdeaId', picked.id);
     dispatch({ type: 'CHOOSE_PULL_IDEA' });
+
   });
 }
 
@@ -1899,12 +2026,15 @@ function returnFromAngleChat(result) {
    לג'מיני, ממולא בתחום, בקהל, ברעיון ובמסר. הכיוון שבוחרים מתוך ה-20
    נוסע הלאה לפרומפטים של ההוק והתסריט. */
 async function renderCreativePackaging() {
+  const t = ++renderSeq;
   const idea = state.ideaTopic && state.ideaPunchline
     ? `${state.ideaTopic}. המסר: ${state.ideaPunchline}`
     : (state.ideaBeforePackaging || state.ideaDescription || '');
   const audience = await myAudience();
   const domain = await myDomain();
+  if (t !== renderSeq) return;
   const prompt = buildCreativePackagingPrompt({ domain, audience, idea });
+  if (state.screen === 'creative-packaging') seedDraft('va-packaging-input', state.packaging);
   /* 28/10/2026 (מאיה: "תעשי מה שחכם ונוח יותר"). נקודת היציאה הייתה
      מסך נפרד בין האריזה לפורמט, ועכשיו היא יושבת כאן. 29/10/2026 (מאיה):
      "באיזה סוג תוכן זה נראה לי נוותר, סתם מיוחד ומסבך", ולכן סוג התוכן
@@ -1912,11 +2042,12 @@ async function renderCreativePackaging() {
   const withBasics = state.branch !== 'footage';
   cosmicCard(`
     <h2>האריזה הקריאייטיבית</h2>
-    <p>איך מגישים את המסר בצורה מעניינת ולא בנאלית. להעתיק לג'מיני או ל-ChatGPT, לבחור מתוך ה-20 את הכיוון שהכי מדליק, ולהדביק אותו כאן.</p>
+    <p>איך מגישים את המסר בצורה מעניינת ולא בנאלית. להעתיק לג'מיני, לבחור מתוך ה-20 את הכיוון שהכי מדליק, ולהדביק אותו כאן.</p>
+    <p class="cosmic-hint">הכיוון שבוחרים כאן ייכנס לבד להוק ולתסריט שנכתבים אחר כך.</p>
     <button type="button" class="va-text-link" id="va-what-creative-link">מה זה בעצם קריאייטיב?</button>
     ${promptPeek(highlightPlaceholders(prompt, [domain, audience, idea]))}
-    ${copyBtn(prompt, "להעתיק פרומפט לג'מיני / ChatGPT")}
-    <textarea class="cosmic-textarea" id="va-packaging-input" placeholder="להדביק כאן את הכיוון שבחרת..." style="margin-top:14px">${state.packaging ? escapeHtml(state.packaging) : ''}</textarea>
+    ${copyBtn(prompt, "להעתיק פרומפט לג'מיני")}
+    <textarea class="cosmic-textarea" id="va-packaging-input" placeholder="להדביק כאן את הכיוון שבחרת..." style="margin-top:14px"></textarea>
     ${withBasics ? `
     <p class="cosmic-field-label" style="margin-top:16px">מה נקודת היציאה של הרעיון?</p>
     <button type="button" class="va-text-link" id="va-what-start-link">מה זה אומר?</button>
@@ -2078,9 +2209,11 @@ async function openExtractionHelperModal() {
   const audience = (profile && profile.primaryAudience) || '';
   const domain = (domainInfo && domainInfo.domain) || (profile && profile.business) || '';
   const startingPoint = state.startingPoint || '';
-  const promptFor = (type) => buildExtractionPrompt({ idea, contentType: type, startingPoint, audience, domain: domain });
+  /* 05/11/2026 (מאיה): הקריאייטיב שנבחר נכנס גם לפרומפט ה-SOS */
+  const creative = creativeNow();
+  const promptFor = (type) => buildExtractionPrompt({ idea, contentType: type, startingPoint, audience, domain: domain, creative });
   const typeHint = (type) => `<p class="cosmic-hint">סוג התוכן שזוהה: <strong>${escapeHtml(type)}</strong></p>`;
-  const peekFor = (text, type) => highlightPlaceholders(text, [idea, type, startingPoint, audience, domain]);
+  const peekFor = (text, type) => highlightPlaceholders(text, [idea, type, startingPoint, audience, domain, creative]);
   const prompt = promptFor(contentType);
   resultEl.innerHTML = `
     <p>הפרומפט מוכן. ChatGPT ישאל שאלות שיוציאו ממך בדיוק מה להגיד, ובסוף יאסוף את התשובות למגילה אחת.</p>
@@ -2104,14 +2237,17 @@ async function openExtractionHelperModal() {
 }
 
 function renderScratchDump() {
+  /* 05/11/2026: דרך הטיוטה ולא כערך של התיבה, כמו בשאר תיבות ההדבקה */
+  if (state.screen === 'scratch-dump') seedDraft('va-scratch-dump-input', state.rawDump);
   cosmicCard(`
     <h2>מגילת אסתר</h2>
+    ${creativeReminderHtml()}
     <p>תשפכו כל מה שיש לכם להגיד, הסדר לא משנה. כל מה שעולה לכם לראש, לפרטי פרטים וכמה שיותר ספציפי, עם דוגמאות ומספרים. מומלץ להיעזר בפרומפט חילוץ התוכן בכפתור ה-SOS.</p>
     <button type="button" class="va-sos-big" id="va-scratch-help-btn">
       <span class="va-sos-big__icon" aria-hidden="true">🆘</span>
       <span class="va-sos-big__text"><strong>נתקעים? לא ברור מה לכתוב?</strong><span>לחיצה כאן, ו-ChatGPT ישאל אותך שאלות שיוציאו ממך מגילה מלאה</span></span>
     </button>
-    <textarea class="cosmic-textarea" id="va-scratch-dump-input" style="min-height:160px" placeholder="כל מה שיש לך להגיד...">${state.rawDump ? escapeHtml(state.rawDump) : ''}</textarea>
+    <textarea class="cosmic-textarea" id="va-scratch-dump-input" style="min-height:160px" placeholder="כל מה שיש לך להגיד..."></textarea>
     ${megillahMeterHtml('va-scratch')}
     <details class="va-more">
       <summary>איך בנוי תסריט טוב?</summary>
@@ -2135,38 +2271,47 @@ function renderScratchDump() {
 }
 
 async function renderScratchHook() {
+  const t = ++renderSeq;
   const profile = await getProfile();
   const audience = profile && profile.primaryAudience ? profile.primaryAudience : '';
   const domain = await myDomain();
+  if (t !== renderSeq) return;
+  const creative = creativeNow();
   /* 28/10/2026: השכפול ההפוך כבר לא מסלול נפרד עם מסך החלטה משלו.
      המגילה כבר כתובה כאן, ולכן מי שיש לה סרטון שעבד מדביקה את התמלול
      שלו, וההוקים נבנים בפרומפט השכפול ההפוך שלה (ההוק המקורי + המגילה).
      מי שאין לה, לא רואה מזה יותר משורה אחת סגורה. */
   const withRef = !!(state.transcript && state.openingHook);
   const prompt = withRef
-    ? buildReverseDuplicationPrompt({ domain, audience, hook: state.openingHook, script: state.rawDump || '' })
-    : buildHookFindingPrompt({ idea: state.ideaDescription || '', script: state.rawDump || '', audience, domain: domain });
+    ? buildReverseDuplicationPrompt({ domain, audience, hook: state.openingHook, script: state.rawDump || '', creative })
+    : buildHookFindingPrompt({ idea: state.ideaDescription || '', script: state.rawDump || '', audience, domain: domain, creative });
   const marks = withRef
-    ? [audience, domain, state.openingHook, state.rawDump]
-    : [state.ideaDescription, state.rawDump, audience];
-  if (state.screen === 'scratch-hook') seedDraft('va-scratch-hook-input', state.hook);
+    ? [audience, domain, state.openingHook, state.rawDump, creative]
+    : [state.ideaDescription, state.rawDump, audience, creative];
+  if (state.screen === 'scratch-hook') {
+    seedDraft('va-scratch-hook-input', state.hook);
+    seedDraft('va-hook-ref-input', state.transcript);
+  }
   cosmicCard(`
     <h2>מציאת הוק</h2>
-    ${geminiHookNote()}
+    ${chatgptHookNote()}
+    ${creativeReminderHtml()}
     <p>${withRef
-      ? "ההוק של הסרטון שעבד + המגילה שלך: ג'מיני או ChatGPT יביאו 30 הוקים באותו מנגנון. להעתיק, להדביק, ולחזור עם ההוק שבחרת."
-      : "הפרומפט כולל בנק הוקים אמיתי מוטמע - ג'מיני או ChatGPT יתאימו לך ממנו הוק מדויק. להעתיק, להדביק, ולחזור עם ההוק שבחרת."}</p>
+      ? 'ההוק של הסרטון שעבד + המגילה שלך: ChatGPT יביא 30 הוקים באותו מנגנון. להעתיק, להדביק, ולחזור עם ההוק שבחרת.'
+      : 'הפרומפט כולל בנק הוקים אמיתי מוטמע - ChatGPT יתאים לך ממנו הוק מדויק. להעתיק, להדביק, ולחזור עם ההוק שבחרת.'}</p>
+    ${creative ? '<p class="cosmic-hint">ההוקים נבנים סביב הקריאייטיב: מה שאומרים תוך כדי הפתיחה שבחרת או מיד אחריה.</p>' : ''}
     ${withRef ? `<div class="cosmic-context-box"><span>ההוק שזיהינו מהסרטון:</span>${escapeHtml(state.openingHook)}</div>` : ''}
     <details class="va-more"${withRef ? ' open' : ''}>
       <summary>יש סרטון שעבד ושתרצו להיצמד אליו? (רשות)</summary>
-      <textarea class="cosmic-textarea" id="va-hook-ref-input" placeholder="להדביק כאן את התמלול של הסרטון...">${state.transcript ? escapeHtml(state.transcript) : ''}</textarea>
+      <textarea class="cosmic-textarea" id="va-hook-ref-input" placeholder="להדביק כאן את התמלול של הסרטון..."></textarea>
+
       <div class="cosmic-btn-row" style="margin-top:8px">
         <button type="button" class="cosmic-btn" id="va-hook-ref-btn">לבנות את ההוקים לפי הסרטון</button>
         ${withRef ? '<button type="button" class="cosmic-btn" id="va-hook-ref-clear-btn">בלי הסרטון</button>' : ''}
       </div>
     </details>
     ${promptPeek(highlightPlaceholders(prompt, marks))}
-    ${copyBtn(prompt, "להעתיק פרומפט לג'מיני / ChatGPT")}
+    ${copyBtn(prompt, 'להעתיק פרומפט ל-ChatGPT')}
     <textarea class="cosmic-textarea" id="va-scratch-hook-input" placeholder="להדביק כאן את ההוק שבחרת..." style="margin-top:14px"></textarea>
     <div class="cosmic-btn-row" style="margin-top:14px">
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-scratch-hook-done-btn">ממשיכים ←</button>
@@ -2193,7 +2338,7 @@ async function renderScratchHook() {
       state.openingHook = null;
       showToast('לא הצלחנו לזהות את ההוק בתמלול. אפשר לנסות שוב');
     }
-    renderScratchHook();
+    render();
   });
   const clearRef = document.getElementById('va-hook-ref-clear-btn');
   if (clearRef) clearRef.addEventListener('click', () => {
@@ -2204,7 +2349,7 @@ async function renderScratchHook() {
     delete drafts['scratch-hook|va-hook-ref-input'];
     state.drafts = drafts;
     saveAll().catch((err) => console.error('saveSession failed:', err));
-    renderScratchHook();
+    render();
   });
   document.getElementById('va-scratch-hook-done-btn').addEventListener('click', () => {
     const hook = document.getElementById('va-scratch-hook-input').value.trim();
@@ -2217,14 +2362,20 @@ async function renderScratchHook() {
 }
 
 async function renderScratchHookReinforce() {
-  const prompt = buildHookReinforcementPrompt({ idea: state.ideaDescription || '', hook: state.hook || '', script: state.rawDump || '', audience: await myAudience(), domain: await myDomain() });
+  const t = ++renderSeq;
+  const audience = await myAudience();
+  const domain = await myDomain();
+  if (t !== renderSeq) return;
+  const creative = creativeNow();
+  const prompt = buildHookReinforcementPrompt({ idea: state.ideaDescription || '', hook: state.hook || '', script: state.rawDump || '', audience, domain: domain, creative });
   if (state.screen === 'scratch-hook-reinforce') seedDraft('va-scratch-reinforce-input', state.hookReinforcement);
   cosmicCard(`
     <h2>חיזוק ההוק</h2>
-    ${geminiHookNote()}
-    <p>המשפט השני, שנותן סיבה ברורה להישאר. להעתיק, להדביק בג'מיני או ב-ChatGPT, ולחזור עם החיזוק שבחרת.</p>
-    ${promptPeek(highlightPlaceholders(prompt, [state.ideaDescription, state.hook, state.rawDump]))}
-    ${copyBtn(prompt, "להעתיק פרומפט לג'מיני / ChatGPT")}
+    ${chatgptHookNote()}
+    ${creativeReminderHtml()}
+    <p>המשפט השני, שנותן סיבה ברורה להישאר. להעתיק, להדביק ב-ChatGPT, ולחזור עם החיזוק שבחרת.</p>
+    ${promptPeek(highlightPlaceholders(prompt, [state.ideaDescription, state.hook, state.rawDump, creative]))}
+    ${copyBtn(prompt, 'להעתיק פרומפט ל-ChatGPT')}
     <textarea class="cosmic-textarea" id="va-scratch-reinforce-input" placeholder="להדביק כאן את חיזוק ההוק שבחרת..." style="margin-top:14px"></textarea>
     <div class="cosmic-btn-row" style="margin-top:14px">
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-scratch-reinforce-done-btn">ממשיכים ←</button>
@@ -2257,12 +2408,15 @@ const CTA_TYPES = [
    כתיבת תסריט מלא, הייתי כותבת למעלה שוב: התחום שלי הוא:"), ותוקן
    שם בלבד. אותו באג בדיוק, במסלול השני. */
 async function renderScratchDistill() {
+  const t = ++renderSeq;
   const audience = await myAudience();
   const domain = await myDomain();
+  if (t !== renderSeq) return;
+  const creative = creativeNow();
   const buildPrompt = (ctaType, funnel) => buildScriptDistillationPrompt({
     idea: state.ideaDescription || '', hook: state.hook || '', hookReinforcement: state.hookReinforcement || '',
     rawScript: state.rawDump || '', ctaType, funnel,
-    audience, domain: domain, carousel: isCarousel(state),
+    audience, domain: domain, carousel: isCarousel(state), creative,
   });
   /* 28/10/2026 (מאיה): "מאוד קל לפספס איזו הנעה לפעולה רוצים, שימי לב".
      זו הייתה רשימה נפתחת שכבר בחרה "משפך" לבד, כך שאפשר היה להעתיק את
@@ -2274,6 +2428,7 @@ async function renderScratchDistill() {
   `).join('');
   cosmicCard(`
     <h2>זיקוק התסריט הסופי</h2>
+    ${creativeReminderHtml()}
     ${isCarousel(state) ? '<p class="cosmic-hint">בחרת פוסט קרוסלה, אז הפרומפט כותב טקסט קצר לכל שקופית, עד 10 שקופיות.</p>' : ''}
     <div class="va-cta-pick">
       <p class="va-cta-pick-title">⭐ קודם לבחור: מה הצופה צריך לעשות בסוף הסרטון?</p>
@@ -2308,7 +2463,7 @@ async function renderScratchDistill() {
     const prompt = buildPrompt(cta, funnel);
     /* הצהוב מסמן מה מולא לבד, ולכן התחום והקהל שייכים לשם גם הם. */
     const values = [state.ideaDescription, state.hook, state.hookReinforcement, state.rawDump, cta, funnel,
-      audience, domain];
+      audience, domain, creative];
     wrap.innerHTML = `${promptPeek(highlightPlaceholders(prompt, values))}${copyBtn(prompt, 'להעתיק פרומפט ל-ChatGPT')}`;
     wireCopyButtons(wrap);
   }
@@ -2345,17 +2500,21 @@ async function renderScratchDistill() {
    של הרצאה אלא בצורה שמתאימה לרשתות החברתיות", "במידת הצורך"). כפתור אחד:
    הודבקה גרסה חדשה, היא התסריט. לא הודבק כלום, ממשיכים עם מה שיש. */
 async function renderScratchScene() {
+  const t = ++renderSeq;
   const script = state.draftScript || '';
   /* תקלה בפרופיל לא עוצרת כאן: הפרומפט מסתדר גם בלי קהל ותחום, ובלי זה הכפתור
      במסך הקודם לא היה עושה כלום. */
   const [audience, domain] = await Promise.all([myAudience().catch(() => ''), myDomain().catch(() => '')]);
-  if (state.screen !== 'scratch-scene') return;
-  const prompt = buildSceneRewritePrompt({ script, audience, domain });
+  if (t !== renderSeq || state.screen !== 'scratch-scene') return;
+  const creative = creativeNow();
+  const prompt = buildSceneRewritePrompt({ script, audience, domain, creative });
   seedDraft('va-scratch-scene-input', state.sceneRewrite);
   cosmicCard(`
     <h2>התסריט נשמע כמו הרצאה?</h2>
+    ${creativeReminderHtml()}
     <p>אם הוא יצא קצת מסביר ופחות סיפורי, הפרומפט הזה משכתב אותו לשפה של רשתות חברתיות. להעתיק, להדביק ב-ChatGPT, ולחזור עם הגרסה החדשה.</p>
-    ${promptPeek(highlightPlaceholders(prompt, [script, audience, domain]))}
+    ${promptPeek(highlightPlaceholders(prompt, [script, audience, domain, creative]))}
+
     ${copyBtn(prompt, 'להעתיק פרומפט ל-ChatGPT')}
     <textarea class="cosmic-textarea" id="va-scratch-scene-input" placeholder="להדביק כאן את הגרסה החדשה..." style="margin-top:14px"></textarea>
     <p class="cosmic-hint">התסריט כבר טוב? לא צריך להדביק כלום, פשוט ממשיכים.</p>
@@ -2474,8 +2633,30 @@ function renderSummary() {
   document.getElementById('va-restart-btn').addEventListener('click', restart);
 }
 
+/* 05/11/2026 (ביקורת): מסך שנכשל באמצע (פרופיל, מאגר או שרת שלא ענו)
+   השאיר את המסך הקודם על המסך, בלי שום הודעה. כל ציור עובר כאן, והמספר
+   החדש מבטל ציור ישן שעוד מחכה לשרת. */
 function render() {
+  renderSeq += 1;
+  let out;
+  try {
+    out = renderScreen();
+  } catch (err) {
+    renderFailed(err);
+    return undefined;
+  }
+  if (out && typeof out.catch === 'function') return out.catch(renderFailed);
+  return out;
+}
+
+function renderFailed(err) {
+  console.error('video assistant render failed:', err);
+  showToast(serverErrorText(err, 'טעינת המסך'));
+}
+
+function renderScreen() {
   if (state.screen === 'opening') return renderOpening();
+
   if (state.screen === 'reference-source-choice') return renderReferenceSourceChoice();
   if (state.screen === 'idea-source-choice') return renderIdeaSourceChoice();
   if (state.screen === 'type-idea') return renderTypeIdea();
@@ -2572,7 +2753,8 @@ async function runDuplicateFromBank(video, { loadSubtitles } = {}) {
   } catch (err) {
     console.error('getProfile before duplication failed:', err);
   }
-  if (incomplete) renderProfileSetup(start);
+  if (incomplete) renderProfileSetup(start).catch(renderFailed);
+
   else start();
 }
 
@@ -2616,7 +2798,11 @@ export function wireVideoAssistantView() {
     }
     const isFresh = saved && saved.updatedAt && (Date.now() - saved.updatedAt) < RESUME_WINDOW_MS;
     const isResumable = isFresh && saved.screen && saved.screen !== 'summary' && saved.screen !== 'opening';
+    /* 05/11/2026 (ביקורת): נפתח סרטון אחר מזה שבזיכרון (או התחלה חדשה):
+       תמלול מדויק שעוד רץ לא שייך אליו. */
+    if (!isResumable || (saved.scriptId || null) !== (state.scriptId || null)) resetAccurateRuns();
     state = isResumable ? saved : INITIAL_STATE;
+
     // 16/10/2026: סשנים ישנים שנשמרו לפני כפתור החזרה לא יכילו history -
     // בלי זה BACK על סשן ישן יקרוס על undefined.length.
     if (!state.history) state.history = [];

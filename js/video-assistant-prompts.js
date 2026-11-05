@@ -1,4 +1,4 @@
-import { contextHeader } from './video-assistant-content.js';
+import { contextHeader, creativeBlock, CREATIVE_FOCUS } from './video-assistant-content.js';
 // 13/10/2026: שני הפרומפטים ל-ChatGPT מתוך "העוזר שלך ליצירת סרטון",
 // מילה במילה מהניסוח של מאיה (docs/superpowers/specs/2026-10-13-video-creation-assistant-design.md)
 // - אסור לשנות את הניסוח, רק למלא את המשתנים.
@@ -26,12 +26,15 @@ export function buildDuplicationPrompt({ audience, domain, hook }) {
 // הוא ממליץ גרוע") - גם אחרי שחידדתי את קריטריוני הבחירה (ראה גרסה
 // קודמת), ההמלצה על 3 מתוך ה-30 נשארה גרועה - הוסרה לגמרי, היא עוברת
 // ידנית על כל ה-30.
-export function buildReverseDuplicationPrompt({ domain, audience, hook, script }) {
+/* 05/11/2026 (מאיה: "צריך לתת הכל בהתאמה ולא להתעלם"): במסך ההוק של
+   המסלול מ-0 גם הפרומפט הזה מקבל את הקריאייטיב שנבחר, מיד אחרי התחום
+   והקהל. בשכפול עצמו אין קריאייטיב, והנוסח נשאר בדיוק כמו שהיה. */
+export function buildReverseDuplicationPrompt({ domain, audience, hook, script, creative }) {
   const domainText = domain && domain.trim() ? domain.trim() : '[התחום שלי]';
   const audienceText = audience && audience.trim() ? audience.trim() : '[הקהל יעד שלי]';
   return `התחום שלי הוא: ${domainText}
 הקהל יעד שלי הוא: ${audienceText}
-זה ההוק שאני רוצה לשכפל בול 1:1 אותו מנגנון אותו אורך אותו מבנה אליי: ${hook}
+${creativeBlock(creative, CREATIVE_FOCUS.hook)}זה ההוק שאני רוצה לשכפל בול 1:1 אותו מנגנון אותו אורך אותו מבנה אליי: ${hook}
 וזה בעצם התסריט שלי שממנו אני רוצה שתשלוף את ההוקים החזקים ותלביש את זה בול 1:1 אותו מנגנון אותו אורך אותו מבנה על ההוק המקורי שצירפתי לך ותביא לי 30 רעיונות חזקים:
 ${script}
 שים לב שהוק חייב להיות ברור, כמה שיותר ספציפי, מעורר רגש או מסקרן !!!!! אסור שיהיה סיסמתי, הוא צריך להתאים לרשתות החברתיות אבל כמובן שמתי לב הוק מקורי של סרטון שכבר עבד אז אתה משכפל בול את המגננון אבל השכפול חייב להיות מדויק, להיצמד לאותו אורך ואותו מבנה רק מותאם אליי`;
