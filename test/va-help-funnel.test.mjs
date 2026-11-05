@@ -66,24 +66,35 @@ test('"עוד": הכפתור מופיע ומחליף בין קצר למלא', ()
 });
 
 /* 02/11/2026 (מאיה: "תעשי סלאש ChatGPT, כי פעמים זה עושה יותר טוב ולפעמים
-   זה"): כפתור שהעתיק לג'מיני מציע את שניהם, ושום טקסט לידו לא אומר רק אחד. */
-test("מציאת הוק הולכת לג'מיני או ל-ChatGPT, בשני המסלולים, והכתיבה ל-ChatGPT", () => {
-  for (const [a, b] of [['async function renderPrompt1', 'async function renderPrompt2'], ['async function renderScratchHook', 'async function renderScratchHookReinforce']]) {
-    const screen = between(a, b);
-    assert.match(screen, /geminiHookNote\(\)/, a);
-    assert.match(screen, /להעתיק פרומפט לג'מיני \/ ChatGPT/, a);
-    assert.ok(!/להדביק בג'מיני,|נשלח לג'מיני -|ג'מיני יביא|ג'מיני יתאים/.test(screen), a);
-  }
+   זה"): כפתור שהעתיק לג'מיני מציע את שניהם, ושום טקסט לידו לא אומר רק אחד.
+   05/11/2026 (מאיה): זה נשאר רק בשכפול. במסלול מ-0 הקריאייטיב בג'מיני,
+   וההוק, החיזוק, ה-SOS והתסריט רק ב-ChatGPT. */
+test("שכפול: מציאת הוק הולכת לג'מיני או ל-ChatGPT, והכתיבה ל-ChatGPT", () => {
+  const screen = between('async function renderPrompt1', 'async function renderPrompt2');
+  assert.match(screen, /geminiHookNote\(\)/);
+  assert.match(screen, /להעתיק פרומפט לג'מיני \/ ChatGPT/);
+  assert.ok(!/להדביק בג'מיני,|נשלח לג'מיני -|ג'מיני יביא|ג'מיני יתאים/.test(screen));
   assert.match(between('async function renderPrompt2', 'function renderReadAloud'), /להעתיק פרומפט ל-ChatGPT/);
   assert.match(between('async function renderScratchDistill', '// ===== מסך הסיכום הסופי'), /להעתיק פרומפט ל-ChatGPT/);
 });
 
-test("חיזוק ההוק גם הוא בג'מיני או ב-ChatGPT", () => {
-  const screen = between('async function renderScratchHookReinforce', 'const CTA_TYPES');
-  assert.match(screen, /geminiHookNote\(\)/);
-  assert.match(screen, /להעתיק פרומפט לג'מיני \/ ChatGPT/);
-  assert.ok(!screen.includes("להדביק בג'מיני,"));
+test("מ-0: ההוק והחיזוק רק ב-ChatGPT, בלי זכר לג'מיני", () => {
+  for (const [a, b] of [['async function renderScratchHook', 'async function renderScratchHookReinforce'], ['async function renderScratchHookReinforce', 'const CTA_TYPES']]) {
+    const screen = between(a, b);
+    assert.match(screen, /chatgptHookNote\(\)/, a);
+    assert.match(screen, /copyBtn\(prompt, 'להעתיק פרומפט ל-ChatGPT'\)/, a);
+    assert.ok(!screen.includes('geminiHookNote'), a);
+    assert.ok(!screen.includes("ג'מיני"), a);
+  }
+  assert.ok(!between('async function openExtractionHelperModal', 'function renderScratchDump').includes("ג'מיני"), 'ה-SOS');
 });
+
+test("מ-0: האריזה הקריאייטיבית נשארת בג'מיני", () => {
+  const screen = between('async function renderCreativePackaging', 'function chips');
+  assert.match(screen, /copyBtn\(prompt, "להעתיק פרומפט לג'מיני"\)/);
+  assert.ok(!screen.includes('ChatGPT'));
+});
+
 
 /* 02/11/2026 (מאיה: "בגלל שזה שכפול תוכן לא צריך את ה-SOS... וגם לא צריך
    שיהיה כתוב מגילת אסתר... זה מכריח אותי לרשום מגילה עם תווים"). */
