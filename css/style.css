@@ -8277,3 +8277,16 @@ body[data-plan="refs"] .hub-full-only { display: none !important; }
 .cosmic-modal-overlay .va-desc__hooks p { margin: 0 0 8px; font-weight: 700; }
 .cosmic-modal-overlay .va-desc__wait { color: #5d7d99; }
 .cosmic-modal-overlay .va-desc__error { color: #b42318; font-weight: 600; }
+
+/* 05/11/2026: שורת "הקריאייטיב שבחרת" שמלווה את מסכי ההוק והתסריט. כיווני
+   אריזה ארוכים נחתכים ל-3 שורות כדי לא לדחוף את המסך למטה. */
+#video-assistant-view .va-creative-reminder {
+  background: #f1f7fb;
+  border-inline-start: 3px solid var(--va-blue);
+  border-radius: 10px;
+  padding: 8px 12px;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}

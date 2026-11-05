@@ -1,3 +1,4 @@
+import { viewedClient } from './client-view.js';
 // 17/10/2026 (מאיה, מתוך רשימת 50 הרעיונות שבחרה - 16 מהם): שכבת ה"חוויה
 // ממכרת" של העוזר ליצירת סרטון - קונפטי, מסקוט, זוויות דינמיות, ספינר
 // הגרלה, אפקטי חלקיקים, טיימר, ואודיו אמביינטי. מופרד מ-video-assistant.js
@@ -191,17 +192,22 @@ export function spinReveal(labelEl, candidateTexts, finalText, done) {
 }
 
 // ----- #37: זוכרת תחום/קהל אחרון מקומית, לתצוגה מיידית בלי לחכות לרשת -----
-const LOCAL_KEY = 'va-last-domain-info';
+/* 05/11/2026: מפתח אחד לכל המכשיר הראה לרגע את התחום של מאיה (או של
+   הלקוחה הקודמת) בתוך לקוחה אחרת. בתוך לקוחה המפתח נושא את ה-uid שלה. */
+function localKey() {
+  const client = viewedClient();
+  return client ? `va-last-domain-info:${client.uid}` : 'va-last-domain-info';
+}
 export function cacheDomainInfoLocally(info) {
   if (!hasDom) return;
   try {
-    localStorage.setItem(LOCAL_KEY, JSON.stringify(info));
+    localStorage.setItem(localKey(), JSON.stringify(info));
   } catch { /* פרטי/חסום - לא קריטי, זה רק קאש לתצוגה מהירה */ }
 }
 export function readCachedDomainInfo() {
   if (!hasDom) return null;
   try {
-    const raw = localStorage.getItem(LOCAL_KEY);
+    const raw = localStorage.getItem(localKey());
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
