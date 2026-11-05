@@ -8271,22 +8271,20 @@ body[data-plan="refs"] .hub-full-only { display: none !important; }
 .cosmic-modal-overlay .va-desc__cta { margin-top: 10px; }
 .cosmic-modal-overlay .va-desc__input { width: 100%; min-height: 48px; font-size: 16px; }
 .cosmic-modal-overlay .va-desc__label { font-weight: 700; margin: 14px 0 6px; }
-.cosmic-modal-overlay .va-desc__text { white-space: pre-line; text-align: right; }
+.cosmic-modal-overlay .va-desc__text { white-space: pre-line; text-align: right; font-size: 15px; line-height: 1.6; }
 .cosmic-modal-overlay .va-desc__hooks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
 .cosmic-modal-overlay .va-desc__hooks li { background: #fff; border: 1px solid #d3e6f2; border-radius: 12px; padding: 10px 12px; }
-.cosmic-modal-overlay .va-desc__hooks p { margin: 0 0 8px; font-weight: 700; }
+.cosmic-modal-overlay .va-desc__hooks li { display: flex; align-items: center; gap: 10px; }
+.cosmic-modal-overlay .va-desc__hooks p { margin: 0; font-weight: 700; flex: 1; }
+/* 05/11/2026: כפתור העתקה קטן ובהיר ליד כל הוק, במקום שלושה כפתורים כהים ברוחב מלא */
+.cosmic-modal-overlay .va-desc__hooks li > button { width: auto; flex: none; min-height: 40px; padding: 0 14px; background: #fff; color: var(--va-navy, #1b2559); border: 1.5px solid #cfe2ee; box-shadow: none; font-size: 14px; }
 .cosmic-modal-overlay .va-desc__wait { color: #5d7d99; }
 .cosmic-modal-overlay .va-desc__error { color: #b42318; font-weight: 600; }
 
-/* 05/11/2026: שורת "הקריאייטיב שבחרת" שמלווה את מסכי ההוק והתסריט. כיווני
-   אריזה ארוכים נחתכים ל-3 שורות כדי לא לדחוף את המסך למטה. */
+/* 05/11/2026: שורת "הקריאייטיב שבחרת" שמלווה את מסכי ההוק והתסריט, במלואה. */
 #video-assistant-view .va-creative-reminder {
   background: #f1f7fb;
   border-inline-start: 3px solid var(--va-blue);
   border-radius: 10px;
   padding: 8px 12px;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
 }
