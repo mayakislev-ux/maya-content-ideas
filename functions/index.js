@@ -22,7 +22,7 @@ const { buildOngoingWarmingPrompt, buildPresaleWarmingPrompt } = require('./warm
 const { buildContentPlanPrompt } = require('./content-plan-system-prompt');
 const { buildStorySequencePrompt, checkSequence } = require('./story-sequence-prompt');
 const { parseSequence } = require('./story-sequence-parse');
-const { fetchExtraContentLinks, fetchSheetTabs, sheetsServiceAccountKey } = require('./sheets-content');
+const { fetchExtraContentLinks, fetchSheetTabs, fetchSheetTabPicked, sheetsServiceAccountKey } = require('./sheets-content');
 const {
   CATEGORIES, LEGACY_CATEGORIES, PERSUASION_STAGES, CATEGORY_DEFINITIONS, PERSUASION_STAGE_DEFINITIONS,
 } = require('./ideas-constants');
@@ -81,6 +81,12 @@ const DAILY_LIMITS = {
   /* 06/11/2026: רעיונות מתוך הטקסט שתומלל במיקרופון הבית (ideasFromRecording
      עם text). קריאה על טקסט בלבד, זולה ומהירה בהרבה מהקשבה להקלטה. */
   ideasFromText: 40,
+  /* 06/11/2026: "אין לי רעיון?" במסך הבית. צילום מסך של שאלה -> רעיונות
+     (Claude רואה תמונה, 1-3 סנט), שורה מהטבלה -> 3 רעיונות (פחות מסנט),
+     וקריאת הלשונית מהקובץ (בלי AI, רק Sheets). */
+  ideasFromImage: 20,
+  ideasFromRow: 60,
+  readSheetSections: 40,
   /* 05/11/2026: "✍️ תיאור לסרטון" בסיכום העוזר לסרטון. קריאה קטנה של Haiku. */
   writeVideoDescription: 30,
   /* 05/11/2026: שתיהן קראו ל-enforceRateLimit בלי שורה כאן, ו-count >= undefined
@@ -2955,6 +2961,60 @@ exports.syncRefsSubscriptions = require('./refs-subscription').syncRefsSubscript
     },
   });
   exports.ideasFromRecording = onCall({ region: 'us-central1', timeoutSeconds: 300, memory: '512MiB' }, handler);
+}
+
+// 06/11/2026 (מאיה): מסך הבית "אין לי רעיון?" עם ארבע דלתות. שלוש מהן
+// כאן: צילום מסך של שאלה, שורה מ"ניתוח קהל יעד" או מ"פרסונה שיווקית", וקריאת
+// הלשונית עצמה. ראה ideas-from-sources.js. מחזירות רשימה בלבד, השמירה
+// נעשית בדפדפן. המכסה נספרת רק על מה שהצליח.
+{
+  const ifs = require('./ideas-from-sources');
+  const taxonomy = {
+    categories: CATEGORIES,
+    categoryDefinitions: CATEGORY_DEFINITIONS,
+    stages: PERSUASION_STAGES,
+    audienceScopes: AUDIENCE_SCOPES,
+    strongRating: '🔥 חייב לצלם',
+    normalRating: '⭐ שווה לצלם',
+  };
+  const getProfileOf = async (uid) => {
+    const snap = await db.collection('profiles').doc(uid).get();
+    return snap.exists ? snap.data() : null;
+  };
+  const getAudience = async (uid) => {
+    const p = await getProfileOf(uid);
+    return (p && p.primaryAudience) || '';
+  };
+  const claudeFor = (fnName) => async (body) => {
+    const data = await callAnthropic(anthropicApiKey.value(), { model: 'claude-sonnet-5', ...body }, fnName);
+    return getResponseText(data);
+  };
+  exports.ideasFromImage = onCall({ secrets: [anthropicApiKey], region: 'us-central1', timeoutSeconds: 120, memory: '512MiB' }, ifs.createIdeasFromImageHandler({
+    HttpsError,
+    enforceAllowlist: (email) => enforceAllowlist(email),
+    checkRate: (uid) => reserveRateLimit(uid, 'ideasFromImage'),
+    callClaude: claudeFor('ideasFromImage'),
+    getAudience,
+    actingUid,
+    taxonomy,
+  }));
+  exports.ideasFromRow = onCall({ secrets: [anthropicApiKey], region: 'us-central1', timeoutSeconds: 120 }, ifs.createIdeasFromRowHandler({
+    HttpsError,
+    enforceAllowlist: (email) => enforceAllowlist(email),
+    checkRate: (uid) => reserveRateLimit(uid, 'ideasFromRow'),
+    callClaude: claudeFor('ideasFromRow'),
+    getAudience,
+    actingUid,
+    taxonomy,
+  }));
+  exports.readSheetSections = onCall({ secrets: [sheetsServiceAccountKey], region: 'us-central1', timeoutSeconds: 60 }, ifs.createReadSheetSectionsHandler({
+    HttpsError,
+    enforceAllowlist: (email) => enforceAllowlist(email),
+    checkRate: (uid) => reserveRateLimit(uid, 'readSheetSections'),
+    actingUid,
+    getProfile: getProfileOf,
+    readTab: (sheetId, pick) => fetchSheetTabPicked(sheetId, pick),
+  }));
 }
 
 // 06/11/2026 (מאיה): "בחלק של כתיבת הרעיון עצמו יש מיקרופון הוא כאילו לא

@@ -7,9 +7,10 @@ import { doc, getDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs
 import { saveProfile, getProfile } from './user-profile.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
 import { subscribeToIdeas } from './ideas-store.js';
-import { renderArchive, wireArchiveControls, getCurrentIdeas, wirePullToRefresh, wireGoalEditModal, setIdeasRedesign } from './archive-view.js';
+import { renderArchive, wireArchiveControls, getCurrentIdeas, getAllIdeas, wirePullToRefresh, wireGoalEditModal, setIdeasRedesign } from './archive-view.js';
 import { ideasRedesignFor } from './ideas-shelves.js';
 import { wireHomeMic, setHomeMicVisible } from './home-mic.js';
+import { wireNoIdea, setNoIdeaHome } from './no-idea.js';
 import { openAddModal, openEditModal, wireIdeaForm, setSimpleIdeaForm } from './idea-form.js';
 import { wireRandomIdeaModal, setRandomIdeaFromAll } from './random-idea-modal.js';
 import { wireIdeaChat } from './idea-chat.js';
@@ -21,7 +22,7 @@ import { wireVideoAssistantView } from './video-assistant.js';
 import { wireStoryTableView } from './story-table.js';
 import { actsAsOwner, isClientView, setClientView, viewedClient, setViewedClient } from './client-view.js';
 import { openClientPicker } from './client-picker.js';
-import { wireInspirationView, openInspirationView } from './inspiration-view.js';
+import { wireInspirationView, openInspirationView, loadBankVideos, startBankDuplication } from './inspiration-view.js';
 import { showView, getLastView } from './view-router.js';
 import { showToast } from './toast.js';
 import { startUpdateCheck, showAppVersion } from './update-check.js';
@@ -338,6 +339,8 @@ document.getElementById('add-idea-top-btn').addEventListener('click', () => open
 document.getElementById('tab-home').addEventListener('click', () => showView('home'));
 document.getElementById('tab-archive').addEventListener('click', () => showView('archive'));
 document.getElementById('home-progress-widget').addEventListener('click', () => showView('progress'));
+/* 06/11/2026: הכניסה ל"ההתקדמות שלי" מהתפריט, כשהווידג'ט ירד ממסך הבית (setNoIdeaHome) */
+document.getElementById('tab-progress').addEventListener('click', () => showView('progress'));
 document.getElementById('progress-back-btn').addEventListener('click', () => showView('home'));
 document.getElementById('tab-guide').addEventListener('click', () => showView('guide'));
 document.getElementById('tab-inspiration').addEventListener('click', () => {
@@ -497,6 +500,9 @@ wireArchiveControls((idea) => openEditModal(idea));
 wireGoalEditModal();
 wirePullToRefresh();
 wireHomeMic();
+/* 06/11/2026: "אין לי רעיון?" במסך הבית. אותו מאגר ואותו שכפול של מסך
+   "מאגר להשראה", והרעיונות שכבר נשמרו (לסימון ✓ על שורה בטבלה). */
+wireNoIdea({ getIdeas: getAllIdeas, loadBankVideos, duplicate: startBankDuplication });
 wireRandomIdeaModal({ getIdeas: getCurrentIdeas, onOpenIdea: openEditModal });
 wireIdeaChat();
 wireFeedbackForm();
@@ -820,6 +826,8 @@ onAuthChange(async (user) => {
   setIdeasRedesign(ideasRedesign);
   setSimpleIdeaForm(ideasRedesign);
   setRandomIdeaFromAll(ideasRedesign);
+  /* לפני setHomeMicVisible: עם הדלתות הכרטיס מוצג גם בדפדפן בלי מיקרופון */
+  setNoIdeaHome(ideasRedesign);
   setHomeMicVisible(ideasRedesign);
 
   /* 26/10/2026: שלושת הכפתורים שהמודולים האלה שירתו ירדו לבקשתה, ולכן

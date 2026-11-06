@@ -56,8 +56,16 @@ export async function addIdea({
   format = '',
   series = '',
   seriesOrder = null,
+  sourceRow = '',
+  sourceSection = '',
+  sourceTab = '',
 }) {
+  /* 06/11/2026: רעיון שנולד משורה בטבלה ("אין לי רעיון?" במסך הבית) שומר
+     את השורה, כדי שהשורה תסומן "✓ כבר יש עליה רעיון". רק כשיש, כדי שרעיון
+     רגיל יישמר בדיוק כמו קודם. */
+  const fromRow = sourceRow ? { sourceRow, sourceSection, sourceTab } : {};
   return addDoc(ideasCollection(), {
+    ...fromRow,
     title,
     category,
     hookText,

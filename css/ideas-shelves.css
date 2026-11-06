@@ -451,3 +451,121 @@ body.ideas-selecting #add-idea-fab { display: none; }
   .calm-card { transition: none; }
   .cat-panel { animation: none; }
 }
+
+/* ==========================================================================
+   06/11/2026 לילה: "אין לי רעיון?" במסך הבית (js/no-idea.js).
+   מאיה: "שיהיה למעלה אופציה להוסיף ישירות רעיון ואז מתחת את המיקרופון
+   ושלוחצים נפתח הפופאפ". ארבע הדלתות הן אותו כרטיס של המיקרופון, קטן יותר.
+   ========================================================================== */
+.home-progress-widget[hidden],
+.home-recent-section[hidden] { display: none; }
+
+.no-idea-content { max-width: 560px; }
+.no-idea-doors {
+  display: grid;
+  gap: 0.8rem;
+}
+.home-mic-card.no-idea-door {
+  margin: 0;
+  padding: 1rem 1.1rem 1.1rem;
+  gap: 0.35rem;
+}
+div.home-mic-card.no-idea-door { cursor: default; }
+div.home-mic-card.no-idea-door:hover { transform: none; }
+.no-idea-door .no-idea-door__icon {
+  width: 52px;
+  height: 52px;
+  margin: 0.2rem auto 0.45rem;
+  font-size: 1.5rem;
+  box-shadow:
+    0 6px 18px rgba(255, 46, 168, 0.3),
+    0 0 0 6px rgba(255, 46, 168, 0.12);
+}
+.no-idea-door .no-idea-door__title { font-size: 1.12rem; }
+.no-idea-door .no-idea-door__text { max-width: 40ch; }
+.no-idea-door__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+.no-idea-door__btn { min-height: 44px; }
+.no-idea-soft-btn {
+  min-height: 44px;
+  padding: 0.55rem 1rem;
+  border: 1.5px solid var(--accent);
+  border-radius: 999px;
+  background: var(--card-bg);
+  color: var(--accent);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.no-idea-soft-btn:hover,
+.no-idea-soft-btn:focus-visible { background: var(--accent-tint); }
+.no-idea-soft-btn[hidden] { display: none; }
+
+.rec-back-btn { display: inline-flex; margin: 0 0 0.4rem; }
+.rec-back-btn[hidden] { display: none; }
+.rec-context-line {
+  margin: 0 0 0.8rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: var(--card-radius-sm);
+  background: var(--accent-tint);
+  color: var(--text);
+  font-size: 0.88rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.rec-context-line[hidden] { display: none; }
+
+.no-idea-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0 0 0.75rem;
+}
+.no-idea-chips[hidden] { display: none; }
+.no-idea-rows {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0 0 1rem;
+  padding: 0;
+}
+.no-idea-row .no-idea-row__open { padding: 0.85rem 1rem; }
+.no-idea-row .no-idea-row__text { -webkit-line-clamp: 6; white-space: pre-line; }
+.no-idea-row__mark { font-size: 0.78rem; font-weight: 600; color: var(--muted); }
+.no-idea-row--done { opacity: 0.55; }
+.no-idea-row--done .no-idea-row__mark { color: var(--accent); }
+.no-idea-table-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.no-idea-ref {
+  display: grid;
+  gap: 0.6rem;
+  justify-items: center;
+  text-align: center;
+}
+.no-idea-ref[hidden] { display: none; }
+.no-idea-ref__thumb {
+  display: grid;
+  place-items: center;
+  width: min(220px, 70%);
+  aspect-ratio: 9 / 16;
+  overflow: hidden;
+  border-radius: var(--card-radius-sm);
+  background: var(--accent-tint);
+  font-size: 2.4rem;
+}
+.no-idea-ref__thumb img { width: 100%; height: 100%; object-fit: cover; }
+.no-idea-ref__summary { margin: 0; font-weight: 600; line-height: 1.5; color: var(--text); }
+.no-idea-ref__actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  .home-mic-card.no-idea-door { transition: none; }
+}

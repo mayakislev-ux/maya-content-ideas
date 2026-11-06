@@ -389,7 +389,7 @@ describe('מיקרופון הבית (jsdom)', { skip: hasJsdom ? false : 'jsdom 
     assert.match($('#home-mic-status').textContent, /אין גישה למיקרופון/);
     assert.equal($('#home-mic-status').getAttribute('role'), 'alert');
     assert.equal(card().classList.contains('home-mic-card--live'), false);
-    assert.equal($('#home-mic-title').textContent, 'מה היה היום?');
+    assert.equal($('#home-mic-title').textContent, 'אין לי רעיון?');
     assert.equal(box().value, 'טקסט שלי');
     assert.equal(box().readOnly, false);
   });
@@ -507,8 +507,11 @@ describe('מיקרופון הבית (jsdom)', { skip: hasJsdom ? false : 'jsdom 
     const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
     assert.match(html, /id="home-mic-stop" class="home-mic-card__stop" hidden/);
     assert.match(html, /id="home-mic-status" class="home-mic-status" role="status"/);
-    const home = html.slice(html.indexOf('id="home-mic-card"'), html.indexOf('id="quick-add-input"'));
-    assert.match(home, /home-mic-status/, 'ההודעות חייבות להיות בין הכרטיס לתיבה');
+    /* 06/11/2026 לילה (מאיה): "שיהיה למעלה אופציה להוסיף ישירות רעיון ואז
+       מתחת את המיקרופון". התיבה למעלה, הכרטיס מתחתיה, וההודעות מיד אחריו. */
+    assert.ok(html.indexOf('id="quick-add-input"') < html.indexOf('id="home-mic-card"'), 'הכרטיס חייב להיות מתחת לתיבה');
+    const home = html.slice(html.indexOf('id="home-mic-card"'), html.indexOf('id="home-progress-widget"'));
+    assert.match(home, /home-mic-status/, 'ההודעות חייבות להיות מיד אחרי הכרטיס');
     const css = readFileSync(new URL('../css/style.css', import.meta.url), 'utf8');
     const defined = new Set([...css.matchAll(/(--[a-z0-9-]+)\s*:/g)].map((m) => m[1]));
     const block = css.slice(css.indexOf('מיקרופון הבית מקליט במקום'));

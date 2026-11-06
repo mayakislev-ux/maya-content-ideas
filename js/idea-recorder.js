@@ -77,6 +77,13 @@ let origin = 'form';
 let retryAction = null;
 let onSaved = null;
 let emptyLead = '';
+/* 06/11/2026 ("אין לי רעיון?"): מאיפה הרעיונות באו (שורה מהטבלה, צילום
+   מסך), שדות שנשמרים עם כל רעיון, ו"חזרה לשורות". */
+let contextLine = '';
+let extraFields = null;
+let saveSource = 'הקלטה';
+let backAction = null;
+let foundIn = 'בהקלטה';
 const TITLE_FORM = '🎙️ לספר ולמצוא רעיונות';
 const HINT_FORM = 'הקלטה ארוכה לוקחת עד דקה. אפשר לחכות כאן.';
 /* נקבע ב-wireRecorderEntry: סוגר את טופס "רעיון חדש" אחרי שמירה */
@@ -113,6 +120,8 @@ function ensureModal() {
   modal.innerHTML = `
     <div class="modal-content rec-content">
       <h2 id="rec-title" class="rec-title">${TITLE_FORM}</h2>
+      <button type="button" id="rec-back-btn" class="btn-text rec-back-btn" hidden>‹ חזרה</button>
+      <p id="rec-context-line" class="rec-context-line" hidden></p>
 
       <div id="rec-step-intro">
         <p class="rec-lead">מספרים בקול מה היה היום: מה לקוח/ה שאל/ה, מה הרגיז, מה הצחיק, מה עבד. עד 10 דקות.</p>
@@ -172,6 +181,7 @@ function ensureModal() {
   el('rec-new-btn').addEventListener('click', () => { lastBlob = null; showStep('intro'); });
   el('rec-close-error').addEventListener('click', closeRecorder);
   el('rec-close-working').addEventListener('click', closeRecorder);
+  el('rec-back-btn').addEventListener('click', goBack);
   return modal;
 }
 
@@ -212,12 +222,21 @@ export function openRecorder() {
   el('recorder-modal').hidden = false;
 }
 
-function setOrigin(next, { title } = {}) {
+function setOrigin(next, { title, context = '', back = null } = {}) {
   origin = next;
   retryAction = null;
   onSaved = null;
   emptyLead = '';
+  contextLine = context;
+  extraFields = null;
+  saveSource = 'הקלטה';
+  foundIn = 'בהקלטה';
+  backAction = back && typeof back.onClick === 'function' ? back : null;
   el('rec-title').textContent = title || TITLE_FORM;
+  el('rec-context-line').textContent = context;
+  el('rec-context-line').hidden = !context;
+  el('rec-back-btn').hidden = !backAction;
+  if (backAction) el('rec-back-btn').textContent = `‹ ${backAction.label || 'חזרה'}`;
   el('rec-working-hint').hidden = next !== 'form';
   /* "להקליט מחדש" שייך למקליט של הטופס. במיקרופון הבית מקליטים מהכרטיס. */
   el('rec-new-btn').hidden = next !== 'form';
@@ -231,12 +250,12 @@ function setOrigin(next, { title } = {}) {
    2. setIdeasPopupProgress: מעדכן את שורת ההתקדמות.
    3. showIdeasInPopup: אותה רשימה ואותה שמירה בדיוק כמו אחרי הקלטה.
    4. showIdeasPopupError: שגיאה גלויה, ו"לנסות שוב" מריץ את onRetry. */
-export function openIdeasPopup({ title = '✨ הרעיונות ממה שסיפרת', progress = '' } = {}) {
+export function openIdeasPopup({ title = '✨ הרעיונות ממה שסיפרת', progress = '', context = '', back = null } = {}) {
   ensureModal();
   closeRecorder();
   found = [];
   lastBlob = null;
-  setOrigin('home', { title });
+  setOrigin('home', { title, context, back });
   el('rec-working-text').textContent = progress;
   showStep('working');
   el('recorder-modal').hidden = false;
@@ -247,11 +266,21 @@ export function setIdeasPopupProgress(text) {
   if (node) node.textContent = text;
 }
 
-/** ideas כמו שהשרת מחזיר. onSaved(savedIdeas) נקרא רק כשהכל נשמר. */
-export function showIdeasInPopup(ideas, { onSaved: done = null, emptyText = '' } = {}) {
+/** ideas כמו שהשרת מחזיר. onSaved(savedIdeas) נקרא רק כשהכל נשמר.
+    context: שורה מעל הרשימה שאומרת מאיפה הרעיונות (ריק = בלי לשנות).
+    extra: שדות שנשמרים עם כל רעיון (sourceRow וכו'). source: שדה source בשמירה. */
+export function showIdeasInPopup(ideas, { onSaved: done = null, emptyText = '', context = '', extra = null, source = '', where = '' } = {}) {
   if (!ideasPopupOpen()) return;
   onSaved = done;
   emptyLead = emptyText;
+  if (context) {
+    contextLine = context;
+    el('rec-context-line').textContent = context;
+    el('rec-context-line').hidden = false;
+  }
+  extraFields = extra && typeof extra === 'object' ? { ...extra } : null;
+  if (source) saveSource = source;
+  if (where) foundIn = where;
   found = (Array.isArray(ideas) ? ideas : []).map((idea) => ({ ...idea, keep: true }));
   renderResults();
 }
@@ -265,6 +294,21 @@ export function showIdeasPopupError(message, { onRetry = null } = {}) {
 export function ideasPopupOpen() {
   const modal = el('recorder-modal');
   return Boolean(modal && !modal.hidden);
+}
+
+/* "חזרה לשורות": אם יש רעיונות מסומנים שלא נשמרו, שואלים קודם */
+async function goBack() {
+  const back = backAction;
+  if (!back) return;
+  if (currentStep() === 'results' && found.some((f) => f.keep)) {
+    const ok = await confirmDialog('לחזור בלי לשמור? הרעיונות האלה לא יישמרו.', {
+      okLabel: 'לחזור בלי לשמור',
+      cancelLabel: 'להישאר',
+    });
+    if (!ok) return;
+  }
+  closeRecorder();
+  try { back.onClick(); } catch (err) { console.error('recorder: back failed', err); }
 }
 
 function closeRecorder() {
@@ -433,8 +477,8 @@ function renderResults() {
   el('rec-save-btn').hidden = false;
   el('rec-close-results').textContent = 'סגירה בלי לשמור';
   lead.textContent = found.length === 1
-    ? 'מצאנו רעיון אחד בהקלטה. אפשר לערוך את הניסוח לפני השמירה.'
-    : `מצאנו ${found.length} רעיונות בהקלטה. כל הרעיונות מסומנים לשמירה, אפשר להוריד סימון או לערוך ניסוח.`;
+    ? `מצאנו רעיון אחד ${foundIn}. אפשר לערוך את הניסוח לפני השמירה.`
+    : `מצאנו ${found.length} רעיונות ${foundIn}. כל הרעיונות מסומנים לשמירה, אפשר להוריד סימון או לערוך ניסוח.`;
 
   found.forEach((idea, i) => {
     const li = document.createElement('li');
@@ -524,7 +568,8 @@ async function saveChosen() {
         persuasionStage: idea.persuasionStage || '',
         audienceScope: idea.audienceScope || '',
         rating: idea.rating || '',
-        source: 'הקלטה',
+        source: saveSource,
+        ...(extraFields || {}),
       }));
       idea.saved = true;
       saved += 1;
