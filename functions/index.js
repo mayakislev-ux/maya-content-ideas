@@ -217,6 +217,12 @@ async function enforceRateLimit(uid, fnName) {
    סגורות שהמערכת עצמה כותבת, וכל ערך אחר נזרק: הם נכנסים ישירות לפרומפט
    המערכת, ובדיקת האורך של השיחה לא מודדת אותם. */
 const AUDIENCE_SCOPES = ['עיקרי', 'משני', 'רחב'];
+/* אותו הסבר שהמקליט (ideas-from-recording.js) נותן לג'מיני */
+const AUDIENCE_SCOPE_DEFINITIONS = {
+  'עיקרי': 'הלקוחות האידיאליים של העסק, מי שהעסק באמת מוכר להם',
+  'משני': 'קהל קרוב לקהל העיקרי, שיכול להתעניין אבל הוא לא הלקוח האידיאלי',
+  'רחב': 'כל אחד, תוכן לחשיפה רחבה (ויראלי) שלא דורש להיות בתחום',
+};
 function pickIdeaContext(raw) {
   if (!raw || typeof raw !== 'object') return null;
   const pick = (value, allowed) => (allowed.includes(value) ? value : '');
@@ -1168,8 +1174,11 @@ ${CATEGORIES.map((c, i) => `${i + 1}. ${c}: ${CATEGORY_DEFINITIONS[c]}`).join('\
 מערכת 2 - שלב שכנוע, בחר/י בדיוק אחד לפי המספר שלו. לשים לב: לכל תוכן יש בדרך כלל שלב שכנוע דומיננטי אחד, גם אם הוא נוגע קצת גם באחרים - תבחר/י את זה שהכי מתאר את המטרה המרכזית של הרעיון הספציפי הזה:
 ${PERSUASION_STAGES.map((s, i) => `${i + 1}. ${s}: ${PERSUASION_STAGE_DEFINITIONS[s]}`).join('\n')}
 
-השב/י אך ורק ב-JSON תקין בפורמט הבא, בלי שום טקסט נוסף לפני או אחרי - רק שני מספרים שלמים, לא את הטקסט של הקטגוריה/השלב עצמם:
-{"categoryIndex": <מספר בין 1 ל-${CATEGORIES.length}>, "persuasionStageIndex": <מספר בין 1 ל-${PERSUASION_STAGES.length}>}`;
+מערכת 3 - למי הסרטון מדבר, בחר/י בדיוק אחד לפי המספר שלו:
+${AUDIENCE_SCOPES.map((s, i) => `${i + 1}. ${s}: ${AUDIENCE_SCOPE_DEFINITIONS[s]}`).join('\n')}
+
+השב/י אך ורק ב-JSON תקין בפורמט הבא, בלי שום טקסט נוסף לפני או אחרי - רק שלושה מספרים שלמים, לא את הטקסט של הקטגוריה/השלב/הקהל עצמם:
+{"categoryIndex": <מספר בין 1 ל-${CATEGORIES.length}>, "persuasionStageIndex": <מספר בין 1 ל-${PERSUASION_STAGES.length}>, "audienceScopeIndex": <מספר בין 1 ל-${AUDIENCE_SCOPES.length}>}`;
 
   const data = await callAnthropic(
     anthropicApiKey.value(),
@@ -1201,7 +1210,12 @@ ${PERSUASION_STAGES.map((s, i) => `${i + 1}. ${s}: ${PERSUASION_STAGE_DEFINITION
     console.error('classifyIdea returned invalid indices:', text);
     throw new HttpsError('internal', 'לא הצלחתי לסווג את הרעיון, נסו שוב');
   }
-  return { category, persuasionStage };
+  /* 06/11/2026: הטופס הקצר של מאיה כבר לא שואל "למי הסרטון מדבר", והקהל
+     מסווג כאן יחד עם השאר. קהל לא תקין לא מפיל את הסיווג (הסוג והשלב
+     חשובים יותר): הוא פשוט נשאר ריק. מי שקורא רק category/persuasionStage
+     (העוזר לסרטון) לא מושפע. */
+  const audienceScope = AUDIENCE_SCOPES[Number(parsed.audienceScopeIndex) - 1] || '';
+  return { category, persuasionStage, audienceScope };
 });
 
 // "העוזר שלך ליצירת סרטון" - ניחוש חד-פעמי של תחום הלקוחה, ראה

@@ -168,9 +168,19 @@ export function filterIdeas(ideas, { text = '', category = '', audienceScope = '
   });
 }
 
-export function validateIdea({ title, category, persuasionStage, rating, audienceScope }) {
+/* 06/11/2026 (מאיה: "כשמזינים רעיון את כל שאר הסינונים שיסמן לבד"):
+   בטופס הקצר (simple) רק הרעיון חובה. הסוג, הקהל ושלב השכנוע מסווגים
+   אוטומטית, ואם הסיווג לא הצליח הרעיון נשמר כטיוטה (בלי סוג) ולא הולך
+   לאיבוד. דירוג כבר לא נשאל שם בכלל. */
+export function validateIdea({ title, category, persuasionStage, rating, audienceScope }, { simple = false } = {}) {
   const errors = [];
   if (!title || !title.trim()) errors.push('שדה "הרעיון" חובה');
+  if (simple) {
+    if (category && !ALL_CATEGORIES.includes(category)) errors.push('קטגוריה לא תקינה');
+    if (persuasionStage && !PERSUASION_STAGES.includes(persuasionStage)) errors.push('שלב שכנוע לא תקין');
+    if (audienceScope && !AUDIENCE_SCOPES.includes(audienceScope)) errors.push('קהל לא תקין');
+    return errors;
+  }
   if (!category || !ALL_CATEGORIES.includes(category)) errors.push('קטגוריה לא תקינה');
   /* 09/10/2026 (מאיה: "שלבי שכנוע מבחינתי לא רלוונטי כי הכנסתי את זה
      בעצם ב[שבעת התכנים החשובים]"): הצ'קליסט של שבעת סוגי התוכן מכסה את

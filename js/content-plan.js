@@ -124,7 +124,12 @@ function sortByRatingThenSeries(a, b) {
   if (a.series && a.series === b.series) {
     return (a.seriesOrder || Number.MAX_SAFE_INTEGER) - (b.seriesOrder || Number.MAX_SAFE_INTEGER);
   }
-  return 0;
+  /* 06/11/2026: בטופס הקצר של מאיה (ideasRedesignFor) הדירוג ירד, ולכן
+     רעיונות חדשים מגיעים בלי דירוג. הם לא נפסלים: הם נכנסים אחרי
+     המדורגים, ובין רעיונות באותו דירוג (גם "בלי דירוג") החדש קודם, במקום
+     הסדר השרירותי שחוזר מ-Firestore. */
+  const time = (idea) => (idea.createdAt && typeof idea.createdAt.toMillis === 'function' ? idea.createdAt.toMillis() : 0);
+  return time(b) - time(a);
 }
 
 // היחס בין הקטגוריות (40/30/15/15) בעבר היה תלוי בהנחיה רכה בפרומפט

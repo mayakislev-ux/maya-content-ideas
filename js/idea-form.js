@@ -1,4 +1,4 @@
-import { validateIdea, CATEGORY_DEFINITIONS, PERSUASION_STAGE_DEFINITIONS, categoryColorVar, categoryIcon } from './ideas-logic.js';
+import { validateIdea, CATEGORIES, CATEGORY_DEFINITIONS, PERSUASION_STAGE_DEFINITIONS, PERSUASION_STAGES, AUDIENCE_SCOPES, categoryColorVar, categoryIcon } from './ideas-logic.js';
 import { addIdea, updateIdea, deleteIdea, restoreIdea } from './ideas-store.js';
 import { functions } from './firebase-init.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
@@ -11,6 +11,98 @@ const classifyIdea = httpsCallable(functions, 'classifyIdea');
 const AI_OPTION = '__ai__';
 
 let editingId = null;
+/* הרעיון שנפתח לעריכה, כמו שהוא במאגר. בטופס הקצר שולחים רק את מה
+   שמוצג (הרעיון, הסוג והלינק), כדי ששדות שהוסתרו לא יידרסו בערך ריק. */
+let editingIdea = null;
+
+/* ---------- הטופס הקצר ----------
+   06/11/2026 (מאיה: "את החלק של חייב לצלם שווה לצלם - להוריד לגמרי.
+   כשמזינים רעיון לא צריך פורמט הנגשה מיותר. וגם סדרת פרקים תמחקי.
+   כשמזינים רעיון את כל שאר הסינונים שיסמן לבד כבר... רק תשאירי מקום
+   ללינק במידת הצורך להשראה"). מוצג לפי אותו מתג של מסך הרעיונות
+   (ideasRedesignFor), ולשאר הלקוחות הטופס לא השתנה. */
+let simpleForm = false;
+const CLASSIFY_TIMEOUT_MS = 12000;
+const LINK_LABEL_FULL = 'לינק לסרטון (אופציונלי)';
+const LINK_LABEL_SIMPLE = 'לינק להשראה (אופציונלי)';
+
+export function setSimpleIdeaForm(on) {
+  simpleForm = Boolean(on);
+  const form = document.getElementById('idea-form');
+  if (form) form.classList.toggle('idea-form--simple', simpleForm);
+  /* "כך זה ייראה ברשימה" רק חוזר על מה שמקלידים, ובטופס הקצר בטלפון
+     הוא דוחף את תיבת הרעיון למטה בלי לתת כלום */
+  const modal = document.getElementById('idea-modal');
+  if (modal) modal.classList.toggle('idea-modal--simple', simpleForm);
+  const linkLabel = document.getElementById('field-link-label');
+  if (linkLabel) linkLabel.textContent = simpleForm ? LINK_LABEL_SIMPLE : LINK_LABEL_FULL;
+  const catLabel = document.getElementById('category-label-text');
+  if (catLabel) catLabel.textContent = simpleForm ? 'סוג התוכן' : 'איזה סוג רעיון זה? *';
+  const subhint = document.getElementById('category-subhint');
+  if (subhint) subhint.textContent = simpleForm ? 'זוהה לבד. אפשר לתקן בלחיצה' : 'בוחרים אחת';
+  /* "🎙️ לספר בקול" כבר במסך הבית, ולכן לא בטופס הקצר */
+  setRecorderEntryVisible(!simpleForm && !editingId);
+}
+
+/** מבטיח תשובה תוך ms: אחרת onTimeout מחליט (null או שגיאה). הטיימר
+    מתנקה כשהתשובה מגיעה, כדי לא להשאיר טיימרים תלויים. */
+function within(promise, ms, onTimeout) {
+  let timer = null;
+  const timeout = new Promise((resolve, reject) => {
+    timer = setTimeout(() => onTimeout(resolve, reject), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
+/** סיווג אוטומטי של רעיון לפי הטקסט שלו. אותה פונקציה שכפתור "שה-AI
+    יזהה" משתמש בה. תקלה או המתנה ארוכה מחזירות null, והרעיון נשמר בלי
+    סיווג (טיוטה) במקום ללכת לאיבוד. */
+async function autoClassify(title) {
+  try {
+    const result = await within(classifyIdea({ title }), CLASSIFY_TIMEOUT_MS, (resolve) => resolve(null));
+    const d = (result && result.data) || {};
+    return {
+      category: CATEGORIES.includes(d.category) ? d.category : '',
+      persuasionStage: PERSUASION_STAGES.includes(d.persuasionStage) ? d.persuasionStage : '',
+      audienceScope: AUDIENCE_SCOPES.includes(d.audienceScope) ? d.audienceScope : '',
+    };
+  } catch (err) {
+    console.error('autoClassify failed:', err);
+    return null;
+  }
+}
+
+/** הנתונים שנשמרים מהטופס הקצר. בהוספה: הרעיון, הלינק והסיווג.
+    בעריכה: רק מה שמוצג או חסר, כדי לא לדרוס שדות ישנים שלא מוצגים. */
+async function simpleFormData(original) {
+  const title = document.getElementById('field-title').value;
+  const sourceLink = document.getElementById('field-link').value;
+  const chosen = document.getElementById('field-category').value;
+  const base = original || {};
+  const hasCategory = CATEGORIES.includes(chosen) || chosen === 'ערכי';
+  const needs = {
+    category: !hasCategory,
+    persuasionStage: !base.persuasionStage,
+    audienceScope: !base.audienceScope,
+  };
+  let classified = null;
+  if (needs.category || needs.persuasionStage || needs.audienceScope) {
+    classified = await autoClassify(title);
+  }
+  const data = { title, sourceLink };
+  if (original) {
+    if (hasCategory) data.category = chosen;
+    else if (classified && classified.category) data.category = classified.category;
+    for (const key of ['persuasionStage', 'audienceScope']) {
+      if (needs[key] && classified && classified[key]) data[key] = classified[key];
+    }
+  } else {
+    data.category = hasCategory ? chosen : ((classified && classified.category) || '');
+    data.persuasionStage = (classified && classified.persuasionStage) || '';
+    data.audienceScope = (classified && classified.audienceScope) || '';
+  }
+  return { data, classifyFailed: needs.category && !(classified && classified.category) };
+}
 // מצב הטופס ברגע הפתיחה, כדי לדעת אם נכתב בו משהו (04/11/2026)
 let openedSnapshot = '';
 
@@ -101,7 +193,10 @@ export function openAddModal(prefillTitle = '') {
   document.getElementById('field-series-fields').hidden = true;
   populateSeriesDatalist();
   document.getElementById('delete-idea-btn').hidden = true;
-  setRecorderEntryVisible(true);
+  editingIdea = null;
+  /* בטופס הקצר הסוג נבחר לבד בשמירה, ולכן בהוספה הוא לא מוצג בכלל */
+  document.getElementById('category-section').hidden = simpleForm;
+  setRecorderEntryVisible(!simpleForm);
   document.getElementById('form-error').hidden = true;
   document.getElementById('idea-modal').hidden = false;
   updateIdeaPreview();
@@ -126,6 +221,9 @@ export function openEditModal(idea, overrideTitle = '') {
   document.getElementById('field-series-name').value = idea.series || '';
   document.getElementById('field-series-order').value = idea.seriesOrder || '';
   document.getElementById('delete-idea-btn').hidden = false;
+  editingIdea = idea;
+  /* בעריכה רואים את הסוג שזוהה ואפשר לתקן אותו בלחיצה על אחד משלושת הצבעים */
+  document.getElementById('category-section').hidden = false;
   setRecorderEntryVisible(false);
   document.getElementById('form-error').hidden = true;
   document.getElementById('idea-modal').hidden = false;
@@ -136,6 +234,7 @@ export function openEditModal(idea, overrideTitle = '') {
 export function closeModal() {
   document.getElementById('idea-modal').hidden = true;
   editingId = null;
+  editingIdea = null;
 }
 
 /* 04/11/2026 (ביקורת): בטלפון הטופס הארוך נסגר בנגיעה ברקע, וכל מה
@@ -305,6 +404,10 @@ export function wireIdeaForm() {
   document.getElementById('idea-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     if (savingIdea) return;
+    if (simpleForm) {
+      await submitSimple(e.currentTarget);
+      return;
+    }
     const isSeries = document.getElementById('field-is-series').checked;
     const seriesName = document.getElementById('field-series-name').value.trim();
     const seriesOrderRaw = document.getElementById('field-series-order').value;
@@ -351,4 +454,59 @@ export function wireIdeaForm() {
     closeModal();
     showToast('✓ הרעיון נשמר בהצלחה');
   });
+
+  async function submitSimple(form) {
+    const errorEl = document.getElementById('form-error');
+    const title = document.getElementById('field-title').value;
+    const early = validateIdea({ title }, { simple: true });
+    if (early.length) {
+      errorEl.textContent = early.join(', ');
+      errorEl.hidden = false;
+      return;
+    }
+    errorEl.hidden = true;
+    savingIdea = true;
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const submitText = submitBtn ? submitBtn.textContent : '';
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'מזהה סוג ושומר...';
+    }
+    /* נלכדים עכשיו: אם הטופס נסגר בזמן הסיווג, שמירה לא תהפוך עריכה לרעיון חדש */
+    const id = editingId;
+    const original = editingIdea;
+    const wasEditing = Boolean(id);
+    try {
+      const { data, classifyFailed } = await simpleFormData(original);
+      const errors = validateIdea(data, { simple: true });
+      if (errors.length) {
+        errorEl.textContent = errors.join(', ');
+        errorEl.hidden = false;
+        return;
+      }
+      try {
+        const write = id ? updateIdea(id, data) : addIdea(data);
+        await within(write, 15000, (_, reject) => reject(new Error('save timeout')));
+      } catch (err) {
+        console.error('idea save failed:', err);
+        errorEl.textContent = 'שמירת הרעיון נכשלה, בדקו חיבור ונסו שוב';
+        errorEl.hidden = false;
+        return;
+      }
+      closeModal();
+      if (classifyFailed) {
+        showToast('✓ הרעיון נשמר. את הסוג לא הצלחנו לזהות כרגע, הוא מחכה ב"עוד לא סווגו" ואפשר לבחור אותו שם', { duration: 7000 });
+      } else if (!wasEditing && data.category) {
+        showToast(`✓ הרעיון נשמר תחת "${data.category}"`);
+      } else {
+        showToast('✓ הרעיון נשמר בהצלחה');
+      }
+    } finally {
+      savingIdea = false;
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = submitText;
+      }
+    }
+  }
 }
