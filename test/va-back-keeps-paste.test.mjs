@@ -265,14 +265,7 @@ test('BACK אל מחוץ לשלב הכתיבה לא סוחב הוק ותסריט
   assert.equal(r.hook, null);
 });
 
-test('BACK: שכפול הפוך חוזר למגילה בלי שההוק ייסחב אחורה, וריק שנשלח בכוונה נשאר ריק', () => {
-  let s = { ...INITIAL_STATE, history: [], branch: 'idea-search', screen: 'transcribe', transcript: 't' };
-  s = walk(s, [{ type: 'CONFIRM_DONE' }, { type: 'HER_WORDS_SUBMITTED', text: 'מגילה' }, { type: 'HOOK_CHOSEN', hook: 'הוק' }]);
-  assert.equal(s.screen, 'prompt2');
-  s = walk(s, [{ type: 'BACK' }, { type: 'BACK' }]);
-  assert.equal(s.screen, 'her-words');
-  assert.equal(s.herWords, 'מגילה');
-
+test('BACK: בשכפול, ריק שנשלח בכוונה נשאר ריק', () => {
   let r = walk({ ...INITIAL_STATE, history: [] }, [
     { type: 'CHOOSE_REFERENCE' }, { type: 'CHOOSE_HAS_REFERENCE' }, { type: 'RELEVANCE_CONFIRMED' },
     { type: 'CONFIRM_DONE' }, { type: 'HOOK_CHOSEN', hook: 'הוק' }, { type: 'HER_WORDS_SUBMITTED', text: 'A' },

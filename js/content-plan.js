@@ -948,7 +948,6 @@ export function wireContentPlanView() {
   const pickIdeasList = document.getElementById('content-plan-pick-ideas-list');
   const pickIdeasSearchInput = document.getElementById('content-plan-pick-ideas-search');
   const pickIdeasCategoryChipsEl = document.getElementById('content-plan-pick-ideas-category-chips');
-  const pickIdeasRatingChipsEl = document.getElementById('content-plan-pick-ideas-rating-chips');
   const pickIdeasCountEl = document.getElementById('content-plan-pick-ideas-count');
   const pickIdeasClearBtn = document.getElementById('content-plan-pick-ideas-clear-btn');
 
@@ -960,7 +959,6 @@ export function wireContentPlanView() {
   // .rating-chip שכבר קיים בטופס הוספת רעיון, כדי שזה ירגיש כמו חלק
   // מהאפליקציה ולא כמו רכיב חדש.
   let activeCategoryFilter = '';
-  let activeRatingFilter = '';
 
   function selectSingleChip(container, chip, value, currentValue, setValue) {
     const nextValue = currentValue === value ? '' : value;
@@ -989,33 +987,14 @@ export function wireContentPlanView() {
     });
   }
 
-  function buildRatingFilterChips() {
-    pickIdeasRatingChipsEl.innerHTML = '';
-    RATINGS.forEach((rating) => {
-      const chip = document.createElement('button');
-      chip.type = 'button';
-      chip.className = 'rating-chip';
-      chip.textContent = rating;
-      chip.setAttribute('aria-pressed', 'false');
-      chip.addEventListener('click', () => {
-        selectSingleChip(pickIdeasRatingChipsEl, chip, rating, activeRatingFilter, (v) => (activeRatingFilter = v));
-      });
-      pickIdeasRatingChipsEl.appendChild(chip);
-    });
-  }
-
+  /* 06/11/2026 (מאיה): צ'יפי הדירוג ירדו. לרעיונות חדשים כבר אין דירוג,
+     ולכן בחירה בצ'יפ הסתירה את כל מי שלא דורג. נשארו סוג תוכן וחיפוש. */
   buildCategoryFilterChips();
-  buildRatingFilterChips();
 
   function resetPickIdeasFilters() {
     pickIdeasSearchInput.value = '';
     activeCategoryFilter = '';
-    activeRatingFilter = '';
     pickIdeasCategoryChipsEl.querySelectorAll('.category-chip').forEach((chip) => {
-      chip.classList.remove('active');
-      chip.setAttribute('aria-pressed', 'false');
-    });
-    pickIdeasRatingChipsEl.querySelectorAll('.rating-chip').forEach((chip) => {
       chip.classList.remove('active');
       chip.setAttribute('aria-pressed', 'false');
     });
@@ -1075,7 +1054,6 @@ export function wireContentPlanView() {
       // התנהגות אינטואיטיבית של "בחר הכל שרואים", לא כל הקטגוריה בעיוור.
       const visibleIdeas = allIdeasInCategory.filter((idea) => {
         if (searchQuery && !idea.title.toLowerCase().includes(searchQuery)) return false;
-        if (activeRatingFilter && idea.rating !== activeRatingFilter) return false;
         return true;
       });
       if (!visibleIdeas.length) continue;

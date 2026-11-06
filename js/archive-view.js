@@ -912,6 +912,17 @@ function refreshBusy() {
   if (del) del.textContent = 'מוחקים...';
 }
 
+/* 06/11/2026 (מאיה): החלקה שמאלה ב"רעיונות שבוצעו" מחקה בלי לשאול, ורק
+   "בטלו" בהודעה הקטנה הציל. עכשיו שואלים קודם, אצל כולם. */
+function confirmSingleDelete() {
+  return confirmDialog('למחוק את הרעיון?', { okLabel: 'מחיקה', cancelLabel: 'ביטול' });
+}
+
+async function deleteOne(idea) {
+  await deleteIdea(idea.id);
+  showToast('הרעיון נמחק', { actionLabel: 'בטלו', onAction: () => restoreIdea(idea.id) });
+}
+
 function renderItem(idea, onItemClick, index = 0) {
   const li = document.createElement('li');
   li.className = 'archive-item-outer';
@@ -937,8 +948,8 @@ function renderItem(idea, onItemClick, index = 0) {
   deleteAction.addEventListener('click', async (e) => {
     e.stopPropagation();
     try {
-      await deleteIdea(idea.id);
-      showToast('הרעיון נמחק', { actionLabel: 'בטלו', onAction: () => restoreIdea(idea.id) });
+      if (!(await confirmSingleDelete())) return;
+      await deleteOne(idea);
     } catch (err) {
       console.error('deleteIdea failed:', err);
       showToast('המחיקה נכשלה, נסו שוב');
@@ -1155,7 +1166,10 @@ function renderItem(idea, onItemClick, index = 0) {
     const deltaX = e.changedTouches[0].clientX - touchStartX;
     touchStartX = null;
     inner.style.transition = 'transform 0.2s ease';
-    inner.style.transform = 'translateX(0)';
+    /* בזמן שהשאלה פתוחה הכרטיס נשאר מוסט, כדי שיהיה ברור על מה שואלים.
+       כל תשובה (גם ביטול) מחזירה אותו למקום. */
+    const asking = deltaX < -70;
+    inner.style.transform = asking ? 'translateX(-90px)' : 'translateX(0)';
 
     try {
       if (deltaX > 70) {
@@ -1163,14 +1177,17 @@ function renderItem(idea, onItemClick, index = 0) {
         if (navigator.vibrate) navigator.vibrate(15);
         if (idea.completedAt) await uncompleteIdea(idea.id);
         else await markIdeaCompleted(idea.id);
-      } else if (deltaX < -70) {
+      } else if (asking) {
         if (navigator.vibrate) navigator.vibrate(15);
-        await deleteIdea(idea.id);
-        showToast('הרעיון נמחק', { actionLabel: 'בטלו', onAction: () => restoreIdea(idea.id) });
+        const ok = await confirmSingleDelete();
+        inner.style.transform = 'translateX(0)';
+        if (ok) await deleteOne(idea);
       }
     } catch (err) {
       console.error('swipe action failed:', err);
       showToast('הפעולה נכשלה, נסו שוב');
+    } finally {
+      if (asking) inner.style.transform = 'translateX(0)';
     }
 
     setTimeout(() => {

@@ -107,7 +107,7 @@ const DRAFT_SOURCES = [
   { ids: ['va-idea-punch'], fields: ['ideaPunchline'] },
   { ids: ['va-packaging-input'], fields: ['packaging'] },
   { ids: ['va-reference-link'], fields: ['referenceLink'] },
-  { ids: ['va-transcript-input', 'va-hook-ref-input'], fields: ['transcript'] },
+  { ids: ['va-transcript-input'], fields: ['transcript'] },
   { ids: ['va-hook-input', 'va-scratch-hook-input'], fields: ['hook'] },
   { ids: ['va-scratch-reinforce-input'], fields: ['hookReinforcement'] },
   { ids: ['va-herwords-input', 'va-dupadd-input'], fields: ['herWords'] },

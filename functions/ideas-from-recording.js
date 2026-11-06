@@ -34,9 +34,25 @@ function acceptedType(type) {
   return /^(audio\/|video\/webm|video\/mp4)/.test(String(type || ''));
 }
 
+/* 06/11/2026 (מאיה): הרעיונות מהמיקרופון יצאו בלשון נקבה רבות ("הלקוחות
+   שלכן", "אתן"), אותה תלונה כמו על הצ'אט. אותו כלל כמו
+   AUDIENCE_GENDER_RULES ב-system-prompt.js: המגדר של הקהל לא ידוע, ולכן
+   לשון רבים ניטרלית, אלא אם נאמר במפורש שהקהל נשים (או גברים).
+   audience: קהל היעד העיקרי מהפרופיל, אם יש. */
+function genderRules(audience) {
+  const a = clean(audience, 300);
+  return `
+לשון הרעיונות - המגדר של הקהל לא ידוע:
+- הדובר/ת מדבר/ת על עצמו/ה בגוף ראשון, וזה נשאר כמו שנאמר ("אני", "שלי", "הגיעה אליי").
+- כשרעיון פונה לקהל או מדבר עליו, ולא נאמר במפורש שהקהל הוא נשים: לשון רבים ניטרלית - "אתם", "שלכם", "אליכם", "הלקוחות שלכם", "בעלי עסקים", "אנשים", "מי ש...". לא "אתן", לא "שלכן", לא "אלייך", לא "בעלות עסקים", לא "מישהי".
+- לשון נקבה לקהל רק אם ${a ? 'קהל היעד בפרופיל או ' : ''}הדובר/ת אמר/ה במפורש שהקהל נשים (למשל "נשים", "אמהות", "כלות", "קוסמטיקאיות"). אותו דבר בלשון זכר ("גברים", "אבות").
+- דמות אחת שהוזכרה (לקוחה מסוימת, חברה) נשארת במגדר שלה. היא לא הקהל של הסרטון.${a ? `
+- קהל היעד העיקרי לפי הפרופיל: "${a}". אם הוא לא אומר במפורש נשים או גברים, לשון רבים ניטרלית.` : ''}`;
+}
+
 /* source: 'audio' (ההקלטה עצמה) או 'text' (תמלול שכבר נעשה בדפדפן).
    אותם כללים ואותו סיווג בדיוק, רק הפתיחה משתנה. */
-function buildPrompt({ categories, categoryDefinitions, stages, audienceScopes }, { source = 'audio' } = {}) {
+function buildPrompt({ categories, categoryDefinitions, stages, audienceScopes }, { source = 'audio', audience = '' } = {}) {
   const isText = source === 'text';
   const what = isText ? 'הטקסט' : 'ההקלטה';
   const inWhat = isText ? 'בטקסט' : 'בהקלטה';
@@ -57,6 +73,7 @@ function buildPrompt({ categories, categoryDefinitions, stages, audienceScopes }
 - רק רעיונות שאפשר באמת לצלם עליהם סרטון לקהל של העסק. דיבור טכני, "רגע אני בודקת", או דברים שלא קשורים לעסק ולא לאישיות של בעל/ת העסק, לא נכנסים.
 - אם אין ${inWhat} אף רעיון (שקט, רעש, שיחה לא קשורה), להחזיר רשימה ריקה. לא להמציא.
 - עד ${MAX_IDEAS} רעיונות, החזקים קודם.${single}
+${genderRules(audience)}
 
 לכל רעיון לסווג:
 categoryIndex, בדיוק אחד:
@@ -198,6 +215,16 @@ async function callGemini({ projectId, accessToken, parts, thinkingLevel = 'MEDI
  */
 function createIdeasFromRecordingHandler(deps) {
   const { HttpsError } = deps;
+  /* קהל היעד מהפרופיל, רק בשביל לשון הרעיונות. תקלה כאן לא עוצרת חילוץ. */
+  async function audienceOf(uid) {
+    if (!deps.getAudience) return '';
+    try {
+      return clean(await deps.getAudience(uid), 300);
+    } catch (err) {
+      console.warn('ideasFromRecording: getAudience failed', err && err.message);
+      return '';
+    }
+  }
   async function fromText(uid, raw) {
     if (typeof raw !== 'string') throw new HttpsError('invalid-argument', 'הטקסט לא הגיע. לנסות שוב');
     const text = raw.replace(/\u0000/g, '').trim();
@@ -207,13 +234,14 @@ function createIdeasFromRecordingHandler(deps) {
     let done = false;
     try {
       slot = await (deps.checkTextRate ? deps.checkTextRate(uid) : deps.checkRate(uid));
+      const audience = await audienceOf(uid);
       const accessToken = await deps.getAccessToken();
       let out;
       try {
         out = await callGemini({
           projectId: deps.projectId,
           accessToken,
-          parts: [{ text: buildPrompt(deps.taxonomy, { source: 'text' }) }, { text: `הטקסט:\n<<<\n${text}\n>>>` }],
+          parts: [{ text: buildPrompt(deps.taxonomy, { source: 'text', audience }) }, { text: `הטקסט:\n<<<\n${text}\n>>>` }],
           thinkingLevel: 'LOW',
           fetchImpl: deps.fetchImpl,
         });
@@ -264,13 +292,14 @@ function createIdeasFromRecordingHandler(deps) {
       if (size > MAX_AUDIO_BYTES) throw new HttpsError('invalid-argument', 'ההקלטה ארוכה מדי (עד 10 דקות)');
       if (!acceptedType(type)) throw new HttpsError('invalid-argument', 'הקובץ הזה לא הקלטה');
 
+      const audience = await audienceOf(uid);
       const accessToken = await deps.getAccessToken();
       let out;
       try {
         out = await callGemini({
           projectId: deps.projectId,
           accessToken,
-          parts: [{ fileData: { fileUri: `gs://${deps.bucket.name}/${path}`, mimeType: type } }, { text: buildPrompt(deps.taxonomy) }],
+          parts: [{ fileData: { fileUri: `gs://${deps.bucket.name}/${path}`, mimeType: type } }, { text: buildPrompt(deps.taxonomy, { audience }) }],
           fetchImpl: deps.fetchImpl,
         });
       } catch (err) {

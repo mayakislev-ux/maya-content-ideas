@@ -15,7 +15,6 @@ import {
   creativeBlock, buildExtractionPrompt, buildHookFindingPrompt, buildHookReinforcementPrompt,
   buildScriptDistillationPrompt, buildSceneRewritePrompt,
 } from '../js/video-assistant-content.js';
-import { buildReverseDuplicationPrompt } from '../js/video-assistant-prompts.js';
 
 const SRC = readFileSync(new URL('../js/video-assistant.js', import.meta.url), 'utf8');
 const between = (a, b) => SRC.slice(SRC.indexOf(a), SRC.indexOf(b, SRC.indexOf(a)));
@@ -30,7 +29,6 @@ const BUILT = {
   reinforcement: (c) => buildHookReinforcementPrompt({ ...ctx, idea: 'רעיון', hook: 'הוק', script: 'מגילה', creative: c }),
   script: (c) => buildScriptDistillationPrompt({ ...ctx, idea: 'רעיון', hook: 'הוק', hookReinforcement: 'חיזוק', rawScript: 'מגילה', creative: c }),
   scene: (c) => buildSceneRewritePrompt({ ...ctx, script: 'תסריט', creative: c }),
-  reverse: (c) => buildReverseDuplicationPrompt({ ...ctx, hook: 'הוק מקורי', script: 'מגילה', creative: c }),
 };
 
 test('קריאייטיב: נכנס לכל פרומפט במסלול מ-0, עם הוראה להיצמד אליו', () => {
@@ -78,7 +76,6 @@ test('כל המסכים במסלול מ-0 שולחים את הקריאייטיב
   }
   assert.match(between('async function openExtractionHelperModal', 'function renderScratchDump'), /buildExtractionPrompt\(\{[^}]*creative \}\)/);
   assert.match(between('async function renderScratchHook', 'async function renderScratchHookReinforce'), /buildHookFindingPrompt\(\{[^}]*creative \}\)/);
-  assert.match(between('async function renderScratchHook', 'async function renderScratchHookReinforce'), /buildReverseDuplicationPrompt\(\{[^}]*creative \}\)/);
   assert.match(between('async function renderScratchHookReinforce', 'const CTA_TYPES'), /buildHookReinforcementPrompt\(\{[^}]*creative \}\)/);
   assert.match(between('async function renderScratchDistill', 'async function renderScratchScene'), /carousel: isCarousel\(state\), creative,/);
   assert.match(between('async function renderScratchScene', '// ===== מסך הסיכום הסופי'), /buildSceneRewritePrompt\(\{[^}]*creative \}\)/);
@@ -88,7 +85,7 @@ test('כל המסכים במסלול מ-0 שולחים את הקריאייטיב
 
 test('כל מסך שמחכה לשרת בודק שהוא עדיין המסך האחרון לפני שהוא מצייר', () => {
   for (const fn of ['renderOpening', 'renderProfileSetup', 'renderPulledIdea', 'renderPulledReference', 'renderPrompt1',
-    'renderHerWords', 'renderPrompt2', 'renderCreativePackaging', 'renderScratchHook', 'renderScratchHookReinforce',
+    'renderPrompt2', 'renderCreativePackaging', 'renderScratchHook', 'renderScratchHookReinforce',
     'renderScratchDistill', 'renderScratchScene']) {
     const start = SRC.indexOf(`async function ${fn}(`);
     assert.ok(start > 0, fn);
@@ -288,7 +285,6 @@ describe('ביקורת 05/11 בעוזר (jsdom)', { skip: hasJsdom ? false : 'js
     const cases = [
       [packagingScreen, '#va-packaging-input', 'כיוון ישן', 'כיוון חדש'],
       [{ ...scratch, rawDump: 'מגילה ישנה' }, '#va-scratch-dump-input', 'מגילה ישנה', 'מגילה חדשה'],
-      [{ ...nextStep(scratch, { type: 'SCRATCH_DUMP_READY', text: 'מגילה' }), transcript: 'תמלול סרטון שעבד' }, '#va-hook-ref-input', 'תמלול סרטון שעבד', 'תמלול אחר'],
     ];
     for (const [s, sel, before, after] of cases) {
       await open(s, () => $(sel) && $(sel).value === before, `התיבה ${sel}`);

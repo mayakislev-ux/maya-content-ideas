@@ -27,13 +27,13 @@ test('הבחירה בולטת על המסך', () => {
   assert.match(CSS, /\.va-cta-pick\s*\{/);
 });
 
-// 28/10/2026: השכפול ההפוך עבר מתוך מסך החלטה נפרד לשורה אופציונלית
-// במסך ההוק, עם אותו פרומפט שלה בדיוק (ההוק המקורי + המגילה).
+// 06/11/2026 (מאיה): "שתעיפי לגמרי את שיטת השכפול ההפוך, סתם מבלבל".
+// גם השורה האופציונלית במסך ההוק ירדה.
 const HOOK = SRC.slice(SRC.indexOf('async function renderScratchHook'), SRC.indexOf('async function renderScratchHookReinforce'));
-test('מסך ההוק: סרטון שעבד הוא אפשרות, ומשתמש בפרומפט השכפול ההפוך', () => {
-  assert.match(HOOK, /va-hook-ref-input/, 'אין מקום להדביק תמלול');
-  assert.match(HOOK, /buildReverseDuplicationPrompt\(\{ domain, audience, hook: state\.openingHook, script: state\.rawDump/, 'לא הפרומפט שלה');
-  assert.match(HOOK, /<details class="va-more"/, 'האפשרות לא סגורה כברירת מחדל');
+test('מסך ההוק: אין יותר "סרטון שעבד" ואין פרומפט שכפול הפוך', () => {
+  assert.doesNotMatch(HOOK, /va-hook-ref-input|openingHook|סרטון שעבד/);
+  assert.doesNotMatch(SRC, /buildReverseDuplicationPrompt/);
+  assert.match(HOOK, /buildHookFindingPrompt\(\{/);
 });
 
 test('"כן, צריך תסריט" לא עובר יותר במסך "שכפול הפוך?"', () => {

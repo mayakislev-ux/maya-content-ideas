@@ -4419,8 +4419,7 @@ textarea:focus-visible,
    צ'יפי דירוג, שני השורות ביחד גלשו לשלוש שורות ברוחב מסך נייד (390px)
    ותפסו כ-45% מגובה המסך עוד לפני שרואים רעיון אחד. שורה אחת גוללת
    לצדדים חוסכת את כל השטח הזה, בדיוק כמו תפריטי סינון-בגלילה נפוצים. */
-.content-plan-pick-ideas-toolbar .category-chips,
-.content-plan-pick-ideas-toolbar .rating-chips {
+.content-plan-pick-ideas-toolbar .category-chips {
   margin: 0;
   gap: 0.4rem;
   flex-wrap: nowrap;
