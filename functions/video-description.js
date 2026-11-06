@@ -178,7 +178,8 @@ function sanitize(text) {
 
 function words(text) {
   return clean(text)
-    .replace(/[֑-ׇ]/g, '')
+    .replace(/־/g, ' ') // מקף עברי (ל־100) הוא מפריד, כמו ל-100
+    .replace(/[֑-ֽֿ-ׇ]/g, '')
     .replace(/[^א-תA-Za-z0-9]+/g, ' ')
     .toLowerCase()
     .split(' ')
@@ -350,6 +351,7 @@ module.exports = {
   scriptCta,
   spokenLines,
   isGrounded,
+  sourceSet,
   sanitize,
   validateInput,
   createVideoDescriptionHandler,

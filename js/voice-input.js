@@ -262,8 +262,12 @@ export function wireVoiceInput({ buttonId, textareaId, onText = null, hintIfUnsu
     if (starting) return;
     starting = true;
     try {
+      /* 06/11/2026: אם בזמן חלון ההרשאה נשלחה הודעה או עברו מסך, stop()
+         מקדם את take. בלי הבדיקה הזו ההקלטה הייתה מתחילה בכל זאת. */
+      const takeAtStart = take;
       try {
         stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        if (take !== takeAtStart) { releaseMic(); return; }
       } catch (err) {
         console.warn('dictation: mic denied', err && err.name);
         showToast('אין גישה למיקרופון. צריך לאשר גישה למיקרופון בהגדרות הדפדפן ולנסות שוב');
@@ -273,7 +277,14 @@ export function wireVoiceInput({ buttonId, textareaId, onText = null, hintIfUnsu
       try {
         recorder = new window.MediaRecorder(stream, mimeType ? { mimeType, audioBitsPerSecond: 48000 } : undefined);
       } catch {
-        recorder = new window.MediaRecorder(stream);
+        try {
+          recorder = new window.MediaRecorder(stream);
+        } catch (err) {
+          console.warn('dictation: MediaRecorder failed', err);
+          releaseMic();
+          showToast('ההקלטה לא נפתחה במכשיר הזה. אפשר לכתוב בינתיים בטקסט');
+          return;
+        }
       }
       chunks = [];
       const myTake = ++take;

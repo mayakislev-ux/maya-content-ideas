@@ -102,6 +102,11 @@ export function nextStep(state, action) {
     if (!state.history.length) return state;
     const prev = state.history[state.history.length - 1];
     const back = { ...prev, history: state.history.slice(0, -1) };
+    /* 06/11/2026: חזרה מהאריזה למסך הרעיון השאירה את שתי התיבות ריקות, כי
+       הסטייט הקודם נשמר לפני שהרעיון נכתב. מה שכבר נכתב נשאר. */
+    for (const key of ['ideaTopic', 'ideaPunchline', 'ideaAngle']) {
+      if (back[key] == null && state[key] != null) back[key] = state[key];
+    }
     /* חזרה משחזרת סטייט מלפני שהתסריט נכתב, וגם הפריט ב"התסריטים שלי" נשמר
        ממנו. בלי זה תסריט שהודבק נמחק מכל מקום. */
     const sceneBack = state.screen === 'summary' && prev.screen === 'scratch-scene';
