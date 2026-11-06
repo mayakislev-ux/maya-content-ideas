@@ -12,6 +12,9 @@
 // תסריט" עם ניסוח מתוקן, בחירת פורמט אמיתית (לא רק אישור), ומסך סיכום
 // ברור בסוף שמראה בדיוק מה היא עשתה/צריכה לעשות.
 
+/* 06/11/2026: עזר טהור (בלי DOM), כמו שאר הקובץ */
+import { withAngle } from './idea-reply.js';
+
 export const INITIAL_STATE = {
   screen: 'opening', branch: null, hook: null, hookReinforcement: null, herWords: null,
   rerollCount: 0, ideaDescription: null, searchKeywords: null, formatFor: null,
@@ -54,6 +57,10 @@ export const INITIAL_STATE = {
   referenceTitle: null,
   /* מזהה הסרטון במאגר, כדי ש"✨ תמלול מדויק" ימצא תמלול שכבר נעשה לו */
   referenceBankId: null,
+  /* 06/11/2026 (מאיה): "הוא בוחר זווית אבל אחר כך כשאני מעבירה את הרעיון
+     לביצוע הוא שוכח מהזווית". זווית ההנגשה שהצ'אט בחר (או שנשמרה על הרעיון
+     בבנק). נכנסת למשפט הרעיון (ideaDescription) שכל הפרומפטים קוראים. */
+  ideaAngle: null,
 };
 
 /* 31/10/2026: קרוסלה נכתבת לשקופיות ולא מדוברת, ולכן שלבי הסרטון לא חלים עליה. */
@@ -313,7 +320,9 @@ function step(state, action) {
        מוצאת עם ג'מיני את האריזה הקריאייטיבית... ואז בוחרת את פורמט
        ההנגשה, וכותבת תסריט". אחרי המסר מגיעה האריזה, בשני המסלולים. */
     case 'IDEA_SHARPENED': {
-      const sharpened = (action.idea && action.idea.trim()) || state.ideaDescription;
+      const raw = (action.idea && action.idea.trim()) || state.ideaDescription;
+      /* הזווית נוסעת עם הרעיון לאריזה, להוק ולתסריט */
+      const sharpened = state.ideaAngle ? withAngle(raw, state.ideaAngle) : raw;
       /* הנושא והפואנטה נשמרים גם בנפרד, כדי שחזרה למסך תציג כל אחד
          בתיבה שלו ולא את המשפט המשולב בתיבת הנושא. */
       return {

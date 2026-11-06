@@ -8018,6 +8018,23 @@ body.feed-open { overflow: hidden; }
 .va-angle-cta__warn { margin: 0 0 12px; font-size: 15px; line-height: 1.5; }
 #video-assistant-view .va-angle-cta__btn { width: 100%; }
 .va-angle-cta__safe { display: block; margin-top: 10px; font-size: 13.5px; line-height: 1.5; color: var(--va-muted, #5d7d99); }
+/* 06/11/2026: הזווית שחזרה מצ'אט בדיקת הרעיון, גלויה במסך הרעיון */
+.va-angle-picked {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1.5px dashed var(--va-blue, #0b6fa8);
+  background: #fff;
+  color: var(--va-ink, #0f2340);
+  text-align: start;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+}
+.va-angle-picked__label { font-size: 15px; font-weight: 600; }
+.va-angle-picked__name { font-size: 16px; font-weight: 800; }
+.va-angle-picked__note { flex-basis: 100%; font-size: 13.5px; color: var(--va-muted, #5d7d99); }
 
 /* 04/11/2026: שכפול מתוך המאגר. האם אפשר לסמוך על התמלול שנכנס. */
 .va-bank-notice {
@@ -8431,3 +8448,75 @@ body[data-plan="refs"] .hub-full-only { display: none !important; }
 }
 .rec-tag--hot { border-inline-start-color: var(--warm); }
 .rec-item__context { margin: 0; font-size: 0.85rem; color: var(--muted); line-height: 1.45; }
+
+/* 06/11/2026 (מאיה): "בצ'אט של הבדיקת רעיון במובייל כאילו לא רואים את
+   המסל ואז צריך לגלול למעלה, לא נוח במסך, והמסל של הצ'אט מאוד קטן".
+
+   1. גודל: 16px לפחות בכל מסך (מתחת לזה אייפון עושה זום בכל נגיעה בתיבה),
+      והתיבה גדלה עם הטקסט (autoGrow ב-chat-composer.js) במקום פס צר שגוללים
+      בתוכו.
+   2. מקום: במובייל השורה מעוגנת מלמעלה לקו התחתון של מה שבאמת נראה על
+      המסך (--chat-dock-line, מחושב מה-visualViewport ומהתפריט התחתון).
+      bottom הישן נמדד מתחתית ה-layout viewport, שבאייפון נשארת מאחורי
+      המקלדת. הכלל חל רק כשה-JS חישב את הקו (html.chat-docked).
+   3. התיבה בצד אחד לכל הגובה, והמיקרופון והשליחה אחד מעל השני בצד השני,
+      כדי שהתיבה תקבל את רוב הרוחב. */
+#chat-form.chat-input-row textarea {
+  font-size: max(16px, 1rem);
+  line-height: 1.45;
+  resize: none;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+.mic-btn.mic-btn-busy {
+  opacity: 0.75;
+  cursor: progress;
+  animation: none;
+}
+#video-assistant-view .va-mic-btn.mic-btn-busy {
+  opacity: 0.8;
+  cursor: progress;
+}
+
+@media (max-width: 720px) {
+  #chat-form.chat-input-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    column-gap: 0.6rem;
+    row-gap: 0.5rem;
+    padding: 0.6rem 0.9rem;
+  }
+  #chat-form.chat-input-row textarea {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    font-size: 1.05rem;
+    /* שלוש שורות לפחות, ועד בערך שליש מהמסך הנראה */
+    min-height: calc(4.35em + 1.4rem);
+    max-height: 38vh;
+    max-height: calc(var(--vv-height, 100vh) * 0.38);
+    padding: 0.7rem 0.8rem;
+  }
+  #chat-form.chat-input-row .mic-btn {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: center;
+  }
+  #chat-form.chat-input-row button[type="submit"] {
+    grid-column: 2;
+    grid-row: 2;
+    min-height: 48px;
+  }
+  html.chat-docked #chat-form.chat-input-row {
+    top: var(--chat-dock-line);
+    bottom: auto;
+    transform: translate(-50%, -100%);
+  }
+  html.chat-docked #chat-messages.chat-messages {
+    padding-bottom: calc(var(--chat-composer-h, 8rem) + var(--bottom-nav-h, 70px) + 1rem);
+  }
+  #chat-messages .chat-row {
+    scroll-margin-top: calc(var(--header-height, 90px) + 4rem);
+    scroll-margin-bottom: calc(var(--chat-composer-h, 8rem) + 1rem);
+  }
+}

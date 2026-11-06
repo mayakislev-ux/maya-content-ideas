@@ -56,6 +56,7 @@ import {
 /* 05/11/2026: הדבקה חכמה, מיקרופון, מד אורך, דף צילום ותיאור לסרטון */
 import { mountSmartPaste, parseOptions } from './va-smart-paste.js';
 import { attachMic } from './va-mic.js';
+import { parseIdeaTitle, withAngle } from './idea-reply.js';
 import { lengthMeterHtml, duplicationRef } from './va-length.js';
 import { summaryToolsHtml, wireSummaryTools } from './va-summary-tools.js';
 
@@ -646,8 +647,14 @@ async function renderPulledIdea() {
   // מקבלת רגע הפיכה - לא רק מופיעה.
   flipReveal(card);
   document.getElementById('va-accept-idea-btn').addEventListener('click', () => {
-    state.hook = idea.hookText || idea.title;
-    state.ideaDescription = idea.hookText || idea.title;
+    /* 06/11/2026 (מאיה: "כשאני מעבירה את הרעיון לביצוע הוא שוכח מהזווית").
+       כותרת שנשמרה מהצ'אט היא "רעיון | זווית: X | סיפור: Y". הרעיון נכנס
+       לתיבה נקי, הסיפור נשאר איתו, והזווית עוברת לשדה שלה ונוסעת הלאה. */
+    const parsed = parseIdeaTitle(idea.title);
+    const ideaText = parsed.story ? `${parsed.text}. סיפור: ${parsed.story}` : parsed.text;
+    state.hook = idea.hookText || ideaText;
+    state.ideaDescription = idea.hookText || ideaText;
+    state.ideaAngle = parsed.angle || null;
     celebrate();
     dispatch({ type: 'ACCEPT_PICK' });
   });
@@ -1922,6 +1929,13 @@ function renderIdeaSharpen() {
     <label class="cosmic-field-label va-punch-label" for="va-idea-punch">⭐ מה הפואנטה שורה תחתונה מהסרטון? מה אתם רוצים שהקהל שלכם יבין? מה המסר?</label>
     <textarea class="cosmic-textarea va-punch-box" id="va-idea-punch" style="min-height:96px">${escapeHtml(punch)}</textarea>`}
 
+    ${state.ideaAngle && !forFootage ? `<div class="va-angle-picked" id="va-angle-picked">
+      <span class="va-angle-picked__label">🎯 זווית ההנגשה שנבחרה:</span>
+      <strong class="va-angle-picked__name" id="va-angle-picked-name">${escapeHtml(state.ideaAngle)}</strong>
+      <small class="va-angle-picked__note">נכנסת לבד לאריזה, להוק ולתסריט</small>
+      <button type="button" class="va-text-link" id="va-angle-remove">להוריד את הזווית</button>
+    </div>` : ''}
+
     ${showAngleChat ? `<div class="va-angle-cta">
       <p class="va-angle-cta__lead">🎯 דיוק רעיון ממוקד, חזק וספציפי הוא הסוד לסרטון מוצלח.</p>
       <p class="va-angle-cta__warn">רעיון לא מדויק יהרוס את כל הכתיבה.</p>
@@ -1977,6 +1991,14 @@ function renderIdeaSharpen() {
   });
   const angleBtn = document.getElementById('va-angle-chat-btn');
   if (angleBtn) angleBtn.addEventListener('click', () => openAngleChat({ box, punchBox, angleBtn }));
+  const removeAngle = document.getElementById('va-angle-remove');
+  if (removeAngle) removeAngle.addEventListener('click', () => {
+    state.ideaAngle = null;
+    saveAll().catch((err) => console.error('saveSession failed:', err));
+    const picked = document.getElementById('va-angle-picked');
+    if (picked) picked.remove();
+    showToast('הזווית ירדה מהרעיון');
+  });
   const pullLink = document.getElementById('va-pull-idea-link');
   if (pullLink) pullLink.addEventListener('click', async () => {
     if (!(await refreshIdeas())) return;
@@ -2031,17 +2053,21 @@ function returnFromAngleChat(result) {
   const r = typeof result === 'string' ? { idea: result } : (result || {});
   const idea = String(r.idea || '').trim();
   const message = String(r.message || '').trim();
+  /* 06/11/2026: הזווית שהצ'אט בחר חוזרת גם היא, ונשמרת בשדה משלה */
+  const angle = String(r.angle || '').trim();
   const here = state.screen === 'idea-sharpen';
-  if (here && (idea || message)) {
+  if (here && (idea || message || angle)) {
     let drafts = state.drafts || {};
     if (idea) drafts = withDraft(drafts, 'idea-sharpen', 'va-idea-sharp', idea);
     if (message && state.branch !== 'footage') drafts = withDraft(drafts, 'idea-sharpen', 'va-idea-punch', message);
     state.drafts = drafts;
+    if (angle) state.ideaAngle = angle;
     saveAll().catch((err) => console.error('saveSession failed:', err));
   }
   render();
-  if (here && idea && message) showToast('הרעיון והמסר המדויקים נכנסו לתיבות');
-  else if (here && idea) showToast('הרעיון המדויק נכנס לתיבה "על מה הסרטון?"');
+  const withAngleNote = here && angle ? ', וזווית ההנגשה נשמרה איתם' : '';
+  if (here && idea && message) showToast(`הרעיון והמסר המדויקים נכנסו לתיבות${withAngleNote}`);
+  else if (here && idea) showToast(`הרעיון המדויק נכנס לתיבה "על מה הסרטון?"${withAngleNote}`);
 }
 
 /* 28/10/2026 (מאיה): "זהו הצ'אט בתכלס זה הזווית הקריאייטיבית, אבל הוא
@@ -2050,8 +2076,9 @@ function returnFromAngleChat(result) {
    נוסע הלאה לפרומפטים של ההוק והתסריט. */
 async function renderCreativePackaging() {
   const t = ++renderSeq;
+  /* 06/11/2026: הזווית מהצ'אט נכנסת גם לפרומפט האריזה */
   const idea = state.ideaTopic && state.ideaPunchline
-    ? `${state.ideaTopic}. המסר: ${state.ideaPunchline}`
+    ? withAngle(`${state.ideaTopic}. המסר: ${state.ideaPunchline}`, state.ideaAngle)
     : (state.ideaBeforePackaging || state.ideaDescription || '');
   const audience = await myAudience();
   const domain = await myDomain();

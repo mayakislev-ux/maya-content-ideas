@@ -2,8 +2,9 @@
    אסתר (כתיבה מאפס ושכפול) ו"על מה הסרטון?". הרבה יותר קל לספר בקול מאשר
    להקליד מגילה של 120 מילים בטלפון.
 
-   אותו מנגנון כמו בצ'אט של בדיקת רעיון (voice-input.js). בדפדפן שלא
-   תומך בזיהוי דיבור הכפתור פשוט לא מופיע, וכותבים כרגיל. */
+   אותו מנגנון כמו בצ'אט של בדיקת רעיון (voice-input.js). 06/11/2026: באייפון
+   מקליטים ומתמללים בשרת, כי זיהוי הדיבור של הדפדפן לא עובד שם. בדפדפן בלי
+   זיהוי דיבור ובלי הקלטה הכפתור פשוט לא מופיע, וכותבים כרגיל. */
 import { wireVoiceInput, voiceInputSupported } from './voice-input.js';
 
 let live = [];
@@ -33,10 +34,20 @@ export function attachMic(textareaId) {
     row.hidden = true;
     return button;
   }
+  const label = button.querySelector('.va-mic-btn__label');
+  /* 06/11/2026: באייפון ההקלטה עוברת תמלול בשרת, וזה לוקח כמה שניות. הכפתור
+     אומר מה קורה בכל רגע, ולא נראה תקוע. */
+  const LABELS = {
+    idle: 'לדבר במקום לכתוב',
+    listening: 'מקליטים... לעצור',
+    recording: 'מקליטים... ללחוץ כשמסיימים',
+    transcribing: 'מתמללים...',
+  };
   const handle = wireVoiceInput({
     buttonId,
     textareaId,
     hintIfUnsupported: false,
+    onState: (st) => { label.textContent = LABELS[st] || LABELS.idle; },
     onText: (el) => {
       /* המסך התחלף באמצע הקלטה: לא כותבים לתיבה שכבר לא על המסך */
       if (!el.isConnected) { handle.stop(); return; }
@@ -45,10 +56,5 @@ export function attachMic(textareaId) {
     },
   });
   live.push(handle);
-  /* הכפתור מתחלף בין "לדבר" ל"לעצור" לפי מצב ההקלטה */
-  const label = button.querySelector('.va-mic-btn__label');
-  new MutationObserver(() => {
-    label.textContent = button.classList.contains('mic-btn-active') ? 'מקליטים... לעצור' : 'לדבר במקום לכתוב';
-  }).observe(button, { attributes: true, attributeFilter: ['class'] });
   return button;
 }

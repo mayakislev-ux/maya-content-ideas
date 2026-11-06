@@ -7,6 +7,7 @@ import { findSimilarIdea } from './ideas-logic.js';
 import { showWelcomeTour } from './welcome-tour.js';
 import { addBubble, addThinkingBubble, addChoiceBubble, setBubbleText, playSuccessSound } from './chat-ui.js';
 import { wireVoiceInput } from './voice-input.js';
+import { wireChatComposer, autoGrow } from './chat-composer.js';
 /* 26/10/2026: פענוח התשובה חי במקום אחד, והעוזר ליצירת סרטון
    מייבא מאותו קובץ - אחרת הוא הציג את השורה הטכנית למשתמשת. */
 import { extractIdeaSummary, ideaTextOnly, labeledIdea, RECOGNIZED_MARKER } from './idea-reply.js';
@@ -210,6 +211,16 @@ function messagesEl() {
   return document.getElementById('chat-messages');
 }
 
+function revealRow(bubble) {
+  const row = bubble && bubble.closest ? bubble.closest('.chat-row') : null;
+  if (!row || typeof row.scrollIntoView !== 'function') return;
+  try {
+    row.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  } catch {
+    row.scrollIntoView();
+  }
+}
+
 // A stale Firestore connection (e.g. the tab was backgrounded on mobile
 // for a while and the realtime connection didn't cleanly resume) can leave
 // getProfile() neither resolving nor rejecting - the "thinking" bubble then
@@ -275,7 +286,10 @@ function addPostIdeaButtons(bubble, finalizedText, ideaSummary) {
     backBtn.textContent = '↩ לחזור לעוזר עם הרעיון המדויק';
     const idea = (ideaSummary && ideaSummary.idea) || finalizedText;
     const message = (ideaSummary && ideaSummary.message) || '';
-    backBtn.addEventListener('click', () => returnFromChat({ idea, message }));
+    /* 06/11/2026 (מאיה): "הוא בוחר זווית אבל אחר כך כשאני מעבירה את הרעיון
+       לביצוע הוא שוכח מהזווית". עד היום רק הרעיון והמסר חזרו לעוזר. */
+    const angle = (ideaSummary && ideaSummary.angle) || '';
+    backBtn.addEventListener('click', () => returnFromChat({ idea, message, angle }));
     bubble.appendChild(backBtn);
   }
 }
@@ -386,12 +400,16 @@ async function sendIdeaMessage(text) {
   const stale = () => gen !== chatGen;
   input.disabled = true;
   newIdeaBtn.disabled = true;
-  addBubble(messagesEl(), text, 'user');
+  const sentBubble = addBubble(messagesEl(), text, 'user');
   if (navigator.vibrate) navigator.vibrate(15);
   if (history.length === 0) originalIdeaText = text;
   history.push({ role: 'user', content: text });
   const thinkingBubble = addThinkingBubble(messagesEl());
   const stopStatus = showThinkingStatus(thinkingBubble);
+  /* 06/11/2026: הדף הוא שגולל, לא רשימת ההודעות, ולכן scrollTop עליה לא
+     עשה כלום. ההודעה שנשלחה ובועת "חושבת" נגללות לתוך המסך, מעל שורת
+     הכתיבה (scroll-margin-bottom ב-CSS). */
+  revealRow(sentBubble);
 
   try {
     const onDelta = (liveTextRef) => (delta) => {
@@ -720,7 +738,25 @@ export function wireIdeaChat() {
 
   const form = document.getElementById('chat-form');
   const input = document.getElementById('chat-input');
-  const voiceInput = wireVoiceInput({ buttonId: 'chat-mic-btn', textareaId: 'chat-input' });
+  /* 06/11/2026: שורת הכתיבה תמיד נראית בתחתית המסך במובייל, והתיבה גדלה
+     עם הטקסט. ראה chat-composer.js. */
+  const composer = wireChatComposer({ form, textarea: input, view: document.getElementById('chat-view') });
+  const micBtn = document.getElementById('chat-mic-btn');
+  const MIC_LOOK = {
+    idle: ['🎤', 'הקלטה קולית'],
+    listening: ['⏹', 'מקליטים, ללחוץ כדי לעצור'],
+    recording: ['⏹', 'מקליטים, ללחוץ כשמסיימים'],
+    transcribing: ['⏳', 'מתמללים את ההקלטה'],
+  };
+  const voiceInput = wireVoiceInput({
+    buttonId: 'chat-mic-btn',
+    textareaId: 'chat-input',
+    onText: (el) => { autoGrow(el); composer.update(); },
+    onState: (st) => {
+      const [icon, label] = MIC_LOOK[st] || MIC_LOOK.idle;
+      if (micBtn) { micBtn.textContent = icon; micBtn.setAttribute('aria-label', label); micBtn.title = label; }
+    },
+  });
 
   document.getElementById('edit-profile-btn').addEventListener('click', () => {
     newConversation();
@@ -755,6 +791,7 @@ export function wireIdeaChat() {
     // the send action "duplicating" or getting stuck.
     voiceInput.stop();
     input.value = '';
+    autoGrow(input);
 
     if (onboardingStep) {
       addBubble(messagesEl(), text, 'user');
