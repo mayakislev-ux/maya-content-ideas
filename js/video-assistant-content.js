@@ -10,90 +10,56 @@
    האפליקציה: הסרטון מוטמע בפופאפ (embedUrlFor), לא נפתח בחוץ.
    הקישורים מתוך המסמך שלה. קישורי vt.tiktok.com המקוצרים פוענחו פעם אחת
    למזהה הסרטון, כי בלי מזהה אי אפשר להטמיע. */
+/* 06/11/2026 (מאיה: "בחלק של הפורמטים חלק מהדוגמאות לא עובדות אז תתקני").
+   נבדק אחד אחד מול אינסטגרם וטיקטוק:
+   - DMBFvuFIM5T (טקסט דינמי) נמחק מאינסטגרם, ולכן ירד מהרשימה.
+   - DBmKqNsIvhR (וויס אובר) קיים, אבל אינסטגרם חוסמת את ההטמעה שלו (כנראה
+     בגלל המוזיקה), ולכן בתוך האפליקציה הופיע חלון שבור. מסומן embed: false
+     ומוצג ככרטיס עם קישור לאינסטגרם, ועבר להיות הדוגמה השנייה.
+   - בטיקטוק הסרטונים עצמם תקינים, אבל הקישור "לצפייה בפלטפורמה המקורית"
+     היה tiktok.com/video/מספר בלי שם המשתמש, וטיקטוק מפנה אותו לדף 404.
+     עכשיו הקישור המלא עם @שם המשתמש. */
 export const FORMAT_EXAMPLES = {
   "דיבור למצלמה": [
-    {
-      "url": "https://www.instagram.com/reel/DPN__PXAttX/"
-    },
-    {
-      "url": "https://www.instagram.com/reel/DNjBwppIiAt/"
-    }
+    { "url": "https://www.instagram.com/reel/DPN__PXAttX/" },
+    { "url": "https://www.instagram.com/reel/DNjBwppIiAt/" }
   ],
   "וויס אובר": [
-    {
-      "url": "https://www.instagram.com/reel/DBmKqNsIvhR/"
-    },
-    {
-      "url": "https://www.tiktok.com/video/7475764014123977992",
-      "tiktokVideoId": "7475764014123977992"
-    }
+    { "url": "https://www.tiktok.com/@talia_clinic/video/7475764014123977992", "tiktokVideoId": "7475764014123977992" },
+    { "url": "https://www.instagram.com/reel/DBmKqNsIvhR/", "embed": false }
   ],
   "ראיון / שיחה": [
-    {
-      "url": "https://www.instagram.com/reel/DHnqDyrows5/"
-    },
-    {
-      "url": "https://www.instagram.com/reel/DI8lhRyIEUp/"
-    }
+    { "url": "https://www.instagram.com/reel/DHnqDyrows5/" },
+    { "url": "https://www.instagram.com/reel/DI8lhRyIEUp/" }
   ],
   "תוכן ויזואלי יפה": [
-    {
-      "url": "https://www.instagram.com/reel/DLPyRWPoESW/"
-    },
-    {
-      "url": "https://www.instagram.com/reel/DHgi4YiI833/"
-    },
-    {
-      "url": "https://www.tiktok.com/video/7561414215119195410",
-      "tiktokVideoId": "7561414215119195410"
-    }
+    { "url": "https://www.instagram.com/reel/DLPyRWPoESW/" },
+    { "url": "https://www.instagram.com/reel/DHgi4YiI833/" },
+    { "url": "https://www.tiktok.com/@talia_clinic/video/7561414215119195410", "tiktokVideoId": "7561414215119195410" }
   ],
   "טקסט דינמי": [
-    {
-      "url": "https://www.instagram.com/reel/DMBFvuFIM5T/"
-    },
-    {
-      "url": "https://www.instagram.com/reel/DFiW2WholdZ/"
-    }
+    { "url": "https://www.instagram.com/reel/DFiW2WholdZ/" }
   ],
   "משחק תפקידים": [
-    {
-      "url": "https://www.tiktok.com/video/7500635865677401362",
-      "tiktokVideoId": "7500635865677401362"
-    }
+    { "url": "https://www.tiktok.com/@barklaz/video/7500635865677401362", "tiktokVideoId": "7500635865677401362" }
   ],
   "פוסט קרוסלה": [
-    {
-      "url": "https://www.instagram.com/p/DOGEHwMDXQN/"
-    }
+    { "url": "https://www.instagram.com/p/DOGEHwMDXQN/" }
   ],
   "לוח / טאבלט": [
-    {
-      "url": "https://www.instagram.com/reel/DHTm9eEIGie/"
-    }
+    { "url": "https://www.instagram.com/reel/DHTm9eEIGie/" }
   ],
   "סטיץ' (תגובה לסרטון ויראלי)": [
-    {
-      "url": "https://www.tiktok.com/video/7567422966271659282",
-      "tiktokVideoId": "7567422966271659282"
-    }
+    { "url": "https://www.tiktok.com/@ellaofirr/video/7567422966271659282", "tiktokVideoId": "7567422966271659282" }
   ],
   "תגובה לתגובה": [
-    {
-      "url": "https://www.tiktok.com/video/7480554664354680071",
-      "tiktokVideoId": "7480554664354680071"
-    }
+    { "url": "https://www.tiktok.com/@batchen_brows/video/7480554664354680071", "tiktokVideoId": "7480554664354680071" }
   ],
   "מסך ירוק": [
-    {
-      "url": "https://www.tiktok.com/video/7482082670478953735",
-      "tiktokVideoId": "7482082670478953735"
-    }
+    { "url": "https://www.tiktok.com/@veredaddis/video/7482082670478953735", "tiktokVideoId": "7482082670478953735" }
   ],
   "מסך חצוי": [
-    {
-      "url": "https://www.instagram.com/reel/DMS5oV9olzs/"
-    }
+    { "url": "https://www.instagram.com/reel/DMS5oV9olzs/" }
   ]
 };
 
@@ -114,6 +80,62 @@ export const FORMATS = [
   { name: 'מסך ירוק', description: 'מצלמים את עצמכם מדברים למצלמה, ואז בCapCut חותכים את הרקע (יש שם פונקציה שנקראת מסך ירוק) - וברקע שמים תמונות/סרטונים שעליהם אתם מדברים.' },
   { name: 'מסך חצוי', description: 'מצלמים את עצמכם מסבירים, מוסיפים בעריכה מסך נוסף עם מצגת, צילומי מסך, או דוגמאות מהעולם, ומדברים תוך כדי ומחברים בין ההסבר להצגת הידע.' },
 ];
+
+/* 06/11/2026 (מאיה: "חשבתי אולי אחרי שמסננים אריזה קריאייטיבית קל להחליט
+   איזה פורמטים מתאימים אז אולי שיסמן בכתום מה הוא ממליץ? פשוט מפחדת שיטעה
+   אבל זה גם רעיון").
+   כדי שלא "יטעה", אין כאן בינה מלאכותית: ההמלצה היא חיפוש מילים בטקסט
+   האריזה שהודבק. אם בכיוון שבחרו כתוב למשל "קריינות" או "וויס אובר",
+   הפורמט "וויס אובר" מסומן בכתום. כל פורמט כאן מחזיק את המילים שמעידות
+   עליו, לפי ההגדרה שלו ב-FORMATS למעלה. מילה שמופיעה אחרי "בלי" / "ללא" /
+   "לא" לא נספרת ("בלי לדבר למצלמה" לא ימליץ על דיבור למצלמה).
+   ההמלצה רק מסמנת. היא לא מסתירה, לא חוסמת ולא משנה את הסדר.
+   לשנות מה מומלץ: מוסיפים או מוחקים מילים ברשימה של הפורמט. */
+export const FORMAT_RECOMMEND_WORDS = {
+  'דיבור למצלמה': ['דיבור למצלמה', 'מדברת למצלמה', 'מדבר למצלמה', 'מדברים למצלמה', 'פונה למצלמה', 'מול המצלמה', 'פנייה ישירה', 'מונולוג', 'וידוי', 'talking head'],
+  'וויס אובר': ['וויס אובר', 'ווייס אובר', 'וויס-אובר', 'voice over', 'voiceover', 'voice-over', 'קריינות', 'קריין', 'קול ברקע', 'קול מוקלט', 'וולוג', 'vlog', 'יום בחיים', 'day in the life'],
+  'ראיון / שיחה': ['ראיון', 'מראיינ', 'מרואיינ', 'פודקאסט', 'podcast', 'סקר רחוב', 'אנשים ברחוב', 'אנשים זרים', 'שואלת אנשים', 'שואל אנשים', 'street interview', 'שיחה בין', 'שיחה עם'],
+  'תוכן ויזואלי יפה': ['אסתטי', 'סינמטי', 'cinematic', 'aesthetic', 'תקריב', 'קלוז אפ', 'קלוז-אפ', 'close up', 'close-up', 'asmr', 'טיימלאפס', 'timelapse', 'סלואו מושן', 'slow motion'],
+  'טקסט דינמי': ['טקסט דינמי', 'טקסט על המסך', 'טקסטים על המסך', 'טקסט רץ', 'טקסט שמופיע', 'טקסטים שמופיעים', 'כיתוב על', 'כיתובים', 'text on screen', 'on-screen text', 'בלי דיבור', 'ללא דיבור', 'בלי מילים'],
+  'שאלות מהתיבה בסטורי': ['תיבת שאלות', 'תיבת השאלות', 'מהתיבה', 'שאלות ותשובות', 'q&a', 'שאלו אותי', 'שאלה שקיבלתי', 'שאלות שקיבלתי', 'שאלה של עוקב', 'שאלה של עוקבת'],
+  'סדרת תוכן': ['סדרת', 'סדרה', 'פרק 1', 'פרק ראשון', 'חלק 1', 'חלק ראשון', 'חלק 2', 'יום 1 ', 'יומן', 'המשך יבוא', 'to be continued'],
+  'משחק תפקידים': ['משחק תפקידים', 'משחק תפקיד', 'pov', 'מערכון', 'סקיצה', 'skit', 'דיאלוג', 'שתי דמויות', 'שני תפקידים', 'דמויות', 'מגלמת', 'מגלם', 'מה הלקוחה חושבת', 'מה הלקוח חושב', 'לקוחה מול', 'לקוח מול'],
+  'פוסט קרוסלה': ['קרוסלה', 'carousel', 'שקופיות', 'שקופית', 'שקפים', 'סליידים', 'סלייד'],
+  'לוח / טאבלט': ['טאבלט', 'אייפד', 'ipad', 'לוח מחיק', 'לוח לבן', 'על הלוח', 'על לוח', 'whiteboard', 'מציירת', 'מצייר', 'שרטוט', 'משרטט', 'דף ועט'],
+  "סטיץ' (תגובה לסרטון ויראלי)": ["סטיץ'", 'סטיץ', 'stitch', 'דואט', 'duet', 'ריאקשן', 'ריאקציה', 'reaction', 'מגיבה לסרטון', 'מגיב לסרטון', 'תגובה לסרטון'],
+  'תגובה לתגובה': ['תגובה לתגובה', 'עונה לתגובה', 'עונה על תגובה', 'עונה על התגובה', 'תגובה שקיבלתי', 'תגובה של עוקב', 'תגובה של עוקבת', 'צילום מסך של תגובה', 'reply to', 'replying'],
+  'מסך ירוק': ['מסך ירוק', 'גרין סקרין', 'green screen', 'greenscreen'],
+  'מסך חצוי': ['מסך מפוצל', 'מסך חצוי', 'מסך כפול', 'חצי מסך', 'split screen', 'split-screen', 'צד לצד', 'side by side', 'מצגת'],
+};
+
+const NEGATION_BEFORE = /(?:^|[\s"'(,-])(?:בלי|ללא|לא|without|no)\s*$/;
+/* מילה נספרת רק בתחילת מילה בטקסט, אחרי אות שימוש אחת או שתיים לכל היותר
+   (ו, ה, ב, ל, כ, ש). כך "בסדרת" נספר, אבל "מסדרת את השיער" לא. */
+const WORD_START = /(^|[^a-z0-9א-ת'])[והבלכש]{0,2}$/;
+
+function normalizeForMatch(text) {
+  return String(text || '').toLowerCase().replace(/[׳’`]/g, "'").replace(/[״“”]/g, '"').replace(/\s+/g, ' ');
+}
+
+/** הפורמטים שהמילים שלהם מופיעות בטקסט האריזה, לפי סדר FORMATS. */
+export function recommendFormats(packaging) {
+  const text = normalizeForMatch(packaging);
+  if (!text.trim()) return [];
+  const hit = (word) => {
+    const w = normalizeForMatch(word);
+    let i = text.indexOf(w);
+    while (i !== -1) {
+      const m = text.slice(Math.max(0, i - 16), i).match(WORD_START);
+      if (m) {
+        const beforeWord = text.slice(0, i - (m[0].length - m[1].length));
+        if (!NEGATION_BEFORE.test(beforeWord.slice(-10))) return true;
+      }
+      i = text.indexOf(w, i + 1);
+    }
+    return false;
+  };
+  return FORMATS.map((f) => f.name).filter((name) => (FORMAT_RECOMMEND_WORDS[name] || []).some(hit));
+}
 
 // מתוך "צ'ק ליסט לרעיון מנצח" - בנק זוויות הנגשה לרעיון
 export const ANGLES = [
