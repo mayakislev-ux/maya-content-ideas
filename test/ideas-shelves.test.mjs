@@ -284,7 +284,7 @@ describe('המסך (jsdom)', { skip: hasJsdom ? false : 'jsdom לא מותקן' 
     archive.renderArchive(IDEAS, { onItemClick: (idea) => clicked.push(idea.id) });
   });
 
-  test('מיקרופון הבית: מוסתר בלי המתג, ובלחיצה פותח את המקליט הקיים', () => {
+  test('מיקרופון הבית: מוסתר בלי המתג, ובלחיצה מקליט במקום, בלי מסך נפרד', () => {
     homeMic.wireHomeMic();
     const card = $('#home-mic-card');
     assert.ok(card.closest('#home-view'), 'המיקרופון חייב להיות במסך הבית');
@@ -307,11 +307,12 @@ describe('המסך (jsdom)', { skip: hasJsdom ? false : 'jsdom לא מותקן' 
     assert.equal(card.hidden, false);
     assert.match(card.textContent, /מה היה היום\?/);
 
-    assert.equal($('#recorder-modal'), null, 'המקליט נבנה רק כשפותחים אותו');
+    /* 06/11/2026 ערב: מהבית לא נפתח יותר מסך הקלטה נפרד. מקליטים במקום,
+       והטקסט נכתב בתיבה (הזרימה המלאה ב-home-mic-live.test.mjs). */
     card.click();
-    assert.equal($('#recorder-modal').hidden, false);
-    assert.equal($('#idea-modal').hidden, true, 'מהבית נפתח המקליט ולא טופס רעיון');
-    assert.equal($$('#recorder-modal').length, 1);
+    assert.equal($('#recorder-modal'), null, 'מהבית נפתח מסך הקלטה נפרד');
+    assert.equal($('#idea-modal').hidden, true, 'מהבית נפתח טופס רעיון');
+    homeMic.setHomeMicVisible(false);
     delete globalThis.MediaRecorder;
   });
 });

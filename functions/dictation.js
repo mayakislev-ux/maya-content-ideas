@@ -18,6 +18,13 @@ const UPLOAD_PREFIX = 'transcribeUploads';
 const MAX_AUDIO_BYTES = 25 * 1024 * 1024;
 const GEMINI_TIMEOUT_MS = 90000;
 const MAX_TEXT = 6000;
+/* 06/11/2026 (מאיה, מיקרופון הבית: "שתוך כדי שמקליטה יתומלל בו זמנית"):
+   באייפון הדפדפן לא מתמלל חי, ולכן מיקרופון הבית מקליט קטעים קצרים של
+   5-9 שניות ושולח כל קטע לכאן ברגע שנגמר (segment: true). קטע כזה הוא
+   קובץ קטן (עשרות KB), ולכן התקרה שלו קטנה בהרבה, והמכסה שלו נפרדת: שיחה
+   של 10 דקות היא 70-120 קטעים, והם לא אמורים לשרוף את 80 ההכתבות של
+   תיבות הכתיבה. */
+const MAX_SEGMENT_BYTES = 4 * 1024 * 1024;
 
 function validUploadPath(path, uid) {
   if (typeof path !== 'string' || !uid) return false;
@@ -36,6 +43,17 @@ const PROMPT = `זו הכתבה קולית קצרה: מישהו/י מדבר/ת �
 - לנקות רק גמגומים ומילות מילוי ("אממ", "אה"), ולהוסיף פיסוק טבעי.
 - לא להוסיף שום דבר שלא נאמר, ולא לשפר ניסוח.
 - אם אין בהקלטה דיבור (שקט או רעש), להחזיר טקסט ריק.`;
+
+/* קטע מתוך דיבור רצוף: הוא נחתך באמצע, וזה בסדר. הקטעים מחוברים בדפדפן
+   לפי הסדר, ולכן אסור להשלים או לסגור משפט שלא נגמר. */
+const SEGMENT_PROMPT = `זה קטע קצר (כמה שניות) מתוך הכתבה קולית רצופה וארוכה: מישהו/י מספר/ת בקול מה היה היום, באפליקציה לכתיבת תוכן שיווקי. הקטעים מתומללים כל אחד לחוד ומחוברים אחר כך לפי הסדר.
+לתמלל מילה במילה את מה שנאמר בקטע, בשפה שבה נאמר (בדרך כלל עברית).
+- בלי הקדמה, בלי הסבר, בלי מרכאות, בלי סיכום. רק הטקסט שנאמר.
+- הקטע יכול להתחיל או להיגמר באמצע משפט. לא להשלים, לא לסגור את המשפט ולא להוסיף נקודה בסוף אם המשפט לא נגמר.
+- מילה שנחתכה ממש בתחילת הקטע או בסופו: לכתוב אותה רק אם שומעים בבירור מה היא. לא לנחש.
+- לנקות רק גמגומים ומילות מילוי ("אממ", "אה"), ולהוסיף פיסוק טבעי.
+- לא להוסיף שום דבר שלא נאמר, ולא לשפר ניסוח.
+- אם אין בקטע דיבור (שקט או רעש), להחזיר טקסט ריק.`;
 
 const RESPONSE_SCHEMA = {
   type: 'OBJECT',
@@ -73,7 +91,7 @@ function costUsd(usage) {
   return (input * PRICE_PER_MTOK.input + output * PRICE_PER_MTOK.output) / 1e6;
 }
 
-async function callGemini({ projectId, accessToken, fileUri, mimeType, fetchImpl }) {
+async function callGemini({ projectId, accessToken, fileUri, mimeType, prompt = PROMPT, fetchImpl }) {
   const url = `https://aiplatform.googleapis.com/v1/projects/${projectId}/locations/${VERTEX_LOCATION}/publishers/google/models/${MODEL}:generateContent`;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
@@ -84,7 +102,7 @@ async function callGemini({ projectId, accessToken, fileUri, mimeType, fetchImpl
       signal: controller.signal,
       headers: { authorization: `Bearer ${accessToken}`, 'content-type': 'application/json' },
       body: JSON.stringify({
-        contents: [{ role: 'user', parts: [{ fileData: { fileUri, mimeType } }, { text: PROMPT }] }],
+        contents: [{ role: 'user', parts: [{ fileData: { fileUri, mimeType } }, { text: prompt }] }],
         generationConfig: {
           responseMimeType: 'application/json',
           responseSchema: RESPONSE_SCHEMA,
@@ -111,6 +129,7 @@ async function callGemini({ projectId, accessToken, fileUri, mimeType, fetchImpl
 /**
  * deps:
  *   HttpsError, enforceAllowlist(email), checkRate(uid) -> slot { commit, release },
+ *   checkSegmentRate?(uid) -> slot (מכסת הקטעים של מיקרופון הבית; בלעדיה checkRate),
  *   bucket: { name, file(path) -> { getMetadata, delete } },
  *   getAccessToken(), projectId, fetchImpl, logUsage?(uid, info)
  *
@@ -124,12 +143,13 @@ function createDictationHandler(deps) {
     await deps.enforceAllowlist(request.auth.token && request.auth.token.email);
     const path = request.data && request.data.path;
     if (!validUploadPath(path, uid)) throw new HttpsError('invalid-argument', 'ההקלטה לא נמצאה. להקליט שוב');
+    const segment = request.data.segment === true;
 
     const file = deps.bucket.file(path);
     let slot = null;
     let done = false;
     try {
-      slot = await deps.checkRate(uid);
+      slot = await ((segment && deps.checkSegmentRate) ? deps.checkSegmentRate(uid) : deps.checkRate(uid));
       let meta;
       try {
         [meta] = await file.getMetadata();
@@ -139,6 +159,7 @@ function createDictationHandler(deps) {
       const size = Number(meta && meta.size) || 0;
       const type = String((meta && meta.contentType) || '');
       if (!size) throw new HttpsError('invalid-argument', 'ההקלטה ריקה. להקליט שוב');
+      if (segment && size > MAX_SEGMENT_BYTES) throw new HttpsError('invalid-argument', 'קטע ההקלטה גדול מדי');
       if (size > MAX_AUDIO_BYTES) throw new HttpsError('invalid-argument', 'ההקלטה ארוכה מדי (עד 3 דקות)');
       if (!acceptedType(type)) throw new HttpsError('invalid-argument', 'הקובץ הזה לא הקלטה');
 
@@ -150,6 +171,7 @@ function createDictationHandler(deps) {
           accessToken,
           fileUri: `gs://${deps.bucket.name}/${path}`,
           mimeType: type,
+          prompt: segment ? SEGMENT_PROMPT : PROMPT,
           fetchImpl: deps.fetchImpl,
         });
       } catch (err) {
@@ -164,7 +186,7 @@ function createDictationHandler(deps) {
       slot.commit();
       done = true;
       if (deps.logUsage) {
-        Promise.resolve(deps.logUsage(uid, { usage: out.usage, costUsd: costUsd(out.usage), chars: text.length, bytes: size }))
+        Promise.resolve(deps.logUsage(uid, { usage: out.usage, costUsd: costUsd(out.usage), chars: text.length, bytes: size, segment }))
           .catch((err) => console.warn('transcribeDictation: logUsage failed', err && err.message));
       }
       return { text };
@@ -181,5 +203,7 @@ module.exports = {
   acceptedType,
   parseText,
   PROMPT,
+  SEGMENT_PROMPT,
   MAX_AUDIO_BYTES,
+  MAX_SEGMENT_BYTES,
 };

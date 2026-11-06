@@ -70,6 +70,15 @@ let lastBlob = null;
 let found = [];
 let busy = false;
 let starting = false;
+/* 06/11/2026: החלון משרת גם את מיקרופון הבית (js/home-mic.js), שמתמלל תוך
+   כדי דיבור ומגיע לכאן רק עם הטקסט. origin אומר מאיפה נפתח, retryAction
+   מה "לנסות שוב" עושה, ו-onSaved נקרא אחרי שמירה מלאה. */
+let origin = 'form';
+let retryAction = null;
+let onSaved = null;
+let emptyLead = '';
+const TITLE_FORM = '🎙️ לספר ולמצוא רעיונות';
+const HINT_FORM = 'הקלטה ארוכה לוקחת עד דקה. אפשר לחכות כאן.';
 /* נקבע ב-wireRecorderEntry: סוגר את טופס "רעיון חדש" אחרי שמירה */
 let closeIdeaModal = () => {};
 
@@ -103,7 +112,7 @@ function ensureModal() {
   modal.setAttribute('aria-labelledby', 'rec-title');
   modal.innerHTML = `
     <div class="modal-content rec-content">
-      <h2 id="rec-title" class="rec-title">🎙️ לספר ולמצוא רעיונות</h2>
+      <h2 id="rec-title" class="rec-title">${TITLE_FORM}</h2>
 
       <div id="rec-step-intro">
         <p class="rec-lead">מספרים בקול מה היה היום: מה לקוח/ה שאל/ה, מה הרגיז, מה הצחיק, מה עבד. עד 10 דקות.</p>
@@ -126,7 +135,8 @@ function ensureModal() {
       <div id="rec-step-working" hidden>
         <div class="rec-spinner" aria-hidden="true"></div>
         <p id="rec-working-text" class="rec-lead rec-center" aria-live="polite">מעלים את ההקלטה...</p>
-        <p class="rec-hint rec-center">הקלטה ארוכה לוקחת עד דקה. אפשר לחכות כאן.</p>
+        <p id="rec-working-hint" class="rec-hint rec-center">${HINT_FORM}</p>
+        <button type="button" id="rec-close-working" class="btn-text rec-secondary" hidden>סגירה (הטקסט נשאר בתיבה)</button>
       </div>
 
       <div id="rec-step-results" hidden>
@@ -158,9 +168,10 @@ function ensureModal() {
   el('rec-discard-btn').addEventListener('click', discardRecording);
   el('rec-save-btn').addEventListener('click', saveChosen);
   el('rec-close-results').addEventListener('click', closeResultsAsking);
-  el('rec-retry-btn').addEventListener('click', () => { if (lastBlob) processBlob(lastBlob); });
+  el('rec-retry-btn').addEventListener('click', () => { if (retryAction) retryAction(); });
   el('rec-new-btn').addEventListener('click', () => { lastBlob = null; showStep('intro'); });
   el('rec-close-error').addEventListener('click', closeRecorder);
+  el('rec-close-working').addEventListener('click', closeRecorder);
   return modal;
 }
 
@@ -184,7 +195,10 @@ function onEscape(e) {
   const step = currentStep();
   if (step === 'recording') discardRecording();
   else if (step === 'results') closeResultsAsking();
-  else if (step === 'working') { /* באמצע שליחה: לא סוגרים, התשובה בדרך */ }
+  else if (step === 'working') {
+    /* באמצע שליחה מהטופס: לא סוגרים, התשובה בדרך. מהבית הטקסט כבר בתיבה. */
+    if (origin !== 'form') closeRecorder();
+  }
   else closeRecorder();
 }
 
@@ -193,8 +207,64 @@ export function openRecorder() {
   closeRecorder();
   found = [];
   lastBlob = null;
+  setOrigin('form');
   showStep('intro');
   el('recorder-modal').hidden = false;
+}
+
+function setOrigin(next, { title } = {}) {
+  origin = next;
+  retryAction = null;
+  onSaved = null;
+  emptyLead = '';
+  el('rec-title').textContent = title || TITLE_FORM;
+  el('rec-working-hint').hidden = next !== 'form';
+  /* "להקליט מחדש" שייך למקליט של הטופס. במיקרופון הבית מקליטים מהכרטיס. */
+  el('rec-new-btn').hidden = next !== 'form';
+  /* בבית אין מה לאבד: הטקסט כבר בתיבה, ולכן אפשר לסגור גם באמצע ההמתנה */
+  el('rec-close-working').hidden = next === 'form';
+}
+
+/* ---------- 06/11/2026: החלון בשביל מיקרופון הבית ----------
+   מיקרופון הבית מתמלל תוך כדי דיבור, ומגיע לכאן רק אחרי "סיימתי":
+   1. openIdeasPopup: החלון נפתח מיד עם התקדמות קטנה (לא מסך נפרד).
+   2. setIdeasPopupProgress: מעדכן את שורת ההתקדמות.
+   3. showIdeasInPopup: אותה רשימה ואותה שמירה בדיוק כמו אחרי הקלטה.
+   4. showIdeasPopupError: שגיאה גלויה, ו"לנסות שוב" מריץ את onRetry. */
+export function openIdeasPopup({ title = '✨ הרעיונות ממה שסיפרת', progress = '' } = {}) {
+  ensureModal();
+  closeRecorder();
+  found = [];
+  lastBlob = null;
+  setOrigin('home', { title });
+  el('rec-working-text').textContent = progress;
+  showStep('working');
+  el('recorder-modal').hidden = false;
+}
+
+export function setIdeasPopupProgress(text) {
+  const node = el('rec-working-text');
+  if (node) node.textContent = text;
+}
+
+/** ideas כמו שהשרת מחזיר. onSaved(savedIdeas) נקרא רק כשהכל נשמר. */
+export function showIdeasInPopup(ideas, { onSaved: done = null, emptyText = '' } = {}) {
+  if (!ideasPopupOpen()) return;
+  onSaved = done;
+  emptyLead = emptyText;
+  found = (Array.isArray(ideas) ? ideas : []).map((idea) => ({ ...idea, keep: true }));
+  renderResults();
+}
+
+export function showIdeasPopupError(message, { onRetry = null } = {}) {
+  if (!ideasPopupOpen()) return;
+  retryAction = onRetry;
+  showError(message, { canRetry: Boolean(onRetry) });
+}
+
+export function ideasPopupOpen() {
+  const modal = el('recorder-modal');
+  return Boolean(modal && !modal.hidden);
 }
 
 function closeRecorder() {
@@ -276,6 +346,7 @@ async function beginRecording() {
       return;
     }
     lastBlob = blob;
+    retryAction = () => processBlob(lastBlob);
     processBlob(blob);
   };
   recorder.start(1000);
@@ -334,7 +405,8 @@ async function processBlob(blob) {
 
 function showError(message, { canRetry = true } = {}) {
   el('rec-error-text').textContent = message;
-  el('rec-retry-btn').hidden = !(canRetry && lastBlob);
+  el('rec-retry-btn').hidden = !(canRetry && retryAction);
+  el('rec-retry-btn').textContent = origin === 'form' ? 'לנסות שוב עם אותה הקלטה' : 'לנסות שוב';
   showStep('error');
 }
 
@@ -352,7 +424,7 @@ function renderResults() {
   list.innerHTML = '';
   const lead = el('rec-results-lead');
   if (!found.length) {
-    lead.textContent = 'לא מצאנו בהקלטה רעיון לתוכן. אפשר להקליט שוב ולספר על משהו שקרה עם לקוח/ה, שאלה ששאלו אותך או דעה שיש לך על התחום.';
+    lead.textContent = emptyLead || 'לא מצאנו בהקלטה רעיון לתוכן. אפשר להקליט שוב ולספר על משהו שקרה עם לקוח/ה, שאלה ששאלו אותך או דעה שיש לך על התחום.';
     el('rec-save-btn').hidden = true;
     el('rec-close-results').textContent = 'סגירה';
     showStep('results');
@@ -463,10 +535,15 @@ async function saveChosen() {
   saving = false;
   const skipped = ticked.length - chosen.length;
   if (saved === chosen.length) {
+    const fromOrigin = origin;
+    const after = onSaved;
     closeRecorder();
     /* טופס "רעיון חדש" נסגר רק אם לא נכתב בו כלום, כדי לא למחוק טקסט בשקט */
     const typed = el('field-title');
-    if (!typed || !typed.value.trim()) closeIdeaModal();
+    if (fromOrigin === 'form' && (!typed || !typed.value.trim())) closeIdeaModal();
+    if (after) {
+      try { after(chosen); } catch (err) { console.error('recorder: onSaved failed', err); }
+    }
     const base = saved === 1 ? '✓ הרעיון נשמר' : `✓ ${saved} רעיונות נשמרו`;
     showToast(skipped ? `${base} (${skipped} ריקים לא נשמרו)` : base);
     return;

@@ -36,7 +36,7 @@ const GLOBALS = new Set([
   'IntersectionObserver', 'MutationObserver', 'ResizeObserver', 'createImageBitmap',
   'requestAnimationFrame', 'cancelAnimationFrame', 'getComputedStyle', 'alert', 'confirm',
   'caches', 'self', 'clients', 'crypto', 'performance', 'matchMedia', 'Notification',
-  'atob', 'btoa', 'Uint8Array', 'ArrayBuffer', 'DataView', 'WebSocket', 'XMLHttpRequest',
+  'atob', 'btoa', 'Uint8Array', 'Float32Array', 'ArrayBuffer', 'DataView', 'WebSocket', 'XMLHttpRequest',
   // מילות מפתח שנראות כמו קריאה
   'if', 'for', 'while', 'switch', 'catch', 'return', 'typeof', 'function', 'new', 'await',
   'yield', 'delete', 'void', 'in', 'of', 'do', 'else', 'case', 'throw', 'super', 'this',
