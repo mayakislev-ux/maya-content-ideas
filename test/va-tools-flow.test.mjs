@@ -96,10 +96,10 @@ describe('הכלים החדשים בעוזר (jsdom)', { skip: hasJsdom ? false 
     await until(() => !/מקליטים/.test(mic.textContent), 'הכפתור לא חזר אחרי עצירה');
   });
 
-  test('20. מיקרופון גם במגילה של השכפול ההפוך ובמסך "על מה הסרטון?"', async () => {
+  test('20. מיקרופון במגילה ובמסך "על מה הסרטון?"', async () => {
     const { $, open } = ui;
-    await open({ branch: 'idea-search', screen: 'her-words', transcript: 'ההוק המקורי. ועוד', openingHook: 'ההוק המקורי' }, '#va-herwords-input');
-    assert.ok($('#va-herwords-input-mic') && !$('#va-herwords-input-mic').hidden, 'אין מיקרופון במגילה של השכפול');
+    await open({ branch: 'scratch', screen: 'scratch-dump', ideaDescription: 'רעיון' }, '#va-scratch-dump-input');
+    assert.ok($('#va-scratch-dump-input-mic') && !$('#va-scratch-dump-input-mic').hidden, 'אין מיקרופון במגילה');
     await open({ branch: 'idea', screen: 'idea-sharpen' }, '#va-idea-sharp');
     assert.ok($('#va-idea-sharp-mic') && !$('#va-idea-sharp-mic').hidden, 'אין מיקרופון ב"על מה הסרטון?"');
   });

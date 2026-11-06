@@ -2927,6 +2927,12 @@ exports.syncRefsSubscriptions = require('./refs-subscription').syncRefsSubscript
       const t = await client.getAccessToken();
       return t && t.token ? t.token : t;
     },
+    /* 06/11/2026: קהל היעד מהפרופיל, כדי שלשון הרעיונות לא תנחש נקבה */
+    getAudience: async (uid) => {
+      const snap = await db.collection('profiles').doc(uid).get();
+      const p = snap.exists ? snap.data() : null;
+      return (p && p.primaryAudience) || '';
+    },
     /* אותן רשימות בדיוק כמו js/ideas-logic.js (RATINGS, AUDIENCE_SCOPES) */
     taxonomy: {
       categories: CATEGORIES,

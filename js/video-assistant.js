@@ -14,13 +14,13 @@
 // לנשים וגברים, ומסך סיכום ברור בסוף שמראה בדיוק מה נעשה ומה נשאר.
 
 import { mountDrafts, clearScreenDrafts, draftKey, withDraft } from './video-assistant-drafts.js';
-import { INITIAL_STATE, isCarousel, nextStep } from './video-assistant-flow.js';
+import { INITIAL_STATE, isCarousel, nextStep, migrateLegacyState } from './video-assistant-flow.js';
 import { pickIdea, pickReference } from './video-assistant-picker.js';
 import { buildParts, hasContent, scriptDoc } from './video-assistant-build.js';
 import { confirmDialog } from './confirm-dialog.js';
 import { openModal, closeModal, requestCloseModal } from './video-assistant-modal.js';
 import { createScriptsLibrary, withLiveEdit } from './video-assistant-library.js';
-import { buildDuplicationPrompt, buildReverseDuplicationPrompt, buildScriptPrompt, buildCreativePackagingPrompt } from './video-assistant-prompts.js';
+import { buildDuplicationPrompt, buildScriptPrompt, buildCreativePackagingPrompt } from './video-assistant-prompts.js';
 import {
   FORMATS, FORMAT_EXAMPLES, SCRIPT_STRUCTURE, STARTING_POINTS, CONTENT_TYPES, recommendFormats,
   buildExtractionPrompt, buildHookFindingPrompt, buildHookReinforcementPrompt, buildScriptDistillationPrompt,
@@ -83,7 +83,7 @@ const SCREEN_LABEL = {
 const PHASE_BY_SCREEN = {
   opening: 0, 'reference-source-choice': 0, 'idea-source-choice': 0, 'type-idea': 0, 'pulled-idea': 0, 'pulled-reference': 0,
   'relevance-check': 1,
-  'content-basics': 2, 'footage-type-choice': 2, 'format-choice': 2, 'needs-script-check': 2, 'has-idea-choice': 2,
+  'content-basics': 2, 'footage-type-choice': 2, 'format-choice': 2, 'needs-script-check': 2,
   transcribe: 3, prompt1: 3, 'her-words': 3, prompt2: 3, 'read-aloud': 3,
   'idea-sharpen': 1, 'creative-packaging': 1, 'scratch-intro': 3, 'scratch-dump': 3, 'scratch-hook': 3, 'scratch-hook-reinforce': 3, 'scratch-distill': 3, 'scratch-scene': 3,
   'footage-speech-find': 3, 'footage-speech-shorten': 3, 'footage-speech-sharpen': 3, 'footage-speech-done': 3,
@@ -373,7 +373,8 @@ const scriptsLibrary = createScriptsLibrary({
     /* 05/11/2026 (ביקורת): "✨ תמלול מדויק" שעוד רץ שייך לסרטון הקודם.
        בלי האיפוס הוא היה נוחת בתיבה של הסרטון שנפתח עכשיו. */
     if (item.id !== state.scriptId) resetAccurateRuns();
-    state = { ...s, scriptId: item.id, scriptCreatedAt: item.createdAt };
+    /* 06/11/2026: סרטון שנשמר במסלול השכפול ההפוך שירד ממשיך בשכפול הרגיל */
+    state = migrateLegacyState({ ...s, scriptId: item.id, scriptCreatedAt: item.createdAt });
     if (!state.history) state.history = [];
     resumedNotice = false;
     currentPickId = null;
@@ -1003,21 +1004,6 @@ function renderNeedsScriptCheck() {
   document.getElementById('va-needs-script-yes-btn').addEventListener('click', () => dispatch({ type: 'NEEDS_SCRIPT_YES' }));
 }
 
-// ===== בחירת שיטת הכתיבה =====
-// 18/10/2026 (מאיה: "מצאתי רפרנס מתאים לשכפול הפוך" / "לא מצאתי רפרנס
-// שיכול להתאים") - ניסוח מחודש, ברור יותר ממה שהיה לפני.
-function renderHasIdeaChoice() {
-  cosmicCard(`
-    <h2>יש לך רפרנס לשכפול הפוך?</h2>
-    <div class="cosmic-btn-row">
-      <button type="button" class="cosmic-btn" id="va-reverse-btn">מצאתי רפרנס מתאים לשכפול הפוך</button>
-      <button type="button" class="cosmic-btn" id="va-scratch-btn">לא מצאתי רפרנס שיכול להתאים</button>
-    </div>
-  `);
-  document.getElementById('va-reverse-btn').addEventListener('click', () => dispatch({ type: 'CHOOSE_REVERSE_DUPLICATION' }));
-  document.getElementById('va-scratch-btn').addEventListener('click', () => dispatch({ type: 'CHOOSE_FROM_SCRATCH' }));
-}
-
 async function resolveDomain() {
   if (domainInfo) return domainInfo;
   const saved = await getSavedDomain();
@@ -1553,9 +1539,8 @@ function wireAccurateTranscribe() {
 // בפרומפט, ו-ChatGPT פשוט שכפל חזרה את כל הפסקה (הוק + נימוק + הרחבה)
 // במקום לייצר הוקים חדשים ומגוונים. מזהים קודם, דרך extractOpeningHook,
 // רק את המשפט/ים הפותחים - בדיוק איפה שמסתיים ההוק ומתחיל הנימוק, כמו
-// שמאיה הדגימה בעצמה. משותף לשני המקומות שצריכים את ההוק המזוהה: מסך
-// "מגילת אסתר" (שכפול הפוך - צריך לראות את ההוק לפני שכותבים עליו) ומסך
-// הפרומפט הראשון (שכפול רגיל - שם זה המסך הראשון שמגיע אחרי התמלול).
+// שמאיה הדגימה בעצמה. נקרא ממסך הפרומפט הראשון של השכפול, שהוא המסך
+// הראשון שמגיע אחרי התמלול.
 async function ensureOpeningHook() {
   if (state.openingHook || !state.transcript) return;
   try {
@@ -1592,11 +1577,7 @@ async function renderPrompt1() {
   const domain = await myDomain();
   if (t !== renderSeq) return;
 
-  // 19/10/2026 (מאיה: "קודם כל מדביקים לך את התסריט של הרפרנס ואז הוא
-  // כבר מזהה הוק ואז בעצם צריך מגילת אסתר") - בשכפול הפוך ההוק כבר זוהה
-  // ומוצג במסך "מגילת אסתר" הקודם (ensureOpeningHook נקרא משם), אז כאן
-  // זה כבר קיים ב-state.openingHook. בשכפול רגיל זה עדיין המסך הראשון
-  // שמגיע אחרי התמלול, אז מזהים כאן אם עוד לא זוהה.
+  // ההוק של הרפרנס מזוהה כאן, במסך הראשון שמגיע אחרי התמלול.
   if (!state.openingHook) {
     cosmicCard(`<p>מזהים את ההוק מתוך התמלול...</p>`, { showProgress: false });
     await ensureOpeningHook();
@@ -1604,18 +1585,8 @@ async function renderPrompt1() {
   }
   const hookForPrompt = state.openingHook || state.transcript || '';
 
-  // 19/10/2026 (מאיה, גרסה שלישית - "הסדר בשכפול ההפוך לא טוב", עם ניסוח
-  // מדויק סופי): בשכפול הפוך כבר יש לה תסריט/מגילת אסתר משלה (state.herWords,
-  // נכתב אחרי שההוק כבר זוהה) - הפרומפט כאן חייב לכלול אותו, לא רק תחום,
-  // ועכשיו גם קהל יעד. ראה buildReverseDuplicationPrompt.
-  const isReverseDup = state.branch === 'idea-search';
-  const reverseDupScript = state.herWords || state.ideaDescription || '';
-  const prompt = isReverseDup
-    ? buildReverseDuplicationPrompt({ domain, audience, hook: hookForPrompt, script: reverseDupScript })
-    : buildDuplicationPrompt({ audience, domain, hook: hookForPrompt });
-  const highlightValues = isReverseDup
-    ? [audience, domain, hookForPrompt, reverseDupScript]
-    : [audience, domain, hookForPrompt];
+  const prompt = buildDuplicationPrompt({ audience, domain, hook: hookForPrompt });
+  const highlightValues = [audience, domain, hookForPrompt];
   /* ההודעה רק כל עוד התמלול הוא זה שהגיע מהמאגר. אחרי שתוקן, הוא שלה. */
   const bankUntouched = state.bankNotice && state.bankNotice.reason === 'ok'
     && state.transcript === state.bankNotice.text;
@@ -1626,9 +1597,7 @@ async function renderPrompt1() {
     ${bankUntouched ? bankNoticeHtml({ withEditLink: true }) : ''}
     ${geminiHookNote()}
     <div class="cosmic-context-box"><span>ההוק שזיהינו מתוך התמלול שלך:</span>${escapeHtml(hookForPrompt)}</div>
-    ${isReverseDup
-      ? `<p>ההוק המקורי + התסריט שלך נשלחים לג'מיני או ל-ChatGPT - הוא שולף מתוך התסריט שלך הוקים חזקים ומלביש אותם על מנגנון ההוק המקורי, ומביא לך 30 רעיונות.</p>`
-      : `<p>רק ההוק הזה נשלח לג'מיני או ל-ChatGPT - לא כל התמלול. הוא ישכפל אותו ויביא לך 30 הוקים חדשים באותו מנגנון.</p>`}
+    <p>רק ההוק הזה נשלח לג'מיני או ל-ChatGPT - לא כל התמלול. הוא ישכפל אותו ויביא לך 30 הוקים חדשים באותו מנגנון.</p>
     <p>להעתיק, להדביק בג'מיני או ב-ChatGPT, ולחזור עם ההוק שהכי קרץ לך מתוך ה-30</p>
     ${promptPeek(highlightPlaceholders(prompt, highlightValues))}
     ${copyBtn(prompt, "להעתיק פרומפט לג'מיני / ChatGPT")}
@@ -1658,27 +1627,9 @@ async function renderPrompt1() {
 // תזכורת על מה בדיוק בונים, ובלי אפשרות עזרה אם נתקעים (בניגוד למסך
 // המקביל במסלול "כתיבה מאפס", שכבר יש לו אותו כפתור SOS).
 //
-// 19/10/2026 (מאיה, שוב: "בשכפול הפוך לפני שמוצאים הוק צריך קודם שידביקו
-// לך את המגילת אסתר") - במסלול שכפול הפוך המסך הזה מגיע *לפני* שנבחר
-// הוק (state.hook עדיין ריק) - אז ה"הקשר" שמוצג הוא הרעיון שלה, וההסבר
-// מבקש מגילת אסתר אמיתית (לפי השאלות המנחות מהמתודולוגיה שלה), לא רק
-// "סיפור קצר" - כי כל התוכן הזה בעצמו נכנס לפרומפט הבא שמוצא את ההוק.
-//
-// 19/10/2026 (מאיה, גרסה שלישית: "קודם כל מדביקים לך את התסריט של
-// הרפרנס ואז הוא כבר מזהה הוק ואז בעצם צריך מגילת אסתר") - ההוק של
-// הרפרנס חייב להיות מזוהה ומוצג *כאן*, לפני שהיא כותבת את המגילה - לא
-// רק במסך הפרומפט הבא - כדי שתדע למה היא בעצם כותבת.
-async function renderHerWords() {
-  /* בשכפול הפוך המגילה תמיד לפני ההוק (HOOK_CHOSEN ממשיך משם לפרומפט 2).
-     הוק שנשמר בחזרה אחורה לא הופך אותה למסך "אחרי ההוק". */
-  const t = ++renderSeq;
-  const isPreHookMegillah = state.branch === 'idea-search';
-  if (isPreHookMegillah && !state.openingHook) {
-    cosmicCard(`<p>מזהים את ההוק מתוך התמלול...</p>`, { showProgress: false });
-    await ensureOpeningHook();
-    if (t !== renderSeq) return;
-  }
-  const context = isPreHookMegillah ? (state.openingHook || state.ideaDescription || '') : (state.hook || state.ideaDescription || '');
+/* 06/11/2026: בלי השכפול ההפוך אין כאן יותר המתנה לשרת, ולכן המסך מצויר מיד */
+function renderHerWords() {
+  const context = state.hook || state.ideaDescription || '';
   /* 02/11/2026 (מאיה: "בגלל שזה שכפול תוכן לא צריך את ה-SOS... וגם לא צריך
      שיהיה כתוב מגילת אסתר... זה מכריח אותי לרשום מגילה עם תווים"). בשכפול
      רגיל התסריט המקורי כבר נותן את המבנה, ומה שחסר הוא רק מה שהיא מוסיפה
@@ -1694,10 +1645,8 @@ async function renderHerWords() {
   if (state.screen === 'her-words') seedDraft('va-herwords-input', state.herWords);
   cosmicCard(`
     <h2>מגילת אסתר - מה יש לך להגיד?</h2>
-    ${context ? `<div class="cosmic-context-box"><span>${isPreHookMegillah ? 'ההוק שזיהינו מהרפרנס:' : 'ההוק/הרעיון שבחרת:'}</span>${escapeHtml(context)}</div>` : ''}
-    ${isPreHookMegillah
-      ? `<p>עכשיו, לפני שמבקשים הוקים - לכתוב כאן את כל מה שיש לך להגיד על הנושא. לא צריך לנסח יפה: מה אתם חושבים על זה? למה? מה חשוב שהקהל יבין? איזה ניסיון או דוגמה יש לך?</p>`
-      : `<p>עכשיו הזמן להרחיב עליו - סיפור קצר, דוגמא, או דיבור כללי על הנושא, במילים שלך</p>`}
+    ${context ? `<div class="cosmic-context-box"><span>ההוק/הרעיון שבחרת:</span>${escapeHtml(context)}</div>` : ''}
+    <p>עכשיו הזמן להרחיב עליו - סיפור קצר, דוגמא, או דיבור כללי על הנושא, במילים שלך</p>
     <button type="button" class="va-sos-big" id="va-herwords-help-btn">
       <span class="va-sos-big__icon" aria-hidden="true">🆘</span>
       <span class="va-sos-big__text"><strong>נתקעים? לא ברור מה לכתוב?</strong><span>לחיצה כאן, ו-ChatGPT ישאל אותך שאלות שיוציאו ממך מגילה מלאה</span></span>
@@ -2261,8 +2210,7 @@ function prepareExtractionHelper() {
 }
 
 async function openExtractionHelperModal() {
-  // 19/10/2026: גם קרוא ממסך "מה יש לך להגיד?" (מסלולי רפרנס/שכפול
-  // הפוך), שבהם ideaDescription ריק אבל hook כן מוגדר - fallback אליו
+  // 19/10/2026: גם קרוא ממסך "מה יש לך להגיד?" (מסלול הרפרנס), שבו ideaDescription ריק אבל hook כן מוגדר - fallback אליו
   // כדי שגם שם יהיה הקשר אמיתי, לא ריק.
   const idea = state.ideaDescription || state.hook || '';
   const overlay = openModal(`
@@ -2348,39 +2296,18 @@ async function renderScratchHook() {
   const domain = await myDomain();
   if (t !== renderSeq) return;
   const creative = creativeNow();
-  /* 28/10/2026: השכפול ההפוך כבר לא מסלול נפרד עם מסך החלטה משלו.
-     המגילה כבר כתובה כאן, ולכן מי שיש לה סרטון שעבד מדביקה את התמלול
-     שלו, וההוקים נבנים בפרומפט השכפול ההפוך שלה (ההוק המקורי + המגילה).
-     מי שאין לה, לא רואה מזה יותר משורה אחת סגורה. */
-  const withRef = !!(state.transcript && state.openingHook);
-  const prompt = withRef
-    ? buildReverseDuplicationPrompt({ domain, audience, hook: state.openingHook, script: state.rawDump || '', creative })
-    : buildHookFindingPrompt({ idea: state.ideaDescription || '', script: state.rawDump || '', audience, domain: domain, creative });
-  const marks = withRef
-    ? [audience, domain, state.openingHook, state.rawDump, creative]
-    : [state.ideaDescription, state.rawDump, audience, creative];
-  if (state.screen === 'scratch-hook') {
-    seedDraft('va-scratch-hook-input', state.hook);
-    seedDraft('va-hook-ref-input', state.transcript);
-  }
+  /* 06/11/2026 (מאיה): "שתעיפי לגמרי את שיטת השכפול ההפוך, סתם מבלבל".
+     השורה האופציונלית של תמלול רפרנס ירדה, וההוקים נבנים תמיד
+     מבנק ההוקים לפי המגילה. */
+  const prompt = buildHookFindingPrompt({ idea: state.ideaDescription || '', script: state.rawDump || '', audience, domain: domain, creative });
+  const marks = [state.ideaDescription, state.rawDump, audience, creative];
+  if (state.screen === 'scratch-hook') seedDraft('va-scratch-hook-input', state.hook);
   cosmicCard(`
     <h2>מציאת הוק</h2>
     ${chatgptHookNote()}
     ${creativeReminderHtml()}
-    <p>${withRef
-      ? 'ההוק של הסרטון שעבד + המגילה שלך: ChatGPT יביא 30 הוקים באותו מנגנון. להעתיק, להדביק, ולחזור עם ההוק שבחרת.'
-      : 'הפרומפט כולל בנק הוקים אמיתי מוטמע - ChatGPT יתאים לך ממנו הוק מדויק. להעתיק, להדביק, ולחזור עם ההוק שבחרת.'}</p>
+    <p>הפרומפט כולל בנק הוקים אמיתי מוטמע - ChatGPT יתאים לך ממנו הוק מדויק. להעתיק, להדביק, ולחזור עם ההוק שבחרת.</p>
     ${creative ? '<p class="cosmic-hint">ההוקים נבנים סביב הקריאייטיב: מה שאומרים תוך כדי הפתיחה שבחרת או מיד אחריה.</p>' : ''}
-    ${withRef ? `<div class="cosmic-context-box"><span>ההוק שזיהינו מהסרטון:</span>${escapeHtml(state.openingHook)}</div>` : ''}
-    <details class="va-more"${withRef ? ' open' : ''}>
-      <summary>יש סרטון שעבד ושתרצו להיצמד אליו? (רשות)</summary>
-      <textarea class="cosmic-textarea" id="va-hook-ref-input" placeholder="להדביק כאן את התמלול של הסרטון..."></textarea>
-
-      <div class="cosmic-btn-row" style="margin-top:8px">
-        <button type="button" class="cosmic-btn" id="va-hook-ref-btn">לבנות את ההוקים לפי הסרטון</button>
-        ${withRef ? '<button type="button" class="cosmic-btn" id="va-hook-ref-clear-btn">בלי הסרטון</button>' : ''}
-      </div>
-    </details>
     ${promptPeek(highlightPlaceholders(prompt, marks))}
     ${copyBtn(prompt, 'להעתיק פרומפט ל-ChatGPT')}
     <textarea class="cosmic-textarea" id="va-scratch-hook-input" placeholder="להדביק כאן את ההוק שבחרת..." style="margin-top:14px"></textarea>
@@ -2390,39 +2317,6 @@ async function renderScratchHook() {
   `);
   wireCopyButtons(screenEl());
   mountSmartPaste(document.getElementById('va-scratch-hook-input'));
-  document.getElementById('va-hook-ref-btn').addEventListener('click', async () => {
-    const text = document.getElementById('va-hook-ref-input').value.trim();
-    if (!text) {
-      showToast('קודם להדביק את התמלול של הסרטון');
-      return;
-    }
-    if (text !== state.transcript) state.openingHook = null;
-    state.transcript = text;
-    cosmicCard(`<p>מזהים את ההוק מתוך התמלול...</p>`, { showProgress: false });
-    await ensureOpeningHook();
-    /* היא יכלה ללחוץ "חזרה" בזמן הזיהוי. בלי הבדיקה הזו מסך ההוק היה
-       מצויר מעל מסך אחר, והלחיצה הבאה הייתה נשלחת מהמסך הלא נכון. */
-    if (state.screen !== 'scratch-hook') return;
-    /* כשהזיהוי נכשל, ensureOpeningHook שם את כל התמלול בתור "ההוק", וזה
-       בדיוק הבאג מ-19/10 (ChatGPT משכפל את כל הפסקה). כאן עדיף לומר
-       שזה לא הצליח ולהישאר עם הפרומפט הרגיל. */
-    if (state.openingHook === state.transcript) {
-      state.openingHook = null;
-      showToast('לא הצלחנו לזהות את ההוק בתמלול. אפשר לנסות שוב');
-    }
-    render();
-  });
-  const clearRef = document.getElementById('va-hook-ref-clear-btn');
-  if (clearRef) clearRef.addEventListener('click', () => {
-    state.transcript = null;
-    state.openingHook = null;
-    /* בלי זה הטיוטה של התיבה ממלאת אותה שוב בתמלול הישן. */
-    const drafts = { ...(state.drafts || {}) };
-    delete drafts['scratch-hook|va-hook-ref-input'];
-    state.drafts = drafts;
-    saveAll().catch((err) => console.error('saveSession failed:', err));
-    render();
-  });
   document.getElementById('va-scratch-hook-done-btn').addEventListener('click', () => {
     const hook = document.getElementById('va-scratch-hook-input').value.trim();
     if (pastedManyOptions(hook)) return;
@@ -2640,8 +2534,8 @@ function buildSummarySteps() {
       steps.push('לא היה רגע עצמאי, אז בנית סביב הקטע סיפור: לפני ← מה קרה ← תהליך ← תוצאה.');
     }
     steps.push('עכשיו: ללכת לערוך בדיוק לפי מה שסימנת, ואז להעלות.');
-  } else if (state.branch === 'reference' || state.branch === 'idea-search') {
-    steps.push(state.branch === 'reference' ? 'מצאת רפרנס מוכן במאגר שלך.' : 'מצאת רפרנס בעצמך לפי מילות החיפוש שקיבלת.');
+  } else if (state.branch === 'reference') {
+    steps.push('מצאת רפרנס מוכן במאגר שלך.');
     steps.push('תימללת את הרפרנס.');
     steps.push(`בחרת הוק: "${state.hook || ''}".`);
     steps.push('הוספת את המילים שלך לתסריט.');
@@ -2670,7 +2564,7 @@ function buildSummarySteps() {
 // הטקסט הסופי שבאמת נכתב במסלול הזה, איזה שדה שלא יהיה.
 function finalScriptText() {
   if (state.branch === 'footage') return state.herWords || null;
-  if (state.branch === 'reference' || state.branch === 'idea-search') return state.finalScript || null;
+  if (state.branch === 'reference') return state.finalScript || null;
   if (state.branch === 'scratch') return state.draftScript || null;
   return null;
 }
@@ -2767,7 +2661,6 @@ function renderScreen() {
   if (state.screen === 'footage-visual-story') return renderFootageVisualStory();
   if (state.screen === 'format-choice') return renderFormatChoice();
   if (state.screen === 'needs-script-check') return renderNeedsScriptCheck();
-  if (state.screen === 'has-idea-choice') return renderHasIdeaChoice();
   if (state.screen === 'transcribe') return renderTranscribe();
   if (state.screen === 'prompt1') return renderPrompt1();
   if (state.screen === 'her-words') return renderHerWords();
@@ -2893,7 +2786,7 @@ export function wireVideoAssistantView() {
     /* 05/11/2026 (ביקורת): נפתח סרטון אחר מזה שבזיכרון (או התחלה חדשה):
        תמלול מדויק שעוד רץ לא שייך אליו. */
     if (!isResumable || (saved.scriptId || null) !== (state.scriptId || null)) resetAccurateRuns();
-    state = isResumable ? saved : INITIAL_STATE;
+    state = isResumable ? migrateLegacyState(saved) : INITIAL_STATE;
 
     // 16/10/2026: סשנים ישנים שנשמרו לפני כפתור החזרה לא יכילו history -
     // בלי זה BACK על סשן ישן יקרוס על undefined.length.

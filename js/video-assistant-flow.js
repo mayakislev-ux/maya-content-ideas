@@ -63,6 +63,27 @@ export const INITIAL_STATE = {
   ideaAngle: null,
 };
 
+/* 06/11/2026: מסלול השכפול ההפוך ירד (branch 'idea-search', והמסך
+   'has-idea-choice' שהוביל אליו). סשן או סרטון שנשמרו לפני כן לא יקרסו:
+   הם ממשיכים במסלול השכפול הרגיל, שבו ההוק לפני המגילה. מגילה שכבר נכתבה
+   נשארת בתיבה שלה. מי שעמדה במסך הבחירה ממשיכה לכתיבה מאפס, בדיוק כמו
+   "כן, צריך תסריט". */
+function migrateOne(s) {
+  if (!s || typeof s !== 'object') return s;
+  if (s.screen === 'has-idea-choice') return { ...s, screen: 'scratch-dump', branch: 'scratch' };
+  if (s.branch !== 'idea-search') return s;
+  const out = { ...s, branch: 'reference' };
+  if (!out.hook && (out.screen === 'her-words' || out.screen === 'prompt2')) out.screen = 'prompt1';
+  return out;
+}
+
+export function migrateLegacyState(state) {
+  if (!state || typeof state !== 'object') return state;
+  const out = { ...migrateOne(state) };
+  if (Array.isArray(state.history)) out.history = state.history.map(migrateOne);
+  return out;
+}
+
 /* 31/10/2026: קרוסלה נכתבת לשקופיות ולא מדוברת, ולכן שלבי הסרטון לא חלים עליה. */
 export function isCarousel(state) {
   return state.selectedFormat === 'פוסט קרוסלה';
@@ -81,7 +102,6 @@ const PASTED_ON = {
 };
 const WRITING_ORDER = {
   reference: ['transcribe', 'prompt1', 'her-words', 'prompt2', 'read-aloud'],
-  'idea-search': ['transcribe', 'her-words', 'prompt1', 'prompt2', 'read-aloud'],
   scratch: ['scratch-dump', 'scratch-hook', 'scratch-hook-reinforce', 'scratch-distill', 'scratch-scene'],
 };
 
@@ -276,40 +296,24 @@ function step(state, action) {
     case 'NEEDS_SCRIPT_YES':
       return { ...state, screen: 'scratch-dump', branch: 'scratch' };
 
-    // ===== בחירת שיטת הכתיבה (יש לה רעיון + פורמט + אישרה שצריך תסריט) =====
-    // 18/10/2026 (מאיה: "מצאתי רפרנס מתאים לשכפול הפוך" / "לא מצאתי רפרנס
-    // שיכול להתאים"): מי שלוחצת שהיא כבר מצאה רפרנס מדלגת ישר לתמלול -
-    // אין טעם להציע לה עזרה בחיפוש רפרנס שהיא כבר אומרת שיש לה.
-    case 'CHOOSE_REVERSE_DUPLICATION':
-      return { ...state, screen: 'transcribe', branch: 'idea-search' };
+    /* 06/11/2026 (מאיה): "שתעיפי לגמרי את שיטת השכפול ההפוך, סתם מבלבל".
+       המסלול שלה (branch 'idea-search') ירד. סשנים ישנים שנשמרו בו עוברים
+       דרך migrateLegacyState למסלול השכפול הרגיל. */
     case 'CHOOSE_FROM_SCRATCH':
       return { ...state, screen: 'scratch-intro', branch: 'scratch' };
 
-    // ===== הצינור המשותף: תמלול → [פרומפט 1 → המילים שלה] או [המילים שלה
-    // → פרומפט 1] → פרומפט 2 → קריאה בקול → סיכום. הסדר בין פרומפט 1
-    // למילים שלה שונה בין שני המסלולים - ראה הערה ב-HOOK_CHOSEN למטה. =====
+    // ===== השכפול: תמלול → פרומפט 1 → המילים שלה → פרומפט 2 → קריאה
+    // בקול → סיכום. =====
     case 'CONFIRM_DONE':
       if (state.screen === 'transcribe') {
-        // 19/10/2026 (מאיה, אחרי שהבהירה פעמיים: "בשכפול הפוך לפני
-        // שמוצאים הוק צריך קודם שידביקו לך את המגילת אסתר") - בשכפול
-        // הפוך (idea-search) כותבים את מגילת אסתר (state.herWords) *לפני*
-        // שמחפשים הוק, כי התוכן שלה נכנס לתוך פרומפט 1 עצמו (ראה
-        // buildReverseDuplicationPrompt) - ChatGPT "מחליט על הוקים" לפי
-        // המגילה שלה + הרפרנס, לא רק לפי שורת-רעיון קצרה. בשכפול רגיל
-        // (branch 'reference') הסדר נשאר כמו שהיה: קודם ההוק, המגילה רק
-        // אחר כך (כי שם עוד אין רעיון קונקרטי לדבר עליו).
-        if (state.branch === 'idea-search') return { ...state, screen: 'her-words' };
         return { ...state, screen: 'prompt1' };
       }
       if (state.screen === 'read-aloud') return { ...state, screen: 'summary' };
       throw new Error(`CONFIRM_DONE not valid from screen "${state.screen}"`);
     case 'HOOK_CHOSEN':
-      // בשכפול הפוך המגילה כבר נכתבה (לפני ההוק) - ממשיכים ישר לפרומפט
-      // הסופי. בשכפול רגיל זה הרגע שבו שואלים אותה מה יש לה להגיד.
-      if (state.branch === 'idea-search') return { ...state, screen: 'prompt2', hook: action.hook };
+      // אחרי ההוק שואלים אותה מה יש לה להוסיף.
       return { ...state, screen: 'her-words', hook: action.hook };
     case 'HER_WORDS_SUBMITTED':
-      if (state.branch === 'idea-search') return { ...state, screen: 'prompt1', herWords: action.text };
       return { ...state, screen: 'prompt2', herWords: action.text };
     case 'SCRIPT_READY':
       // 17/10/2026 (מאיה: "הייתי שמחה שבסיכום יהיה כתוב גם את התסריט") -

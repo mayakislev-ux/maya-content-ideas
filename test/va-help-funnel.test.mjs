@@ -99,7 +99,7 @@ test("מ-0: האריזה הקריאייטיבית נשארת בג'מיני", () 
 /* 02/11/2026 (מאיה: "בגלל שזה שכפול תוכן לא צריך את ה-SOS... וגם לא צריך
    שיהיה כתוב מגילת אסתר... זה מכריח אותי לרשום מגילה עם תווים"). */
 test('שכפול רגיל: מה מוסיפים לשכפול, בלי SOS, בלי מגילה ובלי מינימום מילים', () => {
-  assert.match(between('async function renderHerWords', 'function renderDuplicationAddOn'), /state\.branch === 'reference'[\s\S]{0,80}renderDuplicationAddOn/);
+  assert.match(between('function renderHerWords', 'function renderDuplicationAddOn'), /state\.branch === 'reference'[\s\S]{0,80}renderDuplicationAddOn/);
   const screen = between('function renderDuplicationAddOn', 'export const MEGILLAH_MIN_WORDS');
   assert.match(screen, /מה יש לך להוסיף לשכפול\?/);
   assert.match(screen, /למנגנון של התסריט המקורי/);
