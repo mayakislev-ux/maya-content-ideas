@@ -8,6 +8,7 @@ import { burstConfetti } from './confetti.js';
 import { getProfile } from './user-profile.js';
 import { showView } from './view-router.js';
 import { isClientView } from './client-view.js';
+import { groupIntoShelves } from './ideas-shelves.js';
 
 // אימוג'י (📋/🔍) לא היו מובנים כאייקוני פעולה - במיוחד 🔍 (זכוכית
 // מגדלת), שנקרא באופן טבעי כ"חיפוש" ולא כ"בדיקה חוזרת בצ'אט". אייקוני
@@ -67,6 +68,17 @@ async function celebrateMilestone(count, ideas) {
 
 let currentIdeas = [];
 let showingCompleted = false;
+
+/* 06/11/2026: שלושת המדפים (js/ideas-shelves.js). כבוי כברירת מחדל, ו-app.js
+   מדליק אותו לפי ideasRedesignFor אחרי ההתחברות. כשהוא כבוי המסך זהה
+   לחלוטין למה שהיה. */
+let shelvesLayout = false;
+let lastOnItemClick = null;
+
+export function setShelvesLayout(on) {
+  shelvesLayout = Boolean(on);
+  if (lastOnItemClick) applyFilters(lastOnItemClick);
+}
 
 // Approximation: counts today's already-synced ideas +1 for the one just
 // submitted (whose Firestore snapshot hasn't come back yet at toast time) -
@@ -429,6 +441,7 @@ export function wireArchiveControls(onItemClick) {
 }
 
 function applyFilters(onItemClick) {
+  lastOnItemClick = onItemClick;
   const text = document.getElementById('search-input').value;
   const category = document.getElementById('filter-category').value;
   const audienceScope = document.getElementById('filter-audience-scope').value;
@@ -443,6 +456,7 @@ function applyFilters(onItemClick) {
 
   const list = document.getElementById('archive-list');
   list.innerHTML = '';
+  list.classList.toggle('archive-list--shelves', shelvesLayout && !showingCompleted);
 
   if (!sorted.length) {
     const empty = document.createElement('li');
@@ -456,9 +470,63 @@ function applyFilters(onItemClick) {
     return;
   }
 
+  /* 06/11/2026: במדפים כל כרטיס הוא אותו כרטיס בדיוק (renderItem), עם
+     אותן פעולות. "רעיונות שבוצעו" נשארים רשימה אחת: זה ארכיון, לא תכנון. */
+  if (shelvesLayout && !showingCompleted) {
+    const filtering = Boolean(text.trim() || category || audienceScope || persuasionStage || rating);
+    renderShelves(list, sorted, onItemClick, { hideEmpty: filtering });
+    return;
+  }
+
   sorted.forEach((idea, index) => {
     list.appendChild(renderItem(idea, onItemClick, index));
   });
+}
+
+const SHELF_SVG_OPEN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">';
+
+function renderShelves(list, ideas, onItemClick, { hideEmpty }) {
+  let index = 0;
+  for (const shelf of groupIntoShelves(ideas)) {
+    if (hideEmpty && !shelf.ideas.length) continue;
+    const li = document.createElement('li');
+    li.className = `ideas-shelf ideas-shelf--${shelf.tone}`;
+    li.dataset.shelf = shelf.id;
+
+    const head = document.createElement('div');
+    head.className = 'ideas-shelf__head';
+    const icon = document.createElement('span');
+    icon.className = 'ideas-shelf__icon';
+    icon.innerHTML = `${SHELF_SVG_OPEN}${shelf.icon}</svg>`;
+    const title = document.createElement('h3');
+    title.className = 'ideas-shelf__title';
+    title.textContent = shelf.title;
+    const count = document.createElement('span');
+    count.className = 'ideas-shelf__count';
+    count.textContent = shelf.ideas.length === 1 ? 'רעיון אחד' : `${shelf.ideas.length} רעיונות`;
+    head.append(icon, title, count);
+    li.appendChild(head);
+
+    const explain = document.createElement('p');
+    explain.className = 'ideas-shelf__explain';
+    explain.textContent = shelf.explain;
+    li.appendChild(explain);
+
+    const inner = document.createElement('ul');
+    inner.className = 'ideas-shelf__list';
+    if (!shelf.ideas.length) {
+      const empty = document.createElement('li');
+      empty.className = 'ideas-shelf__empty';
+      empty.textContent = 'עדיין אין כאן רעיונות';
+      inner.appendChild(empty);
+    }
+    for (const idea of shelf.ideas) {
+      inner.appendChild(renderItem(idea, onItemClick, index));
+      index += 1;
+    }
+    li.appendChild(inner);
+    list.appendChild(li);
+  }
 }
 
 function renderItem(idea, onItemClick, index = 0) {
