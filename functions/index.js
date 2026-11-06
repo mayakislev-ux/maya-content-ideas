@@ -17,7 +17,7 @@ const webpush = {
     return pusher.sendNotification(...args);
   },
 };
-const { buildSystemPrompt } = require('./system-prompt');
+const { buildSystemPrompt, ADMIN_OPEN_MODE } = require('./system-prompt');
 const { buildOngoingWarmingPrompt, buildPresaleWarmingPrompt } = require('./warming-system-prompt');
 const { buildContentPlanPrompt } = require('./content-plan-system-prompt');
 const { buildStorySequencePrompt, checkSequence } = require('./story-sequence-prompt');
@@ -943,13 +943,17 @@ exports.checkIdea = onRequest(
     const promptProfile = isAdmin && profile ? { name: profile.name, pronoun: profile.pronoun } : profile;
     let systemPrompt = buildSystemPrompt(promptProfile, ideaContext);
     if (isAdmin) {
-      systemPrompt += '\n\n**מצב פתוח - כל רעיון מכל תחום:** מי שמדברת איתך היא מאיה, מנטורית השיווק, והיא בודקת רעיונות של לקוחות מכל תחום שהוא. אל תבדוק/י את הרעיון מול העסק או הקהל שלה, ואסור לפסול רעיון כי הוא לא מתאים לקהל שלה. הסק/י את תחום העסק ואת הקהל מתוך הרעיון עצמו ובדוק/י מולם. רק אם אי אפשר להבין מהרעיון למי הוא מדבר, מותר לשאול על זה שאלה קצרה אחת. אל תוסיף/י את השורה על מילוי הפרופיל.';
+      /* 06/11/2026: הטקסט עבר ל-system-prompt.js (ADMIN_OPEN_MODE) כדי שההערכה
+         ב-scripts/eval-refine-chat.mjs תבדוק בדיוק את מה שנשלח, ונוסף לו סייג:
+         מסיקים את הקהל מהרעיון, אבל לא את המגדר שלו. מאיה: "הוא גם הסיק
+         שהקהל שלי זה נשים וכתב בגוף נקבה". */
+      systemPrompt += `\n\n${ADMIN_OPEN_MODE}`;
     }
 
     /* 04/11/2026 (מאיה): הסדר החדש שואל יותר לפני הזוויות - להרחיב רעיון
        סיסמתי, לשאול על המסר ולזקק אותו לאחד. לכן המכסה עלתה מ-2 ל-4. */
     if (countClarifyingRepliesSinceLastAngles(messages) >= CHECK_IDEA_MAX_QUESTIONS) {
-      systemPrompt += `\n\n⚠️ הנחיה דחופה: כבר נשלחו ${CHECK_IDEA_MAX_QUESTIONS} הודעות הבהרה או יותר על הרעיון הנוכחי בשיחה הזו. אסור לשאול שום שאלה נוספת - חובה לעבור עכשיו, בהודעה הזו, לשלב ד' (5 זוויות הנגשה): נסחי בעצמך את המסר האחד במשפט אחד מתוך מה שכבר נאמר, ומיד אחריו את הזוויות, גם אם זה לא מושלם.`;
+      systemPrompt += `\n\n⚠️ הנחיה דחופה: כבר נשלחו ${CHECK_IDEA_MAX_QUESTIONS} הודעות הבהרה או יותר על הרעיון הנוכחי בשיחה הזו. אסור לשאול שום שאלה נוספת - חובה לעבור עכשיו, בהודעה הזו, לשלב ד' (5 זוויות הנגשה): נסחי בעצמך את המסר האחד במשפט אחד מתוך מה שכבר נאמר, במילים של המשתמש/ת ובלי דימוי חדש, ומיד אחריו את הזוויות, גם אם זה לא מושלם.`;
     }
 
     // מדידת זמנים (18/09): לדעת מנתונים אמיתיים איפה הולכות 40-90 השניות
