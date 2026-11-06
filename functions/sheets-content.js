@@ -215,4 +215,43 @@ async function fetchSheetTabs(sheetId, tabTitles) {
   }
 }
 
-module.exports = { fetchExtraContentLinks, fetchSheetTabs, sheetsServiceAccountKey };
+/**
+ * 06/11/2026: לשונית אחת לפי בחירה מתוך השמות שקיימים בקובץ ("אין לי
+ * רעיון?" במסך הבית). pick(titles) מחזיר את השם שרוצים או null.
+ * מחזיר null כשאין גישה לקובץ בכלל, { title: null } כשאין לשונית מתאימה,
+ * ואחרת { title, rows }.
+ */
+async function fetchSheetTabPicked(sheetId, pick, range = 'A1:Z300') {
+  let keyValue;
+  try {
+    keyValue = sheetsServiceAccountKey.value();
+  } catch (err) {
+    return null;
+  }
+  if (!keyValue) return null;
+  let credentials;
+  try {
+    credentials = JSON.parse(keyValue);
+  } catch (err) {
+    console.error('Invalid SHEETS_SERVICE_ACCOUNT_KEY JSON:', err.message);
+    return null;
+  }
+  try {
+    const auth = new (loadGoogle()).auth.GoogleAuth({
+      credentials,
+      scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+    });
+    const sheets = loadGoogle().sheets({ version: 'v4', auth });
+    const meta = await sheets.spreadsheets.get({ spreadsheetId: sheetId, fields: 'sheets.properties.title' });
+    const titles = (meta.data.sheets || []).map((s) => s.properties.title);
+    const title = pick(titles);
+    if (!title) return { title: null, titles };
+    const res = await sheets.spreadsheets.values.get({ spreadsheetId: sheetId, range: `'${title.replace(/'/g, "''")}'!${range}` });
+    return { title, rows: res.data.values || [] };
+  } catch (err) {
+    console.error('fetchSheetTabPicked failed:', sheetId, err.message);
+    return null;
+  }
+}
+
+module.exports = { fetchExtraContentLinks, fetchSheetTabs, fetchSheetTabPicked, sheetsServiceAccountKey };

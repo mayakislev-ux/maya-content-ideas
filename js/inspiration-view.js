@@ -327,6 +327,10 @@ function startDuplication(video) {
   });
 }
 
+/* 06/11/2026: הדלת "לשכפל רפרנס" במסך הבית (js/no-idea.js) שולפת סרטון
+   מאותו מאגר ופותחת את אותו שכפול בדיוק כמו הכפתור על הכרטיס. */
+export { loadVideos as loadBankVideos, startDuplication as startBankDuplication };
+
 function duplicateButton(video) {
   const btn = document.createElement('button');
   btn.type = 'button';

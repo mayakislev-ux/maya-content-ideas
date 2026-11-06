@@ -97,6 +97,10 @@ let popupSeq = 0;
 /* איזו הקלטה מחזיקה כרגע את החלון (ההתקדמות מתעדכנת רק ממנה) */
 let popupOwner = 0;
 let original = null;
+/* 06/11/2026 ("אין לי רעיון?"): כשהמתג דלוק, לחיצה על הכרטיס פותחת את
+   ארבע הדלתות (js/no-idea.js), וההקלטה מתחילה מהדלת הראשונה דרך
+   startHomeRecording. בלי זה הכרטיס מקליט ישר, כמו קודם. */
+let idleTap = null;
 
 function el(id) { return document.getElementById(id); }
 function box() { return el('quick-add-input'); }
@@ -136,15 +140,16 @@ function render() {
   if (state === 'finishing') {
     card.removeAttribute('aria-label');
     if (title) title.textContent = 'מסיימים...';
-    if (text) text.textContent = 'הטקסט נשאר בתיבה למטה';
+    if (text) text.textContent = 'הטקסט נשאר בתיבה למעלה';
     return;
   }
   card.setAttribute('aria-label', 'לסיים את ההקלטה');
   if (title) title.textContent = `מקשיבים · ${formatClock((Date.now() - session.startedAt) / 1000)}`;
   if (text) {
-    text.textContent = session.mode === 'speech'
-      ? 'הטקסט נכתב בתיבה למטה תוך כדי. כשמסיימים, לוחצים על "סיימתי"'
-      : 'הטקסט נכתב בתיבה למטה כל כמה שניות. כשמסיימים, לוחצים על "סיימתי"';
+    const how = session.mode === 'speech'
+      ? 'הטקסט נכתב בתיבה למעלה תוך כדי. כשמסיימים, לוחצים על "סיימתי"'
+      : 'הטקסט נכתב בתיבה למעלה כל כמה שניות. כשמסיימים, לוחצים על "סיימתי"';
+    text.textContent = session.prompt ? `💡 שאלה של היום: ${session.prompt}. ${how}` : how;
   }
 }
 
@@ -169,7 +174,7 @@ function lockBox(locked) {
 
 /* ---------- התחלה ---------- */
 
-async function start() {
+async function start({ prompt = '' } = {}) {
   if (session) return;
   const mode = dictationMode(globalThis);
   if (mode === 'none') {
@@ -180,7 +185,7 @@ async function start() {
   seq += 1;
   popupSeq += 1;
   const s = {
-    id: seq, mode, state: 'starting', base: t ? t.value : '', spoken: '',
+    id: seq, mode, state: 'starting', base: t ? t.value : '', spoken: '', prompt: String(prompt || ''),
     parts: [], inflight: new Set(), failures: 0, startedAt: 0,
   };
   session = s;
@@ -623,7 +628,8 @@ export function wireHomeMic() {
     text: (el('home-mic-text') || {}).textContent || '',
   };
   btn.addEventListener('click', () => {
-    if (!session) start();
+    if (!session && idleTap) idleTap();
+    else if (!session) start();
     else if (session.state === 'live') finish(session, 'user');
     /* starting / finishing: לחיצה נוספת לא עושה כלום, הכרטיס מראה מה קורה */
   });
@@ -633,10 +639,25 @@ export function wireHomeMic() {
   });
 }
 
+/** הדלת הראשונה של "אין לי רעיון?": מתחילה את אותה הקלטה בדיוק, עם שאלה של היום. */
+export function startHomeRecording({ prompt = '' } = {}) {
+  return start({ prompt });
+}
+
+export function homeMicCanRecord() {
+  return dictationMode(globalThis) !== 'none';
+}
+
+/** fn: מה לחיצה על הכרטיס עושה כשלא מקליטים. null = מקליט ישר. */
+export function setHomeMicIdleTap(fn) {
+  idleTap = typeof fn === 'function' ? fn : null;
+}
+
 export function setHomeMicVisible(on) {
   const btn = el('home-mic-card');
   if (!btn) return;
-  btn.hidden = !(on && dictationMode(globalThis) !== 'none');
+  /* עם הדלתות הכרטיס שימושי גם בדפדפן בלי מיקרופון (קהל, פרסונה, רפרנס) */
+  btn.hidden = !(on && (idleTap || dictationMode(globalThis) !== 'none'));
   if (btn.hidden && session) {
     const s = session;
     releaseAll(s);

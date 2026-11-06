@@ -75,7 +75,13 @@ function buildPrompt({ categories, categoryDefinitions, stages, audienceScopes }
 - עד ${MAX_IDEAS} רעיונות, החזקים קודם.${single}
 ${genderRules(audience)}
 
-לכל רעיון לסווג:
+${classificationBlock({ categories, categoryDefinitions, stages, audienceScopes })}`;
+}
+
+/* 06/11/2026: הסיווג המשותף לכל מקורות הרעיונות (הקלטה, טקסט, צילום מסך,
+   שורה מהטבלה), ב-ideas-from-sources.js. אותו טקסט בדיוק כמו קודם. */
+function classificationBlock({ categories, categoryDefinitions, stages, audienceScopes }) {
+  return `לכל רעיון לסווג:
 categoryIndex, בדיוק אחד:
 ${categories.map((c, i) => `${i + 1}. ${c}: ${categoryDefinitions[c] || ''}`).join('\n')}
 הבחנה קריטית: סיפור על מה שקרה ללקוח/ה הוא לעולם לא "אישי", גם בגוף ראשון ("הגיעה אליי"). הוא "מכירתי" אם הוא מראה תוצאה או הוכחה, או "בעל ערך" אם הוא ממחיש תובנה מקצועית.
@@ -327,6 +333,10 @@ function createIdeasFromRecordingHandler(deps) {
 
 module.exports = {
   createIdeasFromRecordingHandler,
+  classificationBlock,
+  genderRules,
+  parseJson,
+  clean,
   normalizeIdeas,
   buildPrompt,
   validUploadPath,

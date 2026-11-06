@@ -364,6 +364,12 @@ export function getCurrentIdeas() {
   return currentIdeas.filter((idea) => !idea.completedAt);
 }
 
+/* 06/11/2026: גם רעיונות שבוצעו. "אין לי רעיון?" מסמן שורה בטבלה שכבר יש
+   עליה רעיון, גם אם הסרטון כבר צולם. */
+export function getAllIdeas() {
+  return currentIdeas.slice();
+}
+
 function debounce(fn, delay) {
   let timer = null;
   return (...args) => {

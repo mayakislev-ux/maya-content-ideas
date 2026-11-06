@@ -598,7 +598,7 @@ describe('המסך (jsdom)', { skip: hasJsdom ? false : 'jsdom לא מותקן' 
     assert.equal(card.hidden, true);
     homeMic.setHomeMicVisible(true);
     assert.equal(card.hidden, false);
-    assert.match(card.textContent, /מה היה היום\?/);
+    assert.match(card.textContent, /אין לי רעיון\?/);
     /* 06/11/2026 ערב: מהבית לא נפתח יותר מסך הקלטה נפרד. מקליטים במקום,
        והטקסט נכתב בתיבה (הזרימה המלאה ב-home-mic-live.test.mjs). */
     card.click();
