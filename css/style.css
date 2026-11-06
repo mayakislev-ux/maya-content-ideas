@@ -8483,6 +8483,46 @@ body[data-plan="refs"] .hub-full-only { display: none !important; }
 .rec-tag--hot { border-inline-start-color: var(--warm); }
 .rec-item__context { margin: 0; font-size: 0.85rem; color: var(--muted); line-height: 1.45; }
 
+/* ---------- 06/11/2026: מיקרופון הבית מקליט במקום (js/home-mic.js) ----------
+   "לא אהבתי שזה פותח מסך נפרד": הכרטיס עצמו מראה שמקליטים (העיגול פועם,
+   שעון, "סיימתי"), והטקסט נכתב בתיבה שמתחתיו. כאן ולא ב-ideas-shelves.css,
+   כדי לא להתנגש בעבודה המקבילה על מסך הרעיונות. */
+.home-mic-card--live .home-mic-card__mic { animation: home-mic-pulse 1.4s ease-out infinite; }
+.home-mic-card--live .home-mic-card__title { font-variant-numeric: tabular-nums; }
+.home-mic-card--busy { cursor: progress; opacity: 0.85; }
+@keyframes home-mic-pulse {
+  0% { box-shadow: 0 10px 30px rgba(255, 46, 168, 0.38), 0 0 0 0 rgba(255, 46, 168, 0.45); }
+  70% { box-shadow: 0 10px 30px rgba(255, 46, 168, 0.38), 0 0 0 26px rgba(255, 46, 168, 0); }
+  100% { box-shadow: 0 10px 30px rgba(255, 46, 168, 0.38), 0 0 0 0 rgba(255, 46, 168, 0); }
+}
+.home-mic-card__stop {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+  padding: 0.6rem 1.6rem;
+  border-radius: 999px;
+  background: var(--warm);
+  color: #fff;
+  font-weight: 800;
+  font-size: 1.05rem;
+  box-shadow: 0 6px 18px rgba(255, 46, 168, 0.3);
+}
+.home-mic-card__stop[hidden] { display: none; }
+.home-mic-status {
+  margin: -0.8rem 0 1.2rem;
+  text-align: center;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+.home-mic-status[hidden] { display: none; }
+.home-mic-status--error { color: var(--warm-700); font-weight: 600; }
+#quick-add-input[readonly] { background: var(--warm-tint); }
+@media (prefers-reduced-motion: reduce) {
+  .home-mic-card--live .home-mic-card__mic { animation: none; }
+}
+
 /* 06/11/2026 (מאיה): "בצ'אט של הבדיקת רעיון במובייל כאילו לא רואים את
    המסל ואז צריך לגלול למעלה, לא נוח במסך, והמסל של הצ'אט מאוד קטן".
 

@@ -581,7 +581,7 @@ describe('המסך (jsdom)', { skip: hasJsdom ? false : 'jsdom לא מותקן' 
     classifyReply = null;
   });
 
-  test('מיקרופון הבית: מוסתר בלי המתג, ובלחיצה פותח את המקליט הקיים', () => {
+  test('מיקרופון הבית: מוסתר בלי המתג, ובלחיצה מקליט במקום, בלי מסך נפרד', () => {
     form.setSimpleIdeaForm(false);
     homeMic.wireHomeMic();
     const card = $('#home-mic-card');
@@ -592,9 +592,12 @@ describe('המסך (jsdom)', { skip: hasJsdom ? false : 'jsdom לא מותקן' 
     homeMic.setHomeMicVisible(true);
     assert.equal(card.hidden, false);
     assert.match(card.textContent, /מה היה היום\?/);
+    /* 06/11/2026 ערב: מהבית לא נפתח יותר מסך הקלטה נפרד. מקליטים במקום,
+       והטקסט נכתב בתיבה (הזרימה המלאה ב-home-mic-live.test.mjs). */
     card.click();
-    assert.equal($('#recorder-modal').hidden, false);
-    assert.equal($('#idea-modal').hidden, true, 'מהבית נפתח המקליט ולא טופס רעיון');
-    assert.equal($$('#recorder-modal').length, 1);
+    const rec = $('#recorder-modal');
+    assert.ok(!rec || rec.hidden, 'מהבית נפתח מסך הקלטה נפרד');
+    assert.equal($('#idea-modal').hidden, true, 'מהבית נפתח טופס רעיון');
+    homeMic.setHomeMicVisible(false);
   });
 });

@@ -67,11 +67,12 @@ export function voiceInputSupported() {
 
 /* ---------- הקלטה ותמלול בשרת ---------- */
 
-function uploadDictation(blob) {
+/* prefix: 'd' הכתבה רגילה, 's' קטע של מיקרופון הבית (js/home-mic.js) */
+export function uploadDictation(blob, prefix = 'd') {
   const type = cleanAudioType(blob.type);
   const uid = auth.currentUser && auth.currentUser.uid;
   if (!uid) return Promise.reject(new Error('צריך להתחבר מחדש כדי להקליט'));
-  const path = `transcribeUploads/${uid}/d-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}.${extensionFor(type)}`;
+  const path = `transcribeUploads/${uid}/${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}.${extensionFor(type)}`;
   const task = uploadBytesResumable(ref(getStorage(app, BUCKET), path), blob, { contentType: type });
   return new Promise((resolve, reject) => {
     task.on('state_changed', () => {}, reject, () => resolve(path));

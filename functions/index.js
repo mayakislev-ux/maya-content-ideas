@@ -74,6 +74,13 @@ const DAILY_LIMITS = {
   ideasFromRecording: 10,
   /* 06/11/2026: מיקרופון בתיבות הכתיבה באייפון (הקלטה קצרה ותמלול). כל קריאה עד 3 דקות, פחות מסנט. */
   transcribeDictation: 80,
+  /* 06/11/2026: מיקרופון הבית באייפון מתמלל תוך כדי דיבור בקטעים של 5-9 שניות.
+     שיחה של 10 דקות היא 70-120 קטעים, כל קטע שבריר של סנט. 600 = בערך 6 שיחות
+     ארוכות ביום, בלי לגעת ב-80 ההכתבות של תיבות הכתיבה. */
+  transcribeDictationSegment: 600,
+  /* 06/11/2026: רעיונות מתוך הטקסט שתומלל במיקרופון הבית (ideasFromRecording
+     עם text). קריאה על טקסט בלבד, זולה ומהירה בהרבה מהקשבה להקלטה. */
+  ideasFromText: 40,
   /* 05/11/2026: "✍️ תיאור לסרטון" בסיכום העוזר לסרטון. קריאה קטנה של Haiku. */
   writeVideoDescription: 30,
   /* 05/11/2026: שתיהן קראו ל-enforceRateLimit בלי שורה כאן, ו-count >= undefined
@@ -2911,6 +2918,7 @@ exports.syncRefsSubscriptions = require('./refs-subscription').syncRefsSubscript
     HttpsError,
     enforceAllowlist: (email) => enforceAllowlist(email),
     checkRate: (uid) => reserveRateLimit(uid, 'ideasFromRecording'),
+    checkTextRate: (uid) => reserveRateLimit(uid, 'ideasFromText'),
     get bucket() { return admin.storage().bucket('content-ideas-becd7-story-assets'); },
     fetchImpl: (...args) => fetch(...args),
     projectId: 'content-ideas-becd7',
@@ -2937,7 +2945,7 @@ exports.syncRefsSubscriptions = require('./refs-subscription').syncRefsSubscript
         calls: admin.firestore.FieldValue.increment(1),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       }, { merge: true });
-      console.log('ideasFromRecording ok', { uid, count: info.count, bytes: info.bytes, costUsd: info.costUsd });
+      console.log('ideasFromRecording ok', { uid, source: info.source || 'audio', count: info.count, bytes: info.bytes, chars: info.chars, costUsd: info.costUsd });
     },
   });
   exports.ideasFromRecording = onCall({ region: 'us-central1', timeoutSeconds: 300, memory: '512MiB' }, handler);
@@ -2956,6 +2964,7 @@ exports.syncRefsSubscriptions = require('./refs-subscription').syncRefsSubscript
     /* המיקרופון יושב גם בעוזר לסרטון, שפתוח גם למנוי רפרנסים */
     enforceAllowlist: (email) => enforceAllowlist(email, { allowRefs: true }),
     checkRate: (uid) => reserveRateLimit(uid, 'transcribeDictation'),
+    checkSegmentRate: (uid) => reserveRateLimit(uid, 'transcribeDictationSegment'),
     get bucket() { return admin.storage().bucket('content-ideas-becd7-story-assets'); },
     fetchImpl: (...args) => fetch(...args),
     projectId: 'content-ideas-becd7',
@@ -2973,7 +2982,7 @@ exports.syncRefsSubscriptions = require('./refs-subscription').syncRefsSubscript
         calls: admin.firestore.FieldValue.increment(1),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       }, { merge: true });
-      console.log('transcribeDictation ok', { uid, chars: info.chars, bytes: info.bytes, costUsd: info.costUsd });
+      console.log('transcribeDictation ok', { uid, segment: Boolean(info.segment), chars: info.chars, bytes: info.bytes, costUsd: info.costUsd });
     },
   });
   exports.transcribeDictation = onCall({ region: 'us-central1', timeoutSeconds: 120, memory: '256MiB' }, handler);

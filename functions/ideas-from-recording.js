@@ -17,6 +17,9 @@ const UPLOAD_PREFIX = 'transcribeUploads';
 const MAX_AUDIO_BYTES = 60 * 1024 * 1024;
 const GEMINI_TIMEOUT_MS = 180000;
 const MAX_IDEAS = 15;
+/* 06/11/2026: מיקרופון הבית מתמלל תוך כדי דיבור ושולח לכאן טקסט במקום
+   קובץ. 10 דקות דיבור הן בערך 1,500 מילים, כ-9,000 תווים. */
+const MAX_TEXT_CHARS = 20000;
 
 function validUploadPath(path, uid) {
   if (typeof path !== 'string' || !uid) return false;
@@ -31,17 +34,29 @@ function acceptedType(type) {
   return /^(audio\/|video\/webm|video\/mp4)/.test(String(type || ''));
 }
 
-function buildPrompt({ categories, categoryDefinitions, stages, audienceScopes }) {
-  return `זו הקלטה קולית של בעל/ת עסק שמדבר/ת בחופשיות: מה היה היום, מה לקוחות אמרו או שאלו, מה הרגיז, מה הצחיק, מחשבות על התחום.
-המטרה: למצוא בתוך ההקלטה את כל הרעיונות לסרטוני תוכן שיווקי שיש בה, לפי המתודולוגיה של מאיה קיסלב (אקדמיית המהלך השיווקי).
+/* source: 'audio' (ההקלטה עצמה) או 'text' (תמלול שכבר נעשה בדפדפן).
+   אותם כללים ואותו סיווג בדיוק, רק הפתיחה משתנה. */
+function buildPrompt({ categories, categoryDefinitions, stages, audienceScopes }, { source = 'audio' } = {}) {
+  const isText = source === 'text';
+  const what = isText ? 'הטקסט' : 'ההקלטה';
+  const inWhat = isText ? 'בטקסט' : 'בהקלטה';
+  const inIt = isText ? 'בו' : 'בה';
+  const intro = isText
+    ? 'זה תמלול של מה שבעל/ת עסק סיפר/ה בקול בחופשיות (התמלול אוטומטי, ייתכנו בו מילים שנשמעו לא נכון): מה היה היום, מה לקוחות אמרו או שאלו, מה הרגיז, מה הצחיק, מחשבות על התחום.'
+    : 'זו הקלטה קולית של בעל/ת עסק שמדבר/ת בחופשיות: מה היה היום, מה לקוחות אמרו או שאלו, מה הרגיז, מה הצחיק, מחשבות על התחום.';
+  const single = isText
+    ? '\n- אם כל הטקסט הוא רעיון אחד קצר, להחזיר אותו כרעיון אחד, כמעט מילה במילה.'
+    : '';
+  return `${intro}
+המטרה: למצוא בתוך ${what} את כל הרעיונות לסרטוני תוכן שיווקי שיש ${inIt}, לפי המתודולוגיה של מאיה קיסלב (אקדמיית המהלך השיווקי).
 
 כללים:
 - רעיון = סרטון אחד עם מסר אחד. אם נאמרו כמה דברים שונים, כל אחד רעיון נפרד. אם אותו דבר חזר כמה פעמים, רעיון אחד.
 - "title": הרעיון במשפט אחד או שניים, בעברית פשוטה, בגוף ראשון ובמילים של הדובר/ת ככל האפשר. לא כותרת שיווקית מנופחת ולא תסריט.
-- "context": מה בדיוק נאמר בהקלטה שממנו הרעיון יצא (הסיפור, הציטוט, הפרט הקונקרטי), עד שלושה משפטים. הפרטים הקונקרטיים הם מה שהופך רעיון לחזק, אז לא לוותר עליהם.
+- "context": מה בדיוק נאמר ${inWhat} שממנו הרעיון יצא (הסיפור, הציטוט, הפרט הקונקרטי), עד שלושה משפטים. הפרטים הקונקרטיים הם מה שהופך רעיון לחזק, אז לא לוותר עליהם.
 - רק רעיונות שאפשר באמת לצלם עליהם סרטון לקהל של העסק. דיבור טכני, "רגע אני בודקת", או דברים שלא קשורים לעסק ולא לאישיות של בעל/ת העסק, לא נכנסים.
-- אם אין בהקלטה אף רעיון (שקט, רעש, שיחה לא קשורה), להחזיר רשימה ריקה. לא להמציא.
-- עד ${MAX_IDEAS} רעיונות, החזקים קודם.
+- אם אין ${inWhat} אף רעיון (שקט, רעש, שיחה לא קשורה), להחזיר רשימה ריקה. לא להמציא.
+- עד ${MAX_IDEAS} רעיונות, החזקים קודם.${single}
 
 לכל רעיון לסווג:
 categoryIndex, בדיוק אחד:
@@ -132,7 +147,9 @@ function costUsd(usage) {
   return (input * PRICE_PER_MTOK.input + output * PRICE_PER_MTOK.output) / 1e6;
 }
 
-async function callGemini({ projectId, accessToken, fileUri, mimeType, prompt, fetchImpl }) {
+/* parts: מה שג'מיני מקבל (קובץ + פרומפט, או פרומפט + טקסט). thinkingLevel:
+   על טקסט LOW מספיק ומהיר בהרבה, וההמתנה אחרי "סיימתי" צריכה להיות קצרה. */
+async function callGemini({ projectId, accessToken, parts, thinkingLevel = 'MEDIUM', fetchImpl }) {
   const url = `https://aiplatform.googleapis.com/v1/projects/${projectId}/locations/${VERTEX_LOCATION}/publishers/google/models/${MODEL}:generateContent`;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
@@ -143,12 +160,12 @@ async function callGemini({ projectId, accessToken, fileUri, mimeType, prompt, f
       signal: controller.signal,
       headers: { authorization: `Bearer ${accessToken}`, 'content-type': 'application/json' },
       body: JSON.stringify({
-        contents: [{ role: 'user', parts: [{ fileData: { fileUri, mimeType } }, { text: prompt }] }],
+        contents: [{ role: 'user', parts }],
         generationConfig: {
           responseMimeType: 'application/json',
           responseSchema: RESPONSE_SCHEMA,
           maxOutputTokens: 16384,
-          thinkingConfig: { thinkingLevel: 'MEDIUM' },
+          thinkingConfig: { thinkingLevel },
         },
       }),
     });
@@ -170,19 +187,64 @@ async function callGemini({ projectId, accessToken, fileUri, mimeType, prompt, f
 /**
  * deps:
  *   HttpsError, enforceAllowlist(email), checkRate(uid) -> slot,
+ *   checkTextRate?(uid) -> slot (מכסה נפרדת לבקשות טקסט; בלעדיה checkRate),
  *   bucket: { name, file(path) -> { getMetadata, delete } },
  *   getAccessToken(), projectId, fetchImpl, logUsage?(uid, info),
  *   taxonomy: { categories, categoryDefinitions, stages, audienceScopes, strongRating, normalRating }
  *
  * המקום במכסה נשמר מראש ומוחזר אם החילוץ לא הגיע לסוף. הקובץ נמחק תמיד.
+ *
+ * data: { path } (הקלטה ב-Storage) או { text } (תמלול מוכן, מיקרופון הבית).
  */
 function createIdeasFromRecordingHandler(deps) {
   const { HttpsError } = deps;
+  async function fromText(uid, raw) {
+    if (typeof raw !== 'string') throw new HttpsError('invalid-argument', 'הטקסט לא הגיע. לנסות שוב');
+    const text = raw.replace(/\u0000/g, '').trim();
+    if (!text) throw new HttpsError('invalid-argument', 'אין טקסט למצוא בו רעיונות');
+    if (text.length > MAX_TEXT_CHARS) throw new HttpsError('invalid-argument', 'הטקסט ארוך מדי (עד 10 דקות דיבור)');
+    let slot = null;
+    let done = false;
+    try {
+      slot = await (deps.checkTextRate ? deps.checkTextRate(uid) : deps.checkRate(uid));
+      const accessToken = await deps.getAccessToken();
+      let out;
+      try {
+        out = await callGemini({
+          projectId: deps.projectId,
+          accessToken,
+          parts: [{ text: buildPrompt(deps.taxonomy, { source: 'text' }) }, { text: `הטקסט:\n<<<\n${text}\n>>>` }],
+          thinkingLevel: 'LOW',
+          fetchImpl: deps.fetchImpl,
+        });
+      } catch (err) {
+        console.error('ideasFromRecording(text): gemini failed', err && err.message);
+        throw new HttpsError('internal', 'לא הצלחנו למצוא רעיונות בטקסט הפעם. לנסות שוב בעוד רגע');
+      }
+      if (!out.parsed) {
+        console.error('ideasFromRecording(text): unparsable', out.finishReason);
+        throw new HttpsError('internal', 'לא הצלחנו למצוא רעיונות בטקסט הפעם. לנסות שוב בעוד רגע');
+      }
+      const ideas = normalizeIdeas(out.parsed, deps.taxonomy);
+      slot.commit();
+      done = true;
+      if (deps.logUsage) {
+        Promise.resolve(deps.logUsage(uid, { usage: out.usage, costUsd: costUsd(out.usage), count: ideas.length, chars: text.length, source: 'text' }))
+          .catch((err) => console.warn('ideasFromRecording: logUsage failed', err && err.message));
+      }
+      return { ideas };
+    } finally {
+      if (slot && !done) await slot.release();
+    }
+  }
+
   return async function ideasFromRecording(request) {
     if (!request.auth) throw new HttpsError('unauthenticated', 'יש להתחבר כדי להשתמש בתכונה הזו');
     const uid = request.auth.uid;
     await deps.enforceAllowlist(request.auth.token && request.auth.token.email);
-    const path = request.data && request.data.path;
+    const data = request.data || {};
+    if (data.text !== undefined && data.text !== null) return fromText(uid, data.text);
+    const path = data.path;
     if (!validUploadPath(path, uid)) throw new HttpsError('invalid-argument', 'ההקלטה לא נמצאה. להקליט שוב');
 
     const file = deps.bucket.file(path);
@@ -208,9 +270,7 @@ function createIdeasFromRecordingHandler(deps) {
         out = await callGemini({
           projectId: deps.projectId,
           accessToken,
-          fileUri: `gs://${deps.bucket.name}/${path}`,
-          mimeType: type,
-          prompt: buildPrompt(deps.taxonomy),
+          parts: [{ fileData: { fileUri: `gs://${deps.bucket.name}/${path}`, mimeType: type } }, { text: buildPrompt(deps.taxonomy) }],
           fetchImpl: deps.fetchImpl,
         });
       } catch (err) {
@@ -244,4 +304,5 @@ module.exports = {
   acceptedType,
   MAX_AUDIO_BYTES,
   MAX_IDEAS,
+  MAX_TEXT_CHARS,
 };

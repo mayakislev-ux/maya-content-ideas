@@ -226,14 +226,17 @@
 
   <main id="home-view" class="view home-view">
     <!-- 06/11/2026 (מאיה: "לדעתי הוא צריך להיות פשוט במסך הראשי ולא במסך הרעיונות"):
-         המיקרופון הגדול פותח את המקליט הקיים (js/home-mic.js). מוסתר עד ש-app.js מדליק אותו -->
-    <button type="button" id="home-mic-card" class="home-mic-card" hidden>
+         המיקרופון הגדול מקליט כאן במסך, והטקסט נכתב תוך כדי בתיבה שמתחתיו (js/home-mic.js).
+         מוסתר עד ש-app.js מדליק אותו -->
+    <button type="button" id="home-mic-card" class="home-mic-card" hidden aria-pressed="false">
       <span class="home-mic-card__mic" aria-hidden="true">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
       </span>
-      <span class="home-mic-card__title">מה היה היום?</span>
-      <span class="home-mic-card__text">מספרים בקול עד 10 דקות, ומקבלים את כל הרעיונות שבהקלטה, כבר מסודרים</span>
+      <span id="home-mic-title" class="home-mic-card__title">מה היה היום?</span>
+      <span id="home-mic-text" class="home-mic-card__text">מספרים בקול עד 10 דקות, הטקסט נכתב למטה תוך כדי, ובסוף מקבלים את הרעיונות מסודרים</span>
+      <span id="home-mic-stop" class="home-mic-card__stop" hidden>⏹ סיימתי</span>
     </button>
+    <p id="home-mic-status" class="home-mic-status" role="status" aria-live="polite" hidden></p>
 
     <section class="home-capture-card">
       <h2 class="home-capture-title">✨ מה הרעיון שקפץ לך עכשיו?</h2>
@@ -954,7 +957,7 @@
       </div>
 
       <div class="form-section form-section-secondary">
-        <label><span id="field-link-label">לינק לסרטון (אופציונלי)</span><input id="field-link" type="url"></label>
+        <label><span id="field-link-label">לינק לסרטון (אופציונלי)</span><input id="field-link" type="text" inputmode="url" autocomplete="off" dir="ltr" placeholder="instagram.com/..."></label>
       </div>
 
       <p id="form-error" class="error-text" role="alert" hidden></p>
