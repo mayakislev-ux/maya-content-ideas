@@ -80,7 +80,18 @@ function migrateOne(s) {
 export function migrateLegacyState(state) {
   if (!state || typeof state !== 'object') return state;
   const out = { ...migrateOne(state) };
-  if (Array.isArray(state.history)) out.history = state.history.map(migrateOne);
+  if (Array.isArray(state.history)) {
+    /* בהיסטוריה מסך הבחירה הישן לא הופך ל"כתיבה מאפס" (חזרה אחורה הייתה
+       מעבירה מסלול), והוא פשוט יוצא. ומסך שחוזר על עצמו ברצף יוצא, אחרת
+       לחיצת "חזרה" אחת לא זזה */
+    const steps = state.history
+      .filter((h) => !(h && h.screen === 'has-idea-choice'))
+      .map(migrateOne);
+    out.history = steps.filter((h, i) => {
+      const next = i + 1 < steps.length ? steps[i + 1] : out;
+      return !(h && next && h.screen === next.screen);
+    });
+  }
   return out;
 }
 

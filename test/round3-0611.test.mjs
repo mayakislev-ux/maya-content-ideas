@@ -51,7 +51,9 @@ describe('1. השכפול ההפוך ירד', () => {
     assert.equal(s.branch, 'reference');
     assert.equal(s.screen, 'prompt1', 'אין עדיין הוק, ולכן קודם מציאת הוק');
     assert.equal(s.herWords, 'מגילה', 'המגילה שכבר נכתבה נשמרת');
-    assert.deepEqual(s.history.map((h) => [h.screen, h.branch]), [['scratch-dump', 'scratch'], ['transcribe', 'reference']]);
+    /* מסך הבחירה הישן יוצא מההיסטוריה: חזרה אחורה לא מעבירה למסלול "מאפס" */
+    assert.deepEqual(s.history.map((h) => [h.screen, h.branch]), [['transcribe', 'reference']]);
+    assert.equal(nextStep(s, { type: 'BACK' }).screen, 'transcribe', 'לחיצת חזרה אחת זזה מסך');
     assert.equal(old.branch, 'idea-search', 'המקור לא שונה');
     /* וממשיכים ממנו בלי שגיאה */
     let n = nextStep(s, { type: 'HOOK_CHOSEN', hook: 'הוק חדש' });
