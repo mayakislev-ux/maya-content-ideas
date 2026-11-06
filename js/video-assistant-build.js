@@ -5,6 +5,8 @@
 
    פונקציה טהורה של הסטייט, כדי שאפשר לבדוק כל מסלול בלי דפדפן. */
 
+import { withAngle, stripAngle } from './idea-reply.js';
+
 const clip = (t, n = 140) => {
   const s = String(t || '').trim();
   return s.length > n ? `${s.slice(0, n).trim()}...` : s;
@@ -32,6 +34,12 @@ const PARTS = {
     label: 'המסר',
     get: (s) => s.ideaPunchline || (isFootage(s) ? (s.ideaBeforePackaging || s.ideaDescription) : null),
     screens: ['idea-sharpen'],
+  },
+  /* 06/11/2026: הזווית שנבחרה בצ'אט בדיקת הרעיון, מול העיניים לאורך כל הבנייה */
+  angle: {
+    label: 'זווית ההנגשה',
+    get: (s) => s.ideaAngle,
+    screens: [],
   },
   packaging: {
     label: 'האריזה',
@@ -75,11 +83,11 @@ const PARTS = {
 };
 
 const BY_BRANCH = {
-  idea: ['idea', 'message', 'packaging', 'format', 'script'],
-  scratch: ['idea', 'message', 'packaging', 'format', 'dump', 'hook', 'reinforce', 'script'],
+  idea: ['idea', 'message', 'angle', 'packaging', 'format', 'script'],
+  scratch: ['idea', 'message', 'angle', 'packaging', 'format', 'dump', 'hook', 'reinforce', 'script'],
   footage: ['message', 'packaging', 'format', 'script'],
   reference: ['reference', 'hook', 'herWords', 'script'],
-  'idea-search': ['idea', 'message', 'packaging', 'format', 'reference', 'herWords', 'hook', 'script'],
+  'idea-search': ['idea', 'message', 'angle', 'packaging', 'format', 'reference', 'herWords', 'hook', 'script'],
 };
 
 /* 31/10/2026 (מאיה: "לא רואים את כל מה שכתבתי, אבל זה מעולה כי זה אורך,
@@ -91,7 +99,8 @@ export function buildParts(state) {
   if (!state || state.screen === 'summary') return [];
   const keys = BY_BRANCH[state.branch];
   if (!keys) return [];
-  const rows = keys.map((key) => {
+  /* הזווית היא תוספת ולא שלב: מופיעה רק כשיש כזו, ולא כ"שלב שמחכה" */
+  const rows = keys.filter((key) => key !== 'angle' || String(state.ideaAngle || '').trim()).map((key) => {
     const part = PARTS[key];
     const value = part.get(state);
     const shown = value ? String(value).trim() : '';
@@ -121,6 +130,7 @@ const FIELD = {
   reference: (s) => (s.referenceLink ? 'referenceLink' : 'transcript'),
   idea: (s) => (s.ideaTopic ? 'ideaTopic' : (s.ideaBeforePackaging ? 'ideaBeforePackaging' : 'ideaDescription')),
   message: (s) => (s.ideaPunchline ? 'ideaPunchline' : (s.ideaBeforePackaging ? 'ideaBeforePackaging' : 'ideaDescription')),
+  angle: () => 'ideaAngle',
   packaging: () => 'packaging',
   format: () => 'selectedFormat',
   dump: () => 'rawDump',
@@ -147,7 +157,7 @@ export function scriptFields(state) {
     .filter((f) => f.value.trim());
 }
 
-const IDEA_FIELDS = ['ideaTopic', 'ideaPunchline', 'packaging', 'ideaBeforePackaging', 'ideaDescription'];
+const IDEA_FIELDS = ['ideaTopic', 'ideaPunchline', 'packaging', 'ideaBeforePackaging', 'ideaDescription', 'ideaAngle'];
 
 /**
  * עריכה ברשימה של הנושא, המסר או האריזה צריכה להגיע גם למשפט המשולב
@@ -168,6 +178,9 @@ export function syncIdea(state, field) {
     base = out.ideaBeforePackaging || out.ideaDescription;
   }
   if (!base) return out;
+  /* 06/11/2026: הזווית בסוף משפט הרעיון, בדיוק כמו ב-IDEA_SHARPENED.
+     זווית שנמחקה ברשימה יורדת גם מהמשפט. */
+  base = out.ideaAngle ? withAngle(base, out.ideaAngle) : stripAngle(base);
   if (out.packaging) {
     out.ideaBeforePackaging = base;
     out.ideaDescription = `${base}. האריזה הקריאייטיבית: ${out.packaging}`;

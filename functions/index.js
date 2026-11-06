@@ -72,6 +72,8 @@ const DAILY_LIMITS = {
   transcribeReference: 15,
   /* 06/11/2026: הקלטה קולית עד 10 דקות שממנה יוצאים כמה רעיונות. ג'מיני מקשיב לכל ההקלטה, 2-5 סנט. */
   ideasFromRecording: 10,
+  /* 06/11/2026: מיקרופון בתיבות הכתיבה באייפון (הקלטה קצרה ותמלול). כל קריאה עד 3 דקות, פחות מסנט. */
+  transcribeDictation: 80,
   /* 05/11/2026: "✍️ תיאור לסרטון" בסיכום העוזר לסרטון. קריאה קטנה של Haiku. */
   writeVideoDescription: 30,
   /* 05/11/2026: שתיהן קראו ל-enforceRateLimit בלי שורה כאן, ו-count >= undefined
@@ -2925,4 +2927,40 @@ exports.syncRefsSubscriptions = require('./refs-subscription').syncRefsSubscript
     },
   });
   exports.ideasFromRecording = onCall({ region: 'us-central1', timeoutSeconds: 300, memory: '512MiB' }, handler);
+}
+
+// 06/11/2026 (מאיה): "בחלק של כתיבת הרעיון עצמו יש מיקרופון הוא כאילו לא
+// עובד". באייפון זיהוי הדיבור של הדפדפן לא עובד באמת, ולכן המיקרופון של
+// תיבות הכתיבה מקליט ושולח לכאן לתמלול. ראה dictation.js. המכסה נספרת רק
+// על תמלול שהצליח.
+{
+  const dict = require('./dictation');
+  const { GoogleAuth } = require('google-auth-library');
+  const auth = new GoogleAuth({ scopes: ['https://www.googleapis.com/auth/cloud-platform'] });
+  const handler = dict.createDictationHandler({
+    HttpsError,
+    /* המיקרופון יושב גם בעוזר לסרטון, שפתוח גם למנוי רפרנסים */
+    enforceAllowlist: (email) => enforceAllowlist(email, { allowRefs: true }),
+    checkRate: (uid) => reserveRateLimit(uid, 'transcribeDictation'),
+    get bucket() { return admin.storage().bucket('content-ideas-becd7-story-assets'); },
+    fetchImpl: (...args) => fetch(...args),
+    projectId: 'content-ideas-becd7',
+    getAccessToken: async () => {
+      const client = await auth.getClient();
+      const t = await client.getAccessToken();
+      return t && t.token ? t.token : t;
+    },
+    logUsage: async (uid, info) => {
+      const u = info.usage || {};
+      await db.collection('tokenUsage').doc('transcribeDictation').set({
+        inputTokens: admin.firestore.FieldValue.increment(u.promptTokenCount || 0),
+        outputTokens: admin.firestore.FieldValue.increment((u.candidatesTokenCount || 0) + (u.thoughtsTokenCount || 0)),
+        costUsd: admin.firestore.FieldValue.increment(info.costUsd || 0),
+        calls: admin.firestore.FieldValue.increment(1),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+      console.log('transcribeDictation ok', { uid, chars: info.chars, bytes: info.bytes, costUsd: info.costUsd });
+    },
+  });
+  exports.transcribeDictation = onCall({ region: 'us-central1', timeoutSeconds: 120, memory: '256MiB' }, handler);
 }

@@ -110,3 +110,45 @@ export function ideaTextOnly(title) {
      במקרה כזה עדיף לשלוח את הכותרת כמו שהיא. */
   return text || raw.trim();
 }
+
+/* 06/11/2026 (מאיה): "במסך של בדיקת רעיון הוא בוחר זווית אבל אחר כך כשאני
+   מעבירה את הרעיון לביצוע הוא שוכח מהזווית ולא משלב אותה עם הרעיון עצמו".
+
+   שני מקומות איבדו אותה:
+   1. "↩ לחזור לעוזר עם הרעיון המדויק" העביר לעוזר רק { idea, message }.
+      הזווית שהצ'אט בחר נשארה מאחור, ואף פרומפט אחריו לא ידע עליה.
+   2. רעיון שנשמר מהצ'אט ונמשך אחר כך מהבנק לעוזר הגיע כטקסט גולמי
+      ("רעיון | זווית: השוואה | סיפור: ...") לתוך תיבת "על מה הסרטון?",
+      בלי שדה זווית ובלי שום דבר שמשתמש בה.
+   מכאן: הזווית נשמרת בעוזר בשדה משלה (ideaAngle), ונכנסת למשפט הרעיון
+   שכל הפרומפטים קוראים (ideaDescription) בצורה אחת קבועה. */
+export const ANGLE_LABEL = 'זווית ההנגשה';
+
+const ANGLE_TAIL = /(?:^|\.\s*|\s+)זווית ההנגשה:[\s\S]*$/;
+
+/** הטקסט בלי סיומת הזווית שנוספה ב-withAngle. */
+export function stripAngle(text) {
+  return String(text || '').replace(ANGLE_TAIL, '').trim();
+}
+
+/** הרעיון עם הזווית בסופו ("... . זווית ההנגשה: X"), בלי כפילות. */
+export function withAngle(text, angle) {
+  const base = stripAngle(text);
+  const a = String(angle || '').trim();
+  if (!a) return base;
+  if (!base) return `${ANGLE_LABEL}: ${a}`;
+  return `${base.replace(/[.\s]+$/, '')}. ${ANGLE_LABEL}: ${a}`;
+}
+
+/** כותרת של רעיון בבנק -> { text, angle, story }. */
+export function parseIdeaTitle(title) {
+  const raw = String(title || '');
+  const angleMatch = raw.match(/זווית(?:\s*הנגשה)?\s*:\s*([^|\n]+)/);
+  const storyMatch = raw.match(/סיפור\s*:\s*([^|\n]+)/);
+  const rawAngle = angleMatch ? angleMatch[1].trim() : '';
+  return {
+    text: ideaTextOnly(raw),
+    angle: rawAngle ? (canonicalAngle(rawAngle) || rawAngle) : '',
+    story: storyMatch ? storyMatch[1].trim() : '',
+  };
+}

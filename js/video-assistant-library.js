@@ -36,6 +36,8 @@ const STEPS = {
     field: (s) => (filled(s, 'ideaPunchline') ? 'ideaPunchline'
       : (isFootage(s) ? firstFilled(s, 'ideaBeforePackaging', 'ideaDescription') : null)),
   },
+  /* 06/11/2026: הזווית מצ'אט בדיקת הרעיון */
+  angle: { label: 'זווית ההנגשה', field: () => 'ideaAngle' },
   packaging: {
     label: 'האריזה',
     field: () => 'packaging',
@@ -63,11 +65,11 @@ const STEPS = {
 };
 
 const ORDER = {
-  idea: ['idea', 'message', 'packaging', 'format', 'script'],
-  scratch: ['idea', 'message', 'packaging', 'format', 'megillah', 'refLink', 'transcript', 'hook', 'reinforce', 'script'],
+  idea: ['idea', 'message', 'angle', 'packaging', 'format', 'script'],
+  scratch: ['idea', 'message', 'angle', 'packaging', 'format', 'megillah', 'refLink', 'transcript', 'hook', 'reinforce', 'script'],
   footage: ['message', 'packaging', 'format', 'script'],
   reference: ['refLink', 'transcript', 'megillah', 'hook', 'script'],
-  'idea-search': ['idea', 'message', 'packaging', 'format', 'refLink', 'transcript', 'megillah', 'hook', 'script'],
+  'idea-search': ['idea', 'message', 'angle', 'packaging', 'format', 'refLink', 'transcript', 'megillah', 'hook', 'script'],
 };
 
 /** כל תהליך היצירה של סרטון, לפי הסדר, רק החלקים שבאמת נכתבו. */
