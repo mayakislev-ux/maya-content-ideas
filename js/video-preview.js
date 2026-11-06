@@ -61,7 +61,8 @@ export async function fetchThumbnail(url) {
 // לשתי הפלטפורמות יש כתובת הטמעה רשמית שמותר להציג בתוך מסגרת. זאת לא
 // עקיפה: אינסטגרם וטיקטוק מפרסמות את הכתובות האלה בדיוק בשביל זה.
 const IG_CODE = /instagram\.com\/(?:reel|reels|p|tv)\/([A-Za-z0-9_-]+)/;
-const TT_ID = /tiktok\.com\/.*\/video\/(\d+)/;
+/* 06/11/2026: גם tiktok.com/video/מספר, בלי שם משתמש (כך נשמרו דוגמאות הפורמטים). */
+const TT_ID = /tiktok\.com\/(?:.*\/)?video\/(\d+)/;
 
 /**
  * כתובת ההטמעה של סרטון, או null כשאין כזאת ואפשר רק לפתוח בחוץ.

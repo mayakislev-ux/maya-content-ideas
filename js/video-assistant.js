@@ -22,7 +22,7 @@ import { openModal, closeModal, requestCloseModal } from './video-assistant-moda
 import { createScriptsLibrary, withLiveEdit } from './video-assistant-library.js';
 import { buildDuplicationPrompt, buildReverseDuplicationPrompt, buildScriptPrompt, buildCreativePackagingPrompt } from './video-assistant-prompts.js';
 import {
-  FORMATS, FORMAT_EXAMPLES, SCRIPT_STRUCTURE, STARTING_POINTS, CONTENT_TYPES,
+  FORMATS, FORMAT_EXAMPLES, SCRIPT_STRUCTURE, STARTING_POINTS, CONTENT_TYPES, recommendFormats,
   buildExtractionPrompt, buildHookFindingPrompt, buildHookReinforcementPrompt, buildScriptDistillationPrompt,
   buildSceneRewritePrompt,
 } from './video-assistant-content.js';
@@ -889,9 +889,14 @@ const FORMAT_ICONS = {
 
 // ===== בחירת פורמט הנגשה - אקורדיון אמיתי בתוך האפליקציה (16/10) =====
 function renderFormatChoice() {
+  /* 06/11/2026 (מאיה: "אחרי שמסננים אריזה קריאייטיבית קל להחליט איזה
+     פורמטים מתאימים אז אולי שיסמן בכתום מה הוא ממליץ? פשוט מפחדת שיטעה").
+     ההמלצה באה מ-recommendFormats: חיפוש מילים קבוע בטקסט האריזה, בלי
+     בינה מלאכותית. רק מסגרת כתומה ותווית, בלי להסתיר ובלי לשנות את הסדר. */
+  const recommended = new Set(state.packaging ? recommendFormats(state.packaging) : []);
   const itemsHtml = FORMATS.map((f, i) => `
-    <details class="cosmic-accordion-item" data-format="${escapeHtml(f.name)}" ${state.selectedFormat === f.name ? 'open' : ''}>
-      <summary><span><span class="cosmic-format-icon">${FORMAT_ICONS[f.name] || '🎬'}</span>${escapeHtml(f.name)}</span></summary>
+    <details class="cosmic-accordion-item${recommended.has(f.name) ? ' is-recommended' : ''}" data-format="${escapeHtml(f.name)}" ${state.selectedFormat === f.name ? 'open' : ''}>
+      <summary><span><span class="cosmic-format-icon">${FORMAT_ICONS[f.name] || '🎬'}</span>${escapeHtml(f.name)}${recommended.has(f.name) ? '<span class="cosmic-recommend-tag">מומלץ לאריזה הזו</span>' : ''}</span></summary>
       <div class="cosmic-accordion-body">
         <p style="margin:0">${escapeHtml(f.description)}</p>
         ${FORMAT_EXAMPLES[f.name] ? `<button type="button" class="cosmic-examples-btn" data-format-examples="${i}">👀 לראות דוגמה</button>` : ''}
@@ -902,6 +907,7 @@ function renderFormatChoice() {
   cosmicCard(`
     <h2>בוחרים פורמט הנגשה</h2>
     <p>לכל רעיון יכולים להתאים כמה פורמטים - לפתוח כל אחד לקרוא על מה מדובר, ולבחור את מה שהכי מרגיש נכון.</p>
+    ${recommended.size ? '<p class="cosmic-hint cosmic-recommend-hint">סימנו בכתום פורמטים שמתאימים לאריזה שבחרת. זו רק הצעה, אפשר לבחור כל פורמט אחר.</p>' : ''}
     ${state.selectedFormat ? `<div class="cosmic-selected-chip">✓ נבחר: ${escapeHtml(state.selectedFormat)}</div>` : ''}
     <div class="cosmic-accordion">${itemsHtml}</div>
   `);
@@ -940,6 +946,18 @@ function openFormatExamples(name) {
     const shape = embedShape(ex.url, ex);
     overlay.querySelectorAll('[data-example]').forEach((b) => b.setAttribute('aria-pressed', String(Number(b.dataset.example) === i)));
     clearTimeout(timer);
+    /* 06/11/2026: יש סרטונים שהבעלים או אינסטגרם חוסמים להטמעה. החלון
+       נטען "בהצלחה" אבל ריק, כך שהבדיקה של 4 השניות לא תופסת את זה.
+       דוגמה כזאת מסומנת embed: false ומוצגת ישר ככרטיס עם קישור. */
+    if (ex.embed === false) {
+      stage.innerHTML = `
+        <div class="cosmic-examples-linkcard">
+          <p>את הדוגמה הזאת אפשר לראות רק בפלטפורמה עצמה.</p>
+          <a href="${escapeHtml(ex.url)}" target="_blank" rel="noopener" class="cosmic-examples-out">לצפייה בדוגמה ↗</a>
+        </div>
+      `;
+      return;
+    }
     stage.innerHTML = `
       <div class="cosmic-examples-embed" style="aspect-ratio:${shape.w}/${shape.h};width:min(100%, calc(66vh * ${shape.w} / ${shape.h}))">
         <iframe src="${escapeHtml(embed)}" title="דוגמה לפורמט ${escapeHtml(name)}" loading="lazy" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture" allowfullscreen></iframe>

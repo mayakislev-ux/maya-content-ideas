@@ -7856,6 +7856,40 @@ body:has(> .preview-bar) { --hdr-safe-top: 0px; }
 }
 .cosmic-examples-embed iframe { width: 100%; height: 100%; border: 0; display: block; }
 .cosmic-examples-out { display: block; text-align: center; font-size: 14px; }
+/* 06/11/2026: דוגמה שאי אפשר להטמיע (embed: false) מוצגת ככרטיס עם קישור. */
+.cosmic-examples-linkcard {
+  margin: 0 auto 12px;
+  padding: 28px 16px;
+  border-radius: 14px;
+  border: 1.5px dashed #16205a;
+  text-align: center;
+}
+.cosmic-examples-linkcard p { margin: 0 0 10px; }
+
+/* 06/11/2026 (מאיה: "שיסמן בכתום מה הוא ממליץ? פשוט מפחדת שיטעה").
+   המלצה רכה בלבד: מסגרת כתומה ותווית קטנה. אין טוקן כתום ב-:root, ולכן
+   לא הומצא צבע חדש: המסגרת היא הכתום #ff6a2b של כפתור ה-SOS שכבר נמצא
+   בעוזר הזה, והתווית היא משפחת הענבר של כרטיס הטיוטה (#d99a2b, #fdf3e2,
+   #a3670f), שקריאה על לבן. הכרטיס של העוזר בהיר תמיד (גם במצב כהה של
+   האפליקציה, ראו #video-assistant-view למעלה), ולכן צבע אחד מספיק. */
+#video-assistant-view .cosmic-accordion-item.is-recommended {
+  border-color: #ff6a2b;
+  box-shadow: inset 0 0 0 1px #ff6a2b;
+}
+/* שם ארוך + תווית: התווית יורדת שורה בטלפון ולא דוחקת את השם */
+.cosmic-accordion-item.is-recommended summary > span { flex-wrap: wrap; row-gap: 4px; }
+.cosmic-recommend-tag {
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 1.4;
+  padding: 2px 8px;
+  border-radius: 999px;
+  color: #a3670f;
+  background: #fdf3e2;
+  border: 1px solid #d99a2b;
+  white-space: nowrap;
+}
+.cosmic-recommend-hint { margin: 0 0 12px; }
 
 /* 29/10/2026: בחירת לקוחה בפס של תצוגת הלקוחה. כשנבחרה לקוחה הפס מתחלף
    לגוון האזהרה של שעון המנוי, כי כל עריכה כאן נשמרת אצלה באמת. */
