@@ -70,6 +70,8 @@ const DAILY_LIMITS = {
   extractOpeningHook: 40,
   /* 04/11/2026: כל קריאה צופה בסרטון שלם, 2-6 סנט. */
   transcribeReference: 15,
+  /* 06/11/2026: הקלטה קולית עד 10 דקות שממנה יוצאים כמה רעיונות. ג'מיני מקשיב לכל ההקלטה, 2-5 סנט. */
+  ideasFromRecording: 10,
   /* 05/11/2026: "✍️ תיאור לסרטון" בסיכום העוזר לסרטון. קריאה קטנה של Haiku. */
   writeVideoDescription: 30,
   /* 05/11/2026: שתיהן קראו ל-enforceRateLimit בלי שורה כאן, ו-count >= undefined
@@ -2875,4 +2877,48 @@ exports.syncRefsSubscriptions = require('./refs-subscription').syncRefsSubscript
     },
   });
   exports.transcribeReference = onCall({ region: 'us-central1', timeoutSeconds: 300, memory: '1GiB' }, handler);
+}
+
+// 06/11/2026 (מאיה): "בהוספת רעיון שיהיה אופציה להקליט... אפילו הקלטה של 10
+// דק ואז שימצא מתוך ההקלטה שלי את כל הרעיונות שיש וכמובן לחלק לקטגוריות".
+// ראה ideas-from-recording.js. מחזירה רשימה בלבד, השמירה נעשית בדפדפן אחרי
+// שהלקוח/ה בוחר/ת. המכסה נספרת רק על חילוץ שהצליח.
+{
+  const ifr = require('./ideas-from-recording');
+  const { GoogleAuth } = require('google-auth-library');
+  const auth = new GoogleAuth({ scopes: ['https://www.googleapis.com/auth/cloud-platform'] });
+  const handler = ifr.createIdeasFromRecordingHandler({
+    HttpsError,
+    enforceAllowlist: (email) => enforceAllowlist(email),
+    checkRate: (uid) => reserveRateLimit(uid, 'ideasFromRecording'),
+    get bucket() { return admin.storage().bucket('content-ideas-becd7-story-assets'); },
+    fetchImpl: (...args) => fetch(...args),
+    projectId: 'content-ideas-becd7',
+    getAccessToken: async () => {
+      const client = await auth.getClient();
+      const t = await client.getAccessToken();
+      return t && t.token ? t.token : t;
+    },
+    /* אותן רשימות בדיוק כמו js/ideas-logic.js (RATINGS, AUDIENCE_SCOPES) */
+    taxonomy: {
+      categories: CATEGORIES,
+      categoryDefinitions: CATEGORY_DEFINITIONS,
+      stages: PERSUASION_STAGES,
+      audienceScopes: ['עיקרי', 'משני', 'רחב'],
+      strongRating: '🔥 חייב לצלם',
+      normalRating: '⭐ שווה לצלם',
+    },
+    logUsage: async (uid, info) => {
+      const u = info.usage || {};
+      await db.collection('tokenUsage').doc('ideasFromRecording').set({
+        inputTokens: admin.firestore.FieldValue.increment(u.promptTokenCount || 0),
+        outputTokens: admin.firestore.FieldValue.increment((u.candidatesTokenCount || 0) + (u.thoughtsTokenCount || 0)),
+        costUsd: admin.firestore.FieldValue.increment(info.costUsd || 0),
+        calls: admin.firestore.FieldValue.increment(1),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+      console.log('ideasFromRecording ok', { uid, count: info.count, bytes: info.bytes, costUsd: info.costUsd });
+    },
+  });
+  exports.ideasFromRecording = onCall({ region: 'us-central1', timeoutSeconds: 300, memory: '512MiB' }, handler);
 }

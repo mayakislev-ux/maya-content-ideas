@@ -5,6 +5,7 @@ import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/fireba
 import { showToast } from './toast.js';
 import { alertDialog, confirmDialog } from './confirm-dialog.js';
 import { getCurrentIdeas } from './archive-view.js';
+import { wireRecorderEntry, setRecorderEntryVisible } from './idea-recorder.js';
 
 const classifyIdea = httpsCallable(functions, 'classifyIdea');
 const AI_OPTION = '__ai__';
@@ -100,6 +101,7 @@ export function openAddModal(prefillTitle = '') {
   document.getElementById('field-series-fields').hidden = true;
   populateSeriesDatalist();
   document.getElementById('delete-idea-btn').hidden = true;
+  setRecorderEntryVisible(true);
   document.getElementById('form-error').hidden = true;
   document.getElementById('idea-modal').hidden = false;
   updateIdeaPreview();
@@ -124,6 +126,7 @@ export function openEditModal(idea, overrideTitle = '') {
   document.getElementById('field-series-name').value = idea.series || '';
   document.getElementById('field-series-order').value = idea.seriesOrder || '';
   document.getElementById('delete-idea-btn').hidden = false;
+  setRecorderEntryVisible(false);
   document.getElementById('form-error').hidden = true;
   document.getElementById('idea-modal').hidden = false;
   updateIdeaPreview();
@@ -222,6 +225,8 @@ async function runAiClassification() {
 
 export function wireIdeaForm() {
   wireInfoModal();
+  /* 06/11/2026: "🎙️ לספר בקול ולמצוא רעיונות" מעל תיבת הרעיון */
+  wireRecorderEntry({ onCloseIdeaModal: closeModal });
   document.getElementById('cancel-idea-btn').addEventListener('click', closeModalAsking);
   document.getElementById('idea-modal-close-x').addEventListener('click', closeModalAsking);
 

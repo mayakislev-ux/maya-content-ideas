@@ -33,12 +33,14 @@ service firebase.storage {
     // שלה, הפונקציה transcribeReference קוראת אותו ומוחקת. אין קריאה מהדפדפן
     // בכלל. מה שנשאר (העלאה שלא נשלחה לתמלול) נמחק אחרי יום בכלל של ה-bucket
     // (lifecycle על transcribeUploads/). ההרשאה למנוי נבדקת בפונקציה.
+    // 06/11/2026: גם הקלטה קולית (audio/*) של "הקלטת רעיונות" בהוספת רעיון,
+    // שהפונקציה ideasFromRecording קוראת ומוחקת באותה צורה.
     match /transcribeUploads/{uid}/{file} {
       allow create: if request.auth != null
         && request.auth.uid == uid
         && request.auth.token.email_verified == true
         && request.resource.size < 200 * 1024 * 1024
-        && request.resource.contentType.matches('video/.*');
+        && request.resource.contentType.matches('(video|audio)/.*');
       allow delete: if request.auth != null && request.auth.uid == uid;
     }
 
