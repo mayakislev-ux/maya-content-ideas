@@ -93,7 +93,7 @@ describe('המיפוי לשלושת המדפים', () => {
 });
 
 describe('המתג', () => {
-  test('רק מאיה רואה את העיצוב החדש, ולא בתצוגה כלקוחה', () => {
+  test('רק מאיה רואה את העיצוב החדש, גם בתצוגה כלקוחה', () => {
     const store = new Map();
     const prev = globalThis.sessionStorage;
     globalThis.sessionStorage = {
@@ -106,7 +106,7 @@ describe('המתג', () => {
       assert.equal(ideasRedesignFor('client@gmail.com'), false);
       assert.equal(ideasRedesignFor(undefined), false);
       store.set('clientView', '1');
-      assert.equal(ideasRedesignFor(OWNER_EMAIL), false);
+      assert.equal(ideasRedesignFor(OWNER_EMAIL), true);
     } finally {
       globalThis.sessionStorage = prev;
     }

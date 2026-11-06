@@ -9,14 +9,16 @@
    הקובץ הזה טהור: אין בו Firebase ואין בו DOM, כדי שאפשר יהיה לבדוק אותו
    ולשנות בו כללים בלי לגעת בשום מסך. */
 import { RATINGS, STRONG_RATING } from './ideas-logic.js';
-import { actsAsOwner } from './client-view.js';
+import { OWNER_EMAIL } from './client-view.js';
 
 /* ---------- המתג ----------
    06/11/2026: המסך הזה פתוח לכל הלקוחות, ולכן המדפים ומיקרופון הבית
    מוצגים כרגע רק למאיה (לא בתצוגה כלקוחה). השאר רואים את המסך הקיים.
    כדי לפתוח לכולם: להחליף את השורה שבתוך הפונקציה ב-return true; */
+/* 06/11/2026 ערב (מאיה: "המסך של הרעיונות והכל אני לא רואה"): גם בתצוגה
+   כלקוחה מאיה רואה את המסך החדש, כדי שלא תפספס אותו בזמן שהוא רק אצלה. */
 export function ideasRedesignFor(email) {
-  return actsAsOwner(email);
+  return email === OWNER_EMAIL;
 }
 
 /* ---------- שלושת המדפים ---------- */

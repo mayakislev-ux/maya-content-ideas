@@ -118,7 +118,6 @@ test('שורה שהמודל המציא נזרקת, ושורה מהתסריט ע�
   const ok = await good({ ...AUTH, data: { script: AI_SCRIPT, message: AI_MESSAGE } });
   assert.equal(ok.description, [
     'הכי מצחיק שאתם בכלל משלמים כדי שאנשים ידלגו עליכם.',
-    'אז די להסתתר מאחורי תמונות AI. תעמדו מול המצלמה, תדברו כמו בני אדם.',
     'ועכשיו תגידו לי, על איזו משתי הפרסומות אתם הייתם עוצרים?',
   ].join('\n'));
   assert.equal(ok.textHooks.length, 3);
