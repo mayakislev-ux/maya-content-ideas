@@ -42,6 +42,16 @@ export function setSimpleIdeaForm(on) {
   if (subhint) subhint.textContent = simpleForm ? 'זוהה לבד. אפשר לתקן בלחיצה' : 'בוחרים אחת';
   /* "🎙️ לספר בקול" כבר במסך הבית, ולכן לא בטופס הקצר */
   setRecorderEntryVisible(!simpleForm && !editingId);
+  /* שדה חובה מוסתר חוסם את השמירה בדפדפן בלי שום הודעה */
+  const audience = document.getElementById('field-audience-scope');
+  if (audience) audience.required = !simpleForm;
+}
+
+/** לינק שהודבק בלי https:// נשמר עם https://, אחרת הוא נפתח כנתיב בתוך האפליקציה */
+export function withScheme(link) {
+  const v = String(link || '').trim();
+  if (!v) return '';
+  return /^[a-z][a-z0-9+.-]*:\/\//i.test(v) ? v : `https://${v.replace(/^\/+/, '')}`;
 }
 
 /** מבטיח תשובה תוך ms: אחרת onTimeout מחליט (null או שגיאה). הטיימר
@@ -76,7 +86,7 @@ async function autoClassify(title) {
     בעריכה: רק מה שמוצג או חסר, כדי לא לדרוס שדות ישנים שלא מוצגים. */
 async function simpleFormData(original) {
   const title = document.getElementById('field-title').value;
-  const sourceLink = document.getElementById('field-link').value;
+  const sourceLink = withScheme(document.getElementById('field-link').value);
   const chosen = document.getElementById('field-category').value;
   const base = original || {};
   const hasCategory = CATEGORIES.includes(chosen) || chosen === 'ערכי';
@@ -414,7 +424,7 @@ export function wireIdeaForm() {
     const data = {
       title: document.getElementById('field-title').value,
       category: document.getElementById('field-category').value,
-      sourceLink: document.getElementById('field-link').value,
+      sourceLink: withScheme(document.getElementById('field-link').value),
       persuasionStage: document.getElementById('field-persuasion').value,
       rating: document.getElementById('field-rating').value,
       audienceScope: document.getElementById('field-audience-scope').value,

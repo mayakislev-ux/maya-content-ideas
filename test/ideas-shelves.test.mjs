@@ -492,6 +492,13 @@ describe('המסך (jsdom)', { skip: hasJsdom ? false : 'jsdom לא מותקן' 
     form.openAddModal();
     const f = $('#idea-form');
     assert.ok(f.classList.contains('idea-form--simple'));
+    /* בדפדפן אמיתי שדה חובה מוסתר חוסם את השמירה בשקט */
+    $('#field-title').value = 'רעיון';
+    assert.ok(f.checkValidity(), 'הטופס הקצר חייב לעבור את בדיקת הדפדפן עם טקסט בלבד');
+    $('#field-title').value = '';
+    assert.equal(form.withScheme('instagram.com/p/x'), 'https://instagram.com/p/x');
+    assert.equal(form.withScheme('https://a.co'), 'https://a.co');
+    assert.equal(form.withScheme('  '), '');
     for (const id of ['rating-chips', 'field-audience-scope', 'field-persuasion', 'field-format', 'field-is-series']) {
       assert.ok($(`#${id}`).closest('[data-simple-hide]'), `#${id} לא מוסתר בטופס הקצר`);
     }

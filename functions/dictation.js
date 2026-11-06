@@ -24,7 +24,8 @@ const MAX_TEXT = 6000;
    קובץ קטן (עשרות KB), ולכן התקרה שלו קטנה בהרבה, והמכסה שלו נפרדת: שיחה
    של 10 דקות היא 70-120 קטעים, והם לא אמורים לשרוף את 80 ההכתבות של
    תיבות הכתיבה. */
-const MAX_SEGMENT_BYTES = 4 * 1024 * 1024;
+/* קטע של 9 שניות הוא בערך 60KB. התקרה משאירה מרווח ולא מאפשרת להעלות דקות שלמות כ"קטע" */
+const MAX_SEGMENT_BYTES = 512 * 1024;
 
 function validUploadPath(path, uid) {
   if (typeof path !== 'string' || !uid) return false;

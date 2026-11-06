@@ -163,6 +163,8 @@ function writeBox(s) {
 function lockBox(locked) {
   const t = box();
   if (t) t.readOnly = locked;
+  const b = document.getElementById('quick-add-btn');
+  if (b) b.disabled = locked;
 }
 
 /* ---------- התחלה ---------- */

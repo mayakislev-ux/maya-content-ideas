@@ -450,6 +450,8 @@ export function wireArchiveControls(onItemClick) {
      שהשמירה הצליחה, ובכישלון הטקסט נשאר והיא רואה למה. */
   let quickAddBusy = false;
   const submitQuickAdd = async () => {
+    /* בזמן הקלטה מהבית התיבה נעולה, והטקסט עוד נכתב לתוכה */
+    if (quickAddInput.readOnly) return;
     const title = quickAddInput.value.trim();
     if (!title || quickAddBusy) return;
     quickAddBusy = true;
@@ -792,7 +794,7 @@ function renderDoneToolbar(list, allDone, visible) {
   if (!selectMode) {
     const hint = document.createElement('span');
     hint.className = 'done-toolbar__hint';
-    hint.textContent = ideasCountLabel(allDone.length) + ' שבוצעו';
+    hint.textContent = ideasCountLabel(visible.length) + ' שבוצעו';
     bar.append(
       hint,
       button('בחירה', 'done-toolbar__btn', () => {
@@ -800,8 +802,9 @@ function renderDoneToolbar(list, allDone, visible) {
         selectedIds.clear();
         rerenderKeepingFocus('.done-toolbar__btn');
       }),
-      button(`מחיקת כל מה שבוצע (${allDone.length})`, 'done-toolbar__btn done-toolbar__btn--danger', () => {
-        bulkDelete(allDone.map((i) => i.id));
+      /* בזמן חיפוש מוחקים רק את מה שמוצג, לא את כל מה שבוצע */
+      button(`מחיקת כל מה שבוצע (${visible.length})`, 'done-toolbar__btn done-toolbar__btn--danger', () => {
+        bulkDelete(visible.map((i) => i.id));
       }),
     );
   } else {
