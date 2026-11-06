@@ -4,7 +4,8 @@
    20. מיקרופון במגילה ובמסך הרעיון: מה שנאמר נכנס לתיבה, למד המילים ולשמירה.
    21. מד אורך במסך "להקריא בקול" ובסיכום, ואדום כשהתסריט ארוך מהמקור.
    24. דף צילום מהסיכום ומ"התסריטים שלי", והסימונים נשמרים לכל סרטון.
-   25. תיאור לסרטון: שאלה קצרה, קריאה לשרת, העתקה, ושמירה בפריט. */
+   25. תיאור לסרטון: לחיצה אחת שולחת הכל לשרת בלי שאלות (06/11), העתקה
+       ושמירה בפריט. */
 import { test, describe, before } from 'node:test';
 import assert from 'node:assert/strict';
 import {
@@ -193,11 +194,14 @@ describe('הכלים החדשים בעוזר (jsdom)', { skip: hasJsdom ? false 
     assert.equal($('.va-length__warn'), null);
   });
 
-  test('25. תיאור לסרטון: ההנעה לפעולה מהזיקוק ממולאת, הקריאה לשרת, העתקה ושמירה בפריט', async () => {
+  test('25. תיאור לסרטון: לחיצה אחת שולחת את התסריט, המסר וההנעה לפעולה, בלי שום שאלה', async () => {
+    /* 06/11/2026 (מאיה): "התיאור לסרטון שואל אותי שאלות אבל אני רוצה כבר
+       שיידע לבד את התשובות וישר יכתוב". */
     const { $, $$, open, type } = ui;
     await open({
       branch: 'scratch', screen: 'scratch-distill', ideaDescription: 'למה תעודה לא מספיקה',
-      hook: 'הוק', hookReinforcement: 'חיזוק', rawDump: words(130),
+      ideaTopic: 'למה תעודה לא מספיקה', ideaPunchline: 'לקוחות לא קונות תעודה, הן קונות תוצאה', packaging: 'מיתוס',
+      hook: 'הוק', hookReinforcement: 'חיזוק', rawDump: words(130), selectedFormat: 'דיבור למצלמה',
     }, '#va-scratch-cta-row');
     $('#va-scratch-cta-row [data-cta="משפך"]').click();
     type($('#va-scratch-funnel-input'), 'מדריך חינמי');
@@ -214,30 +218,32 @@ describe('הכלים החדשים בעוזר (jsdom)', { skip: hasJsdom ? false 
       if (fail) { fail = false; throw new Error('השירות לא זמין'); }
       return { data: { description: `תיאור קצר על ${payload.videoType}`, textHooks: ['הוק טקסט 1', 'הוק טקסט 2', 'הוק טקסט 3'] } };
     };
-    $('#va-desc-btn').click();
-    await until(() => $('#va-desc-go'), 'חלון התיאור');
-    assert.equal($('#va-desc-cta-row .cosmic-chip-btn--on').textContent, 'כן', 'ההנעה לפעולה לא סומנה מהזיקוק');
-    assert.equal($('#va-desc-cta').value, 'מדריך חינמי');
-    assert.equal($('#va-desc-cta-wrap').hidden, false);
-
     const before = calls.filter((c) => c.name === 'writeVideoDescription').length;
-    $('#va-desc-go').click();
-    await new Promise((r) => setTimeout(r, 20));
-    assert.equal(calls.filter((c) => c.name === 'writeVideoDescription').length, before, 'נשלח בלי לבחור סוג סרטון');
+    $('#va-desc-btn').click();
+    /* בלי שאלות: אין בחירת סוג, אין "יש הנעה לפעולה?", אין שדה למלא */
+    await until(() => calls.filter((c) => c.name === 'writeVideoDescription').length === before + 1, 'הלחיצה לא שלחה מיד לשרת');
+    assert.equal($('#va-desc-type-row'), null, 'עדיין שואל איזה סרטון זה');
+    assert.equal($('#va-desc-cta-row'), null, 'עדיין שואל אם יש הנעה לפעולה');
+    assert.equal($$('#va-desc input, #va-desc textarea').length, 0, 'יש שדה למלא בחלון התיאור');
+    const sent = calls.filter((c) => c.name === 'writeVideoDescription').pop().payload;
+    assert.equal(sent.script, 'התסריט הסופי\nעם עוד שורה', 'התסריט לא נשלח');
+    assert.equal(sent.message, 'לקוחות לא קונות תעודה, הן קונות תוצאה', 'המסר/השורה התחתונה לא נשלחה');
+    assert.equal(sent.idea, 'למה תעודה לא מספיקה');
+    assert.equal(sent.angle, 'מיתוס');
+    assert.equal(sent.hook, 'הוק');
+    assert.equal(sent.cta, 'מדריך חינמי');
+    assert.equal(sent.ctaType, 'משפך');
+    assert.equal(sent.videoType, 'סרטון דיבור');
+    assert.equal(sent.domain, 'שיווק');
+    assert.equal(sent.audience, 'בעלות עסקים');
+    assert.equal(sent.pronoun, 'את');
 
-    $('#va-desc-type-row [data-vtype="סרטון דיבור"]').click();
-    $('#va-desc-go').click();
     await until(() => $('.va-desc__error'), 'שגיאה לא הוצגה');
     assert.match($('.va-desc__error').textContent, /השירות לא זמין/);
+    assert.equal($('#va-desc-go').hidden, false, 'אין כפתור לנסות שוב');
 
     $('#va-desc-go').click();
     await until(() => $('#va-desc-text'), 'התיאור לא הוצג');
-    const call = calls.filter((c) => c.name === 'writeVideoDescription').pop();
-    assert.equal(call.payload.videoType, 'סרטון דיבור');
-    assert.equal(call.payload.cta, 'מדריך חינמי');
-    assert.equal(call.payload.domain, 'שיווק');
-    assert.equal(call.payload.audience, 'בעלות עסקים');
-    assert.match(call.payload.script, /התסריט הסופי/);
     assert.equal($('#va-desc-text').textContent, 'תיאור קצר על סרטון דיבור');
     assert.equal($$('.va-desc__hooks li').length, 3);
     assert.equal($$('#va-desc-result [data-copy-text]').length, 4, 'חסרים כפתורי העתקה');
@@ -246,6 +252,7 @@ describe('הכלים החדשים בעוזר (jsdom)', { skip: hasJsdom ? false 
     const id = store.get(SESSION).scriptId;
     await until(() => item(id) && item(id).state.videoDescription, 'התיאור לא נשמר בפריט');
     assert.equal(item(id).state.videoDescription.description, 'תיאור קצר על סרטון דיבור');
+    assert.equal(item(id).state.videoDescription.version, 2);
     assert.deepEqual(item(id).state.videoDescription.textHooks, ['הוק טקסט 1', 'הוק טקסט 2', 'הוק טקסט 3']);
 
     /* פתיחה חוזרת מציגה את מה שנשמר, בלי קריאה חדשה */
@@ -254,7 +261,27 @@ describe('הכלים החדשים בעוזר (jsdom)', { skip: hasJsdom ? false 
     $('#va-desc-btn').click();
     await until(() => $('#va-desc-text'), 'התיאור השמור לא מוצג');
     assert.equal(calls.length, n);
-    assert.equal($('#va-desc-type-row .cosmic-chip-btn--on').textContent, 'סרטון דיבור');
+    assert.equal($('#va-desc-go').textContent, 'לכתוב תיאור חדש');
+    $('#va-modal-close').click();
+  });
+
+  test('25ב. תיאור ישן מלפני 06/11 (שהומצא) לא מוצג, ונכתב חדש מהתסריט', async () => {
+    const { $, open } = ui;
+    handlers.writeVideoDescription = async () => ({ data: { description: 'תיאור חדש מהתסריט', textHooks: [] } });
+    await open({
+      branch: 'reference', screen: 'read-aloud', transcript: 'שורה מהמקור', hook: 'שורה', finalScript: 'שורה מהתסריט שלי',
+      videoDescription: { description: 'תיאור ישן שהומצא', textHooks: [], videoType: 'סרטון דיבור', cta: '', createdAt: 1 },
+    }, '#va-read-done-btn');
+    $('#va-read-done-btn').click();
+    await until(() => $('#va-desc-btn'), 'הסיכום');
+    const before = calls.filter((c) => c.name === 'writeVideoDescription').length;
+    $('#va-desc-btn').click();
+    await until(() => $('#va-desc-text'), 'לא נכתב תיאור חדש');
+    assert.doesNotMatch($('#va-desc').textContent, /תיאור ישן שהומצא/);
+    assert.equal($('#va-desc-text').textContent, 'תיאור חדש מהתסריט');
+    const sent = calls.filter((c) => c.name === 'writeVideoDescription');
+    assert.equal(sent.length, before + 1);
+    assert.equal(sent.pop().payload.script, 'שורה מהתסריט שלי');
     $('#va-modal-close').click();
   });
 });

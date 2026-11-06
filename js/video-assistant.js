@@ -2670,7 +2670,11 @@ function renderSummary() {
     getState: () => state,
     patch: (changes) => { state = { ...state, ...changes }; saveAll().catch((err) => console.error('saveSession failed:', err)); },
     script: script || '',
-    getContext: async () => ({ domain: await myDomain(), audience: await myAudience() }),
+    /* 06/11/2026 (מאיה: "אני רוצה כבר שיידע לבד את התשובות וישר יכתוב"): גם לשון הפנייה מהפרופיל */
+    getContext: async () => {
+      const profile = (await getProfile()) || {};
+      return { domain: await myDomain(), audience: await myAudience(), pronoun: profile.pronoun || '' };
+    },
     openModal, copyBtn, wireCopyButtons, showToast, serverErrorText,
   });
   document.getElementById('va-restart-btn').addEventListener('click', restart);

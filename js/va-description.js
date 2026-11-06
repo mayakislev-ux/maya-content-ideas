@@ -3,19 +3,25 @@
    עם טקסט אז תיאור יותר ארוך שמפרט; אם זה סרטון ארוך של דיבור אז לרוב
    התיאור אמור להיות או המסר בקצרה או משפט שמסקרן; ואם יש הנעה לפעולה
    בסרטון אז להוסיף גם אותה. קאבר אין צורך. כן הוק של טקסט (טקסט על
-   המסך) כהצעה, כאופציה."
-
-   לכן שאלה אחת קצרה (איזה סרטון זה, ויש הנעה לפעולה?), ואז השרת
-   (writeVideoDescription) מחזיר תיאור ושלושה הוקים של טקסט. בלי האשטגים
-   ובלי קאבר. התוצאה נשמרת בפריט ב"התסריטים שלי" (state.videoDescription). */
+   המסך) כהצעה, כאופציה." */
+// 06/11/2026 (מאיה): "בכפתור של תיאור לסרטון הוא צריך לקחת את התיאור
+// מהתסריט אוטומטי שימי לב", "התיאור לסרטון שואל אותי שאלות אבל אני רוצה
+// כבר שיידע לבד את התשובות וישר יכתוב".
+/* לכן אין יותר שאלות (איזה סרטון, יש הנעה לפעולה): הלחיצה שולחת לשרת את
+   כל מה שהעוזר כבר יודע (התסריט, הרעיון, המסר/השורה התחתונה, הזווית,
+   ההוק, ההנעה לפעולה שנבחרה, התחום, הקהל ולשון הפנייה) והתיאור נכתב מיד.
+   סוג הסרטון מנוחש מהפורמט, ואם לא ברור השרת מסיק לבד מהתסריט.
+   התוצאה נשמרת בפריט ב"התסריטים שלי" (state.videoDescription). */
 import { functions } from './firebase-init.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
 
-export const VIDEO_TYPES = ['בירול קצר עם טקסט', 'סרטון דיבור', 'אחר'];
+/* 06/11/2026: תיאור שנשמר לפני התיקון נכתב מאפס ("הוא המציא סתם משהו"),
+   ולכן לא מציגים אותו. פתיחה של סרטון כזה כותבת תיאור חדש מהתסריט. */
+export const DESCRIPTION_VERSION = 2;
 
-/* ההנעה לפעולה שנבחרה בזיקוק התסריט (כתיבה מאפס), כמשפט לתיאור */
+/* ההנעה לפעולה שנבחרה בזיקוק התסריט (כתיבה מאפס) */
 const CTA_TEXT = {
-  'מעורבות': 'לייק, תגובה או שמירה',
+  'מעורבות': 'תגובה, לייק או שמירה',
   'עוקבים': 'לעקוב אחרי העמוד',
   'מכירה': 'לרכוש',
 };
@@ -28,12 +34,34 @@ export function ctaFromState(state) {
   return CTA_TEXT[s.ctaType] || String(s.ctaType);
 }
 
-/** ניחוש של סוג הסרטון לפי הפורמט, רק כשהוא ברור. אחרת ריק, והיא בוחרת. */
+/** ניחוש של סוג הסרטון לפי הפורמט, רק כשהוא ברור. אחרת ריק, והשרת מסיק. */
 export function guessVideoType(state) {
   const f = (state && state.selectedFormat) || '';
   if (f === 'תוכן ויזואלי יפה' || f === 'טקסט דינמי') return 'בירול קצר עם טקסט';
-  if (f === 'דיבור למצלמה' || f === 'שאלות מהתיבה בסטורי' || f === 'תגובה לתגובה') return 'סרטון דיבור';
+  if (f === 'דיבור למצלמה' || f === 'שאלות מהתיבה בסטורי' || f === 'תגובה לתגובה' || f === 'ראיון / שיחה') return 'סרטון דיבור';
   return '';
+}
+
+const cut = (v, n) => String(v || '').trim().slice(0, n);
+
+/** כל מה שהעוזר כבר יודע על הסרטון, בדיוק כמו שהיא כתבה. בלי לשאול כלום. */
+export function descriptionPayload(state, script, ctx) {
+  const s = state || {};
+  const c = ctx || {};
+  return {
+    script: cut(script, 8000),
+    idea: cut(s.ideaTopic || s.ideaBeforePackaging || s.ideaDescription, 2000),
+    message: cut(s.ideaPunchline, 1000),
+    angle: cut(s.packaging, 1000),
+    hook: cut(s.hook, 1000),
+    hookReinforcement: cut(s.hookReinforcement, 1000),
+    videoType: guessVideoType(s),
+    cta: cut(ctaFromState(s), 300),
+    ctaType: cut(s.ctaType, 40),
+    domain: cut(c.domain, 300),
+    audience: cut(c.audience, 600),
+    pronoun: cut(c.pronoun, 10),
+  };
 }
 
 let callable = null;
@@ -50,16 +78,12 @@ function escapeHtml(str) {
     .replace(/"/g, '&quot;');
 }
 
-function chipsHtml(list, picked, attr) {
-  return list.map((x) => `<button type="button" class="cosmic-btn cosmic-chip-btn${picked === x ? ' cosmic-chip-btn--on' : ''}" ${attr}="${escapeHtml(x)}" aria-pressed="${picked === x}">${escapeHtml(x)}</button>`).join('');
-}
-
 /**
- * פותח את חלון התיאור.
+ * פותח את חלון התיאור, ואם אין תיאור שמור, כותב מיד.
  * deps: {
  *   state                 הסטייט של הסרטון
  *   script                הטקסט הסופי
- *   getContext()          Promise<{ domain, audience }> מהפרופיל
+ *   getContext()          Promise<{ domain, audience, pronoun }> מהפרופיל
  *   onSave(result)        שמירה בפריט (state.videoDescription)
  *   openModal, copyBtn, wireCopyButtons, showToast, serverErrorText
  *   call(payload)         להזרקה בבדיקות, ברירת מחדל: הפונקציה בשרת
@@ -67,52 +91,22 @@ function chipsHtml(list, picked, attr) {
  */
 export function openDescriptionTool(deps) {
   const { state } = deps;
-  const saved = state.videoDescription || null;
-  let videoType = (saved && saved.videoType) || guessVideoType(state);
-  const prefillCta = saved ? (saved.cta || '') : ctaFromState(state);
-  let hasCta = saved ? Boolean(saved.cta) : Boolean(prefillCta);
+  const prev = state.videoDescription || null;
+  const saved = prev && prev.description && prev.version === DESCRIPTION_VERSION ? prev : null;
   let busy = false;
 
   const overlay = deps.openModal(`<div id="va-desc" class="va-desc">
     <h2 style="margin-top:0">✍️ תיאור לסרטון</h2>
-    <p class="va-desc__lede">תיאור לפוסט ושלוש הצעות להוק כתוב על המסך. בלי האשטגים ובלי קאבר.</p>
-    <p class="cosmic-field-label">איזה סרטון זה?</p>
-    <div class="cosmic-chip-row" id="va-desc-type-row">${chipsHtml(VIDEO_TYPES, videoType, 'data-vtype')}</div>
-    <p class="cosmic-field-label" style="margin-top:14px">יש בסרטון הנעה לפעולה?</p>
-    <div class="cosmic-chip-row" id="va-desc-cta-row">${chipsHtml(['כן', 'לא'], hasCta ? 'כן' : 'לא', 'data-hascta')}</div>
-    <div class="va-desc__cta" id="va-desc-cta-wrap"${hasCta ? '' : ' hidden'}>
-      <label class="cosmic-field-label" for="va-desc-cta">מה הצופים צריכים לעשות?</label>
-      <input type="text" class="cosmic-textarea va-desc__input" id="va-desc-cta" placeholder="למשל: לכתוב &quot;מדריך&quot; בתגובות" value="${escapeHtml(prefillCta)}">
-    </div>
-    <div class="cosmic-btn-row" style="margin-top:16px">
-      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-desc-go">${saved ? 'לכתוב תיאור חדש' : 'לכתוב תיאור'}</button>
-    </div>
+    <p class="va-desc__lede">נבנה מהתסריט שלך: המסר או המשפט הכי מסקרן, ובסוף ההנעה לפעולה. בלי האשטגים ובלי קאבר.</p>
     <div id="va-desc-result" aria-live="polite"></div>
+    <div class="cosmic-btn-row" style="margin-top:16px">
+      <button type="button" class="cosmic-btn" id="va-desc-go"${saved ? '' : ' hidden'}>לכתוב תיאור חדש</button>
+    </div>
   </div>`, { backdropClose: false });
 
   const $ = (sel) => overlay.querySelector(sel);
   const result = $('#va-desc-result');
-  const ctaWrap = $('#va-desc-cta-wrap');
-  const ctaInput = $('#va-desc-cta');
   const goBtn = $('#va-desc-go');
-
-  function pick(rowSel, attr, value) {
-    overlay.querySelectorAll(`${rowSel} [${attr}]`).forEach((b) => {
-      const on = b.getAttribute(attr) === value;
-      b.classList.toggle('cosmic-chip-btn--on', on);
-      b.setAttribute('aria-pressed', String(on));
-    });
-  }
-  overlay.querySelectorAll('#va-desc-type-row [data-vtype]').forEach((b) => b.addEventListener('click', () => {
-    videoType = b.getAttribute('data-vtype');
-    pick('#va-desc-type-row', 'data-vtype', videoType);
-  }));
-  overlay.querySelectorAll('#va-desc-cta-row [data-hascta]').forEach((b) => b.addEventListener('click', () => {
-    hasCta = b.getAttribute('data-hascta') === 'כן';
-    pick('#va-desc-cta-row', 'data-hascta', hasCta ? 'כן' : 'לא');
-    ctaWrap.hidden = !hasCta;
-    if (hasCta && !ctaInput.value.trim()) ctaInput.focus();
-  }));
 
   function showResult(r) {
     const hooks = (r.textHooks || []).filter(Boolean);
@@ -127,41 +121,28 @@ export function openDescriptionTool(deps) {
   }
 
   /* תיאור קודם לא נמחק בגלל ניסיון חדש שנכשל */
-  let last = saved && saved.description ? saved : null;
+  let last = saved;
   if (last) showResult(last);
 
-  goBtn.addEventListener('click', async () => {
+  async function write() {
     if (busy) return;
-    if (!videoType) {
-      deps.showToast('קודם לבחור איזה סרטון זה');
-      return;
-    }
-    const cta = hasCta ? ctaInput.value.trim() : '';
-    if (hasCta && !cta) {
-      deps.showToast('לכתוב מה ההנעה לפעולה, או לבחור "לא"');
-      ctaInput.focus();
-      return;
-    }
     busy = true;
-    goBtn.disabled = true;
-    goBtn.textContent = 'כותבים...';
-    result.innerHTML = '<p class="va-desc__wait">כותבים את התיאור, זה לוקח כמה שניות...</p>';
+    goBtn.hidden = true;
+    result.innerHTML = '<p class="va-desc__wait">כותבים את התיאור מהתסריט שלך, זה לוקח כמה שניות...</p>';
     try {
-      let ctx = { domain: '', audience: '' };
+      let ctx = { domain: '', audience: '', pronoun: '' };
       try { ctx = { ...ctx, ...(await deps.getContext()) }; } catch (err) { console.error('description context failed:', err); }
-      const s = deps.state;
-      const payload = {
-        script: String(deps.script || '').slice(0, 8000),
-        idea: String(s.ideaBeforePackaging || s.ideaDescription || '').slice(0, 2000),
-        hook: String(s.hook || '').slice(0, 1000),
-        videoType,
-        cta: cta.slice(0, 300),
-        domain: String(ctx.domain || '').slice(0, 300),
-        audience: String(ctx.audience || '').slice(0, 600),
-      };
+      const payload = descriptionPayload(deps.state, deps.script, ctx);
       const r = await (deps.call || writeVideoDescription)(payload);
       if (!r || !r.description) throw new Error('empty description');
-      const out = { description: r.description, textHooks: (r.textHooks || []).slice(0, 3), videoType, cta, createdAt: Date.now() };
+      const out = {
+        description: r.description,
+        textHooks: (r.textHooks || []).slice(0, 3),
+        videoType: payload.videoType,
+        cta: payload.cta,
+        version: DESCRIPTION_VERSION,
+        createdAt: Date.now(),
+      };
       last = out;
       showResult(out);
       deps.onSave(out);
@@ -172,9 +153,12 @@ export function openDescriptionTool(deps) {
       result.insertAdjacentHTML('afterbegin', `<p class="va-desc__error" role="alert">${escapeHtml(deps.serverErrorText(err, 'כתיבת התיאור'))}</p>`);
     } finally {
       busy = false;
-      goBtn.disabled = false;
-      goBtn.textContent = last ? 'לכתוב תיאור חדש' : 'לכתוב תיאור';
+      goBtn.hidden = false;
+      goBtn.textContent = last ? 'לכתוב תיאור חדש' : 'לנסות שוב';
     }
-  });
+  }
+
+  goBtn.addEventListener('click', write);
+  if (!saved) write();
   return overlay;
 }
