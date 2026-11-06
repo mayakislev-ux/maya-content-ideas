@@ -107,7 +107,9 @@ function groupLabel(header) {
  */
 function parseAudienceTab(rows) {
   const table = Array.isArray(rows) ? rows : [];
-  let headerAt = table.findIndex((r) => Array.isArray(r) && normLabel(r[0]).includes(AUDIENCE_HEADER));
+  /* "קהל היעד" או "קהל יעד", ובלית ברירה: שורה שבה B מתחיל ב"קבוצה" */
+  let headerAt = table.findIndex((r) => Array.isArray(r) && /שאלות לניתוח קהל/.test(normLabel(r[0])));
+  if (headerAt < 0) headerAt = table.findIndex((r) => Array.isArray(r) && /^קבוצה/.test(normLabel(r[1])));
   let columns;
   if (headerAt >= 0) {
     columns = [];
@@ -154,16 +156,22 @@ function parseAudienceTab(rows) {
 /* תווית קצרה לכל שאלה לפי מילת מפתח. הסדר חשוב: הספציפי קודם. */
 const PERSONA_LABELS = [
   { label: 'ביקורת מקצועית', match: (q) => q.includes('ביקורת') },
-  { label: 'החלומות שלך', match: (q) => q.includes('חלומות') || q.includes('חלום') },
-  { label: 'איפה חווית את הכאבים', match: (q) => /חוו|חיית|חווית/.test(q) && q.includes('כאב') },
+  { label: 'איפה חווית את זה בעצמך', match: (q) => /חוו|חיית|חווית/.test(q) && (q.includes('כאב') || q.includes('בעיות')) },
+  { label: 'איך את/ה חי/ה את החלומות שלהם', match: (q) => q.includes('חלומ') && /חיים|חיה|חי /.test(q) },
+  { label: 'החלומות של הקהל', match: (q) => q.includes('חלומות') || q.includes('חלום') },
+  { label: 'בעיות ופחדים של הקהל', match: (q) => q.includes('בעיות') || q.includes('פחדים') },
   { label: 'אג׳נדה עסקית', match: (q) => /אג['׳]?נד/.test(q) && q.includes('עסק') },
   { label: 'אג׳נדה אישית', match: (q) => /אג['׳]?נד/.test(q) && q.includes('איש') },
   { label: 'אג׳נדות', match: (q) => /אג['׳]?נד/.test(q) },
   { label: 'ערכים', match: (q) => q.includes('ערכים') || q.includes('ערכי') },
   { label: 'מה הקהל צריך לשמוע', match: (q) => q.includes('לשמוע') },
-  { label: 'במה את/ה שונה', match: (q) => q.includes('שונה') || q.includes('בידול') || q.includes('מבדל') || q.includes('מייחד') },
+  { label: 'במה את/ה שונה', match: (q) => q.includes('שונה') || q.includes('שונים') || q.includes('בידול') || q.includes('מבדל') || q.includes('מייחד') },
   { label: 'למה את/ה חזק/ה', match: (q) => q.includes('חזק') },
-  { label: 'תוצאות', match: (q) => q.includes('תוצאות') || q.includes('תוצאה') },
+  { label: 'תוצאות עקיפות', match: (q) => q.includes('עקיפות') },
+  { label: 'איפה השגת את זה בעצמך', match: (q) => q.includes('השגתם') || q.includes('השגת') },
+  { label: 'התוצאות שאת/ה מביא/ה', match: (q) => q.includes('תוצאות') || q.includes('תוצאה') },
+  { label: 'תכונות אופי', match: (q) => q.includes('תכונות') },
+  { label: 'סיפור שמעורר השראה', match: (q) => q.includes('השראה') },
   { label: 'הסיפור שלך', match: (q) => q.includes('סיפור') },
 ];
 

@@ -79,7 +79,8 @@ export function pickReference(list, previousId = null, rand = Math.random) {
   return options[Math.floor(rand() * options.length) % options.length];
 }
 
-export const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
+/* מתחת ל-4MB: בקידוד base64 זה עדיין מתחת לתקרה של Claude */
+export const MAX_IMAGE_BYTES = Math.floor(3.7 * 1024 * 1024);
 export const MAX_IMAGE_SIDE = 1600;
 const SENDABLE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 
@@ -394,6 +395,9 @@ async function loadTable(kind, { fresh = false } = {}) {
     renderTable();
     return;
   }
+  /* לחיצה כפולה על הדלת לא קוראת את הקובץ פעמיים */
+  if (table.loading && table.loadingKind === kind && !fresh) return;
+  table.loadingKind = kind;
   table.data = null;
   table.loading = true;
   el('no-idea-rows').innerHTML = '';

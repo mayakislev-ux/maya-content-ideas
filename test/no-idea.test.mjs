@@ -113,13 +113,13 @@ describe('פרסונה שיווקית: שאלה | תשובה', () => {
     assert.deepEqual(labels.slice(0, 4), ['הסיפור שלך', 'אג׳נדה עסקית', 'ערכים', 'במה את/ה שונה']);
     assert.ok(!labels.includes('ביקורת מקצועית'), 'שאלה בלי תשובה נכנסה');
     assert.ok(labels[4].length <= 27 && labels[4].endsWith('…'), labels[4]);
-    assert.equal(sections.personaLabel('איפה חווית בעצמך את הכאבים של הקהל?'), 'איפה חווית את הכאבים');
-    assert.equal(sections.personaLabel('מה החלומות שלך ואיך את חיה אותם?'), 'החלומות שלך');
+    assert.equal(sections.personaLabel('איפה חווית בעצמך את הכאבים של הקהל?'), 'איפה חווית את זה בעצמך');
+    assert.equal(sections.personaLabel('מה החלומות שלך ואיך את חיה אותם?'), 'איך את/ה חי/ה את החלומות שלהם');
     assert.equal(sections.personaLabel('מה הקהל צריך לשמוע ממך?'), 'מה הקהל צריך לשמוע');
     assert.equal(sections.personaLabel('למה את חזקה במה שאת עושה?'), 'למה את/ה חזק/ה');
     assert.equal(sections.personaLabel('איזו ביקורת מקצועית יש לך?'), 'ביקורת מקצועית');
     assert.equal(sections.personaLabel('מה האג׳נדה האישית שלך?'), 'אג׳נדה אישית');
-    assert.equal(sections.personaLabel('אילו תוצאות הבאת ללקוחות?'), 'תוצאות');
+    assert.equal(sections.personaLabel('אילו תוצאות הבאת ללקוחות?'), 'התוצאות שאת/ה מביא/ה');
   });
 
   test('תשובה ארוכה מתפרקת ליחידות: כותרות ##, מספור 1️⃣, פסקאות', () => {
@@ -252,7 +252,8 @@ describe('ideasFromImage: צילום מסך של שאלה', () => {
     assert.equal(msg[0].source.data, PNG.toString('base64'));
     assert.match(msg[1].text, /לשון רבים ניטרלית/);
     assert.match(msg[1].text, /categoryIndex/);
-    assert.equal(state.claude[0].messages[1].content, '{');
+    /* המודל לא תומך ב-prefill: ההודעה האחרונה היא של המשתמש */
+    assert.equal(state.claude[0].messages.length, 1);
     assert.equal(state.committed, 1);
     /* גם data URL וגם JPEG */
     await make().h(req({ image: `data:image/jpeg;base64,${JPG.toString('base64')}`, mediaType: 'image/jpeg' }));
@@ -323,9 +324,10 @@ describe('ideasFromRow: שורה -> 3 רעיונות', () => {
     const { h, state } = make();
     await assert.rejects(h(req({ kind: 'x', section: 'a', row: 'b' })), /מקור לא מוכר/);
     await assert.rejects(h(req({ kind: 'audience', section: 'a', row: '   ' })), /חסר השורה/);
-    await assert.rejects(h(req({ kind: 'audience', section: 'a', row: 'א'.repeat(ifs.MAX_ROW_CHARS + 1) })), /ארוך מדי/);
     await assert.rejects(h(req({ kind: 'audience', section: 'a', row: 5 })), /לא תקין/);
     assert.equal(state.rate, 0);
+    /* שורה ארוכה מהקובץ נחתכת ועוברת, אחרת היא הייתה נכשלת בכל ניסיון */
+    await assert.doesNotReject(h(req({ kind: 'audience', section: 'a', row: 'א'.repeat(ifs.MAX_ROW_CHARS + 50) })));
     const empty = make({ ideas: [] });
     await assert.rejects(empty.h(req({ kind: 'audience', section: 'a', row: 'שורה' })), /לא יצאו רעיונות/);
     assert.equal(empty.state.released, 1);
