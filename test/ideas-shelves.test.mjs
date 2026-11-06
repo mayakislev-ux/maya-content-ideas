@@ -129,6 +129,8 @@ describe('המתג', () => {
     const base = readFileSync(new URL('../css/style.css', import.meta.url), 'utf8');
     const css = readFileSync(new URL('../css/ideas-shelves.css', import.meta.url), 'utf8');
     const defined = new Set([...base.matchAll(/(--[\w-]+)\s*:/g)].map((m) => m[1]));
+    /* --c הוא צבע הקטגוריה שהכרטיס מקבל inline מ-categoryColorVar, לא טוקן */
+    defined.add('--c');
     for (const [, name] of css.matchAll(/var\((--[\w-]+)/g)) assert.ok(defined.has(name), `טוקן לא קיים: ${name}`);
     assert.ok(!/(^|[;{\s])--[\w-]+\s*:/.test(css.replace(/\/\*[\s\S]*?\*\//g, '')), 'ה-CSS החדש מגדיר טוקן משלו');
   });
@@ -214,27 +216,31 @@ describe('המסך (jsdom)', { skip: hasJsdom ? false : 'jsdom לא מותקן' 
     assert.deepEqual(shelves.map((s) => s.querySelector('.ideas-shelf__title').textContent),
       ['מביא אנשים חדשים', 'בונה אמון', 'מזמין לקנות']);
     for (const s of shelves) assert.ok(s.querySelector('.ideas-shelf__explain').textContent.length > 10);
-    const titles = (s) => [...s.querySelectorAll('.archive-item strong')].map((t) => t.textContent);
+    const titles = (s) => [...s.querySelectorAll('.calm-card__title')].map((t) => t.textContent);
     assert.deepEqual(titles(shelves[0]), ['הטעות שכולם עושים', 'מה הסלבס לא מספרים']);
     assert.deepEqual(titles(shelves[1]), ['איך עזבתי את ההייטק', 'למה פילינג ביתי מזיק', 'רעיון שעוד לא סווג']);
     assert.deepEqual(titles(shelves[2]), ['הלפני ואחרי של נועה']);
     assert.equal(shelves[1].querySelector('.ideas-shelf__count').textContent, '3 רעיונות');
     assert.equal(shelves[2].querySelector('.ideas-shelf__count').textContent, 'רעיון אחד');
     /* שום רעיון פעיל לא נעלם */
-    assert.equal($$('#archive-list .archive-item-outer').length, 6);
+    assert.equal($$('#archive-list .calm-card').length, 6);
+    /* צ'יפי הקטגוריה מוסתרים במסך השקט, והקטגוריה נבחרת מתוך "עוד סינון" */
+    assert.ok($('#archive-view').classList.contains('ideas-calm'));
+    assert.equal($('#filter-category').hidden, false);
+    assert.ok($('#random-idea-btn').closest('.more-filters-details'));
     /* אין סולם ערך גבוה/בינוני/נמוך */
     assert.ok(!/ערך גבוה|ערך בינוני|ערך נמוך/.test($('#archive-view').textContent));
   });
 
-  test('הכרטיס במדף הוא אותו כרטיס: לחיצה פותחת עריכה, והעתקה ובוצע במקומם', () => {
+  test('הכרטיס במדף שקט: לחיצה פותחת את הרעיון, והעתקה ובוצע נשארים כאייקונים', () => {
     archive.setShelvesLayout(true);
-    const card = $('.ideas-shelf[data-shelf="מכירה"] .archive-item');
-    card.click();
+    const card = $('.ideas-shelf[data-shelf="מכירה"] .calm-card');
+    card.querySelector('.calm-card__open').click();
     assert.equal(clicked.at(-1), 's1');
-    assert.ok(card.querySelector('.copy-idea-btn'));
-    assert.match(card.querySelector('.complete-idea-btn').textContent, /בוצע/);
-    assert.ok(card.parentElement.querySelector('.swipe-action-delete'));
-    assert.ok(card.querySelector('.rating-tag'));
+    assert.ok(card.querySelector('[aria-label="העתקת הרעיון"]'));
+    assert.ok(card.querySelector('[aria-label="סימון שהרעיון בוצע"]'));
+    /* בלי שורת התגיות הישנה */
+    assert.equal(card.querySelector('.rating-tag, .copy-idea-btn, .complete-idea-btn'), null);
   });
 
   test('כל הפקדים הישנים של המסך עדיין קיימים ועובדים עם המדפים', () => {

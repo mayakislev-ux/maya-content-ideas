@@ -1,4 +1,4 @@
-import { filterIdeas, sortIdeas, categoryColorVar, categoryIcon, CATEGORIES } from './ideas-logic.js';
+import { filterIdeas, sortIdeas, categoryColorVar, categoryIcon, CATEGORIES, STRONG_RATING } from './ideas-logic.js';
 import { getInstantThumbnail, fetchThumbnail } from './video-preview.js';
 import { addQuickIdea, markIdeaCompleted, uncompleteIdea, deleteIdea, restoreIdea } from './ideas-store.js';
 import { showToast } from './toast.js';
@@ -77,6 +77,21 @@ let lastOnItemClick = null;
 
 export function setShelvesLayout(on) {
   shelvesLayout = Boolean(on);
+  /* 06/11/2026 ערב (מאיה, על המסך שעלה: "זה לא דומה למסך שהכנת לי...
+     מרגיש מאוד עמוס"): במדפים המסך שקט כמו במוקאפ 02. צ'יפי הקטגוריה
+     והקובייה לא על המסך: הקטגוריה עוברת לבחירה בתוך "עוד סינון", והקובייה
+     עוברת לשם, כדי שלא ייעלמו. */
+  const view = document.getElementById('archive-view');
+  if (view) view.classList.toggle('ideas-calm', shelvesLayout);
+  const details = document.querySelector('#archive-view .more-filters-details');
+  const dice = document.getElementById('random-idea-btn');
+  const catSelect = document.getElementById('filter-category');
+  if (shelvesLayout && details && dice && dice.parentElement !== details) details.appendChild(dice);
+  if (catSelect) {
+    catSelect.hidden = !shelvesLayout;
+    if (shelvesLayout) catSelect.removeAttribute('aria-hidden');
+    else catSelect.setAttribute('aria-hidden', 'true');
+  }
   if (lastOnItemClick) applyFilters(lastOnItemClick);
 }
 
@@ -520,13 +535,101 @@ function renderShelves(list, ideas, onItemClick, { hideEmpty }) {
       empty.textContent = 'עדיין אין כאן רעיונות';
       inner.appendChild(empty);
     }
-    for (const idea of shelf.ideas) {
-      inner.appendChild(renderItem(idea, onItemClick, index));
+    shelf.ideas.forEach((idea, i) => {
+      const card = renderCalmCard(idea, onItemClick);
+      /* בטלפון רואים 3 ראשונים בכל מדף, והשאר בלחיצה */
+      if (i >= SHELF_PREVIEW) card.classList.add('calm-card--extra');
+      inner.appendChild(card);
       index += 1;
-    }
+    });
     li.appendChild(inner);
+    if (shelf.ideas.length > SHELF_PREVIEW) {
+      const more = document.createElement('button');
+      more.type = 'button';
+      more.className = 'ideas-shelf__more';
+      const extra = shelf.ideas.length - SHELF_PREVIEW;
+      more.textContent = extra === 1 ? 'עוד רעיון אחד' : `עוד ${extra} רעיונות`;
+      more.addEventListener('click', () => {
+        li.classList.add('ideas-shelf--open');
+        more.remove();
+      });
+      li.appendChild(more);
+    }
     list.appendChild(li);
   }
+}
+
+const SHELF_PREVIEW = 3;
+
+/* כרטיס שקט למדפים, כמו במוקאפ: הרעיון, נקודת קטגוריה ו-🔥 אם חייב לצלם.
+   לחיצה פותחת את הרעיון (עריכה, צ'אט, זווית, מחיקה). שני כפתורי אייקון
+   קטנים נשארים, כדי ש"בוצע" ו"העתקה" לא ייעלמו מהמסך. */
+function renderCalmCard(idea, onItemClick) {
+  const li = document.createElement('li');
+  li.className = 'calm-card';
+  li.dataset.id = idea.id;
+
+  const open = document.createElement('button');
+  open.type = 'button';
+  open.className = 'calm-card__open';
+  const text = document.createElement('p');
+  text.className = 'calm-card__title';
+  text.textContent = idea.title || '';
+  open.appendChild(text);
+
+  const meta = document.createElement('span');
+  meta.className = 'calm-card__meta';
+  if (idea.category) {
+    const cat = document.createElement('span');
+    cat.className = 'calm-card__cat';
+    cat.style.setProperty('--c', categoryColorVar(idea.category));
+    cat.textContent = idea.category;
+    meta.appendChild(cat);
+  } else {
+    const draft = document.createElement('span');
+    draft.className = 'calm-card__cat';
+    draft.textContent = 'טיוטה';
+    meta.appendChild(draft);
+  }
+  if (idea.rating === STRONG_RATING) {
+    const fire = document.createElement('span');
+    fire.className = 'calm-card__fire';
+    fire.textContent = '🔥 חייב לצלם';
+    meta.appendChild(fire);
+  }
+  open.appendChild(meta);
+  open.addEventListener('click', () => onItemClick(idea));
+  li.appendChild(open);
+
+  const tools = document.createElement('span');
+  tools.className = 'calm-card__tools';
+  const copy = document.createElement('button');
+  copy.type = 'button';
+  copy.className = 'calm-card__tool';
+  copy.setAttribute('aria-label', 'העתקת הרעיון');
+  copy.innerHTML = COPY_ICON_SVG;
+  copy.addEventListener('click', (e) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(idea.title || '').then(() => showToast('✓ הרעיון הועתק'), () => showToast('ההעתקה נכשלה'));
+  });
+  const done = document.createElement('button');
+  done.type = 'button';
+  done.className = 'calm-card__tool';
+  done.setAttribute('aria-label', 'סימון שהרעיון בוצע');
+  done.textContent = '✓';
+  done.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    try {
+      await markIdeaCompleted(idea.id);
+      showToast('✓ סומן כבוצע');
+    } catch (err) {
+      console.error('toggle complete failed:', err);
+      showToast('הפעולה נכשלה, נסו שוב');
+    }
+  });
+  tools.append(copy, done);
+  li.appendChild(tools);
+  return li;
 }
 
 function renderItem(idea, onItemClick, index = 0) {

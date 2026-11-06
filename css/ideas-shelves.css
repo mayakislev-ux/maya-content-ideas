@@ -160,3 +160,107 @@
   .home-mic-card,
   .home-mic-card__mic { transition: none; }
 }
+
+/* ---------- 06/11/2026 ערב: מסך שקט כמו במוקאפ 02 ----------
+   מאיה: "זה לא דומה למסך שהכנת לי... מרגיש מאוד עמוס". במדפים אין צ'יפי
+   קטגוריה ואין קובייה על המסך (שניהם עברו לתוך "עוד סינון"), והכרטיסים
+   שקטים: הרעיון, נקודת קטגוריה ו-🔥. */
+.ideas-calm #quick-filter-chips { display: none; }
+.ideas-calm .more-filters-details .random-btn { margin: 0.6rem 0 0; }
+.ideas-calm .archive-controls-section { gap: 0.6rem; }
+
+.calm-card {
+  position: relative;
+  list-style: none;
+  background: var(--card-bg);
+  border-radius: var(--card-radius-sm);
+  box-shadow: var(--card-shadow);
+  transition: transform 0.15s var(--ease-snap);
+}
+.calm-card:hover { transform: translateY(-1px); }
+.calm-card__open {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.85rem 1rem 0.8rem 4.6rem;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: right;
+  cursor: pointer;
+  border-radius: inherit;
+}
+.calm-card__open:focus-visible { outline: 3px solid var(--accent-300); outline-offset: 2px; }
+.calm-card__title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.calm-card__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.8rem; }
+.calm-card__cat {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+.calm-card__cat::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--c, var(--border-color));
+}
+.calm-card__fire { font-size: 0.78rem; font-weight: 700; color: var(--warm-strong); }
+.calm-card__tools {
+  position: absolute;
+  top: 0.55rem;
+  left: 0.55rem;
+  display: flex;
+  gap: 0.2rem;
+}
+.calm-card__tool {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.95rem;
+  cursor: pointer;
+  opacity: 0.55;
+}
+.calm-card__tool svg { width: 16px; height: 16px; }
+.calm-card__tool:hover, .calm-card__tool:focus-visible { opacity: 1; background: var(--accent-tint); color: var(--accent); }
+
+.ideas-shelf__more {
+  align-self: center;
+  margin-top: 0.2rem;
+  padding: 0.45rem 1rem;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+/* בטלפון 3 ראשונים בכל מדף. במחשב הכל, בלי כפתור. */
+@media (max-width: 899px) {
+  .ideas-shelf:not(.ideas-shelf--open) .calm-card--extra { display: none; }
+}
+@media (min-width: 900px) {
+  .ideas-shelf__more { display: none; }
+}
