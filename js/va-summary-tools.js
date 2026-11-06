@@ -17,7 +17,7 @@ export function summaryToolsHtml() {
  *   getState()            הסטייט של העוזר עכשיו
  *   patch(changes)        כתיבה לסטייט ושמירה (הסשן והפריט ב"התסריטים שלי")
  *   script                הטקסט הסופי
- *   getContext()          Promise<{ domain, audience }>
+ *   getContext()          Promise<{ domain, audience, pronoun }>
  *   openModal, copyBtn, wireCopyButtons, showToast, serverErrorText
  * }
  */
