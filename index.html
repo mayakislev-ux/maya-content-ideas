@@ -863,7 +863,10 @@
       <textarea id="field-title" class="field-title-textarea field-hero-textarea" placeholder="על מה הסרטון הזה?" required></textarea>
       <p id="field-title-hint" class="field-hint" hidden>רעיון ארוך - אפשר גם, אבל שקלי/שקול אם יש לקצר לשם קריאות נוחה יותר</p>
 
-      <div class="form-section">
+      <!-- 06/11/2026 (מאיה): בטופס הקצר (idea-form--simple, js/idea-form.js)
+           כל מה שמסומן data-simple-hide לא מוצג: דירוג, קהל, שלב שכנוע,
+           פורמט וסדרה. הסוג, הקהל והשלב מסווגים לבד בשמירה. -->
+      <div class="form-section" data-simple-hide>
         <label class="field-label-row">כמה הרעיון הזה חזק לדעתך? *</label>
         <div class="rating-chips" id="rating-chips">
           <button type="button" class="rating-chip" data-value="🔥 חייב לצלם" aria-pressed="false">🔥 חייב לצלם</button>
@@ -873,7 +876,7 @@
         <input type="hidden" id="field-rating">
       </div>
 
-      <div class="form-section">
+      <div class="form-section" data-simple-hide>
         <label>למי הסרטון מדבר? *
           <select id="field-audience-scope" required>
             <option value="">בחרו</option>
@@ -884,11 +887,11 @@
         </label>
       </div>
 
-      <div class="form-section">
-        <label class="field-label-row">איזה סוג רעיון זה? *
+      <div class="form-section" id="category-section">
+        <label class="field-label-row"><span id="category-label-text">איזה סוג רעיון זה? *</span>
           <button type="button" id="category-info-btn" class="info-btn" aria-label="מה זה אומר?">ⓘ</button>
         </label>
-        <p class="field-subhint">בוחרים אחת</p>
+        <p class="field-subhint" id="category-subhint">בוחרים אחת</p>
         <div class="category-chips" id="category-chips">
           <button type="button" class="category-chip" data-value="בעל ערך" style="--chip-color: var(--cat-baal-erech)" aria-pressed="false">בעל ערך</button>
           <button type="button" class="category-chip" data-value="אישי" style="--chip-color: var(--cat-ishi)" aria-pressed="false">אישי</button>
@@ -903,7 +906,7 @@
            זה עונה על זה"): השדה היה חובה וחסם שמירה. הצ'קליסט של שבעת
            התכנים החשובים מכסה את שלושת השלבים, ולכן הוא שדה רשות עכשיו.
            הוא נשאר במסך כי הוא ממולא על רעיונות קיימים ומשמש לסינון. -->
-      <div class="form-section form-section-secondary">
+      <div class="form-section form-section-secondary" data-simple-hide>
         <label class="field-label-row">שלב שכנוע (אופציונלי)
           <button type="button" id="persuasion-info-btn" class="info-btn" aria-label="מה זה אומר?">ⓘ</button>
         </label>
@@ -916,7 +919,7 @@
         </select>
       </div>
 
-      <div class="form-section form-section-secondary">
+      <div class="form-section form-section-secondary" data-simple-hide>
         <label>פורמט הנגשה (אופציונלי)
           <select id="field-format">
             <option value="">בחרו אם כבר ידוע</option>
@@ -938,7 +941,7 @@
         </label>
       </div>
 
-      <div class="form-section form-section-secondary">
+      <div class="form-section form-section-secondary" data-simple-hide>
         <label class="field-checkbox-row">
           <input type="checkbox" id="field-is-series">
           זה חלק מסדרת פרקים (אופציונלי)
@@ -951,7 +954,7 @@
       </div>
 
       <div class="form-section form-section-secondary">
-        <label>לינק לסרטון (אופציונלי)<input id="field-link" type="url"></label>
+        <label><span id="field-link-label">לינק לסרטון (אופציונלי)</span><input id="field-link" type="url"></label>
       </div>
 
       <p id="form-error" class="error-text" role="alert" hidden></p>

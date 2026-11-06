@@ -1,6 +1,6 @@
-import { filterIdeas, sortIdeas, categoryColorVar, categoryIcon, CATEGORIES, STRONG_RATING } from './ideas-logic.js';
+import { filterIdeas, sortIdeas, categoryColorVar, categoryIcon, CATEGORIES } from './ideas-logic.js';
 import { getInstantThumbnail, fetchThumbnail } from './video-preview.js';
-import { addQuickIdea, markIdeaCompleted, uncompleteIdea, deleteIdea, restoreIdea } from './ideas-store.js';
+import { addQuickIdea, markIdeaCompleted, uncompleteIdea, deleteIdea, restoreIdea, deleteIdeasBulk, restoreIdeasBulk } from './ideas-store.js';
 import { showToast } from './toast.js';
 import { serverErrorText } from './server-error.js';
 import { animateCountUp } from './count-up.js';
@@ -8,7 +8,8 @@ import { burstConfetti } from './confetti.js';
 import { getProfile } from './user-profile.js';
 import { showView } from './view-router.js';
 import { isClientView } from './client-view.js';
-import { groupIntoShelves } from './ideas-shelves.js';
+import { CATEGORY_GROUPS, UNSORTED_GROUP, groupByCategory, ideasCountLabel } from './ideas-shelves.js';
+import { confirmDialog } from './confirm-dialog.js';
 
 // אימוג'י (📋/🔍) לא היו מובנים כאייקוני פעולה - במיוחד 🔍 (זכוכית
 // מגדלת), שנקרא באופן טבעי כ"חיפוש" ולא כ"בדיקה חוזרת בצ'אט". אייקוני
@@ -69,28 +70,57 @@ async function celebrateMilestone(count, ideas) {
 let currentIdeas = [];
 let showingCompleted = false;
 
-/* 06/11/2026: שלושת המדפים (js/ideas-shelves.js). כבוי כברירת מחדל, ו-app.js
-   מדליק אותו לפי ideasRedesignFor אחרי ההתחברות. כשהוא כבוי המסך זהה
-   לחלוטין למה שהיה. */
-let shelvesLayout = false;
+/* 06/11/2026: העיצוב החדש של מסך הרעיונות (js/ideas-shelves.js). כבוי
+   כברירת מחדל, ו-app.js מדליק אותו לפי ideasRedesignFor אחרי ההתחברות.
+   כשהוא כבוי המסך זהה לחלוטין למה שהיה. */
+let redesign = false;
 let lastOnItemClick = null;
+/* הכפתור הפתוח: '' (הכל סגור), אחד משלושת הסוגים, או UNSORTED_GROUP */
+let openGroup = '';
+/* "רעיונות שבוצעו": מצב בחירה למחיקה מרובה */
+let selectMode = false;
+const selectedIds = new Set();
+let bulkBusy = false;
 
-export function setShelvesLayout(on) {
-  shelvesLayout = Boolean(on);
-  /* 06/11/2026 ערב (מאיה, על המסך שעלה: "זה לא דומה למסך שהכנת לי...
-     מרגיש מאוד עמוס"): במדפים המסך שקט כמו במוקאפ 02. צ'יפי הקטגוריה
-     והקובייה לא על המסך: הקטגוריה עוברת לבחירה בתוך "עוד סינון", והקובייה
-     עוברת לשם, כדי שלא ייעלמו. */
+/* בטלפון האייפון מתעלם מ-hidden על <option>, ולכן המיון "🔥 הכי חזק קודם"
+   יוצא מהרשימה בפועל ונחזר כשהמתג כבוי. */
+let ratingSortOption = null;
+
+export function setIdeasRedesign(on) {
+  redesign = Boolean(on);
+  /* 06/11/2026 ערב (מאיה: "מרגיש מאוד עמוס"): צ'יפי הקטגוריה והקובייה לא
+     על המסך. הקטגוריה היא עכשיו שלושת הכפתורים, והקובייה עוברת ל"עוד סינון". */
   const view = document.getElementById('archive-view');
-  if (view) view.classList.toggle('ideas-calm', shelvesLayout);
+  if (view) view.classList.toggle('ideas-cats', redesign);
   const details = document.querySelector('#archive-view .more-filters-details');
   const dice = document.getElementById('random-idea-btn');
-  const catSelect = document.getElementById('filter-category');
-  if (shelvesLayout && details && dice && dice.parentElement !== details) details.appendChild(dice);
-  if (catSelect) {
-    catSelect.hidden = !shelvesLayout;
-    if (shelvesLayout) catSelect.removeAttribute('aria-hidden');
-    else catSelect.setAttribute('aria-hidden', 'true');
+  if (redesign && details && dice && dice.parentElement !== details) details.appendChild(dice);
+  /* הטופס כבר לא "מלא": רק הרעיון ולינק, והשאר מסווג לבד */
+  const addBtn = document.getElementById('add-idea-top-btn');
+  if (addBtn) addBtn.textContent = redesign ? '+ רעיון חדש' : '+ רעיון מלא';
+
+  /* מאיה: "את החלק של חייב לצלם שווה לצלם - להוריד לגמרי". בלי דירוג אין
+     סינון לפי דירוג ואין מיון לפיו. */
+  const ratingFilter = document.getElementById('filter-rating');
+  if (ratingFilter) {
+    ratingFilter.hidden = redesign;
+    if (redesign) ratingFilter.value = '';
+  }
+  const sort = document.getElementById('sort-order');
+  if (sort) {
+    const opt = sort.querySelector('option[value="rating"]');
+    if (redesign && opt) {
+      if (sort.value === 'rating') sort.value = 'newest';
+      ratingSortOption = opt;
+      opt.remove();
+    } else if (!redesign && !opt && ratingSortOption) {
+      sort.appendChild(ratingSortOption);
+    }
+  }
+  if (!redesign) {
+    openGroup = '';
+    selectMode = false;
+    selectedIds.clear();
   }
   if (lastOnItemClick) applyFilters(lastOnItemClick);
 }
@@ -382,6 +412,8 @@ export function wireArchiveControls(onItemClick) {
   const toggleBtn = document.getElementById('completed-toggle-btn');
   toggleBtn.addEventListener('click', () => {
     showingCompleted = !showingCompleted;
+    selectMode = false;
+    selectedIds.clear();
     toggleBtn.textContent = showingCompleted ? 'חזרה לרעיונות פעילים' : 'רעיונות שבוצעו';
     applyFilters(onItemClick);
   });
@@ -458,11 +490,20 @@ export function wireArchiveControls(onItemClick) {
 function applyFilters(onItemClick) {
   lastOnItemClick = onItemClick;
   const text = document.getElementById('search-input').value;
-  const category = document.getElementById('filter-category').value;
+  const categorySelect = document.getElementById('filter-category');
+  let category = categorySelect.value;
   const audienceScope = document.getElementById('filter-audience-scope').value;
   const persuasionStage = document.getElementById('filter-persuasion').value;
-  const rating = document.getElementById('filter-rating').value;
+  const rating = redesign ? '' : document.getElementById('filter-rating').value;
   const sortOrder = document.getElementById('sort-order').value;
+  /* בעיצוב החדש הקטגוריה היא הכפתור הפתוח. "טיוטות ממתינות לסיווג"
+     במסך הבית בוחר '__none__' בתפריט הנסתר, וכאן זה פותח את הכניסה
+     של מה שעוד לא סווג. */
+  if (redesign && category) {
+    openGroup = category === '__none__' ? UNSORTED_GROUP : category;
+    categorySelect.value = '';
+    category = '';
+  }
   const scoped = currentIdeas.filter((idea) => Boolean(idea.completedAt) === showingCompleted);
   const filtered = filterIdeas(scoped, { text, category, audienceScope, persuasionStage, rating });
   const sorted = sortIdeas(filtered, sortOrder);
@@ -471,25 +512,39 @@ function applyFilters(onItemClick) {
 
   const list = document.getElementById('archive-list');
   list.innerHTML = '';
-  list.classList.toggle('archive-list--shelves', shelvesLayout && !showingCompleted);
+  list.classList.toggle('archive-list--cats', redesign && !showingCompleted);
+  const selecting = redesign && showingCompleted && selectMode;
+  document.body.classList.toggle('ideas-selecting', selecting);
+
+  if (redesign && !showingCompleted) {
+    const unfiltered = sortIdeas(filterIdeas(scoped, { audienceScope, persuasionStage }), sortOrder);
+    renderCategoryBoard(list, { all: unfiltered, matches: sorted, text: text.trim(), onItemClick,
+      filtering: Boolean(audienceScope || persuasionStage) });
+    return;
+  }
+
+  /* מחוץ למצב בחירה הסרגל בראש הרשימה. במצב בחירה הוא בסוף ונדבק לתחתית */
+  if (redesign && showingCompleted && !selecting) renderDoneToolbar(list, scoped, sorted);
 
   if (!sorted.length) {
     const empty = document.createElement('li');
     empty.className = 'archive-empty-state';
     if (currentIdeas.length === 0) {
-      empty.innerHTML = '<div class="archive-empty-emoji">🌱</div><p>עדיין שקט כאן - הרעיון הראשון מחכה שיכתבו אותו ב"+ רעיון מלא" למעלה</p>';
+      const addLabel = redesign ? '+ רעיון חדש' : '+ רעיון מלא';
+      empty.innerHTML = `<div class="archive-empty-emoji">🌱</div><p>עדיין שקט כאן - הרעיון הראשון מחכה שיכתבו אותו ב"${addLabel}" למעלה</p>`;
+    } else if (redesign && showingCompleted && !scoped.length) {
+      empty.innerHTML = '<div class="archive-empty-emoji">✓</div><p>אין כרגע רעיונות שבוצעו</p>';
     } else {
       empty.innerHTML = '<div class="archive-empty-emoji">🔍</div><p>כלום לא תואם את החיפוש הזה - נסו מילה אחרת או נקו את הסינון</p>';
     }
     list.appendChild(empty);
+    if (selecting) renderDoneToolbar(list, scoped, sorted);
     return;
   }
 
-  /* 06/11/2026: במדפים כל כרטיס הוא אותו כרטיס בדיוק (renderItem), עם
-     אותן פעולות. "רעיונות שבוצעו" נשארים רשימה אחת: זה ארכיון, לא תכנון. */
-  if (shelvesLayout && !showingCompleted) {
-    const filtering = Boolean(text.trim() || category || audienceScope || persuasionStage || rating);
-    renderShelves(list, sorted, onItemClick, { hideEmpty: filtering });
+  if (selecting) {
+    sorted.forEach((idea) => list.appendChild(renderSelectRow(idea)));
+    renderDoneToolbar(list, scoped, sorted);
     return;
   }
 
@@ -498,73 +553,151 @@ function applyFilters(onItemClick) {
   });
 }
 
-const SHELF_SVG_OPEN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">';
+/* ---------- שלושת הכפתורים ----------
+   06/11/2026 (מאיה: "3 כפתורים בולטים בצבעים שונים, הערך ירוק, החיבור
+   האישי ורוד והמכירתי אדום ואז רק שלוחצים נפתחים הרעיונות תחת אותה
+   קטגוריה ושיהיה אפשר גם לסגור בקלות"). כפתור אחד פתוח בכל פעם. בטלפון
+   הרשימה נפתחת ממש מתחת לכפתור (אקורדיון), ובמחשב הכפתורים בשורה אחת
+   והרשימה נפתחת מתחתם לכל הרוחב (css/ideas-shelves.css). */
+const BOARD_SVG_OPEN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">';
+const CHEVRON_SVG = `${BOARD_SVG_OPEN}<polyline points="6 9 12 15 18 9"/></svg>`;
+const PANEL_ID = 'cat-panel';
 
-function renderShelves(list, ideas, onItemClick, { hideEmpty }) {
-  let index = 0;
-  for (const shelf of groupIntoShelves(ideas)) {
-    if (hideEmpty && !shelf.ideas.length) continue;
-    const li = document.createElement('li');
-    li.className = `ideas-shelf ideas-shelf--${shelf.tone}`;
-    li.dataset.shelf = shelf.id;
+function toggleGroup(id) {
+  openGroup = openGroup === id ? '' : id;
+  rerenderKeepingFocus(`[data-group="${id}"]`);
+}
 
-    const head = document.createElement('div');
-    head.className = 'ideas-shelf__head';
-    const icon = document.createElement('span');
-    icon.className = 'ideas-shelf__icon';
-    icon.innerHTML = `${SHELF_SVG_OPEN}${shelf.icon}</svg>`;
-    const title = document.createElement('h3');
-    title.className = 'ideas-shelf__title';
-    title.textContent = shelf.title;
-    const count = document.createElement('span');
-    count.className = 'ideas-shelf__count';
-    count.textContent = shelf.ideas.length === 1 ? 'רעיון אחד' : `${shelf.ideas.length} רעיונות`;
-    head.append(icon, title, count);
-    li.appendChild(head);
-
-    const explain = document.createElement('p');
-    explain.className = 'ideas-shelf__explain';
-    explain.textContent = shelf.explain;
-    li.appendChild(explain);
-
-    const inner = document.createElement('ul');
-    inner.className = 'ideas-shelf__list';
-    if (!shelf.ideas.length) {
-      const empty = document.createElement('li');
-      empty.className = 'ideas-shelf__empty';
-      empty.textContent = 'עדיין אין כאן רעיונות';
-      inner.appendChild(empty);
-    }
-    shelf.ideas.forEach((idea, i) => {
-      const card = renderCalmCard(idea, onItemClick);
-      /* בטלפון רואים 3 ראשונים בכל מדף, והשאר בלחיצה */
-      if (i >= SHELF_PREVIEW) card.classList.add('calm-card--extra');
-      inner.appendChild(card);
-      index += 1;
-    });
-    li.appendChild(inner);
-    if (shelf.ideas.length > SHELF_PREVIEW) {
-      const more = document.createElement('button');
-      more.type = 'button';
-      more.className = 'ideas-shelf__more';
-      const extra = shelf.ideas.length - SHELF_PREVIEW;
-      more.textContent = extra === 1 ? 'עוד רעיון אחד' : `עוד ${extra} רעיונות`;
-      more.addEventListener('click', () => {
-        li.classList.add('ideas-shelf--open');
-        more.remove();
-      });
-      li.appendChild(more);
-    }
-    list.appendChild(li);
+function rerenderKeepingFocus(selector) {
+  if (!lastOnItemClick) return;
+  applyFilters(lastOnItemClick);
+  const el = document.querySelector(`#archive-list ${selector}`);
+  if (el) {
+    try { el.focus({ preventScroll: true }); } catch { el.focus(); }
   }
 }
 
-const SHELF_PREVIEW = 3;
+function renderCategoryBoard(list, { all, matches, text, onItemClick, filtering }) {
+  const groups = groupByCategory(text ? matches : all);
+  const board = document.createElement('li');
+  board.className = 'cat-board';
 
-/* כרטיס שקט למדפים, כמו במוקאפ: הרעיון, נקודת קטגוריה ו-🔥 אם חייב לצלם.
-   לחיצה פותחת את הרעיון (עריכה, צ'אט, זווית, מחיקה). שני כפתורי אייקון
-   קטנים נשארים, כדי ש"בוצע" ו"העתקה" לא ייעלמו מהמסך. */
-function renderCalmCard(idea, onItemClick) {
+  for (const g of CATEGORY_GROUPS) {
+    const ideas = groups[g.id];
+    const open = !text && openGroup === g.id;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = `cat-btn cat-btn--${g.tone}`;
+    btn.dataset.group = g.id;
+    btn.style.setProperty('--c', categoryColorVar(g.id));
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (open) btn.setAttribute('aria-controls', PANEL_ID);
+    btn.innerHTML = `<span class="cat-btn__icon">${BOARD_SVG_OPEN}${g.icon}</svg></span>`
+      + '<span class="cat-btn__text"><span class="cat-btn__name"></span><span class="cat-btn__explain"></span></span>'
+      + '<span class="cat-btn__count"></span>'
+      + `<span class="cat-btn__chev">${CHEVRON_SVG}</span>`;
+    btn.querySelector('.cat-btn__name').textContent = g.id;
+    btn.querySelector('.cat-btn__explain').textContent = g.explain;
+    btn.querySelector('.cat-btn__count').textContent = String(ideas.length);
+    btn.setAttribute('aria-label', `${g.id}, ${ideasCountLabel(ideas.length)}`);
+    btn.addEventListener('click', () => toggleGroup(g.id));
+    board.appendChild(btn);
+    if (open) board.appendChild(renderPanel({ title: g.id, color: categoryColorVar(g.id), ideas, onItemClick, filtering }));
+  }
+
+  /* טיוטות שעוד לא סווגו, וגם רעיון ישן שנשאר "בידורי": כניסה רביעית
+     קטנה ושקטה, רק כשיש כאלה */
+  const unsorted = groups[UNSORTED_GROUP];
+  if (!text && (unsorted.length || openGroup === UNSORTED_GROUP)) {
+    const open = openGroup === UNSORTED_GROUP;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'cat-unsorted';
+    btn.dataset.group = UNSORTED_GROUP;
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (open) btn.setAttribute('aria-controls', PANEL_ID);
+    btn.innerHTML = '<span class="cat-unsorted__label"></span><span class="cat-unsorted__chev">' + CHEVRON_SVG + '</span>';
+    btn.querySelector('.cat-unsorted__label').textContent = `📝 עוד לא סווגו · ${unsorted.length}`;
+    btn.addEventListener('click', () => toggleGroup(UNSORTED_GROUP));
+    board.appendChild(btn);
+    if (open) {
+      board.appendChild(renderPanel({ title: 'עוד לא סווגו', ideas: unsorted, onItemClick, filtering,
+        hint: 'פותחים רעיון ובוחרים לו סוג, או שומרים אותו ככה והסוג יזוהה לבד', unsorted: true }));
+    }
+  }
+
+  /* חיפוש עובר על כל הרעיונות, לא רק על הכפתור הפתוח */
+  if (text) {
+    board.appendChild(renderPanel({ title: `תוצאות חיפוש: ${ideasCountLabel(matches.length)}`, ideas: matches,
+      onItemClick, filtering: true, showCategory: true, search: true }));
+  }
+
+  list.appendChild(board);
+}
+
+function renderPanel({ title, color, ideas, onItemClick, filtering, hint, showCategory = false, unsorted = false, search = false }) {
+  const panel = document.createElement('section');
+  panel.className = 'cat-panel';
+  if (unsorted) panel.classList.add('cat-panel--unsorted');
+  if (search) panel.classList.add('cat-panel--search');
+  if (!search) panel.id = PANEL_ID;
+  if (color) panel.style.setProperty('--c', color);
+  panel.setAttribute('aria-label', title);
+
+  const head = document.createElement('div');
+  head.className = 'cat-panel__head';
+  const h = document.createElement('h3');
+  h.className = 'cat-panel__title';
+  h.textContent = search ? title : `${title} · ${ideasCountLabel(ideas.length)}`;
+  head.appendChild(h);
+  if (!search) head.appendChild(closeButton('cat-panel__close'));
+  panel.appendChild(head);
+
+  if (hint) {
+    const p = document.createElement('p');
+    p.className = 'cat-panel__hint';
+    p.textContent = hint;
+    panel.appendChild(p);
+  }
+
+  const ul = document.createElement('ul');
+  ul.className = 'cat-panel__list';
+  if (!ideas.length) {
+    const empty = document.createElement('li');
+    empty.className = 'cat-panel__empty';
+    empty.textContent = search
+      ? 'כלום לא תואם את החיפוש הזה. נסו מילה אחרת'
+      : (filtering ? 'אין כאן רעיונות שמתאימים לסינון' : 'עדיין אין כאן רעיונות');
+    ul.appendChild(empty);
+  }
+  ideas.forEach((idea) => ul.appendChild(renderCalmCard(idea, onItemClick, { showCategory: showCategory || unsorted })));
+  panel.appendChild(ul);
+
+  /* ברשימה ארוכה סוגרים גם מלמטה, בלי לגלול חזרה למעלה */
+  if (!search && ideas.length > 5) panel.appendChild(closeButton('cat-panel__close cat-panel__close--bottom', { scrollBack: true }));
+  return panel;
+}
+
+function closeButton(className, { scrollBack = false } = {}) {
+  const close = document.createElement('button');
+  close.type = 'button';
+  close.className = className;
+  close.innerHTML = '<span aria-hidden="true">✕</span><span>סגירה</span>';
+  close.setAttribute('aria-label', 'סגירת הרשימה');
+  close.addEventListener('click', () => {
+    const id = openGroup;
+    openGroup = '';
+    rerenderKeepingFocus(`[data-group="${id}"]`);
+    const btn = document.querySelector(`#archive-list [data-group="${id}"]`);
+    if (scrollBack && btn && btn.scrollIntoView) btn.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  });
+  return close;
+}
+
+/* כרטיס שקט: הרעיון, ובחיפוש או בטיוטות גם נקודת הסוג שלו. לחיצה פותחת
+   את הרעיון (עריכה, צ'אט, זווית, מחיקה). שני כפתורי אייקון קטנים נשארים,
+   כדי ש"בוצע" ו"העתקה" לא ייעלמו מהמסך. בלי 🔥: הדירוג ירד. */
+function renderCalmCard(idea, onItemClick, { showCategory = false } = {}) {
   const li = document.createElement('li');
   li.className = 'calm-card';
   li.dataset.id = idea.id;
@@ -577,27 +710,28 @@ function renderCalmCard(idea, onItemClick) {
   text.textContent = idea.title || '';
   open.appendChild(text);
 
-  const meta = document.createElement('span');
-  meta.className = 'calm-card__meta';
-  if (idea.category) {
-    const cat = document.createElement('span');
-    cat.className = 'calm-card__cat';
-    cat.style.setProperty('--c', categoryColorVar(idea.category));
-    cat.textContent = idea.category;
-    meta.appendChild(cat);
-  } else {
-    const draft = document.createElement('span');
-    draft.className = 'calm-card__cat';
-    draft.textContent = 'טיוטה';
-    meta.appendChild(draft);
+  if (showCategory || idea.sourceLink) {
+    const meta = document.createElement('span');
+    meta.className = 'calm-card__meta';
+    if (showCategory) {
+      const cat = document.createElement('span');
+      cat.className = 'calm-card__cat';
+      if (CATEGORIES.includes(idea.category) || idea.category === 'ערכי') {
+        cat.style.setProperty('--c', categoryColorVar(idea.category));
+        cat.textContent = idea.category === 'ערכי' ? 'בעל ערך' : idea.category;
+      } else {
+        cat.textContent = 'עוד לא סווג';
+      }
+      meta.appendChild(cat);
+    }
+    if (idea.sourceLink) {
+      const link = document.createElement('span');
+      link.className = 'calm-card__link';
+      link.textContent = '🔗 יש לינק להשראה';
+      meta.appendChild(link);
+    }
+    open.appendChild(meta);
   }
-  if (idea.rating === STRONG_RATING) {
-    const fire = document.createElement('span');
-    fire.className = 'calm-card__fire';
-    fire.textContent = '🔥 חייב לצלם';
-    meta.appendChild(fire);
-  }
-  open.appendChild(meta);
   open.addEventListener('click', () => onItemClick(idea));
   li.appendChild(open);
 
@@ -621,7 +755,7 @@ function renderCalmCard(idea, onItemClick) {
     e.stopPropagation();
     try {
       await markIdeaCompleted(idea.id);
-      showToast('✓ סומן כבוצע');
+      showToast('✓ סומן כבוצע', { actionLabel: 'בטלו', onAction: () => uncompleteIdea(idea.id) });
     } catch (err) {
       console.error('toggle complete failed:', err);
       showToast('הפעולה נכשלה, נסו שוב');
@@ -630,6 +764,149 @@ function renderCalmCard(idea, onItemClick) {
   tools.append(copy, done);
   li.appendChild(tools);
   return li;
+}
+
+/* ---------- מחיקה מרובה ב"רעיונות שבוצעו" ----------
+   06/11/2026 (מאיה: "מעצבן שיש מלא רעיונות שביצעתי ובשביל למחוק כל רעיון
+   זה ממש להיכנס למחוק לוקח מלא זמן ולא נוח בעליל"). שתי דרכים: "בחירה"
+   עם תיבות סימון ו"מחיקת הנבחרים", או "מחיקת כל מה שבוצע". שתיהן שואלות
+   קודם עם המספר, ואחרי המחיקה אפשר לבטל מההודעה. */
+function renderDoneToolbar(list, allDone, visible) {
+  const visibleIds = new Set(visible.map((i) => i.id));
+  for (const id of [...selectedIds]) if (!visibleIds.has(id)) selectedIds.delete(id);
+
+  const bar = document.createElement('li');
+  bar.className = selectMode ? 'done-toolbar done-toolbar--selecting' : 'done-toolbar';
+  if (!allDone.length) return;
+
+  const button = (label, cls, onClick) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = cls;
+    b.textContent = label;
+    b.disabled = bulkBusy;
+    b.addEventListener('click', onClick);
+    return b;
+  };
+
+  if (!selectMode) {
+    const hint = document.createElement('span');
+    hint.className = 'done-toolbar__hint';
+    hint.textContent = ideasCountLabel(allDone.length) + ' שבוצעו';
+    bar.append(
+      hint,
+      button('בחירה', 'done-toolbar__btn', () => {
+        selectMode = true;
+        selectedIds.clear();
+        rerenderKeepingFocus('.done-toolbar__btn');
+      }),
+      button(`מחיקת כל מה שבוצע (${allDone.length})`, 'done-toolbar__btn done-toolbar__btn--danger', () => {
+        bulkDelete(allDone.map((i) => i.id));
+      }),
+    );
+  } else {
+    const count = document.createElement('span');
+    count.className = 'done-toolbar__hint';
+    count.textContent = selectedIds.size ? `נבחרו ${selectedIds.size}` : 'מסמנים את מה למחוק';
+    const allVisibleSelected = visible.length > 0 && visible.every((i) => selectedIds.has(i.id));
+    const del = button(`מחיקת הנבחרים (${selectedIds.size})`, 'done-toolbar__btn done-toolbar__btn--danger', () => {
+      bulkDelete([...selectedIds]);
+    });
+    del.disabled = bulkBusy || !selectedIds.size;
+    bar.append(
+      count,
+      button(allVisibleSelected ? 'ניקוי הבחירה' : 'בחירת הכל', 'done-toolbar__btn', () => {
+        if (allVisibleSelected) selectedIds.clear();
+        else visible.forEach((i) => selectedIds.add(i.id));
+        rerenderKeepingFocus('.done-toolbar__btn');
+      }),
+      del,
+      button('ביטול', 'done-toolbar__btn done-toolbar__btn--ghost', () => {
+        selectMode = false;
+        selectedIds.clear();
+        rerenderKeepingFocus('.done-toolbar__btn');
+      }),
+    );
+  }
+  list.appendChild(bar);
+}
+
+function renderSelectRow(idea) {
+  const li = document.createElement('li');
+  li.className = 'select-row';
+  li.dataset.id = idea.id;
+  const label = document.createElement('label');
+  label.className = 'select-row__label';
+  const box = document.createElement('input');
+  box.type = 'checkbox';
+  box.className = 'select-row__box';
+  box.checked = selectedIds.has(idea.id);
+  box.addEventListener('change', () => {
+    if (box.checked) selectedIds.add(idea.id);
+    else selectedIds.delete(idea.id);
+    li.classList.toggle('select-row--on', box.checked);
+    refreshDoneToolbarCounts();
+  });
+  const title = document.createElement('span');
+  title.className = 'select-row__title';
+  title.textContent = idea.title || '';
+  label.append(box, title);
+  li.classList.toggle('select-row--on', box.checked);
+  li.appendChild(label);
+  return li;
+}
+
+/* סימון תיבה לא מצייר את כל הרשימה מחדש (כדי לא לקפוץ בגלילה), רק את המונים */
+function refreshDoneToolbarCounts() {
+  const bar = document.querySelector('#archive-list .done-toolbar');
+  if (!bar) return;
+  const hint = bar.querySelector('.done-toolbar__hint');
+  if (hint) hint.textContent = selectedIds.size ? `נבחרו ${selectedIds.size}` : 'מסמנים את מה למחוק';
+  const del = bar.querySelector('.done-toolbar__btn--danger');
+  if (del) {
+    del.textContent = `מחיקת הנבחרים (${selectedIds.size})`;
+    del.disabled = bulkBusy || !selectedIds.size;
+  }
+}
+
+async function bulkDelete(ids) {
+  const n = ids.length;
+  if (!n || bulkBusy) return;
+  const ok = await confirmDialog(
+    n === 1 ? 'למחוק רעיון אחד שבוצע?' : `למחוק ${n} רעיונות שבוצעו?`,
+    { okLabel: n === 1 ? 'מחיקה' : `מחיקת ${n}`, cancelLabel: 'ביטול' },
+  );
+  if (!ok) return;
+  bulkBusy = true;
+  refreshBusy();
+  let result;
+  try {
+    result = await deleteIdeasBulk(ids);
+  } catch (err) {
+    result = { done: [], failed: ids, error: err };
+  } finally {
+    bulkBusy = false;
+  }
+  const { done, failed, error } = result;
+  selectMode = false;
+  selectedIds.clear();
+  if (lastOnItemClick) applyFilters(lastOnItemClick);
+  const undo = done.length
+    ? { actionLabel: 'בטלו', onAction: () => { restoreIdeasBulk(done).then((r) => { if (r.failed.length) showToast('הביטול לא הצליח לגמרי, נסו שוב'); }); } }
+    : {};
+  if (!failed.length) {
+    showToast(done.length === 1 ? '🗑️ רעיון אחד נמחק' : `🗑️ ${done.length} רעיונות נמחקו`, { ...undo, duration: 7000 });
+  } else if (done.length) {
+    showToast(`${done.length} נמחקו, ${failed.length} לא נמחקו. ${serverErrorText(error, 'המחיקה')}`, { ...undo, duration: 9000 });
+  } else {
+    showToast(`שום רעיון לא נמחק. ${serverErrorText(error, 'המחיקה')}`, { duration: 9000 });
+  }
+}
+
+function refreshBusy() {
+  document.querySelectorAll('#archive-list .done-toolbar button').forEach((b) => { b.disabled = true; });
+  const del = document.querySelector('#archive-list .done-toolbar__btn--danger');
+  if (del) del.textContent = 'מוחקים...';
 }
 
 function renderItem(idea, onItemClick, index = 0) {

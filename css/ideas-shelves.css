@@ -64,82 +64,191 @@
   color: var(--muted);
 }
 
-/* ---------- שלושת המדפים במסך הרעיונות ---------- */
-/* בטלפון מדף מתחת למדף, במחשב שלושה טורים זה לצד זה */
-.archive-list.archive-list--shelves {
-  grid-template-columns: 1fr;
-  gap: 1.6rem;
-  align-items: start;
-}
-@media (min-width: 900px) {
-  .archive-list.archive-list--shelves {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 1.4rem;
-  }
+
+@media (prefers-reduced-motion: reduce) {
+  .home-mic-card,
+  .home-mic-card__mic { transition: none; }
 }
 
-.ideas-shelf {
+/* ==========================================================================
+   06/11/2026 לילה: מסך הרעיונות בשלושה כפתורי סוג (מחליף את שלושת המדפים).
+   מאיה: "3 כפתורים בולטים בצבעים שונים, הערך ירוק, החיבור האישי ורוד
+   והמכירתי אדום ואז רק שלוחצים נפתחים הרעיונות תחת אותה קטגוריה ושיהיה
+   אפשר גם לסגור בקלות - שיהיה מסודר יפה גם במחשב וגם במובייל".
+   הצבעים הם טוקני הקטגוריה הקיימים, שזהים בבהיר ובכהה. כל כפתור מקבל
+   אותם inline כ---c (categoryColorVar ב-js/archive-view.js).
+   בטלפון: כפתור מתחת לכפתור, והרשימה נפתחת ממש מתחת לכפתור שנלחץ.
+   במחשב: שלושה בשורה, והרשימה נפתחת מתחתם לכל הרוחב.
+   ========================================================================== */
+.ideas-cats #quick-filter-chips { display: none; }
+.ideas-cats .more-filters-details .random-btn { margin: 0.6rem 0 0; }
+.ideas-cats .archive-controls-section { gap: 0.6rem; }
+
+.archive-list.archive-list--cats { display: block; }
+
+.cat-board {
+  list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 0.55rem;
-  min-width: 0;
+  gap: 0.7rem;
 }
 
-.ideas-shelf__head {
+.cat-btn {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
-  margin: 0 0.15rem;
+  gap: 0.8rem;
+  width: 100%;
+  min-height: 76px;
+  padding: 0.85rem 1rem;
+  border: none;
+  border-radius: var(--card-radius);
+  background: var(--c, var(--accent));
+  color: #fff;
+  font: inherit;
+  text-align: right;
+  cursor: pointer;
+  box-shadow: var(--card-shadow);
+  transition: transform 0.15s var(--ease-snap), box-shadow 0.15s ease, opacity 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
 }
+.cat-btn:hover { transform: translateY(-1px); }
+.cat-btn:active { transform: scale(0.985); }
+.cat-btn:focus-visible { outline: 3px solid var(--accent-300); outline-offset: 3px; }
+.cat-btn[aria-expanded="true"] { box-shadow: 0 0 0 3px var(--bg), 0 0 0 5px var(--c, var(--accent)), var(--card-shadow); }
 
-.ideas-shelf__icon {
+.cat-btn__icon {
   flex: none;
   display: grid;
   place-items: center;
-  width: 34px;
-  height: 34px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
 }
-.ideas-shelf__icon svg { width: 17px; height: 17px; }
-.ideas-shelf--exposure .ideas-shelf__icon { background: var(--accent-tint); color: var(--accent); }
-.ideas-shelf--trust .ideas-shelf__icon { background: var(--warm-tint); color: var(--warm-strong); }
-.ideas-shelf--sale .ideas-shelf__icon { background: var(--accent-100); color: var(--accent-strong); }
+.cat-btn__icon svg { width: 22px; height: 22px; }
+.cat-btn__text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.1rem; }
+.cat-btn__name {
+  font-family: 'Ploni Black', sans-serif;
+  font-weight: 900;
+  font-size: 1.3rem;
+  line-height: 1.15;
+}
+.cat-btn__explain { font-size: 0.82rem; font-weight: 600; opacity: 0.9; }
+.cat-btn__count {
+  flex: none;
+  min-width: 2.6rem;
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+  font-size: 1.05rem;
+  font-weight: 800;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.cat-btn__chev,
+.cat-unsorted__chev {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  transition: transform 0.2s var(--ease-snap);
+}
+.cat-btn__chev svg,
+.cat-unsorted__chev svg { width: 20px; height: 20px; }
+.cat-btn[aria-expanded="true"] .cat-btn__chev,
+.cat-unsorted[aria-expanded="true"] .cat-unsorted__chev { transform: rotate(180deg); }
 
-.ideas-shelf__title {
+/* כשאחד פתוח, השניים האחרים נרגעים קצת כדי שיהיה ברור מה פתוח */
+.cat-board:has(.cat-btn[aria-expanded="true"]) .cat-btn:not([aria-expanded="true"]) { opacity: 0.72; }
+.cat-board:has(.cat-btn[aria-expanded="true"]) .cat-btn:not([aria-expanded="true"]):hover { opacity: 1; }
+
+/* הכניסה הרביעית השקטה: טיוטות ורעיונות ישנים בלי אחד משלושת הסוגים */
+.cat-unsorted {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  min-height: 44px;
+  padding: 0.5rem 1rem;
+  border: 1.5px dashed var(--border-color);
+  border-radius: var(--card-radius-sm);
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 700;
+  text-align: right;
+  cursor: pointer;
+}
+.cat-unsorted:hover { color: var(--text); border-color: var(--accent-300); }
+.cat-unsorted:focus-visible { outline: 3px solid var(--accent-300); outline-offset: 2px; }
+
+/* הרשימה שנפתחת */
+.cat-panel {
+  padding: 0.9rem 0.8rem 1rem;
+  border-radius: var(--card-radius);
+  border-top: 4px solid var(--c, var(--border-color));
+  background: var(--surface);
+  animation: cat-panel-in 0.22s var(--ease-snap);
+}
+@supports (background: color-mix(in srgb, red 10%, white)) {
+  .cat-panel { background: color-mix(in srgb, var(--c, var(--accent)) 9%, var(--bg)); }
+}
+@keyframes cat-panel-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: none; }
+}
+.cat-panel__head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0 0.15rem 0.75rem;
+}
+.cat-panel__title {
   flex: 1;
   min-width: 0;
   margin: 0;
   font-family: 'Ploni Black', sans-serif;
   font-weight: 900;
-  font-size: 1.1rem;
+  font-size: 1.05rem;
   color: var(--text);
 }
-
-.ideas-shelf__count {
+.cat-panel__close {
   flex: none;
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: var(--muted);
-  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 40px;
+  padding: 0.35rem 0.95rem;
+  border: 1.5px solid var(--border-color);
+  border-radius: 999px;
+  background: var(--card-bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
 }
-
-.ideas-shelf__explain {
-  margin: -0.2rem 0.15rem 0.2rem;
+.cat-panel__close:hover { border-color: var(--c, var(--accent)); }
+.cat-panel__close:focus-visible { outline: 3px solid var(--accent-300); outline-offset: 2px; }
+.cat-panel__close--bottom { display: flex; margin: 0.9rem auto 0; }
+.cat-panel__hint {
+  margin: -0.35rem 0.15rem 0.75rem;
   font-size: 0.85rem;
   line-height: 1.5;
   color: var(--muted);
 }
-
-.ideas-shelf__list {
+.cat-panel__list {
   list-style: none;
   margin: 0;
   padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.55rem;
 }
-
-.ideas-shelf__empty {
+.cat-panel__empty {
   padding: 0.9rem 1rem;
   border: 1.5px dashed var(--border-color);
   border-radius: var(--card-radius-sm);
@@ -148,30 +257,26 @@
   text-align: center;
 }
 
-/* ---------- מצב כהה: הדיו של האייקונים בהיר יותר כדי שייקרא על הרקע הכהה ---------- */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .ideas-shelf--exposure .ideas-shelf__icon { color: var(--accent-300); }
-  :root:not([data-theme="light"]) .ideas-shelf--trust .ideas-shelf__icon { color: var(--warm-300); }
+@media (min-width: 760px) {
+  .cat-board {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+  }
+  .cat-btn { min-height: 104px; padding: 1.1rem 1.2rem; }
+  .cat-btn__name { font-size: 1.45rem; }
+  .cat-unsorted { grid-column: 1 / -1; order: 2; justify-self: start; width: auto; min-width: 260px; }
+  .cat-panel { grid-column: 1 / -1; order: 1; padding: 1.2rem 1.2rem 1.3rem; }
+  .cat-panel--unsorted { order: 3; }
+  .cat-panel--search { order: 4; }
+  .cat-panel__list { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 0.7rem; }
 }
-:root[data-theme="dark"] .ideas-shelf--exposure .ideas-shelf__icon { color: var(--accent-300); }
-:root[data-theme="dark"] .ideas-shelf--trust .ideas-shelf__icon { color: var(--warm-300); }
 
-@media (prefers-reduced-motion: reduce) {
-  .home-mic-card,
-  .home-mic-card__mic { transition: none; }
-}
-
-/* ---------- 06/11/2026 ערב: מסך שקט כמו במוקאפ 02 ----------
-   מאיה: "זה לא דומה למסך שהכנת לי... מרגיש מאוד עמוס". במדפים אין צ'יפי
-   קטגוריה ואין קובייה על המסך (שניהם עברו לתוך "עוד סינון"), והכרטיסים
-   שקטים: הרעיון, נקודת קטגוריה ו-🔥. */
-.ideas-calm #quick-filter-chips { display: none; }
-.ideas-calm .more-filters-details .random-btn { margin: 0.6rem 0 0; }
-.ideas-calm .archive-controls-section { gap: 0.6rem; }
-
+/* ---------- הכרטיס השקט ---------- */
 .calm-card {
   position: relative;
   list-style: none;
+  min-width: 0;
   background: var(--card-bg);
   border-radius: var(--card-radius-sm);
   box-shadow: var(--card-shadow);
@@ -181,9 +286,10 @@
 .calm-card__open {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.45rem;
   width: 100%;
-  padding: 0.85rem 1rem 0.8rem 4.6rem;
+  min-height: 52px;
+  padding: 0.85rem 1rem 0.85rem 4.6rem;
   border: none;
   background: transparent;
   color: var(--text);
@@ -198,13 +304,15 @@
   font-size: 0.95rem;
   font-weight: 600;
   line-height: 1.45;
+  overflow-wrap: anywhere;
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 .calm-card__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.8rem; }
-.calm-card__cat {
+.calm-card__cat,
+.calm-card__link {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
@@ -214,22 +322,21 @@
 }
 .calm-card__cat::before {
   content: '';
-  width: 7px;
-  height: 7px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: var(--c, var(--border-color));
 }
-.calm-card__fire { font-size: 0.78rem; font-weight: 700; color: var(--warm-strong); }
 .calm-card__tools {
   position: absolute;
-  top: 0.55rem;
-  left: 0.55rem;
+  top: 0.5rem;
+  left: 0.5rem;
   display: flex;
-  gap: 0.2rem;
+  gap: 0.15rem;
 }
 .calm-card__tool {
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   display: grid;
   place-items: center;
   border: none;
@@ -239,28 +346,108 @@
   font: inherit;
   font-size: 0.95rem;
   cursor: pointer;
-  opacity: 0.55;
+  opacity: 0.6;
 }
 .calm-card__tool svg { width: 16px; height: 16px; }
 .calm-card__tool:hover, .calm-card__tool:focus-visible { opacity: 1; background: var(--accent-tint); color: var(--accent); }
 
-.ideas-shelf__more {
-  align-self: center;
-  margin-top: 0.2rem;
-  padding: 0.45rem 1rem;
-  border: none;
+/* ---------- "רעיונות שבוצעו": בחירה ומחיקה מרובה ---------- */
+.done-toolbar {
+  list-style: none;
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.3rem;
+  padding: 0.65rem 0.8rem;
+  border-radius: var(--card-radius-sm);
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
+}
+/* במצב בחירה הסרגל יושב בסוף הרשימה ונדבק לתחתית המסך, כמו באייפון */
+.done-toolbar--selecting {
+  position: sticky;
+  bottom: 1rem;
+  z-index: 4;
+  margin: 0.3rem 0 0;
+}
+.done-toolbar__hint {
+  flex: 1 1 8rem;
+  min-width: 0;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+.done-toolbar__btn {
+  min-height: 40px;
+  padding: 0.4rem 0.95rem;
+  border: 1.5px solid var(--border-color);
   border-radius: 999px;
-  background: transparent;
-  color: var(--accent);
+  background: var(--card-bg);
+  color: var(--text);
   font: inherit;
   font-size: 0.85rem;
   font-weight: 700;
   cursor: pointer;
 }
-/* בטלפון 3 ראשונים בכל מדף. במחשב הכל, בלי כפתור. */
-@media (max-width: 899px) {
-  .ideas-shelf:not(.ideas-shelf--open) .calm-card--extra { display: none; }
+.done-toolbar__btn:focus-visible { outline: 3px solid var(--accent-300); outline-offset: 2px; }
+.done-toolbar__btn--danger { border-color: var(--cat-mechirti); background: var(--cat-mechirti); color: #fff; }
+.done-toolbar__btn--ghost { border-color: transparent; background: transparent; color: var(--muted); }
+.done-toolbar__btn:disabled { opacity: 0.5; cursor: default; }
+
+.select-row {
+  list-style: none;
+  min-width: 0;
+  border-radius: var(--card-radius-sm);
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
+  border: 2px solid transparent;
 }
-@media (min-width: 900px) {
-  .ideas-shelf__more { display: none; }
+.select-row--on { border-color: var(--cat-mechirti); }
+.select-row__label {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  min-height: 52px;
+  padding: 0.85rem 1rem;
+  cursor: pointer;
+}
+.select-row__box {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  margin: 0.1rem 0 0;
+  accent-color: var(--cat-mechirti);
+}
+.select-row__title {
+  min-width: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.45;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+/* כשהסרגל של מצב הבחירה נדבק לתחתית, כפתור "הוסיפו רעיון" הצף לא מסתיר אותו */
+body.ideas-selecting #add-idea-fab { display: none; }
+
+@media (max-width: 720px) {
+  .done-toolbar--selecting { bottom: calc(5rem + env(safe-area-inset-bottom, 0px)); }
+}
+
+/* ---------- טופס רעיון קצר (js/idea-form.js, setSimpleIdeaForm) ----------
+   06/11/2026 (מאיה): בלי דירוג, פורמט, סדרה, קהל ושלב שכנוע. הם מסווגים לבד. */
+.idea-form--simple [data-simple-hide] { display: none; }
+.idea-form--simple .category-chip-ai { display: none; }
+.idea-modal--simple .idea-preview-card { display: none; }
+/* בטלפון, בזמן "מזהה סוג ושומר..." הכפתור רחב יותר: שורה שנייה ולא גלישה */
+.idea-form--simple .modal-actions { flex-wrap: wrap; row-gap: 0.5rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  .cat-btn,
+  .cat-btn__chev,
+  .cat-unsorted__chev,
+  .calm-card { transition: none; }
+  .cat-panel { animation: none; }
 }

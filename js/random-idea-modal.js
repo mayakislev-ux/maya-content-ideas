@@ -1,6 +1,14 @@
 import { pickRandomIdea, STRONG_RATING } from './ideas-logic.js';
 import { alertDialog } from './confirm-dialog.js';
 
+/* 06/11/2026: בעיצוב החדש של מסך הרעיונות (ideasRedesignFor) הדירוג ירד
+   מהטופס, ולכן רעיונות חדשים לא מסומנים "🔥 חייב לצלם" והקובייה הייתה
+   נשארת בלי מה להגריל. שם היא מגרילה מכל הרעיונות הפעילים. */
+let fromAll = false;
+export function setRandomIdeaFromAll(on) {
+  fromAll = Boolean(on);
+}
+
 export function wireRandomIdeaModal({ getIdeas, onOpenIdea }) {
   const modal = document.getElementById('random-modal');
   const spinner = document.getElementById('random-spinner');
@@ -24,8 +32,12 @@ export function wireRandomIdeaModal({ getIdeas, onOpenIdea }) {
   }
 
   function spin() {
-    const pool = getIdeas().filter((idea) => idea.rating === STRONG_RATING);
+    const pool = fromAll ? getIdeas() : getIdeas().filter((idea) => idea.rating === STRONG_RATING);
     if (!pool.length) {
+      if (fromAll) {
+        alertDialog('עוד אין רעיונות פעילים להגריל מהם. כתבו רעיון אחד ונסו שוב.');
+        return;
+      }
       alertDialog('עוד אין לך רעיונות מדורגים "חייב לצלם" - סמנו כמה רעיונות ככה כדי שהכפתור יוכל להגריל!');
       return;
     }

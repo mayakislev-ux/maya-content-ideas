@@ -8,6 +8,7 @@ import {
   query,
   where,
   serverTimestamp,
+  writeBatch,
 } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 import { subjectUid } from './client-view.js';
 
@@ -108,4 +109,49 @@ export async function markIdeaCompleted(id) {
 
 export async function uncompleteIdea(id) {
   return updateDoc(doc(db, 'ideas', id), { completedAt: null });
+}
+
+/* 06/11/2026 (מאיה: "מעצבן שיש מלא רעיונות שביצעתי ובשביל למחוק כל רעיון
+   זה ממש להיכנס למחוק לוקח מלא זמן"): מחיקה של הרבה רעיונות שבוצעו בבת
+   אחת. זאת אותה מחיקה בדיוק כמו deleteIdea (deletedAt, ולכן אפשר לבטל),
+   רק בכתיבה מרוכזת. ב-Firestore כתיבה מרוכזת מוגבלת ל-500 מסמכים, ולכן
+   מחלקים לחבילות. חבילה שנכשלה לא עוצרת את האחרות, והתוצאה אומרת בדיוק
+   מה נמחק ומה לא, כדי שהמסך יגיד את האמת. */
+export const BULK_CHUNK = 500;
+const BULK_TIMEOUT_MS = 20000;
+
+async function bulkUpdate(ids, fields) {
+  const done = [];
+  const failed = [];
+  let error = null;
+  const list = [...new Set((ids || []).filter(Boolean))];
+  for (let i = 0; i < list.length; i += BULK_CHUNK) {
+    const part = list.slice(i, i + BULK_CHUNK);
+    const batch = writeBatch(db);
+    for (const id of part) batch.update(doc(db, 'ideas', id), fields());
+    let timer = null;
+    try {
+      await Promise.race([
+        batch.commit(),
+        new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('bulk timeout')), BULK_TIMEOUT_MS); }),
+      ]);
+      done.push(...part);
+    } catch (err) {
+      console.error('bulk ideas update failed:', err);
+      error = err;
+      failed.push(...part);
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  return { done, failed, error };
+}
+
+/** @returns {Promise<{done: string[], failed: string[], error: any}>} */
+export function deleteIdeasBulk(ids) {
+  return bulkUpdate(ids, () => ({ deletedAt: serverTimestamp() }));
+}
+
+export function restoreIdeasBulk(ids) {
+  return bulkUpdate(ids, () => ({ deletedAt: null }));
 }
