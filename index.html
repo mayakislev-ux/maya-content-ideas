@@ -13,6 +13,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="המוח השיווקי">
 <link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/ideas-shelves.css">
 <link rel="preconnect" href="https://www.gstatic.com">
 <link rel="preconnect" href="https://firestore.googleapis.com">
 <link rel="preconnect" href="https://us-central1-content-ideas-becd7.cloudfunctions.net">
@@ -224,6 +225,16 @@
   </nav>
 
   <main id="home-view" class="view home-view">
+    <!-- 06/11/2026 (מאיה: "לדעתי הוא צריך להיות פשוט במסך הראשי ולא במסך הרעיונות"):
+         המיקרופון הגדול פותח את המקליט הקיים (js/home-mic.js). מוסתר עד ש-app.js מדליק אותו -->
+    <button type="button" id="home-mic-card" class="home-mic-card" hidden>
+      <span class="home-mic-card__mic" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+      </span>
+      <span class="home-mic-card__title">מה היה היום?</span>
+      <span class="home-mic-card__text">מספרים בקול עד 10 דקות, ומקבלים את כל הרעיונות שבהקלטה, כבר מסודרים</span>
+    </button>
+
     <section class="home-capture-card">
       <h2 class="home-capture-title">✨ מה הרעיון שקפץ לך עכשיו?</h2>
       <div class="quick-add-box home-quick-add-box">

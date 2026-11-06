@@ -7,7 +7,9 @@ import { doc, getDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs
 import { saveProfile, getProfile } from './user-profile.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
 import { subscribeToIdeas } from './ideas-store.js';
-import { renderArchive, wireArchiveControls, getCurrentIdeas, wirePullToRefresh, wireGoalEditModal } from './archive-view.js';
+import { renderArchive, wireArchiveControls, getCurrentIdeas, wirePullToRefresh, wireGoalEditModal, setShelvesLayout } from './archive-view.js';
+import { ideasRedesignFor } from './ideas-shelves.js';
+import { wireHomeMic, setHomeMicVisible } from './home-mic.js';
 import { openAddModal, openEditModal, wireIdeaForm } from './idea-form.js';
 import { wireRandomIdeaModal } from './random-idea-modal.js';
 import { wireIdeaChat } from './idea-chat.js';
@@ -494,6 +496,7 @@ wireIdeaForm();
 wireArchiveControls((idea) => openEditModal(idea));
 wireGoalEditModal();
 wirePullToRefresh();
+wireHomeMic();
 wireRandomIdeaModal({ getIdeas: getCurrentIdeas, onOpenIdea: openEditModal });
 wireIdeaChat();
 wireFeedbackForm();
@@ -809,6 +812,13 @@ onAuthChange(async (user) => {
   document.getElementById('view-feedback-btn').hidden = !isAdmin;
   document.getElementById('client-view-btn').hidden = !isAdmin;
   document.getElementById('enter-client-btn').hidden = !isAdmin;
+
+  /* 06/11/2026: מסך הרעיונות בשלושה מדפים ומיקרופון גדול במסך הבית.
+     לעת עתה רק למאיה (ideasRedesignFor ב-js/ideas-shelves.js), השאר רואים
+     את המסך הקיים. */
+  const ideasRedesign = ideasRedesignFor(user.email);
+  setShelvesLayout(ideasRedesign);
+  setHomeMicVisible(ideasRedesign);
 
   /* 26/10/2026: שלושת הכפתורים שהמודולים האלה שירתו ירדו לבקשתה, ולכן
      אין יותר מה לחבר כאן. המודולים עצמם נשארו בריפו ולא נמחקו, כדי

@@ -1,0 +1,162 @@
+/* ==========================================================================
+   06/11/2026: מסך הרעיונות בשלושה מדפים + מיקרופון גדול במסך הבית.
+   מאיה בחרה בווריאציה 02 "שלושה מדפים" ובמיקרופון מווריאציה 10, ועליו:
+   "לדעתי הוא צריך להיות פשוט במסך הראשי ולא במסך הרעיונות".
+
+   קובץ נפרד כדי לא להתנגש בשינויים מקבילים ב-css/style.css. רק טוקנים
+   קיימים מ-:root שם, בלי טוקנים חדשים. הכל כאן חל רק כשהמתג דלוק
+   (ideasRedesignFor ב-js/ideas-shelves.js): המחלקות האלה לא קיימות במסך
+   בלעדיו.
+   ========================================================================== */
+
+/* ---------- המיקרופון במסך הבית ---------- */
+.home-mic-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+  width: 100%;
+  margin: 0 0 1.4rem;
+  padding: 1.4rem 1.4rem 1.5rem;
+  border: none;
+  border-radius: var(--card-radius);
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
+  color: var(--text);
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.home-mic-card[hidden] { display: none; }
+.home-mic-card:hover { transform: translateY(-1px); }
+.home-mic-card:focus-visible { outline: 3px solid var(--accent-300); outline-offset: 3px; }
+
+.home-mic-card__mic {
+  display: grid;
+  place-items: center;
+  width: 84px;
+  height: 84px;
+  margin: 1.1rem auto 1.2rem;
+  border-radius: 50%;
+  background: var(--warm);
+  color: #fff;
+  box-shadow:
+    0 10px 30px rgba(255, 46, 168, 0.38),
+    0 0 0 10px rgba(255, 46, 168, 0.14),
+    0 0 0 22px rgba(255, 46, 168, 0.06);
+  transition: transform 0.2s var(--ease-snap);
+}
+.home-mic-card__mic svg { width: 36px; height: 36px; }
+.home-mic-card:hover .home-mic-card__mic { transform: scale(1.04); }
+.home-mic-card:active .home-mic-card__mic { transform: scale(0.97); }
+
+.home-mic-card__title {
+  font-family: 'Ploni Black', sans-serif;
+  font-weight: 900;
+  font-size: 1.35rem;
+  color: var(--text);
+}
+.home-mic-card__text {
+  max-width: 34ch;
+  font-size: 0.92rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+/* ---------- שלושת המדפים במסך הרעיונות ---------- */
+/* בטלפון מדף מתחת למדף, במחשב שלושה טורים זה לצד זה */
+.archive-list.archive-list--shelves {
+  grid-template-columns: 1fr;
+  gap: 1.6rem;
+  align-items: start;
+}
+@media (min-width: 900px) {
+  .archive-list.archive-list--shelves {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1.4rem;
+  }
+}
+
+.ideas-shelf {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.ideas-shelf__head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0 0.15rem;
+}
+
+.ideas-shelf__icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+}
+.ideas-shelf__icon svg { width: 17px; height: 17px; }
+.ideas-shelf--exposure .ideas-shelf__icon { background: var(--accent-tint); color: var(--accent); }
+.ideas-shelf--trust .ideas-shelf__icon { background: var(--warm-tint); color: var(--warm-strong); }
+.ideas-shelf--sale .ideas-shelf__icon { background: var(--accent-100); color: var(--accent-strong); }
+
+.ideas-shelf__title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-family: 'Ploni Black', sans-serif;
+  font-weight: 900;
+  font-size: 1.1rem;
+  color: var(--text);
+}
+
+.ideas-shelf__count {
+  flex: none;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.ideas-shelf__explain {
+  margin: -0.2rem 0.15rem 0.2rem;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.ideas-shelf__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.ideas-shelf__empty {
+  padding: 0.9rem 1rem;
+  border: 1.5px dashed var(--border-color);
+  border-radius: var(--card-radius-sm);
+  font-size: 0.85rem;
+  color: var(--muted);
+  text-align: center;
+}
+
+/* ---------- מצב כהה: הדיו של האייקונים בהיר יותר כדי שייקרא על הרקע הכהה ---------- */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .ideas-shelf--exposure .ideas-shelf__icon { color: var(--accent-300); }
+  :root:not([data-theme="light"]) .ideas-shelf--trust .ideas-shelf__icon { color: var(--warm-300); }
+}
+:root[data-theme="dark"] .ideas-shelf--exposure .ideas-shelf__icon { color: var(--accent-300); }
+:root[data-theme="dark"] .ideas-shelf--trust .ideas-shelf__icon { color: var(--warm-300); }
+
+@media (prefers-reduced-motion: reduce) {
+  .home-mic-card,
+  .home-mic-card__mic { transition: none; }
+}
