@@ -18,7 +18,7 @@ const webpush = {
   },
 };
 const { buildSystemPrompt, ADMIN_OPEN_MODE } = require('./system-prompt');
-const { buildOngoingWarmingPrompt, buildPresaleWarmingPrompt } = require('./warming-system-prompt');
+const { buildOngoingWarmingPrompt, buildPresaleWarmingPrompt, capExistingIdeas } = require('./warming-system-prompt');
 const { buildContentPlanPrompt } = require('./content-plan-system-prompt');
 const { buildStorySequencePrompt, checkSequence } = require('./story-sequence-prompt');
 const { parseSequence } = require('./story-sequence-parse');
@@ -2001,7 +2001,8 @@ exports.generateWarmingPlan = onRequest(
 
     const product = ((req.body && req.body.product) || '').trim();
     const audience = ((req.body && req.body.audience) || '').trim();
-    const existingIdeasTitles = (req.body && req.body.existingIdeasTitles) || [];
+    /* כל רעיון חתוך בנפרד (capExistingIdeas), לא רק מספר הרעיונות */
+    const existingIdeasTitles = capExistingIdeas(req.body && req.body.existingIdeasTitles);
     let extraContext = (req.body && req.body.extraContext) || '';
 
     if (!product || !audience) {
@@ -2047,7 +2048,7 @@ exports.generateWarmingPlan = onRequest(
         extraContext = `${extraContext}\n\nתוכן שנשלף מתוך הקבצים המצורפים (Sheets/Docs):\n${linkedContent.content}`;
       }
 
-      const promptArgs = { product, audience, extraContext, existingIdeasTitles: existingIdeasTitles.slice(0, 40) };
+      const promptArgs = { product, audience, extraContext, existingIdeasTitles };
 
       /* 11/10/2026: לקוחות דיווחו שבניית תוכנית חימום נכשלת כבר כמה ימים.
          בלוג של 08/10 נראה בדיוק מה קרה: המודל ענה באנגלית, בפרוזה,
