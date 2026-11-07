@@ -26,7 +26,7 @@ import { showToast } from './toast.js';
 import { dictationMode, uploadDictation } from './voice-input.js';
 import {
   pickMimeType, formatClock, openIdeasPopup, setIdeasPopupProgress, showIdeasInPopup, showIdeasPopupError, closeIdeasPopup,
-  showLivePopup, setLivePopup,
+  showLivePopup, setLivePopup, writeRecDraft, readRecDraft, clearRecDraft,
 } from './idea-recorder.js';
 
 /* 07/11/2026 (מאיה): "שאני לוחצת על לספר מה היה היום אז כאילו המסך קופץ
@@ -190,7 +190,12 @@ function renderPopup(s) {
    תישמר גם היא. אם האפליקציה נסגרת באמצע, מה שנאמר לא הולך לאיבוד. */
 function writeBox(s) {
   if (s.popup) {
-    if (session === s) setLivePopup({ text: s.spoken });
+    /* 07/11/2026 (ביקורת): s.base = מה שנשמע לפני המעבר מזיהוי דיבור
+       להקלטה (switchToRecord). בלי זה הוא נעלם מהחלון ומהחילוץ.
+       וכל עדכון נשמר כטיוטה, כדי שסגירת האפליקציה באמצע לא תמחק אותו. */
+    const live = heardText(s);
+    if (session === s) setLivePopup({ text: live });
+    writeRecDraft(live);
     return;
   }
   const t = box();
@@ -202,6 +207,11 @@ function writeBox(s) {
   t.scrollTop = t.scrollHeight;
 }
 
+/** כל מה שנשמע בהקלטה בחלון עד עכשיו (כולל לפני מעבר להקלטה) */
+function heardText(s) {
+  return appendToBase(s.base, s.spoken).trim();
+}
+
 function lockBox(locked) {
   const t = box();
   if (t) t.readOnly = locked;
@@ -211,7 +221,7 @@ function lockBox(locked) {
 
 /* ---------- התחלה ---------- */
 
-async function start({ prompt = '', popup = false, question = '' } = {}) {
+async function start({ prompt = '', popup = false, question = '', dayQuestion = '' } = {}) {
   if (session) return;
   const mode = dictationMode(globalThis);
   if (mode === 'none') {
@@ -225,12 +235,15 @@ async function start({ prompt = '', popup = false, question = '' } = {}) {
   const s = {
     id: seq, mode, state: 'starting', base: popup ? '' : (t ? t.value : ''), spoken: '', prompt: String(prompt || ''),
     popup: Boolean(popup), question: String(question || '').trim(),
+    /* "שאלה של היום" שהייתה על המסך כשהתחילה (רק בלי שאלה שנבחרה) */
+    dayQuestion: String(question || '').trim() ? '' : String(dayQuestion || '').trim(),
     parts: [], inflight: new Set(), failures: 0, startedAt: 0,
   };
   session = s;
   if (s.popup) {
     showLivePopup({
       question: s.question,
+      dayQuestion: s.dayQuestion,
       onDone: () => finish(s, 'user'),
       onCancel: () => cancel(s),
     });
@@ -260,15 +273,31 @@ function beginLive(s) {
   }, 250);
 }
 
-/** כישלון לפני שיש מה לסכם: מנקים הכל, הטקסט בתיבה נשאר, והשגיאה גלויה. */
+/** כישלון באמצע: מנקים הכל, הטקסט בתיבה נשאר, והשגיאה גלויה. */
 function fail(s, message) {
   if (session !== s) return;
   releaseAll(s);
   session = null;
   if (s.popup) {
-    /* בחלון: השגיאה בתוך החלון, ו"לנסות שוב" פותח את המיקרופון מחדש */
     render();
-    showIdeasPopupError(message, { onRetry: () => start({ prompt: s.prompt, popup: true, question: s.question }) });
+    /* 07/11/2026 (ביקורת): אם כבר נאמר משהו, הוא לא הולך לאיבוד. הוא מוצג
+       בחלון ("כל מה שאמרת", "להעביר לתיבה"), ו"לנסות שוב" מוציא ממנו
+       רעיונות במקום להתחיל הקלטה חדשה ריקה. */
+    const heard = heardText(s);
+    if (heard) {
+      popupOwner = s.id;
+      const token = popupSeq;
+      showIdeasPopupError(`${message}. מה שאמרת עד עכשיו לא אבד: "לנסות שוב" מוציא ממנו רעיונות, ואפשר גם להעביר אותו לתיבה.`, {
+        text: heard,
+        onRetry: () => {
+          openIdeasPopup({ progress: 'מוציאים רעיונות ממה שסיפרת...', context: questionLine(s.question), closable: false });
+          extractIdeas(heard, token, s);
+        },
+      });
+      return;
+    }
+    /* בלי טקסט: "לנסות שוב" פותח את המיקרופון מחדש */
+    showIdeasPopupError(message, { onRetry: () => start({ prompt: s.prompt, popup: true, question: s.question, dayQuestion: s.dayQuestion }) });
     return;
   }
   lockBox(false);
@@ -625,9 +654,12 @@ async function finish(s, reason = 'user') {
     releaseAll(s);
   }
 
-  const { text } = s.mode === 'record' ? joinedSoFar(s.parts) : { text: s.spoken };
-  s.spoken = text;
+  const { text: spokenNow } = s.mode === 'record' ? joinedSoFar(s.parts) : { text: s.spoken };
+  s.spoken = spokenNow;
   writeBox(s);
+  /* בחלון: גם מה שנשמע לפני מעבר להקלטה (s.base). בבית s.base הוא מה
+     שהיה בתיבה קודם, והוא לא נשלח. */
+  const text = s.popup ? heardText(s) : spokenNow;
   session = null;
   if (!s.popup) {
     lockBox(false);
@@ -648,11 +680,11 @@ async function finish(s, reason = 'user') {
       ? `${errorText(s.lastError, 'התמלול לא עבר הפעם.')} ${how}, או לכתוב בתיבה`
       : `לא שמענו דיבור בהקלטה. ${how}, ולדבר קרוב יותר לטלפון`;
     if (!s.popup) showStatus(msg, { error: true });
-    const { prompt, popup, question } = s;
+    const { prompt, popup, question, dayQuestion } = s;
     showIdeasPopupError(msg, {
       onRetry: () => {
         if (!popup) closeIdeasPopup();
-        start({ prompt, popup, question });
+        start({ prompt, popup, question, dayQuestion });
       },
     });
     return;
@@ -668,13 +700,19 @@ function questionLine(question) {
 function extractIdeas(spoken, token, s = {}) {
   const popup = Boolean(s.popup);
   const question = s.question || '';
+  /* "שאלה של היום" נשלחת כהקשר בלבד (אולי ענתה עליה), ולא נשמרת כשאלה
+     שענתה עליה כמו שאלה שנבחרה מהרשימה */
+  const dayQuestion = !question && s.dayQuestion ? s.dayQuestion : '';
   /* 07/11/2026: כל התמלול נשמר עם כל רעיון, והשאלה שנבחרה אם נבחרה */
   const extra = { transcript: spoken, ...(question ? { sourceQuestion: question } : {}) };
+  const payload = question
+    ? { text: spoken, question }
+    : (dayQuestion ? { text: spoken, question: dayQuestion, questionShown: true } : { text: spoken });
   const run = async () => {
     if (token !== popupSeq) return;
     setIdeasPopupProgress('מוציאים רעיונות ממה שסיפרת...');
     try {
-      const res = await ideasFromText(question ? { text: spoken, question } : { text: spoken });
+      const res = await ideasFromText(payload);
       if (token !== popupSeq) return;
       const ideas = res && res.data && Array.isArray(res.data.ideas) ? res.data.ideas : [];
       showIdeasInPopup(ideas, popup
@@ -738,6 +776,7 @@ export function wireHomeMic() {
     title: (el('home-mic-title') || {}).textContent || '',
     text: (el('home-mic-text') || {}).textContent || '',
   };
+  restoreRecDraft();
   btn.addEventListener('click', () => {
     if (!session && idleTap) idleTap();
     else if (!session) start();
@@ -750,10 +789,23 @@ export function wireHomeMic() {
   });
 }
 
+/* 07/11/2026 (ביקורת): הקלטה בחלון שנקטעה (האפליקציה נסגרה באמצע) משאירה
+   טיוטה. בפתיחה הבאה היא חוזרת לתיבה, רק אם התיבה ריקה, כדי לא לדרוס. */
+export function restoreRecDraft() {
+  const draft = readRecDraft();
+  const t = box();
+  if (!draft || !t || t.value.trim()) return;
+  t.value = draft;
+  t.dispatchEvent(new Event('input', { bubbles: true }));
+  clearRecDraft();
+  showToast('שחזרנו טקסט מהקלטה קודמת', { duration: 5000 });
+}
+
 /** הדלת הראשונה של "אין לי רעיון?": אותה הקלטה בדיוק. popup: בתוך החלון
-    (07/11/2026), question: השאלה שנבחרה מהרשימה, שנשלחת גם לחילוץ. */
-export function startHomeRecording({ prompt = '', popup = false, question = '' } = {}) {
-  return start({ prompt, popup, question });
+    (07/11/2026), question: השאלה שנבחרה מהרשימה, שנשלחת גם לחילוץ.
+    dayQuestion: "שאלה של היום" שהייתה על המסך, נשלחת כהקשר. */
+export function startHomeRecording({ prompt = '', popup = false, question = '', dayQuestion = '' } = {}) {
+  return start({ prompt, popup, question, dayQuestion });
 }
 
 export function homeMicCanRecord() {

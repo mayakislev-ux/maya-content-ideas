@@ -329,7 +329,7 @@ function recordToday() {
     questions: REEL_QUESTIONS,
     questionsTitle: REEL_QUESTIONS_TITLE,
     back: { label: 'חזרה לדלתות', onClick: () => reopen('doors') },
-    onStart: ({ question }) => startHomeRecording({ prompt, popup: true, question }),
+    onStart: ({ question, dayQuestion }) => startHomeRecording({ prompt, popup: true, question, dayQuestion }),
   });
 }
 

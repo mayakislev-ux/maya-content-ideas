@@ -14,6 +14,8 @@ import { serverErrorText } from './server-error.js';
 // "נתקע". הומר ל-onRequest זורם בשרת עם heartbeat כל 15 שניות, אותה תבנית
 // בדיוק כמו content-plan.js/generateContentPlan.
 const GENERATE_WARMING_PLAN_URL = 'https://us-central1-content-ideas-becd7.cloudfunctions.net/generateWarmingPlan';
+/* כמה תווים מכל רעיון נשלחים לבניית תוכנית החימום (07/11/2026, ביקורת) */
+export const WARMING_IDEA_CHARS = 600;
 
 function parseSSEChunk(buffer, chunkText) {
   const combined = buffer + chunkText;
@@ -558,7 +560,10 @@ export function wireWarmingView() {
       .sort((a, b) => (Number(b.rating) || 0) - (Number(a.rating) || 0));
     const existingIdeasTitles = eligibleIdeas.slice(0, 15).map((idea) => {
       const tags = [idea.category, idea.persuasionStage].filter(Boolean).join(' | ');
-      return `${idea.title}${tags ? ` (${tags})` : ''}: ${idea.hookText.trim()}`;
+      /* 07/11/2026 (ביקורת): hookText של רעיון מהקלטה יכול להיות כל ההקלטה
+         (עד 20,000 תווים). 15 כאלה ניפחו את הבקשה. 600 תווים לרעיון מספיקים
+         לשלב אותו בחימום. */
+      return `${idea.title}${tags ? ` (${tags})` : ''}: ${idea.hookText.trim().slice(0, WARMING_IDEA_CHARS)}`;
     });
 
     generateBtn.disabled = true;

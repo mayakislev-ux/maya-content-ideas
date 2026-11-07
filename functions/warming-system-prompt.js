@@ -153,4 +153,17 @@ ${MISSING_INFO_RULE}
 "missingInfo":["<שאלה קצרה וממוקדת>", ... עד 5, או מערך ריק אם לא חסר כלום]}`;
 }
 
-module.exports = { buildOngoingWarmingPrompt, buildPresaleWarmingPrompt };
+/* 07/11/2026 (ביקורת): הרעיונות הקיימים שנשלחים לתוכנית החימום. הדפדפן
+   כבר חותך כל רעיון ל-600 תווים, אבל השרת לא סומך על זה: רק מחרוזות, עד 40
+   רעיונות, וכל אחד עד MAX_EXISTING_IDEA_CHARS (כותרת + תגיות + 600). */
+const MAX_EXISTING_IDEAS = 40;
+const MAX_EXISTING_IDEA_CHARS = 900;
+function capExistingIdeas(list) {
+  if (!Array.isArray(list)) return [];
+  return list
+    .filter((t) => typeof t === 'string' && t.trim())
+    .slice(0, MAX_EXISTING_IDEAS)
+    .map((t) => t.trim().slice(0, MAX_EXISTING_IDEA_CHARS));
+}
+
+module.exports = { buildOngoingWarmingPrompt, buildPresaleWarmingPrompt, capExistingIdeas, MAX_EXISTING_IDEAS, MAX_EXISTING_IDEA_CHARS };

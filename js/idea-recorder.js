@@ -18,7 +18,7 @@ import { addIdea } from './ideas-store.js';
 import { showToast } from './toast.js';
 import { confirmDialog } from './confirm-dialog.js';
 import { categoryColorVar } from './ideas-logic.js';
-import { withAsUid } from './client-view.js';
+import { withAsUid, isClientView } from './client-view.js';
 
 export const MAX_SECONDS = 600;
 const BUCKET = 'gs://content-ideas-becd7-story-assets';
@@ -61,6 +61,32 @@ export function recorderSupported(win = globalThis) {
     && typeof win.navigator.mediaDevices.getUserMedia === 'function');
 }
 
+/* ---------- טיוטת ההקלטה (07/11/2026, ביקורת) ----------
+   בהקלטה בחלון הטקסט החי לא נכתב לתיבה, ולכן אם האפליקציה נסגרת באמצע
+   (טלפון שנכבה, יציאה מהאפליקציה) מה שנאמר היה הולך לאיבוד. כל עדכון חי
+   נכתב כאן, ונמחק אחרי שמירה, "להעביר לתיבה" או ביטול מכוון. בפתיחה הבאה
+   (js/home-mic.js) הטקסט חוזר לתיבה אם היא ריקה. בתצוגה כלקוחה לא שומרים,
+   כמו הטיוטה של התיבה (archive-view.js). */
+export const REC_DRAFT_KEY = 'rec-live-draft';
+
+export function writeRecDraft(text) {
+  const t = String(text || '').trim();
+  if (!t) return;
+  try {
+    if (!isClientView()) localStorage.setItem(REC_DRAFT_KEY, t);
+  } catch { /* אין אחסון */ }
+}
+
+export function readRecDraft() {
+  try {
+    return isClientView() ? '' : String(localStorage.getItem(REC_DRAFT_KEY) || '').trim();
+  } catch { return ''; }
+}
+
+export function clearRecDraft() {
+  try { localStorage.removeItem(REC_DRAFT_KEY); } catch { /* אין אחסון */ }
+}
+
 /* ---------- מצב ---------- */
 
 let stream = null;
@@ -93,6 +119,8 @@ let foundIn = 'בהקלטה';
    נכתב בתוך החלון תוך כדי, "סיימתי" וביטול), ומשם לאותן תוצאות.
    המנוע עצמו (זיהוי דיבור / קטעים לתמלול) נשאר ב-js/home-mic.js. */
 let speakStart = null;
+/* "שאלה של היום" שמוצגת בשלב 'speak'. נשלחת לחילוץ כהקשר (אולי ענתה עליה) */
+let speakPrompt = '';
 let liveHandlers = null;
 /* כל מה שנאמר, כדי שיהיה אפשר לראות אותו ולהעביר לתיבה כרעיון אחד */
 let fullText = '';
@@ -207,6 +235,10 @@ function ensureModal() {
 
       <div id="rec-step-error" hidden>
         <p id="rec-error-text" class="rec-lead" role="alert"></p>
+        <details id="rec-transcript-error" class="rec-transcript" hidden>
+          <summary>🗣️ כל מה שאמרת</summary>
+          <p id="rec-transcript-error-text" class="rec-transcript__text"></p>
+        </details>
         <button type="button" id="rec-retry-btn" class="btn-primary rec-main-btn">לנסות שוב עם אותה הקלטה</button>
         <button type="button" id="rec-to-box-error" class="btn-text rec-secondary" hidden>📝 להעביר את מה שאמרתי לתיבה, כרעיון אחד</button>
         <button type="button" id="rec-new-btn" class="btn-text rec-secondary">להקליט מחדש</button>
@@ -230,10 +262,10 @@ function ensureModal() {
   el('rec-close-results').addEventListener('click', closeResultsAsking);
   el('rec-retry-btn').addEventListener('click', () => { if (retryAction) retryAction(); });
   el('rec-new-btn').addEventListener('click', () => { lastBlob = null; showStep('intro'); });
-  el('rec-close-error').addEventListener('click', closeRecorder);
+  el('rec-close-error').addEventListener('click', closeTextAsking);
   el('rec-close-working').addEventListener('click', closeRecorder);
   el('rec-back-btn').addEventListener('click', goBack);
-  el('rec-speak-go').addEventListener('click', () => beginSpeaking(''));
+  el('rec-speak-go').addEventListener('click', () => beginSpeaking('', speakPrompt));
   el('rec-questions-btn').addEventListener('click', toggleQuestions);
   el('rec-cancel-speak').addEventListener('click', closeRecorder);
   el('rec-live-done').addEventListener('click', () => { if (liveHandlers && liveHandlers.onDone) liveHandlers.onDone(); });
@@ -264,6 +296,7 @@ function onEscape(e) {
   if (step === 'recording') discardRecording();
   else if (step === 'live') cancelLive();
   else if (step === 'results') closeResultsAsking();
+  else if (step === 'error') closeTextAsking();
   else if (step === 'working') {
     /* באמצע שליחה מהטופס: לא סוגרים, התשובה בדרך. מהבית הטקסט כבר בתיבה. */
     if (origin !== 'form' && !el('rec-close-working').hidden) closeRecorder();
@@ -292,6 +325,7 @@ function setOrigin(next, { title, context = '', back = null } = {}) {
   foundIn = 'בהקלטה';
   backAction = back && typeof back.onClick === 'function' ? back : null;
   speakStart = null;
+  speakPrompt = '';
   liveHandlers = null;
   fullText = '';
   el('rec-title').textContent = title || TITLE_FORM;
@@ -417,10 +451,12 @@ function toggleQuestions() {
   el('rec-questions-btn').setAttribute('aria-expanded', box.hidden ? 'false' : 'true');
 }
 
-function beginSpeaking(question) {
+/* question: שאלה שנבחרה מהרשימה. dayQuestion: "שאלה של היום" שהייתה על
+   המסך כשלחצה "להתחיל להקליט" (אולי ענתה עליה, ואולי לא). */
+function beginSpeaking(question, dayQuestion = '') {
   const startFn = speakStart;
   if (typeof startFn !== 'function') return;
-  startFn({ question: question || '' });
+  startFn({ question: question || '', ...(dayQuestion && !question ? { dayQuestion } : {}) });
 }
 
 /** הפופאפ של "🎙️ לספר בקול", לפני שמתחילים. onStart({ question }) מתחיל
@@ -432,6 +468,7 @@ export function openSpeakPopup({ prompt = '', questions = [], questionsTitle = '
   lastBlob = null;
   setOrigin('home', { title, back });
   speakStart = onStart;
+  speakPrompt = String(prompt || '').trim();
   el('rec-question').textContent = prompt ? `💡 שאלה של היום: ${prompt}` : '';
   el('rec-question').hidden = !prompt;
   renderQuestions(questions, questionsTitle);
@@ -442,7 +479,7 @@ export function openSpeakPopup({ prompt = '', questions = [], questionsTitle = '
 }
 
 /** עוברים לשלב ההקלטה באותו חלון. onDone = "סיימתי", onCancel = ביטול (אחרי אישור). */
-export function showLivePopup({ question = '', onDone = null, onCancel = null, title = '🎙️ ממה שקרה היום' } = {}) {
+export function showLivePopup({ question = '', dayQuestion = '', onDone = null, onCancel = null, title = '🎙️ ממה שקרה היום' } = {}) {
   ensureModal();
   if (!ideasPopupOpen()) {
     closeRecorder();
@@ -451,8 +488,9 @@ export function showLivePopup({ question = '', onDone = null, onCancel = null, t
   speakStart = null;
   liveHandlers = { onDone, onCancel };
   const q = el('rec-live-question');
-  q.textContent = question ? `💬 ${question}` : '';
-  q.hidden = !question;
+  /* שאלה שנבחרה, ואם לא נבחרה, "שאלה של היום" שהייתה על המסך */
+  q.textContent = question ? `💬 ${question}` : (dayQuestion ? `💡 שאלה של היום: ${dayQuestion}` : '');
+  q.hidden = !question && !dayQuestion;
   el('rec-live-clock').textContent = '0:00';
   setLiveText('');
   setLiveHint('');
@@ -497,6 +535,7 @@ async function cancelLive() {
   });
   if (!ok || handlers !== liveHandlers) return;
   liveHandlers = null;
+  clearRecDraft();
   closeRecorder();
   if (handlers && handlers.onCancel) {
     try { handlers.onCancel(); } catch (err) { console.error('recorder: cancel failed', err); }
@@ -512,6 +551,8 @@ function moveTextToBox() {
   const before = box.value.trim();
   box.value = before ? `${before} ${text}` : text;
   box.dispatchEvent(new Event('input', { bubbles: true }));
+  /* עכשיו הטקסט בתיבה, ושם יש לו טיוטה משלו */
+  clearRecDraft();
   closeRecorder();
   try { box.focus(); } catch { /* בלי פוקוס זה עדיין בתיבה */ }
   showToast('מה שאמרת נמצא בתיבה. אפשר לערוך ולשמור כרעיון אחד');
@@ -523,6 +564,8 @@ function showTextTools() {
   el('rec-to-box-error').hidden = !has;
   el('rec-transcript').hidden = !fullText;
   el('rec-transcript-text').textContent = fullText;
+  el('rec-transcript-error').hidden = !fullText;
+  el('rec-transcript-error-text').textContent = fullText;
 }
 
 /** סוגר את חלון הרעיונות (למשל לפני הקלטה חדשה מ"לנסות שוב"). */
@@ -581,8 +624,29 @@ async function closeResultsAsking() {
       cancelLabel: 'חזרה לרשימה',
     });
     if (!ok) return;
+  } else if (fullText) {
+    /* 07/11/2026 (ביקורת): "לא מצאנו רעיון" עם מה שנאמר. סגירה בלי לשאול
+       מחקה אותו בשקט */
+    if (!(await askCloseText('חזרה לטקסט'))) return;
+  }
+  if (fullText) clearRecDraft();
+  closeRecorder();
+}
+
+/* מסך השגיאה: אם יש בו מה שנאמר, שואלים לפני שסוגרים */
+async function closeTextAsking() {
+  if (fullText) {
+    if (!(await askCloseText('חזרה'))) return;
+    clearRecDraft();
   }
   closeRecorder();
+}
+
+function askCloseText(cancelLabel) {
+  return confirmDialog('לסגור בלי לשמור? מה שאמרת לא יישמר. אפשר במקום זה להעביר אותו לתיבה.', {
+    okLabel: 'לסגור בלי לשמור',
+    cancelLabel,
+  });
 }
 
 /* ---------- הקלטה ---------- */
@@ -953,6 +1017,7 @@ async function saveChosen() {
   saving = false;
   const skipped = ticked.length - chosen.length;
   if (saved === chosen.length) {
+    if (fullText) clearRecDraft();
     const fromOrigin = origin;
     const after = onSaved;
     closeRecorder();
