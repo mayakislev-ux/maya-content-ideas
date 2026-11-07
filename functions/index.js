@@ -28,6 +28,9 @@ const {
 } = require('./ideas-constants');
 const { buildDomainGuessPrompt, parseDomainGuess } = require('./video-assistant-domain-prompt');
 const {
+  CLASSIFY_MODEL, AUDIENCE_SCOPES, buildClassifyPrompt, parseClassification,
+} = require('./classify-idea');
+const {
   FORMAT_TAGS, FORMAT_TAG_DEFINITIONS,
   ANGLE_TAGS, ANGLE_TAG_DEFINITIONS, anglesFromQuery, canonicalAngle,
   SUBCATEGORIES_BY_DOMAIN,
@@ -229,13 +232,6 @@ async function enforceRateLimit(uid, fnName) {
 /* ההקשר של רעיון שנפתח מהמאגר, אחרי סינון. שלושת השדות הם רשימות
    סגורות שהמערכת עצמה כותבת, וכל ערך אחר נזרק: הם נכנסים ישירות לפרומפט
    המערכת, ובדיקת האורך של השיחה לא מודדת אותם. */
-const AUDIENCE_SCOPES = ['עיקרי', 'משני', 'רחב'];
-/* אותו הסבר שהמקליט (ideas-from-recording.js) נותן לג'מיני */
-const AUDIENCE_SCOPE_DEFINITIONS = {
-  'עיקרי': 'הלקוחות האידיאליים של העסק, מי שהעסק באמת מוכר להם',
-  'משני': 'קהל קרוב לקהל העיקרי, שיכול להתעניין אבל הוא לא הלקוח האידיאלי',
-  'רחב': 'כל אחד, תוכן לחשיפה רחבה (ויראלי) שלא דורש להיות בתחום',
-};
 function pickIdeaContext(raw) {
   if (!raw || typeof raw !== 'object') return null;
   const pick = (value, allowed) => (allowed.includes(value) ? value : '');
@@ -742,6 +738,34 @@ exports.undoRecategorizeBiduri = onCall(
   }
 );
 
+/* 07/11/2026: השלמת סיווג לכל הרעיונות שלא סווגו. אותו מבנה בדיוק כמו
+   ההגירה של "בידורי" למעלה: דוח, החלה של ההחלטות מהדוח, וחזרה אחורה.
+   ראו classify-unsorted.js. */
+{
+  const cu = require('./classify-unsorted');
+  const handlers = cu.createClassifyUnsortedHandlers({
+    HttpsError,
+    db,
+    FieldValue: admin.firestore.FieldValue,
+    isOwner: (request) => Boolean(request.auth && request.auth.token && request.auth.token.email === ADMIN_EMAIL),
+    /* אותו מסווג של classifyIdea, עם temperature אפס */
+    classify: async (title) => {
+      const data = await callAnthropic(
+        anthropicApiKey.value(),
+        { model: CLASSIFY_MODEL, max_tokens: 200, temperature: 0, messages: [{ role: 'user', content: buildClassifyPrompt(title, '') }] },
+        'classifyUnsortedIdeas'
+      );
+      return parseClassification(getResponseText(data) || '{}');
+    },
+  });
+  exports.classifyUnsortedIdeas = onCall(
+    { secrets: [anthropicApiKey], region: 'us-central1', timeoutSeconds: 1800 },
+    handlers.report
+  );
+  exports.applyClassifyUnsorted = onCall({ region: 'us-central1', timeoutSeconds: 540 }, handlers.apply);
+  exports.undoClassifyUnsorted = onCall({ region: 'us-central1', timeoutSeconds: 540 }, handlers.undo);
+}
+
 const { actingUid } = require('./acting-uid');
 
 /* 29/10/2026: רשימת הלקוחות לבחירה בתצוגה כלקוחה (ראו acting-uid.js) */
@@ -1174,60 +1198,21 @@ exports.classifyIdea = onCall({ secrets: [anthropicApiKey], region: 'us-central1
 
   await enforceRateLimit(request.auth.uid, 'classifyIdea');
 
-  const prompt = `הרעיון לתוכן: "${title}"
-פירוט נוסף: "${hookText}"
-
-סווג/י את הרעיון הזה לפי שתי המערכות הבאות (המבוססות על המתודולוגיה המדויקת של מאיה קיסלב - אקדמיית המהלך השיווקי):
-
-מערכת 1 - סוג תוכן, בחר/י בדיוק אחד לפי המספר שלו:
-${CATEGORIES.map((c, i) => `${i + 1}. ${c}: ${CATEGORY_DEFINITIONS[c]}`).join('\n')}
-
-**הבחנה קריטית שגורמת לטעויות סיווג בפועל - סיפור לקוח מול סיפור אישי:** "אישי" הוא **רק** על החיים/הסיפור/החוויות של **בעל/ת העסק עצמו/ה** - לא על לקוחות. סיפור שמתאר מה **קרה ללקוח/ה** (למשל "לקוחה הגיעה אליי מ...", "מטופל סיפר לי ש...", כל תיאור של תהליך/תוצאה/מקרה של מישהו אחר שפנה לעסק) הוא **לעולם לא "אישי"**, גם אם הוא מנוסח בגוף ראשון ("אליי", "אצלי") - הגוף הראשון כאן מתאר את הקשר בין הלקוח/ה לבעל/ת העסק, לא את החיים האישיים של בעל/ת העסק. סיפור לקוח כזה הוא "מכירתי" אם הוא מציג תוצאה/הוכחה/עדות שמטרתה לשכנע לרכוש, או "בעל ערך" אם הוא משמש כדוגמה להמחשת תובנה/טעות/עיקרון מקצועי בלי דגש מכירתי ישיר. דוגמה קונקרטית: "לא תאמינו שחר הגיעה אליי מבאר שבע עם [בעיה] ותוך [X זמן] הגיעה ל[תוצאה]" - זה **מכירתי** (סיפור הצלחה של לקוחה עם הוכחת תוצאה), **לא אישי**, למרות ה"אליי".
-
-מערכת 2 - שלב שכנוע, בחר/י בדיוק אחד לפי המספר שלו. לשים לב: לכל תוכן יש בדרך כלל שלב שכנוע דומיננטי אחד, גם אם הוא נוגע קצת גם באחרים - תבחר/י את זה שהכי מתאר את המטרה המרכזית של הרעיון הספציפי הזה:
-${PERSUASION_STAGES.map((s, i) => `${i + 1}. ${s}: ${PERSUASION_STAGE_DEFINITIONS[s]}`).join('\n')}
-
-מערכת 3 - למי הסרטון מדבר, בחר/י בדיוק אחד לפי המספר שלו:
-${AUDIENCE_SCOPES.map((s, i) => `${i + 1}. ${s}: ${AUDIENCE_SCOPE_DEFINITIONS[s]}`).join('\n')}
-
-השב/י אך ורק ב-JSON תקין בפורמט הבא, בלי שום טקסט נוסף לפני או אחרי - רק שלושה מספרים שלמים, לא את הטקסט של הקטגוריה/השלב/הקהל עצמם:
-{"categoryIndex": <מספר בין 1 ל-${CATEGORIES.length}>, "persuasionStageIndex": <מספר בין 1 ל-${PERSUASION_STAGES.length}>, "audienceScopeIndex": <מספר בין 1 ל-${AUDIENCE_SCOPES.length}>}`;
-
+  /* 07/11/2026: הפרומפט והפענוח עברו ל-classify-idea.js, כדי שהשלמת הסיווג
+     לרעיונות שלא סווגו (classifyUnsortedIdeas) תסווג בדיוק כמו כאן. */
   const data = await callAnthropic(
     anthropicApiKey.value(),
-    { model: 'claude-haiku-4-5-20251001', max_tokens: 200, messages: [{ role: 'user', content: prompt }] },
+    { model: CLASSIFY_MODEL, max_tokens: 200, messages: [{ role: 'user', content: buildClassifyPrompt(title, hookText) }] },
     'classifyIdea'
   );
 
   const text = getResponseText(data) || '{}';
-  let parsed;
-  try {
-    const match = text.match(/\{[\s\S]*\}/);
-    parsed = JSON.parse(match ? match[0] : text);
-  } catch (err) {
-    console.error('Failed to parse classifyIdea response:', text);
+  const result = parseClassification(text);
+  if (!result) {
+    console.error('classifyIdea returned an invalid answer:', text);
     throw new HttpsError('internal', 'לא הצלחתי לסווג את הרעיון, נסו שוב');
   }
-
-  // בעבר הותאמו מחרוזות תיאוריות ארוכות בהתאמה מדויקת (.includes) עם ברירת
-  // מחדל שקטה לאפשרות הראשונה בכל אי-התאמה - זה יצר הטיה שיטתית ל"שלב
-  // שכנוע 1" בכל פעם שה-AI סטה ולו במעט מהמחרוזת המדויקת (רווח, ניסוח
-  // שונה וכו'), בלי שום סימן שזו בכלל טעות ולא סיווג אמיתי. מספר שלם קצר
-  // הרבה יותר יציב להתאמה, ואי-התאמה עכשיו נכשלת בגלוי ומאפשרת ניסיון
-  // חוזר, במקום לתייג בשקט תווית שגויה.
-  const categoryIndex = Number(parsed.categoryIndex);
-  const stageIndex = Number(parsed.persuasionStageIndex);
-  const category = CATEGORIES[categoryIndex - 1];
-  const persuasionStage = PERSUASION_STAGES[stageIndex - 1];
-  if (!category || !persuasionStage) {
-    console.error('classifyIdea returned invalid indices:', text);
-    throw new HttpsError('internal', 'לא הצלחתי לסווג את הרעיון, נסו שוב');
-  }
-  /* 06/11/2026: הטופס הקצר של מאיה כבר לא שואל "למי הסרטון מדבר", והקהל
-     מסווג כאן יחד עם השאר. קהל לא תקין לא מפיל את הסיווג (הסוג והשלב
-     חשובים יותר): הוא פשוט נשאר ריק. מי שקורא רק category/persuasionStage
-     (העוזר לסרטון) לא מושפע. */
-  const audienceScope = AUDIENCE_SCOPES[Number(parsed.audienceScopeIndex) - 1] || '';
+  const { category, persuasionStage, audienceScope } = result;
   return { category, persuasionStage, audienceScope };
 });
 
@@ -1241,6 +1226,7 @@ ${AUDIENCE_SCOPES.map((s, i) => `${i + 1}. ${s}: ${AUDIENCE_SCOPE_DEFINITIONS[s]
 // ואת לשונית "פרסונה שיווקית" האמיתית - שום דבר לא מגיע מהלקוח חוץ
 // מהזהות שלו.
 const PERSONA_TAB = 'פרסונה שיווקית';
+const { pickPersonaTab } = require('./sheet-sections');
 exports.guessClientDomain = onCall({ secrets: [anthropicApiKey, sheetsServiceAccountKey], region: 'us-central1', timeoutSeconds: 60 }, async (request) => {
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'יש להתחבר כדי להשתמש בתכונה הזו');
@@ -1260,7 +1246,8 @@ exports.guessClientDomain = onCall({ secrets: [anthropicApiKey, sheetsServiceAcc
   }
 
   let personaText = '';
-  const tabs = await fetchSheetTabs(sheetId, [PERSONA_TAB]);
+  /* 07/11/2026: גם "פרסונה שיוקית" (שגיאת כתיב בחמישה קבצים), כמו pickPersonaTab */
+  const tabs = await fetchSheetTabs(sheetId, [PERSONA_TAB], { [PERSONA_TAB]: pickPersonaTab });
   if (tabs && tabs[PERSONA_TAB]) {
     personaText = tabs[PERSONA_TAB]
       .map((row) => (row && row[1]) || '')

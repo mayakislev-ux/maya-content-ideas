@@ -16,6 +16,8 @@ const { buildStoryTable, TAB } = require('./story-table-extract');
 const { fetchSheetTabs, sheetsServiceAccountKey } = require('./sheets-content');
 
 const WANTED_TABS = [TAB.persona, TAB.audience, TAB.products];
+const { pickPersonaTab } = require('./sheet-sections');
+const TAB_PICKERS = { [TAB.persona]: pickPersonaTab };
 
 /**
  * מסיר את מה שנגזר בצד הלקוח לפני השמירה.
@@ -89,7 +91,8 @@ exports.makeSyncStoryTable = ({ enforceAllowlist, actingUid }) =>
         };
       }
 
-      const tabs = await fetchSheetTabs(sheetId, WANTED_TABS);
+      /* 07/11/2026: גם "פרסונה שיוקית" (שגיאת כתיב בחמישה קבצים), כמו pickPersonaTab */
+      const tabs = await fetchSheetTabs(sheetId, WANTED_TABS, TAB_PICKERS);
       if (tabs === null) {
         return {
           ready: false,
@@ -136,3 +139,4 @@ exports.makeSyncStoryTable = ({ enforceAllowlist, actingUid }) =>
 
 module.exports.toSheetId = toSheetId;
 module.exports.WANTED_TABS = WANTED_TABS;
+module.exports.TAB_PICKERS = TAB_PICKERS;

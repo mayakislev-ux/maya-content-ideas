@@ -215,9 +215,20 @@ function createIdeasFromRowHandler(deps) {
 
 const TAB_NAMES = { audience: sections.AUDIENCE_TAB, persona: sections.PERSONA_TAB };
 
+/* מה קרה בקריאת הקובץ -> קוד שגיאה והודעה. no-access ו-no-file מגיעים
+   מ-fetchSheetTabPicked (403 / 404 מ-Google). */
+const SHEET_ERRORS = {
+  'no-sheet': { code: 'failed-precondition', message: 'עוד אין קובץ Sheets מקושר לחשבון. אפשר לבקש ממאיה לקשר אותו' },
+  'no-access': { code: 'permission-denied', message: 'אין לנו גישה לקובץ שלך. מאיה צריכה לשתף אותו עם המערכת' },
+  'no-file': { code: 'not-found', message: 'לא מצאנו את קובץ ה-Sheets שמקושר לחשבון. ייתכן שהוא נמחק או הוחלף. אפשר לבקש ממאיה לקשר אותו מחדש' },
+  'no-tab': { code: 'not-found', message: 'לא מצאנו את הלשונית בקובץ שלך' },
+  'empty-tab': { code: 'failed-precondition', message: 'הלשונית עוד ריקה' },
+  unavailable: { code: 'unavailable', message: 'לא הצלחנו לקרוא את קובץ ה-Sheets כרגע. לנסות שוב בעוד רגע, ואם זה חוזר לספר למאיה' },
+};
+
 /**
  * deps: HttpsError, enforceAllowlist, checkRate, actingUid,
- *   getProfile(uid) -> profile|null, readTab(sheetId, pick) -> null | { title: null } | { title, rows }
+ *   getProfile(uid) -> profile|null, readTab(sheetId, pick) -> null | { error: 'no-access'|'no-file' } | { title: null } | { title, rows }
  */
 function createReadSheetSectionsHandler(deps) {
   const { HttpsError } = deps;
@@ -231,18 +242,18 @@ function createReadSheetSectionsHandler(deps) {
     return withSlot(deps, request.auth.uid, async () => {
       const profile = (await deps.getProfile(subject)) || {};
       const sheetId = typeof profile.sheetId === 'string' ? profile.sheetId.trim() : '';
-      if (!sheetId) {
-        throw new HttpsError('failed-precondition', 'עוד אין קובץ Sheets מקושר לחשבון. אפשר לבקש ממאיה לקשר אותו');
-      }
+      /* 07/11/2026: לכל מקרה קוד וסיבה משלו (details.reason), כדי שהמסך
+         יגיד מה באמת קרה ולא "לא הצלחנו לקרוא" כללי. SHEET_ERRORS. */
+      const fail = (reason, text) => new HttpsError(SHEET_ERRORS[reason].code, text || SHEET_ERRORS[reason].message, { reason });
+      if (!sheetId) throw fail('no-sheet');
       const pick = kind === 'audience' ? sections.pickAudienceTab : sections.pickPersonaTab;
       const tab = await deps.readTab(sheetId, pick);
-      if (!tab) {
-        throw new HttpsError('unavailable', 'לא הצלחנו לקרוא את קובץ ה-Sheets כרגע. לנסות שוב בעוד רגע, ואם זה חוזר לספר למאיה');
-      }
-      if (!tab.title) throw new HttpsError('not-found', `לא מצאנו לשונית '${TAB_NAMES[kind]}' בקובץ שלך`);
+      if (!tab) throw fail('unavailable');
+      if (tab.error && SHEET_ERRORS[tab.error]) throw fail(tab.error);
+      if (!tab.title) throw fail('no-tab', `לא מצאנו לשונית '${TAB_NAMES[kind]}' בקובץ שלך`);
       const parsed = kind === 'audience' ? sections.parseAudienceTab(tab.rows) : sections.parsePersonaTab(tab.rows);
       if (!parsed.groups.length) {
-        throw new HttpsError('failed-precondition', `הלשונית '${tab.title}' עוד ריקה. כשממלאים אותה, הרעיונות יגיעו מכאן`);
+        throw fail('empty-tab', `הלשונית '${tab.title}' עוד ריקה. כשממלאים אותה, הרעיונות יגיעו מכאן`);
       }
       return { kind, tab: tab.title, groups: parsed.groups };
     });
@@ -253,6 +264,7 @@ module.exports = {
   createIdeasFromImageHandler,
   createIdeasFromRowHandler,
   createReadSheetSectionsHandler,
+  SHEET_ERRORS,
   validateImage,
   imagePrompt,
   rowPrompt,

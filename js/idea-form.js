@@ -277,9 +277,17 @@ function openInfoModal(title, definitions) {
   document.getElementById('info-modal').hidden = false;
 }
 
+/** ההסבר של ה-ⓘ ליד "סוג התוכן": רק הסוגים שאפשר לבחור היום */
+export function categoryInfo() {
+  return Object.fromEntries(CATEGORIES.map((c) => [c, CATEGORY_DEFINITIONS[c]]));
+}
+
 function wireInfoModal() {
   document.getElementById('category-info-btn').addEventListener('click', () => {
-    openInfoModal('מה כל קטגוריה אומרת?', CATEGORY_DEFINITIONS);
+    /* 07/11/2026 (מאיה): ה-ⓘ עוד הסביר את "בידורי", שירדה מהשיטה ב-09/10.
+       מציגים רק את שלושת הסוגים שאפשר לבחור (CATEGORIES). ההגדרה הישנה
+       נשארת ב-CATEGORY_DEFINITIONS לנתונים ישנים, אבל לא מוצגת. */
+    openInfoModal('מה כל קטגוריה אומרת?', categoryInfo());
   });
   document.getElementById('persuasion-info-btn').addEventListener('click', () => {
     openInfoModal('מה כל שלב שכנוע אומר?', PERSUASION_STAGE_DEFINITIONS);

@@ -17,7 +17,7 @@ const ifs = require('../functions/ideas-from-sources.js');
 const ifr = require('../functions/ideas-from-recording.js');
 
 class HttpsError extends Error {
-  constructor(code, message) { super(message); this.code = code; }
+  constructor(code, message, details) { super(message); this.code = code; this.details = details; }
 }
 
 /* ---------- המבנים האמיתיים (כמו בקובץ של מאיה) ---------- */
@@ -202,6 +202,39 @@ describe('readSheetSections', () => {
     m = make();
     await assert.rejects(m.h(req({ kind: 'other' })), /מקור לא מוכר/);
     assert.equal(m.state.rate, 0);
+  });
+
+  /* 07/11/2026 (מאיה): שגיאה ברורה לכל מקרה, ולא "לא הצלחנו לקרוא את קובץ ה-Sheets" כללי */
+  test('אין גישה / קובץ שנמחק / אין קובץ / אין לשונית: קוד וסיבה נפרדים לכל אחד', async () => {
+    const reasonOf = async (opts, kind = 'audience') => {
+      const m = make(opts);
+      try { await m.h(req({ kind })); } catch (e) { return { code: e.code, reason: e.details && e.details.reason, message: e.message }; }
+      return null;
+    };
+    const access = await reasonOf({ tab: { error: 'no-access' } });
+    assert.deepEqual(access, { code: 'permission-denied', reason: 'no-access', message: 'אין לנו גישה לקובץ שלך. מאיה צריכה לשתף אותו עם המערכת' });
+    const file = await reasonOf({ tab: { error: 'no-file' } });
+    assert.equal(file.code, 'not-found');
+    assert.equal(file.reason, 'no-file');
+    assert.match(file.message, /לא מצאנו את קובץ ה-Sheets/);
+    assert.equal((await reasonOf({ profile: {} })).reason, 'no-sheet');
+    assert.equal((await reasonOf({ tab: { title: null } }, 'persona')).reason, 'no-tab');
+    assert.equal((await reasonOf({ tab: { title: 'ניתוח קהל יעד', rows: [] } })).reason, 'empty-tab');
+    assert.equal((await reasonOf({ tab: null })).reason, 'unavailable');
+    for (const r of Object.values(ifs.SHEET_ERRORS)) assert.ok(!/[—–]/.test(r.message));
+  });
+
+  test('קריאת הקובץ: 403 הוא אין גישה, 404 הוא קובץ שלא קיים, וכל השאר תקלה רגעית', () => {
+    const { sheetErrorReason } = require('../functions/sheets-content.js');
+    assert.equal(sheetErrorReason({ code: 403 }), 'no-access');
+    assert.equal(sheetErrorReason({ code: 'ERR_X', status: 403 }), 'no-access');
+    assert.equal(sheetErrorReason({ response: { status: 404 } }), 'no-file');
+    assert.equal(sheetErrorReason({ code: 500 }), null);
+    assert.equal(sheetErrorReason({ code: 'ECONNRESET' }), null);
+    assert.equal(sheetErrorReason(null), null);
+    const src = readFileSync(new URL('../functions/sheets-content.js', import.meta.url), 'utf8');
+    const fn = src.slice(src.indexOf('async function fetchSheetTabPicked'));
+    assert.match(fn, /return reason \? \{ error: reason \} : null;/);
   });
 });
 
@@ -439,6 +472,8 @@ describe('"אין לי רעיון?" במסך הבית (jsdom)', { skip: hasJsdom
     });
     noIdea.setNoIdeaHome(true);
     homeMic.setHomeMicVisible(true);
+    /* ברירת המחדל בבדיקות: יש קובץ מקושר, וכל הדלתות מוצגות */
+    profileDoc = { sheetId: 'S1' };
   });
 
   beforeEach(() => {
@@ -647,6 +682,60 @@ describe('"אין לי רעיון?" במסך הבית (jsdom)', { skip: hasJsdom
     $('#no-idea-refresh').click();
     await until(() => calls.filter((c) => c.name === 'readSheetSections').length === reads + 1, 'רענון');
     await until(() => $$('#no-idea-rows li').length > 0, 'שורות אחרי רענון');
+    $('#no-idea-close-btn').click();
+  });
+
+  /* 07/11/2026 (מאיה: למשתמשי המרתון הזמניים אין טבלאות, "פשוט לבטל את הקהל יעד והפרסונה") */
+  test('בלי קובץ Sheets מקושר: אין דלתות "מקהל היעד" ו"מהפרסונה", ועם קובץ הן חוזרות', async () => {
+    const visible = () => $$('#no-idea-modal .no-idea-door').filter((d) => !d.hidden).map((d) => d.dataset.door);
+    const saved = profileDoc;
+    try {
+      for (const profile of [null, {}, { sheetId: '' }, { sheetId: '   ' }]) {
+        profileDoc = profile;
+        noIdea.__test.sheetKnown.clear();
+        $('#home-mic-card').click();
+        await new Promise((r) => setTimeout(r, 10));
+        assert.deepEqual(visible(), ['today', 'reference'], `פרופיל ${JSON.stringify(profile)}`);
+        $('#no-idea-close-btn').click();
+      }
+      /* הקובץ קושר בינתיים: בפתיחה הבאה הדלתות מופיעות */
+      profileDoc = { sheetId: 'S1' };
+      $('#home-mic-card').click();
+      await until(() => visible().length === 4, 'הדלתות חזרו');
+      assert.deepEqual(visible(), ['today', 'audience', 'persona', 'reference']);
+      $('#no-idea-close-btn').click();
+      /* בפתיחה הבאה הן מוצגות מיד, בלי לחכות לפרופיל */
+      $('#home-mic-card').click();
+      assert.deepEqual(visible(), ['today', 'audience', 'persona', 'reference']);
+      $('#no-idea-close-btn').click();
+      assert.equal(noIdea.hasSheet({ sheetId: 'x' }), true);
+      assert.equal(noIdea.hasSheet({ sheetId: 5 }), false);
+      /* הבדיקה קוראת את הפרופיל של מי שבתצוגה (getProfile עם subjectUid) */
+      const src = readFileSync(new URL('../js/no-idea.js', import.meta.url), 'utf8');
+      assert.match(src, /function checkSheetDoors\(\) \{[\s\S]*?getProfile\(\)/);
+      const prof = readFileSync(new URL('../js/user-profile.js', import.meta.url), 'utf8');
+      assert.match(prof, /doc\(db, 'profiles', subjectUid\(auth\.currentUser\.uid\)\)/);
+    } finally {
+      profileDoc = saved;
+    }
+  });
+
+  test('אין גישה לקובץ: הודעה ספציפית, ולא "לא הצלחנו לקרוא את הקובץ"', async () => {
+    sessionStorage.clear();
+    handlers.readSheetSections = async () => {
+      throw Object.assign(new Error('permission'), { code: 'functions/permission-denied', details: { reason: 'no-access' } });
+    };
+    $('#home-mic-card').click();
+    $('.no-idea-door[data-door="persona"]').click();
+    await until(() => /אין לנו גישה/.test($('#no-idea-table-status').textContent), 'הודעת גישה');
+    assert.equal($('#no-idea-table-status').textContent, 'אין לנו גישה לקובץ שלך. מאיה צריכה לשתף אותו עם המערכת');
+    assert.equal($('#no-idea-retry').textContent, 'בדיקה מחדש בקובץ');
+    handlers.readSheetSections = async () => {
+      throw Object.assign(new Error('gone'), { code: 'functions/not-found', details: { reason: 'no-file' } });
+    };
+    $('#no-idea-retry').click();
+    await until(() => /לא מצאנו את קובץ ה-Sheets/.test($('#no-idea-table-status').textContent), 'הודעת קובץ חסר');
+    for (const t of Object.values(noIdea.SHEET_ERROR_TEXT)) assert.ok(!/[—–]/.test(t));
     $('#no-idea-close-btn').click();
   });
 
