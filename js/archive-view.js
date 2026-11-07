@@ -46,6 +46,8 @@ export async function classifyQuickIdea(id, title, opts = {}) {
   try { classified = await classify(title); } catch (err) { console.error('quick classify failed:', err); }
   if (!classified || !classified.category) { failNote(); return false; }
   const now = current() || {};
+  /* אם בינתיים בחרו קטגוריה ידנית, לא משלימים שלב/קהל שה-AI בחר לקטגוריה אחרת */
+  if (now.category) return true;
   const fields = {};
   for (const key of ['category', 'persuasionStage', 'audienceScope']) {
     if (!now[key] && classified[key]) fields[key] = classified[key];

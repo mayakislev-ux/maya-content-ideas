@@ -59,7 +59,9 @@ export async function openMyDetails({ onSaved = null } = {}) {
     profile = (await getProfile()) || {};
   } catch (err) {
     console.error('my-details: getProfile failed', err);
-    showError(serverErrorText(err, 'טעינת הפרטים'));
+    /* בלי הפרטים השמורים לא שומרים, אחרת שדות ריקים היו דורסים את מה שיש */
+    showError(`${serverErrorText(err, 'טעינת הפרטים')} אפשר לסגור ולפתוח שוב.`);
+    return;
   }
   el('my-details-business').value = profile.business || '';
   el('my-details-primary').value = profile.primaryAudience || '';

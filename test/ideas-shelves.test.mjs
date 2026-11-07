@@ -667,7 +667,8 @@ describe('המסך (jsdom)', { skip: hasJsdom ? false : 'jsdom לא מותקן' 
       update: async (id, f) => { saved.push(f); },
       notify: () => {},
     });
-    assert.deepEqual(saved[0], { persuasionStage: s1, audienceScope: 'עיקרי' });
+    /* קטגוריה שנבחרה ידנית בינתיים: לא משלימים שלב/קהל של קטגוריה אחרת */
+    assert.equal(saved.length, 0);
   });
 
   test('בלי המתג (לקוחות): הוספה מהירה לא מסווגת ברקע', async () => {
