@@ -155,6 +155,21 @@ async function fetchExtraContentLinks(text) {
   return { error: false, content: sections.join('\n\n') };
 }
 
+/* 07/11/2026: חמישה קבצים (מתיקיית 3 המפגשים) קוראים ללשונית "פרסונה שיוקית",
+   בלי ו. pickers מאפשר לכל שם מבוקש בחירה סלחנית (למשל pickPersonaTab):
+   קודם השם המדויק, ואחרת מה שהבוחר מוצא. התוצאה נשמרת תחת השם המבוקש,
+   כך שמי שקורא tabs['פרסונה שיווקית'] לא צריך לדעת איך קוראים לה בקובץ. */
+function resolveTabTitles(tabTitles, present, pickers = {}) {
+  const out = [];
+  for (const wanted of tabTitles) {
+    if (!wanted) continue;
+    let actual = present.includes(wanted) ? wanted : null;
+    if (!actual && typeof pickers[wanted] === 'function') actual = pickers[wanted](present) || null;
+    if (actual && present.includes(actual)) out.push({ wanted, actual });
+  }
+  return out;
+}
+
 /**
  * 30/09/2026: טבלת החימום צריכה תאים, לא טקסט.
  *
@@ -165,7 +180,7 @@ async function fetchExtraContentLinks(text) {
  * מחזיר { [tabTitle]: rows[][] } ללשוניות שנמצאו, או null כשאין גישה בכלל,
  * ואז מי שקורא יכול לומר ללקוחה משהו אמיתי במקום להציג טבלה ריקה.
  */
-async function fetchSheetTabs(sheetId, tabTitles) {
+async function fetchSheetTabs(sheetId, tabTitles, pickers = {}) {
   let keyValue;
   try {
     keyValue = sheetsServiceAccountKey.value();
@@ -197,16 +212,16 @@ async function fetchSheetTabs(sheetId, tabTitles) {
       fields: 'sheets.properties.title',
     });
     const present = (meta.data.sheets || []).map((s) => s.properties.title);
-    const wanted = tabTitles.filter((t) => present.includes(t));
+    const wanted = resolveTabTitles(tabTitles, present, pickers);
     if (!wanted.length) return {};
 
     const res = await sheets.spreadsheets.values.batchGet({
       spreadsheetId: sheetId,
-      ranges: wanted.map((t) => `'${t}'!A1:L120`),
+      ranges: wanted.map((t) => `'${t.actual.replace(/'/g, "''")}'!A1:L120`),
     });
     const out = {};
-    wanted.forEach((title, i) => {
-      out[title] = ((res.data.valueRanges || [])[i] || {}).values || [];
+    wanted.forEach((t, i) => {
+      out[t.wanted] = ((res.data.valueRanges || [])[i] || {}).values || [];
     });
     return out;
   } catch (err) {
@@ -221,6 +236,15 @@ async function fetchSheetTabs(sheetId, tabTitles) {
  * מחזיר null כשאין גישה לקובץ בכלל, { title: null } כשאין לשונית מתאימה,
  * ואחרת { title, rows }.
  */
+/** 403 = הקובץ לא שותף עם חשבון השירות, 404 = אין קובץ כזה (נמחק או מזהה שגוי) */
+function sheetErrorReason(err) {
+  const candidates = err ? [err.code, err.status, err.response && err.response.status] : [];
+  const status = candidates.map(Number).find((n) => Number.isInteger(n) && n >= 400) || 0;
+  if (status === 403) return 'no-access';
+  if (status === 404) return 'no-file';
+  return null;
+}
+
 async function fetchSheetTabPicked(sheetId, pick, range = 'A1:Z300') {
   let keyValue;
   try {
@@ -250,8 +274,11 @@ async function fetchSheetTabPicked(sheetId, pick, range = 'A1:Z300') {
     return { title, rows: res.data.values || [] };
   } catch (err) {
     console.error('fetchSheetTabPicked failed:', sheetId, err.message);
-    return null;
+    /* 07/11/2026: אין גישה וקובץ שלא קיים הם לא "תקלה רגעית". מי שקורא
+       צריך לדעת להגיד למשתמש/ת מה באמת קרה (ideas-from-sources.js). */
+    const reason = sheetErrorReason(err);
+    return reason ? { error: reason } : null;
   }
 }
 
-module.exports = { fetchExtraContentLinks, fetchSheetTabs, fetchSheetTabPicked, sheetsServiceAccountKey };
+module.exports = { fetchExtraContentLinks, fetchSheetTabs, fetchSheetTabPicked, resolveTabTitles, sheetErrorReason, sheetsServiceAccountKey };

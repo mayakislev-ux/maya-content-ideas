@@ -80,10 +80,12 @@ test('כותרת שכולה שורה טכנית לא מתרוקנת', () => {
 /* ההקשר נכנס ישירות לפרומפט המערכת, ובדיקת אורך השיחה לא מודדת אותו */
 test('הקשר שמגיע מהדפדפן מסונן מול רשימות סגורות', () => {
   const src = read('../functions/index.js');
-  const body = src.slice(src.indexOf('const AUDIENCE_SCOPES'), src.indexOf('function countClarifyingRepliesSinceLastAngles'));
+  const body = src.slice(src.indexOf('function pickIdeaContext'), src.indexOf('function countClarifyingRepliesSinceLastAngles'));
   // eslint-disable-next-line no-new-func
-  const pick = new Function('CATEGORIES', 'LEGACY_CATEGORIES', 'PERSUASION_STAGES', `${body}; return pickIdeaContext;`)(
-    ['בעל ערך', 'אישי', 'מכירתי'], ['בידורי', 'ערכי'], ['שלב שכנוע 1 - מודעות לבעיה / חומרת הבעיה']
+  const pick = new Function('CATEGORIES', 'LEGACY_CATEGORIES', 'PERSUASION_STAGES', 'AUDIENCE_SCOPES', `${body}; return pickIdeaContext;`)(
+    ['בעל ערך', 'אישי', 'מכירתי'], ['בידורי', 'ערכי'], ['שלב שכנוע 1 - מודעות לבעיה / חומרת הבעיה'],
+    /* 07/11/2026: AUDIENCE_SCOPES עבר ל-functions/classify-idea.js */
+    require('../functions/classify-idea.js').AUDIENCE_SCOPES
   );
   assert.deepEqual(pick({ category: 'אישי', audienceScope: 'רחב', persuasionStage: 'משהו שהומצא' }),
     { category: 'אישי', persuasionStage: '', audienceScope: 'רחב' });

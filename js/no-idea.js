@@ -140,6 +140,36 @@ function errorText(err, fallback) {
   return /[֐-׿]/.test(msg) ? msg : fallback;
 }
 
+/* 07/11/2026 (מאיה: למשתמשי המרתון הזמניים אין את הטבלאות האלה, "פשוט
+   לבטל את הקהל יעד והפרסונה"): בלי קובץ Sheets מקושר שתי הדלתות האלה
+   לא מוצגות בכלל. */
+export const SHEET_DOORS = ['audience', 'persona'];
+
+export function hasSheet(profile) {
+  return Boolean(profile && typeof profile.sheetId === 'string' && profile.sheetId.trim());
+}
+
+/* מה קרה בקריאת הקובץ (details.reason מ-readSheetSections) -> מה אומרים.
+   בלי סיבה מוכרת: ההודעה מהשרת, ואם היא לא בעברית ההודעה הכללית. */
+export const SHEET_ERROR_TEXT = {
+  'no-access': 'אין לנו גישה לקובץ שלך. מאיה צריכה לשתף אותו עם המערכת',
+  'no-file': 'לא מצאנו את קובץ ה-Sheets שמקושר לחשבון. ייתכן שהוא נמחק או הוחלף. אפשר לבקש ממאיה לקשר אותו מחדש',
+  'no-sheet': 'עוד אין קובץ Sheets מקושר לחשבון. אפשר לבקש ממאיה לקשר אותו',
+};
+/* מקרים שניסיון חוזר מיד לא יפתור, רק תיקון בקובץ */
+const FIX_IN_FILE = ['no-access', 'no-file', 'no-sheet', 'no-tab', 'empty-tab'];
+
+function sheetReason(err) {
+  const details = err && err.details;
+  return details && typeof details.reason === 'string' ? details.reason : '';
+}
+
+export function sheetErrorText(err) {
+  const reason = sheetReason(err);
+  if (SHEET_ERROR_TEXT[reason]) return SHEET_ERROR_TEXT[reason];
+  return errorText(err, 'לא הצלחנו לקרוא את הקובץ כרגע. לנסות שוב בעוד רגע');
+}
+
 /* ---------- תלויות מבחוץ (app.js) ----------
    getIdeas: כל הרעיונות של מי שבתצוגה (לסימון ✓), loadBankVideos ו-duplicate:
    אותו מאגר ואותו שכפול של מסך "מאגר להשראה" (js/inspiration-view.js). */
@@ -159,6 +189,10 @@ const KIND = {
 };
 
 const table = { kind: null, data: null, group: 0, section: null, loading: false };
+/* האם למי שבתצוגה יש קובץ: uid -> true/false, כדי שבפתיחה הבאה הדלתות
+   יופיעו מיד בלי לחכות לפרופיל */
+const sheetKnown = new Map();
+let doorsSeq = 0;
 const savedNow = new Set();
 let reference = null;
 let requestSeq = 0;
@@ -291,10 +325,38 @@ function doorsStatus(text) {
   node.hidden = !text;
 }
 
-/** הפופאפ של ארבע הדלתות. זה מה שלחיצה על "אין לי רעיון?" במסך הבית פותחת. */
+function showSheetDoors(show) {
+  for (const door of SHEET_DOORS) {
+    const node = el('no-idea-modal').querySelector(`.no-idea-door[data-door="${door}"]`);
+    if (node) node.hidden = !show;
+  }
+}
+
+/* בודקים בכל פתיחה (הקובץ יכול להיות מקושר בינתיים). getProfile קורא את
+   הפרופיל של מי שבתצוגה, כך שבתצוגה כלקוחה זה הקובץ של הלקוח/ה. */
+function checkSheetDoors() {
+  const who = uid();
+  showSheetDoors(sheetKnown.get(who) === true);
+  const token = ++doorsSeq;
+  Promise.resolve()
+    .then(() => getProfile())
+    .then((profile) => {
+      if (token !== doorsSeq) return;
+      sheetKnown.set(who, hasSheet(profile));
+      showSheetDoors(hasSheet(profile));
+    })
+    .catch((err) => {
+      /* לא הצלחנו לבדוק: מציגים, והשרת יגיד בדיוק מה חסר אם משהו חסר */
+      console.warn('no-idea: profile check failed', err);
+      if (token === doorsSeq) showSheetDoors(true);
+    });
+}
+
+/** הפופאפ של הדלתות. זה מה שלחיצה על "אין לי רעיון?" במסך הבית פותחת. */
 export function openNoIdeaDoors() {
   ensureModal();
   el('no-idea-prompt').textContent = `💡 שאלה של היום: ${promptOfDay()}`;
+  checkSheetDoors();
   showStep('doors');
   el('no-idea-modal').hidden = false;
 }
@@ -425,10 +487,12 @@ async function loadTable(kind, { fresh = false } = {}) {
     console.error('no-idea: readSheetSections failed', err);
     if (token !== requestSeq || table.kind !== kind) return;
     const code = String((err && err.code) || '');
-    tableStatus(errorText(err, 'לא הצלחנו לקרוא את הקובץ כרגע. לנסות שוב בעוד רגע'), { error: true });
-    /* אין קובץ או אין לשונית: ניסיון חוזר לא יעזור עד שמשהו ישתנה בקובץ, אבל אחרי תיקון הוא כן */
+    tableStatus(sheetErrorText(err), { error: true });
+    /* אין גישה, אין קובץ או אין לשונית: ניסיון חוזר לא יעזור עד שמשהו ישתנה בקובץ, אבל אחרי תיקון הוא כן */
     el('no-idea-retry').hidden = false;
-    el('no-idea-retry').textContent = code.endsWith('not-found') || code.endsWith('failed-precondition') ? 'בדיקה מחדש בקובץ' : 'לנסות שוב';
+    const fixInFile = FIX_IN_FILE.includes(sheetReason(err))
+      || code.endsWith('not-found') || code.endsWith('failed-precondition') || code.endsWith('permission-denied');
+    el('no-idea-retry').textContent = fixInFile ? 'בדיקה מחדש בקובץ' : 'לנסות שוב';
   } finally {
     if (token === requestSeq) table.loading = false;
   }
@@ -701,4 +765,4 @@ export function setNoIdeaHome(on) {
 }
 
 /* לבדיקות: מה נשמר עכשיו ושינויים במצב */
-export const __test = { savedNow, table, deps };
+export const __test = { savedNow, table, deps, sheetKnown };

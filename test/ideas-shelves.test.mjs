@@ -120,10 +120,14 @@ describe('הסיווג האוטומטי והדירוג שירד', () => {
     const server = readFileSync(new URL('../functions/index.js', import.meta.url), 'utf8');
     const from = server.indexOf('exports.classifyIdea');
     const fn = server.slice(from, server.indexOf('exports.guessClientDomain', from));
-    assert.match(fn, /"audienceScopeIndex"/);
-    assert.match(fn, /AUDIENCE_SCOPE_DEFINITIONS\[s\]/);
-    assert.match(fn, /const audienceScope = AUDIENCE_SCOPES\[Number\(parsed\.audienceScopeIndex\) - 1\] \|\| '';/);
+    /* 07/11/2026: הפרומפט והפענוח עברו ל-functions/classify-idea.js, משותף להשלמת הסיווג */
+    assert.match(fn, /buildClassifyPrompt\(title, hookText\)/);
+    assert.match(fn, /parseClassification\(text\)/);
     assert.match(fn, /return \{ category, persuasionStage, audienceScope \};/);
+    const mod = readFileSync(new URL('../functions/classify-idea.js', import.meta.url), 'utf8');
+    assert.match(mod, /"audienceScopeIndex"/);
+    assert.match(mod, /AUDIENCE_SCOPE_DEFINITIONS\[s\]/);
+    assert.match(mod, /const audienceScope = AUDIENCE_SCOPES\[Number\(parsed\.audienceScopeIndex\) - 1\] \|\| '';/);
   });
 
   test('תכנית תוכן לא פוסלת רעיון בלי דירוג: רק בלי סוג', () => {
@@ -509,6 +513,22 @@ describe('המסך (jsdom)', { skip: hasJsdom ? false : 'jsdom לא מותקן' 
     const css = readFileSync(new URL('../css/ideas-shelves.css', import.meta.url), 'utf8');
     assert.match(css, /\.idea-form--simple \[data-simple-hide\] \{ display: none; \}/);
     form.closeModal();
+  });
+
+  /* 07/11/2026 (מאיה): ה-ⓘ של "סוג התוכן" עוד הסביר את "בידורי" */
+  test('ה-ⓘ של סוג התוכן מסביר רק את שלושת הסוגים, בלי בידורי', () => {
+    form.openAddModal();
+    $('#category-info-btn').click();
+    assert.equal($('#info-modal').hidden, false);
+    const body = $('#info-modal-body');
+    assert.deepEqual([...body.querySelectorAll('strong')].map((s) => s.textContent), ['בעל ערך', 'אישי', 'מכירתי']);
+    assert.ok(!body.textContent.includes('בידור'), 'בידורי עוד מוסבר ב-ⓘ');
+    assert.deepEqual(Object.keys(form.categoryInfo()), ['בעל ערך', 'אישי', 'מכירתי']);
+    $('#info-modal-close-btn').click();
+    form.closeModal();
+    /* בשום טקסט גלוי ב-index.html (מחוץ להערות) */
+    const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8').replace(/<!--[\s\S]*?-->/g, '');
+    assert.ok(!html.includes('בידורי'));
   });
 
   test('הוספה עם טקסט בלבד: מסווג לבד ונשמר בלי דירוג', async () => {
