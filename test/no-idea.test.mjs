@@ -481,7 +481,7 @@ describe('"אין לי רעיון?" במסך הבית (jsdom)', { skip: hasJsdom
       ['ממה שקרה היום / השבוע', 'מקהל היעד', 'מהפרסונה השיווקית: הבידול שלך', 'לשכפל רפרנס']);
     for (const d of doors) assert.ok(d.classList.contains('home-mic-card'), 'הדלת לא באותו מראה של הכרטיס');
     assert.equal($('#no-idea-prompt').textContent, `💡 שאלה של היום: ${noIdea.promptOfDay()}`);
-    assert.deepEqual($$('.no-idea-door__actions button').map((b) => b.textContent), ['🎙️ לספר בקול', '📷 צילום מסך של שאלה']);
+    assert.deepEqual($$('.no-idea-door__actions button').map((b) => b.textContent), ['🎙️ לספר בקול', '📷 שאלה שראיתי ברשת']);
     $('#no-idea-close-btn').click();
     assert.equal($('#no-idea-modal').hidden, true);
   });
@@ -729,7 +729,7 @@ describe('"אין לי רעיון?" במסך הבית (jsdom)', { skip: hasJsdom
 
     /* אותו שכפול בדיוק כמו הכפתור על הכרטיס במאגר */
     const app = readFileSync(new URL('../js/app.js', import.meta.url), 'utf8');
-    assert.match(app, /wireNoIdea\(\{ getIdeas: getAllIdeas, loadBankVideos, duplicate: startBankDuplication \}\)/);
+    assert.match(app, /wireNoIdea\(\{ getIdeas: getAllIdeas, loadBankVideos, duplicate: startBankDuplication, guessDomain, saveDomain \}\)/);
     const insp = readFileSync(new URL('../js/inspiration-view.js', import.meta.url), 'utf8');
     assert.match(insp, /export \{ loadVideos as loadBankVideos, startDuplication as startBankDuplication \}/);
     assert.match(insp, /info\.appendChild\(duplicateButton\(video\)\)/);
@@ -741,6 +741,13 @@ describe('"אין לי רעיון?" במסך הבית (jsdom)', { skip: hasJsdom
     assert.equal(pool.list.length, 3);
     assert.equal(pool.fallback, true);
     assert.equal(noIdea.referencePool(BANK, '').fallback, false);
+    /* 07/11: תת-הקטגוריה קודמת לשאר התחום (קוסמטיקאית לאקנה לא מקבלת שיער) */
+    const sub = noIdea.referencePool([
+      { id: 'a', url: 'u1', domain: 'יופי', subCategory: 'טיפוח עור', contentSummary: 'x' },
+      { id: 'b', url: 'u2', domain: 'יופי', subCategory: 'שיער', contentSummary: 'y' },
+      { id: 'c', url: 'u3', domain: 'כושר', subCategory: 'ציוד ספורט', contentSummary: 'z' },
+    ], 'יופי', 'טיפוח עור');
+    assert.deepEqual(sub.list.map((v) => v.id), ['a']);
     assert.equal(noIdea.pickReference([BANK[0]], 'v1'), BANK[0]);
     assert.equal(noIdea.pickReference([], null), null);
     profileDoc = { videoAssistantDomain: 'תחום שאין' };

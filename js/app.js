@@ -23,6 +23,7 @@ import { wireStoryTableView } from './story-table.js';
 import { actsAsOwner, isClientView, setClientView, viewedClient, setViewedClient } from './client-view.js';
 import { openClientPicker } from './client-picker.js';
 import { wireInspirationView, openInspirationView, loadBankVideos, startBankDuplication } from './inspiration-view.js';
+import { guessDomain, saveDomain } from './video-assistant-store.js';
 import { showView, getLastView } from './view-router.js';
 import { showToast } from './toast.js';
 import { startUpdateCheck, showAppVersion } from './update-check.js';
@@ -502,7 +503,7 @@ wirePullToRefresh();
 wireHomeMic();
 /* 06/11/2026: "אין לי רעיון?" במסך הבית. אותו מאגר ואותו שכפול של מסך
    "מאגר להשראה", והרעיונות שכבר נשמרו (לסימון ✓ על שורה בטבלה). */
-wireNoIdea({ getIdeas: getAllIdeas, loadBankVideos, duplicate: startBankDuplication });
+wireNoIdea({ getIdeas: getAllIdeas, loadBankVideos, duplicate: startBankDuplication, guessDomain, saveDomain });
 wireRandomIdeaModal({ getIdeas: getCurrentIdeas, onOpenIdea: openEditModal });
 wireIdeaChat();
 wireFeedbackForm();

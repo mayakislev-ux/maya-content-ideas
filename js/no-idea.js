@@ -64,10 +64,11 @@ export function rowsWithMarks(rows, ideas, savedNow = new Set()) {
 }
 
 /** מאגר הרפרנסים לתחום: בתחום אם יש בו, אחרת הכל. עדיף סרטונים עם תקציר. */
-export function referencePool(videos, domain) {
+export function referencePool(videos, domain, subCategory = '') {
   const all = (videos || []).filter((v) => v && v.url);
   const inDomain = domain ? all.filter((v) => v.domain === domain) : [];
-  const base = inDomain.length ? inDomain : all;
+  const inSub = subCategory ? inDomain.filter((v) => v.subCategory === subCategory) : [];
+  const base = inSub.length ? inSub : (inDomain.length ? inDomain : all);
   const summarized = base.filter((v) => String(v.contentSummary || '').trim());
   return { list: summarized.length ? summarized : base, fallback: Boolean(domain) && !inDomain.length };
 }
@@ -146,6 +147,8 @@ const deps = {
   getIdeas: () => [],
   loadBankVideos: async () => { throw new Error('המאגר לא זמין כרגע'); },
   duplicate: async () => {},
+  guessDomain: async () => null,
+  saveDomain: async () => {},
 };
 
 /* ---------- מצב ---------- */
@@ -207,8 +210,9 @@ function ensureModal() {
           ${doorCard({ door: 'today', tag: 'div', icon: '🎙️', title: 'ממה שקרה היום / השבוע', text: '' })}
             <span class="no-idea-door__actions">
               <button type="button" id="no-idea-record" class="btn-primary no-idea-door__btn">🎙️ לספר בקול</button>
-              <button type="button" id="no-idea-shot" class="no-idea-soft-btn no-idea-door__btn">📷 צילום מסך של שאלה</button>
+              <button type="button" id="no-idea-shot" class="no-idea-soft-btn no-idea-door__btn">📷 שאלה שראיתי ברשת</button>
             </span>
+            <span class="rec-lead rec-lead--soft no-idea-shot-hint">ראית שאלה בקבוצה, בתגובות או בהודעה שקיבלת? מעלים צילום מסך שלה, והיא הופכת לרעיונות לסרטון.</span>
             <input type="file" id="no-idea-shot-input" accept="image/*" hidden>
           </div>
           ${doorCard({ door: 'audience', icon: '👥', title: 'מקהל היעד', text: 'שורה מהלשונית "ניתוח קהל יעד" שלך הופכת ל-3 רעיונות' })}</button>
@@ -587,15 +591,35 @@ async function openReference() {
   const token = ++requestSeq;
   try {
     const videos = await deps.loadBankVideos();
+    /* 07/11/2026 (מאיה: אצל מאשה, קוסמטיקאית לאקנה, קפץ רפרנס של טניס).
+       ל-63 מתוך 74 משתמשים לא היה תחום שמור, וזה נפל לכל המאגר. עכשיו:
+       אין תחום שמור -> מנחשים אותו מהקובץ (כמו בעוזר לסרטון) ושומרים,
+       ובתוך התחום מעדיפים את תת-הקטגוריה (למשל טיפוח עור). */
     let domain = '';
+    let subCategory = '';
     try {
       const profile = await getProfile();
       domain = (profile && profile.videoAssistantDomain) || '';
+      subCategory = (profile && profile.videoAssistantSubCategory) || '';
+      if (!domain) {
+        refStatus('מזהים את התחום שלך...');
+        const guess = await deps.guessDomain();
+        if (guess && guess.domain) {
+          domain = guess.domain;
+          subCategory = guess.subCategory || '';
+          try { await deps.saveDomain(domain, subCategory); } catch (err) { console.warn('no-idea: saveDomain failed', err); }
+        }
+      }
     } catch (err) {
-      console.warn('no-idea: getProfile failed, using all domains', err);
+      console.warn('no-idea: domain lookup failed', err);
     }
     if (token !== requestSeq) return;
-    const pool = referencePool(videos, domain);
+    if (!domain) {
+      refStatus('לא הצלחנו לזהות את התחום שלך, אז לא נגריל רפרנס מתחום אחר. אפשר לבחור תחום בעוזר לסרטון ולנסות שוב.', { error: true });
+      el('no-idea-ref-retry').hidden = false;
+      return;
+    }
+    const pool = referencePool(videos, domain, subCategory);
     if (!pool.list.length) {
       refStatus('אין עדיין רפרנסים במאגר.', { error: true });
       return;
