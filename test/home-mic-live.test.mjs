@@ -405,7 +405,9 @@ describe('מיקרופון הבית (jsdom)', { skip: hasJsdom ? false : 'jsdom 
     card().click();
     await until(() => !$('#rec-step-error').hidden, 'שגיאה בחלון');
     assert.match($('#rec-error-text').textContent, /לא הצלחנו לתמלל/);
-    assert.equal($('#rec-retry-btn').hidden, true);
+    /* 07/11/2026: יש "לנסות שוב", וההודעה לא שולחת ללחוץ על המיקרופון */
+    assert.equal($('#rec-retry-btn').hidden, false);
+    assert.ok(!/ללחוץ שוב על המיקרופון/.test($('#rec-error-text').textContent));
     assert.equal(box().value, 'טקסט שלי');
     $('#rec-close-error').click();
     assert.equal($('#recorder-modal').hidden, true);
@@ -422,6 +424,14 @@ describe('מיקרופון הבית (jsdom)', { skip: hasJsdom ? false : 'jsdom 
     await until(() => !$('#rec-step-error').hidden, 'שגיאה בחלון');
     assert.match($('#rec-error-text').textContent, /לא שמענו דיבור/);
     assert.equal(calls.filter((c) => c.name === 'ideasFromRecording').length, asked);
+    /* 07/11/2026: "לנסות שוב" סוגר את החלון ומתחיל הקלטה חדשה מיד */
+    assert.equal($('#rec-retry-btn').hidden, false);
+    $('#rec-retry-btn').click();
+    assert.equal($('#recorder-modal').hidden, true);
+    await until(() => card().classList.contains('home-mic-card--live'), 'הקלטה חדשה אחרי לנסות שוב');
+    await new Promise((r) => setTimeout(r, 100));
+    card().click();
+    await until(() => !$('#rec-step-error').hidden, 'שגיאה בחלון שוב');
     $('#rec-close-error').click();
   });
 

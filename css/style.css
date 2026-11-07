@@ -1053,6 +1053,14 @@ h1, h2, h3 {
     font-size: 0.95rem;
     top: calc(0.5rem + var(--hdr-safe-top, env(safe-area-inset-top, 0px)));
   }
+  /* 07/11/2026 (ביקורת): הכפתור נראה קטן כשגוללים, אבל שטח הלחיצה נשאר 44px */
+  .app-header.scrolled .mobile-menu-btn::after,
+  .app-header.scrolled .theme-toggle-btn::after {
+    content: '';
+    position: absolute;
+    inset: -6px;
+    border-radius: 50%;
+  }
   .app-header #signout-btn { display: none; }
   .theme-toggle-btn {
     position: absolute;
@@ -2224,6 +2232,8 @@ textarea:focus-visible,
   margin-bottom: 0.9rem;
   font-size: 0.9rem;
 }
+/* 07/11/2026: שדה שמוסתר (תת-תחום ב"הפרטים שלי") חייב להיעלם למרות display:block */
+.modal-content form label[hidden] { display: none; }
 
 .modal-content input,
 .modal-content select,

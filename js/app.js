@@ -11,11 +11,13 @@ import { renderArchive, wireArchiveControls, getCurrentIdeas, getAllIdeas, wireP
 import { ideasRedesignFor } from './ideas-shelves.js';
 import { wireHomeMic, setHomeMicVisible } from './home-mic.js';
 import { wireNoIdea, setNoIdeaHome } from './no-idea.js';
+import { wireMyDetails, openMyDetails } from './my-details.js';
+import { setRecorderRatings } from './idea-recorder.js';
 import { openAddModal, openEditModal, wireIdeaForm, setSimpleIdeaForm } from './idea-form.js';
 import { wireRandomIdeaModal, setRandomIdeaFromAll } from './random-idea-modal.js';
 import { wireIdeaChat } from './idea-chat.js';
 import { wireFeedbackForm } from './feedback.js';
-import { wireContentPlanView, refreshGate as refreshContentPlanGate } from './content-plan.js';
+import { wireContentPlanView } from './content-plan.js';
 import { wireConfirmDialog } from './confirm-dialog.js';
 import { wireWarmingView } from './warming.js';
 import { wireVideoAssistantView } from './video-assistant.js';
@@ -24,7 +26,7 @@ import { actsAsOwner, isClientView, setClientView, viewedClient, setViewedClient
 import { openClientPicker } from './client-picker.js';
 import { wireInspirationView, openInspirationView, loadBankVideos, startBankDuplication } from './inspiration-view.js';
 import { guessDomain, saveDomain } from './video-assistant-store.js';
-import { showView, getLastView } from './view-router.js';
+import { showView, getLastView, embedReturnView } from './view-router.js';
 import { showToast } from './toast.js';
 import { startUpdateCheck, showAppVersion } from './update-check.js';
 import { hasCompletedTour, showWelcomeTour } from './welcome-tour.js';
@@ -140,8 +142,7 @@ if ('serviceWorker' in navigator) {
   // this happen the moment install finishes) used to force an immediate
   // reload - it could fire mid-action (typing in an open modal, mid-chat
   // request) with only a 4s toast as the entire warning, no way to
-  // postpone it. Now it's a persistent toast with a real "עדכון עכשיו"
-  // action - the reload only happens when she actually clicks it.
+  // postpone it. The only update prompt now is the update-check.js dialog.
   navigator.serviceWorker
     .register('./sw.js')
     .then((registration) => {
@@ -153,24 +154,9 @@ if ('serviceWorker' in navigator) {
         if (document.visibilityState === 'visible') registration.update();
       });
 
-      registration.addEventListener('updatefound', () => {
-        const newWorker = registration.installing;
-        if (!newWorker) return;
-        newWorker.addEventListener('statechange', () => {
-          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-            // Default toast duration (5s) would defeat the point of this fix -
-            // she should get to choose when to reload, not have the prompt
-            // vanish under her while she's still mid-action. Stays up 20
-            // minutes; the next 60s update-check / tab-refocus cycle will
-            // show it again anyway if she's still on the old version.
-            showToast('📦 גרסה חדשה מוכנה', {
-              actionLabel: 'עדכון עכשיו',
-              onAction: () => window.location.reload(),
-              duration: 20 * 60 * 1000,
-            });
-          }
-        });
-      });
+      /* 07/11/2026: כאן הייתה הודעה קטנה "גרסה חדשה מוכנה" שקפצה יחד עם
+         חלון העדכון (update-check.js), ושתי הודעות על אותו דבר בלבלו. נשאר
+         רק החלון. הרכיב ברקע עדיין מתעדכן לבד, בלי הודעה משלו. */
     })
     .catch((err) => console.error('SW registration failed:', err));
 }
@@ -202,9 +188,11 @@ document.getElementById('install-app-btn').addEventListener('click', async () =>
   document.getElementById('install-app-btn').hidden = true;
 });
 
+/* 07/11/2026 (ביקורת): כאן רץ גם refreshGate של בונה תוכנית התוכן בכל
+   שינוי ברעיונות, אבל לחלון הבונה (content-plan-modal) אין יותר שום
+   כניסה, ולכן זה היה חישוב על חלון מוסתר. ירד. */
 function onIdeasChanged(ideas) {
   renderArchive(ideas, { onItemClick: openEditModal });
-  refreshContentPlanGate();
 }
 
 /* 08/10/2026: עד היום הגישה הייתה כן או לא. נוסף מנוי "רפרנסים בלבד"
@@ -340,8 +328,6 @@ document.getElementById('add-idea-top-btn').addEventListener('click', () => open
 document.getElementById('tab-home').addEventListener('click', () => showView('home'));
 document.getElementById('tab-archive').addEventListener('click', () => showView('archive'));
 document.getElementById('home-progress-widget').addEventListener('click', () => showView('progress'));
-/* 06/11/2026: הכניסה ל"ההתקדמות שלי" מהתפריט, כשהווידג'ט ירד ממסך הבית (setNoIdeaHome) */
-document.getElementById('tab-progress').addEventListener('click', () => showView('progress'));
 document.getElementById('progress-back-btn').addEventListener('click', () => showView('home'));
 document.getElementById('tab-guide').addEventListener('click', () => showView('guide'));
 document.getElementById('tab-inspiration').addEventListener('click', () => {
@@ -470,7 +456,13 @@ viewTabsNav.addEventListener('touchend', (e) => {
   if (deltaX > 60) closeMobileMenu();
 });
 
-document.getElementById('embed-back-btn').addEventListener('click', () => showView('archive'));
+document.getElementById('embed-back-btn').addEventListener('click', () => {
+  const back = embedReturnView();
+  /* בלי מסך קודם (נפתח ישר במדריך): הבית, ואצל מנוי רפרנסים מאגר ההשראה */
+  const target = back || (document.body.dataset.plan === 'refs' ? 'inspiration' : 'home');
+  showView(target);
+  if (target === 'inspiration' && !back) openInspirationView();
+});
 
 const scrollTopBtn = document.getElementById('scroll-top-btn');
 window.addEventListener('scroll', () => {
@@ -503,7 +495,8 @@ wirePullToRefresh();
 wireHomeMic();
 /* 06/11/2026: "אין לי רעיון?" במסך הבית. אותו מאגר ואותו שכפול של מסך
    "מאגר להשראה", והרעיונות שכבר נשמרו (לסימון ✓ על שורה בטבלה). */
-wireNoIdea({ getIdeas: getAllIdeas, loadBankVideos, duplicate: startBankDuplication, guessDomain, saveDomain });
+wireMyDetails();
+wireNoIdea({ getIdeas: getAllIdeas, loadBankVideos, duplicate: startBankDuplication, guessDomain, saveDomain, openDetails: openMyDetails });
 wireRandomIdeaModal({ getIdeas: getCurrentIdeas, onOpenIdea: openEditModal });
 wireIdeaChat();
 wireFeedbackForm();
@@ -634,6 +627,8 @@ wireClientPick(document.getElementById('enter-client-btn'), null, { enterView: t
 onAuthChange(async (user) => {
   if (!user && portalHandoffPending) return;
   document.getElementById('launch-splash').hidden = true;
+  // הריפוי העצמי מיועד לטעינה בלבד: מהרגע שהאפליקציה על המסך מנתקים אותו
+  try { if (typeof window.__moachSelfHealDetach === 'function') window.__moachSelfHealDetach(); } catch { /* */ }
 
   if (unsubscribeIdeas) {
     unsubscribeIdeas();
@@ -755,9 +750,16 @@ onAuthChange(async (user) => {
     bar.innerHTML = '<span data-client-view-text></span>'
       + '<button type="button" class="preview-bar__pick" data-client-view-pick>' + (viewed ? 'להחליף לקוחה ▾' : '🔎 בחירת לקוחה ▾') + '</button>'
       + '<a href="#" data-exit-client-view>חזרה לתצוגה שלי</a>';
-    bar.querySelector('[data-client-view-text]').textContent = viewed
+    /* 07/11/2026 (ביקורת): בתצוגת לקוחה מוצגים גם המסכים החדשים (מסך
+       הבית "אין לי רעיון?", מסך הרעיונות בשלושה סוגים), שעדיין רק של מאיה.
+       היא רוצה לראות אותם גם כאן, ולכן הפס אומר את זה במקום להבטיח
+       "ככה לקוחה רואה". */
+    const newScreensNote = ideasRedesignFor(user.email)
+      ? ' המסכים החדשים (מסך הבית ומסך הרעיונות) מוצגים כרגע רק לך, לקוחות עדיין רואים את הקודמים.'
+      : '';
+    bar.querySelector('[data-client-view-text]').textContent = (viewed
       ? '👁 את בתוך החשבון של ' + (viewed.name || viewed.email) + '. כל מה שתשני כאן נשמר אצלה באמת.'
-      : '👁 את בתצוגת לקוחה: ככה לקוחה עם מנוי מלא רואה את האפליקציה. מה שתעשי נשמר בחשבון שלך.';
+      : '👁 את בתצוגת לקוחה עם מנוי מלא. מה שתעשי נשמר בחשבון שלך.') + newScreensNote;
     /* 29/10/2026 (מאיה: "לחפש את השמות שלהן, ושיחולק לפי מחזורים"): חלון
        חיפוש עם תיקייה לכל מחזור, במקום רשימה נפתחת ארוכה. */
     const pickBtn = bar.querySelector('[data-client-view-pick]');
@@ -830,6 +832,7 @@ onAuthChange(async (user) => {
   /* לפני setHomeMicVisible: עם הדלתות הכרטיס מוצג גם בדפדפן בלי מיקרופון */
   setNoIdeaHome(ideasRedesign);
   setHomeMicVisible(ideasRedesign);
+  setRecorderRatings(!ideasRedesign);
 
   /* 26/10/2026: שלושת הכפתורים שהמודולים האלה שירתו ירדו לבקשתה, ולכן
      אין יותר מה לחבר כאן. המודולים עצמם נשארו בריפו ולא נמחקו, כדי
@@ -960,15 +963,43 @@ function releaseFocusTrap(modal) {
   }
 }
 
-document.querySelectorAll('.modal').forEach((modal) => {
-  const observer = new MutationObserver(() => {
-    if (modal.hidden) {
-      releaseFocusTrap(modal);
-      unlockScroll();
-    } else {
-      trapFocus(modal);
-      lockScroll();
-    }
+/* 07/11/2026 (ביקורת): המונה נשבר כשחלון קיבל hidden=true פעמיים ברצף
+   (כל השמה מייצרת רשומת שינוי, גם בלי שינוי אמיתי), והנעילה נשארה או
+   התבטלה מוקדם. עכשיו נועלים ומשחררים רק במעבר אמיתי בין גלוי למוסתר.
+   וחלונות שנבנים בזמן ריצה (חלון "אין לי רעיון", חלון ההקלטה) מקבלים את
+   אותו טיפול: נעילת גלילה ומעבר פוקוס לתוך החלון. */
+function syncModal(modal) {
+  const open = !modal.hidden && modal.isConnected;
+  if (open === Boolean(modal._scrollLocked)) return;
+  modal._scrollLocked = open;
+  if (open) {
+    trapFocus(modal);
+    lockScroll();
+  } else {
+    releaseFocusTrap(modal);
+    unlockScroll();
+  }
+}
+
+function wireModal(modal) {
+  if (modal._modalWired) return;
+  modal._modalWired = true;
+  new MutationObserver(() => syncModal(modal))
+    .observe(modal, { attributes: true, attributeFilter: ['hidden'] });
+  syncModal(modal);
+}
+
+document.querySelectorAll('.modal').forEach(wireModal);
+
+const isModalEl = (n) => n.nodeType === 1 && n.classList.contains('modal');
+new MutationObserver((records) => {
+  records.forEach((r) => {
+    r.addedNodes.forEach((n) => {
+      if (isModalEl(n)) wireModal(n);
+      else if (n.nodeType === 1) n.querySelectorAll('.modal').forEach(wireModal);
+    });
+    r.removedNodes.forEach((n) => {
+      if (isModalEl(n) && n._scrollLocked) syncModal(n);
+    });
   });
-  observer.observe(modal, { attributes: true, attributeFilter: ['hidden'] });
-});
+}).observe(document.body, { childList: true, subtree: true });

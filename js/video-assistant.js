@@ -60,7 +60,7 @@ import { parseIdeaTitle, withAngle } from './idea-reply.js';
 import { lengthMeterHtml, duplicationRef } from './va-length.js';
 import { summaryToolsHtml, wireSummaryTools } from './va-summary-tools.js';
 
-const SUBCATEGORIES_BY_DOMAIN = {
+export const SUBCATEGORIES_BY_DOMAIN = {
   'יופי וקוסמטיקה': ['טיפול פנים', 'איפור קבוע', 'עיצוב גבות', 'קורס עיצוב גבות', 'הרמת גבות', 'מיקרובליידינג', 'הלחמת ריסים', 'קורס הלחמת ריסים', 'הרמת ריסים', 'ציפורניים', 'קורס ציפורניים', 'קורס איפור קבוע ומיקרובליידינג', 'קוסמטיקאית: אקנה ופיגמנטציה', 'אידוי לתלתלים', 'שיער אפרו', 'החלקות שיער', 'שיער', 'איפור', 'לייזר והסרת שיער', 'אסתטיקה רפואית', 'טיפולי גוף', 'שיזוף'],
   'בריאות נפשית, טיפול ורוח': ['פסיכולוגיה וטיפול רגשי', 'אימון אישי והתפתחות אישית', 'זוגיות ומערכות יחסים', 'הדרכת הורים ומשפחה', 'NLP ושיטות טיפול אלטרנטיביות', 'תקשור', 'נומרולוגיה', 'אסטרולוגיה', 'טארוט וקלפים', 'נטורופתיה'],
   'עסקים ויזמות': ['שיווק, רשתות ובניית מותג', 'מכירות', 'ייעוץ וליווי עסקי', 'פיננסים', 'קריירה ותעסוקה', 'משאבי אנוש וגיוס', 'AI ואוטומציות לעסקים'],
@@ -96,6 +96,12 @@ let state = INITIAL_STATE;
 let ideasCache = null;
 let videosCache = null;
 let domainInfo = null; // { domain, subCategory }
+/* 07/11/2026: תחום שתוקן ב"הפרטים שלי" (js/my-details.js) נכנס מיד גם לכאן */
+if (typeof window !== 'undefined') {
+  window.addEventListener('moach-domain-changed', (e) => {
+    if (e && e.detail && e.detail.domain) domainInfo = { domain: e.detail.domain, subCategory: e.detail.subCategory || null };
+  });
+}
 let currentPickId = null;
 let sessionStartTs = null; // רעיון #47 - "בנית תוך X דקות"
 /* 20/10/2026 (מאיה: "למה העוזר לא נפתח במסך הראשי, וכאילו נפתח באמצע
@@ -428,7 +434,7 @@ async function renderProfileSetup(onDone) {
   if (t !== renderSeq) return;
   cosmicCard(`
     <h2>רגע לפני שמתחילים</h2>
-    <p>שתי שורות שנמלא פעם אחת, והן ייכנסו לבד לכל פרומפט שהכלי יכין. בלעדיהן ChatGPT מנחש מאיזה עולם מדובר.</p>
+    <p>כמה פרטים שממלאים פעם אחת, והם ייכנסו לבד לכל פרומפט שהכלי יכין. בלעדיהם ChatGPT מנחש מאיזה עולם מדובר. אפשר לשנות אותם אחר כך ב"הפרטים שלי" בתפריט.</p>
     <div class="cosmic-field">
       <label for="va-pf-domain">התחום שלי</label>
       <input type="text" class="cosmic-textarea" id="va-pf-domain" style="min-height:auto"
@@ -442,7 +448,7 @@ async function renderProfileSetup(onDone) {
     <div class="cosmic-field">
       <label for="va-pf-aud2">קהל יעד משני (רשות)</label>
       <input type="text" class="cosmic-textarea" id="va-pf-aud2" style="min-height:auto"
-        placeholder="אם יש עוד קהל שאתן פונות אליו" value="${profile.secondaryAudience ? escapeHtml(profile.secondaryAudience) : ''}">
+        placeholder="אם יש עוד קהל שפונים אליו" value="${profile.secondaryAudience ? escapeHtml(profile.secondaryAudience) : ''}">
     </div>
     <div class="cosmic-btn-row">
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-pf-save-btn">שמירה והמשך</button>
@@ -1891,7 +1897,7 @@ function renderIdeaSharpen() {
     <label class="cosmic-field-label" for="va-idea-sharp">${forFootage ? 'מה המסר של הקטע שכבר צולם?' : 'על מה הסרטון?'}</label>
     <textarea class="cosmic-textarea" id="va-idea-sharp" style="min-height:${forFootage ? 96 : 56}px"
       ${forFootage ? 'placeholder="למשל: למה אני עובדת עם מכשיר אחד ולא עם שלושה"' : ''}>${escapeHtml(idea)}</textarea>
-    ${fromIdea ? '<button type="button" class="va-text-link" id="va-pull-idea-link">🎲 אין לי רעיון? להגריל מבנק הרעיונות</button>' : ''}
+    ${fromIdea ? '<button type="button" class="va-text-link" id="va-pull-idea-link">🎲 להגריל רעיון מהבנק שלי</button>' : ''}
     ${forFootage ? '' : `
     <label class="cosmic-field-label va-punch-label" for="va-idea-punch">⭐ מה הפואנטה שורה תחתונה מהסרטון? מה אתם רוצים שהקהל שלכם יבין? מה המסר?</label>
     <textarea class="cosmic-textarea va-punch-box" id="va-idea-punch" style="min-height:96px">${escapeHtml(punch)}</textarea>`}

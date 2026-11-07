@@ -40,6 +40,7 @@ function makeWorld({ healed = false, splashHidden = false } = {}) {
     },
     location: { pathname: '/app/', replace: (u) => { w.reloadedTo = u; } },
     addEventListener: (name, fn) => { w.listeners[name] = fn; },
+    removeEventListener: (name, fn) => { if (w.listeners[name] === fn) { delete w.listeners[name]; w.removed = (w.removed || 0) + 1; } },
     setTimeout: (fn, ms) => { w.timers.push({ fn, ms }); return w.timers.length; },
     document: {
       getElementById: (id) => (id === 'launch-splash-error' ? w.box : id === 'launch-splash' ? w.splash : null),
@@ -51,6 +52,7 @@ function makeWorld({ healed = false, splashHidden = false } = {}) {
   new Function('window', 'document', 'sessionStorage', 'navigator', 'caches', 'setTimeout', body)(
     env, env.document, env.sessionStorage, env.navigator, env.caches, env.setTimeout
   );
+  w.env = env;
   return w;
 }
 
@@ -95,4 +97,28 @@ test('ריפוי קורה פעם אחת בלבד, ואז מוצגת השגיאה
   assert.equal(w.reloadedTo, null, 'נוצרה לולאת רענון');
   assert.match(w.box.textContent, /boom again/, 'השגיאה לא הוצגה');
   assert.equal(w.box.hidden, false);
+});
+
+test('אחרי שמסך הפתיחה ירד, שגיאה לא מוחקת מטמון ולא טוענת מחדש, והמאזינים מתנתקים', async () => {
+  const w = makeWorld();
+  w.splash.hidden = true;
+  const onErr = w.listeners.error;
+  const onRej = w.listeners.unhandledrejection;
+  onErr({ message: 'button crashed' });
+  onRej({ reason: { code: 'permission-denied' } });
+  await new Promise((r) => setTimeout(r, 10));
+  assert.equal(w.reloadedTo, null, 'שגיאה באמצע עבודה טענה את הדף מחדש');
+  assert.equal(w.cachesDeleted, 0);
+  assert.equal(w.box.hidden, true);
+  assert.equal(w.listeners.error, undefined, 'מאזין השגיאות לא נותק');
+  assert.equal(w.listeners.unhandledrejection, undefined);
+});
+
+test('האפליקציה מנתקת את הריפוי ברגע שמסך הפתיחה יורד', () => {
+  const w = makeWorld();
+  assert.equal(typeof w.env.__moachSelfHealDetach, 'function');
+  w.env.__moachSelfHealDetach();
+  assert.equal(w.listeners.error, undefined);
+  const app = readFileSync(join(ROOT, 'js', 'app.js'), 'utf8');
+  assert.ok(app.includes('window.__moachSelfHealDetach()'), 'app.js לא מנתק את הריפוי אחרי הטעינה');
 });

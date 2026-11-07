@@ -96,13 +96,32 @@
     Promise.all(jobs).then(reload).catch(reload);
   }
 
-  window.addEventListener('error', function (e) {
+  /* 07/11/2026: הריפוי מיועד רק לטעינה. אחרי שמסך הפתיחה ירד והאפליקציה
+     על המסך, שגיאה רגילה (בקשה שנכשלה, תקלה בכפתור) לא אמורה למחוק מטמון
+     ולטעון מחדש, כי זה מוחק עבודה שעוד לא נשמרה. לכן ברגע הראשון שמסך
+     הפתיחה כבר לא מוצג, המאזינים מתנתקים לתמיד. */
+  function splashUp() {
+    var splash = document.getElementById('launch-splash');
+    return !!(splash && !splash.hidden);
+  }
+  function onError(e) {
+    if (!splashUp()) { detach(); return; }
     selfHeal((e && (e.message || (e.error && e.error.message))) || 'שגיאה בטעינה');
-  });
-  window.addEventListener('unhandledrejection', function (e) {
+  }
+  function onRejection(e) {
+    if (!splashUp()) { detach(); return; }
     var r = e && e.reason;
     selfHeal((r && (r.code || r.message)) || 'בקשה שנכשלה');
-  });
+  }
+  function detach() {
+    try {
+      window.removeEventListener('error', onError);
+      window.removeEventListener('unhandledrejection', onRejection);
+    } catch (e) {}
+  }
+  window.addEventListener('error', onError);
+  window.addEventListener('unhandledrejection', onRejection);
+  window.__moachSelfHealDetach = detach;
   setTimeout(function () {
     var splash = document.getElementById('launch-splash');
     if (splash && !splash.hidden) selfHeal('הטעינה נתקעה');
@@ -169,12 +188,6 @@
             <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
             <span>הרעיונות שלי</span>
           </button>
-          <!-- 06/11/2026: "🎯 השבוע" ירד ממסך הבית של "אין לי רעיון?" (מאיה בלבד כרגע), והוא היה
-               הכניסה היחידה ל"ההתקדמות שלי". app.js מציג את הכניסה הזאת רק כשהווידג'ט מוסתר -->
-          <button type="button" id="tab-progress" class="tab-btn" hidden>
-            <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/></svg>
-            <span>ההתקדמות שלי</span>
-          </button>
           <button id="tab-guide" class="tab-btn">
             <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polygon points="15 9 13 13 9 15 11 11 15 9"/></svg>
             <span>מרכז למידה</span>
@@ -202,6 +215,13 @@
           <button type="button" id="enter-client-btn" class="tab-btn enter-client-btn" hidden>
             <span aria-hidden="true">👥</span>
             <span>כניסה ללקוחה</span>
+          </button>
+
+          <!-- 07/11/2026 (ביקורת): אחרי הפעם הראשונה לא הייתה דרך לתקן תחום וקהל יעד
+               (העורך היה רק בבונה תוכנית התוכן שירד). js/my-details.js -->
+          <button type="button" id="tab-my-details" class="tab-btn">
+            <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+            <span>הפרטים שלי</span>
           </button>
 
           <button type="button" id="drawer-signout-btn" class="drawer-signout-btn">
@@ -300,6 +320,9 @@
         <button type="button" class="quick-chip quick-chip-category" data-category="בעל ערך" style="--chip-color: var(--cat-baal-erech)">בעל ערך</button>
         <button type="button" class="quick-chip quick-chip-category" data-category="אישי" style="--chip-color: var(--cat-ishi)">אישי</button>
         <button type="button" class="quick-chip quick-chip-category" data-category="מכירתי" style="--chip-color: var(--cat-mechirti)">מכירתי</button>
+        <!-- 07/11/2026 (ביקורת): "טיוטות ממתינות לסיווג" במסך ההתקדמות מסנן לטיוטות
+             בתפריט נסתר, והסינון נשאר תקוע בלי שרואים אותו. עכשיו הוא גלוי ואפשר להסיר -->
+        <button type="button" class="quick-chip active" id="drafts-filter-chip" hidden aria-label="הסרת הסינון לטיוטות">📝 טיוטות ✕</button>
       </div>
 
       <details class="more-filters-details">
@@ -339,7 +362,7 @@
         </select>
       </details>
 
-      <button id="random-idea-btn" class="random-btn">🎲 אין לי רעיון</button>
+      <button id="random-idea-btn" class="random-btn">🎲 להגריל רעיון מהמאגר</button>
     </section>
 
     <ul class="archive-list" id="archive-list">
@@ -643,7 +666,7 @@
   </main>
 
   <main id="roadmap-view" class="view embed-view" hidden>
-    <iframe src="https://mayakislev-ux.github.io/lehiyot-brand/מפת-דרכים-ליצירת-תוכן.html" class="embed-frame" title="מפת הדרכים ליצירת תוכן"></iframe>
+    <iframe src="https://mayakislev.co.il/מפת-דרכים-ליצירת-תוכן.html?v=20261107" class="embed-frame" title="מפת הדרכים ליצירת תוכן"></iframe>
   </main>
 
   <main id="content-plan-view" class="view embed-view" hidden>
@@ -810,6 +833,39 @@
      ניתנים לעריכה רק דרך "עריכת פרטים" המנהלתית (מריצה מחדש את כל שיחת
      ההיכרות). כל משתמשת יכולה לפתוח את זה כדי לתקן/להגדיר קהל יעד, בלי
      יכולת לשנות איזה תחום עיסוק החשבון שלה מוגבל אליו. -->
+<!-- 07/11/2026: "הפרטים שלי" מהתפריט. התחום, קהל היעד, והתחום לרפרנסים
+     (profile.videoAssistantDomain/SubCategory, אותו שדה של העוזר לסרטון ושל
+     "לשכפל רפרנס"). js/my-details.js -->
+<div id="my-details-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="my-details-title">
+  <div class="modal-content">
+    <button type="button" id="my-details-close-btn" class="modal-close-x" aria-label="סגירה">✕</button>
+    <h2 id="my-details-title">הפרטים שלי</h2>
+    <p class="field-subhint">מה שנשמר כאן נכנס לבד לעוזר לסרטון ולרפרנסים שמוגרלים לך.</p>
+    <form id="my-details-form">
+      <label>במה אני עוסק/ת
+        <input type="text" id="my-details-business" placeholder="למשל: עיצוב גבות, שיווק, קוסמטיקה">
+      </label>
+      <label>קהל היעד העיקרי
+        <textarea id="my-details-primary" rows="2" placeholder="למשל: נשים 25-40 שמחפשות מעצבת גבות קבועה"></textarea>
+      </label>
+      <label>קהל יעד משני (רשות)
+        <textarea id="my-details-secondary" rows="2" placeholder="אם יש עוד קהל שפונים אליו"></textarea>
+      </label>
+      <label>התחום לרפרנסים
+        <select id="my-details-domain"></select>
+      </label>
+      <label id="my-details-sub-wrap" hidden>תת-תחום (רשות)
+        <select id="my-details-sub"></select>
+      </label>
+      <p id="my-details-error" class="error-text" role="alert" hidden></p>
+      <div class="modal-actions">
+        <button type="button" id="my-details-cancel-btn" class="btn-text">ביטול</button>
+        <button type="submit" class="btn-primary" id="my-details-save-btn">שמירה</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <div id="audience-edit-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="audience-edit-modal-title">
   <div class="modal-content">
     <button type="button" id="audience-edit-close-btn" class="modal-close-x" aria-label="סגירה">✕</button>

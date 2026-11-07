@@ -491,7 +491,7 @@ describe('"אין לי רעיון?" במסך הבית (jsdom)', { skip: hasJsdom
     assert.equal($('#home-progress-widget').hidden, true);
     assert.equal($('.home-recent-section').hidden, true);
     /* 07/11: מאיה: "ההתקדמות שלי - מיותר". אין כניסה בתפריט */
-    assert.equal($('#tab-progress').hidden, true);
+    assert.equal($('#tab-progress'), null, 'הכניסה הנסתרת חזרה');
     const app = readFileSync(new URL('../js/app.js', import.meta.url), 'utf8');
     assert.match(app, /setNoIdeaHome\(ideasRedesign\);\s*setHomeMicVisible\(ideasRedesign\);/);
     /* בלי המתג: הכל כמו קודם */
@@ -499,7 +499,6 @@ describe('"אין לי רעיון?" במסך הבית (jsdom)', { skip: hasJsdom
     homeMic.setHomeMicVisible(false);
     assert.equal($('#home-progress-widget').hidden, false);
     assert.equal($('.home-recent-section').hidden, false);
-    assert.equal($('#tab-progress').hidden, true);
     assert.equal($('#home-mic-card').hidden, true);
     noIdea.setNoIdeaHome(true);
     homeMic.setHomeMicVisible(true);
@@ -818,18 +817,20 @@ describe('"אין לי רעיון?" במסך הבית (jsdom)', { skip: hasJsdom
 
     /* אותו שכפול בדיוק כמו הכפתור על הכרטיס במאגר */
     const app = readFileSync(new URL('../js/app.js', import.meta.url), 'utf8');
-    assert.match(app, /wireNoIdea\(\{ getIdeas: getAllIdeas, loadBankVideos, duplicate: startBankDuplication, guessDomain, saveDomain \}\)/);
+    assert.match(app, /wireNoIdea\(\{ getIdeas: getAllIdeas, loadBankVideos, duplicate: startBankDuplication, guessDomain, saveDomain, openDetails: openMyDetails \}\)/);
     const insp = readFileSync(new URL('../js/inspiration-view.js', import.meta.url), 'utf8');
     assert.match(insp, /export \{ loadVideos as loadBankVideos, startDuplication as startBankDuplication \}/);
     assert.match(insp, /info\.appendChild\(duplicateButton\(video\)\)/);
     assert.match(insp, /startDuplication\(video\)\.finally/);
   });
 
-  test('רפרנס: בלי תחום או בלי סרטונים בתחום, מכל התחומים, ושגיאת טעינה גלויה', async () => {
-    const pool = noIdea.referencePool(BANK, 'תחום שאין');
-    assert.equal(pool.list.length, 3);
-    assert.equal(pool.fallback, true);
-    assert.equal(noIdea.referencePool(BANK, '').fallback, false);
+  test('רפרנס: אף פעם לא מתחום אחר. תחום בלי סרטונים עוצר עם הודעה וכפתור לבחירת תחום, ושגיאת טעינה גלויה', async () => {
+    /* 07/11/2026 (ביקורת): לא נופלים לכל המאגר */
+    assert.equal(noIdea.referencePool(BANK, 'תחום שאין').list.length, 0);
+    assert.equal(noIdea.referencePool(BANK, '').list.length, 0);
+    assert.deepEqual(noIdea.referencePool(BANK, 'עסקים ויזמות').list.map((v) => v.id), ['v1', 'v2']);
+    /* תת-קטגוריה ריקה: כל התחום */
+    assert.deepEqual(noIdea.referencePool(BANK, 'עסקים ויזמות', 'מכירות').list.map((v) => v.id), ['v1', 'v2']);
     /* 07/11: תת-הקטגוריה קודמת לשאר התחום (קוסמטיקאית לאקנה לא מקבלת שיער) */
     const sub = noIdea.referencePool([
       { id: 'a', url: 'u1', domain: 'יופי', subCategory: 'טיפוח עור', contentSummary: 'x' },
@@ -840,10 +841,23 @@ describe('"אין לי רעיון?" במסך הבית (jsdom)', { skip: hasJsdom
     assert.equal(noIdea.pickReference([BANK[0]], 'v1'), BANK[0]);
     assert.equal(noIdea.pickReference([], null), null);
     profileDoc = { videoAssistantDomain: 'תחום שאין' };
+    const opened = [];
+    noIdea.wireNoIdea({ openDetails: (opts) => { opened.push(opts); } });
     $('#home-mic-card').click();
     $('.no-idea-door[data-door="reference"]').click();
-    await until(() => !$('#no-idea-ref-card').hidden, 'רפרנס');
-    assert.match($('#no-idea-ref-status').textContent, /מכל התחומים/);
+    await until(() => !$('#no-idea-ref-setfield').hidden, 'כפתור בחירת תחום');
+    assert.equal($('#no-idea-ref-card').hidden, true, 'הוגרל רפרנס מתחום אחר');
+    assert.match($('#no-idea-ref-status').textContent, /לא נגריל רפרנס מתחום אחר/);
+    assert.ok(!/מכל התחומים/.test($('#no-idea-ref-status').textContent));
+    $('#no-idea-ref-setfield').click();
+    assert.equal(opened.length, 1, '"הפרטים שלי" לא נפתח');
+    assert.equal($('#no-idea-modal').hidden, true);
+    /* אחרי שמירה עם תחום שיש בו סרטונים: חוזרים לדלת ומגרילים מהתחום */
+    profileDoc = { videoAssistantDomain: 'יופי וקוסמטיקה' };
+    opened[0].onSaved();
+    await until(() => !$('#no-idea-ref-card').hidden, 'רפרנס אחרי בחירת תחום');
+    assert.equal($('#no-idea-ref-link').href, 'https://www.instagram.com/reel/3');
+    profileDoc = { sheetId: 'S1' };
     noIdea.wireNoIdea({ loadBankVideos: async () => { throw new Error('offline'); } });
     $('#no-idea-ref-back').click();
     $('.no-idea-door[data-door="reference"]').click();

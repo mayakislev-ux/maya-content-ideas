@@ -25,7 +25,7 @@ import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/fireba
 import { showToast } from './toast.js';
 import { dictationMode, uploadDictation } from './voice-input.js';
 import {
-  pickMimeType, formatClock, openIdeasPopup, setIdeasPopupProgress, showIdeasInPopup, showIdeasPopupError,
+  pickMimeType, formatClock, openIdeasPopup, setIdeasPopupProgress, showIdeasInPopup, showIdeasPopupError, closeIdeasPopup,
 } from './idea-recorder.js';
 
 export const MAX_SECONDS = 600;
@@ -570,11 +570,23 @@ async function finish(s, reason = 'user') {
 
   if (token !== popupSeq) return; // בינתיים התחילה הקלטה חדשה
   if (!text) {
+    /* 07/11/2026 (ביקורת): "ללחוץ שוב על המיקרופון" כבר לא נכון. הכרטיס
+       פותח עכשיו את "אין לי רעיון?", וההקלטה היא "לספר בקול". לכן ההודעה
+       מכוונת לשם, ויש כפתור "לנסות שוב" שמתחיל הקלטה חדשה מיד. */
+    const how = idleTap
+      ? 'אפשר ללחוץ על "לנסות שוב", או בהמשך על "אין לי רעיון?" ואז "🎙️ לספר בקול"'
+      : 'אפשר ללחוץ על "לנסות שוב"';
     const msg = s.failures
-      ? `${errorText(s.lastError, 'התמלול לא עבר הפעם.')} אפשר ללחוץ שוב על המיקרופון ולנסות, או לכתוב בתיבה`
-      : 'לא שמענו דיבור בהקלטה. אפשר ללחוץ שוב על המיקרופון ולדבר קרוב יותר לטלפון';
+      ? `${errorText(s.lastError, 'התמלול לא עבר הפעם.')} ${how}, או לכתוב בתיבה`
+      : `לא שמענו דיבור בהקלטה. ${how}, ולדבר קרוב יותר לטלפון`;
     showStatus(msg, { error: true });
-    showIdeasPopupError(msg);
+    const prompt = s.prompt;
+    showIdeasPopupError(msg, {
+      onRetry: () => {
+        closeIdeasPopup();
+        start({ prompt });
+      },
+    });
     return;
   }
   extractIdeas(text, token);

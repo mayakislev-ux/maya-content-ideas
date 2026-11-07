@@ -88,6 +88,15 @@ export function categoryIcon(category) {
   return CATEGORY_ICONS[category] || '';
 }
 
+/* 07/11/2026 (ביקורת): רעיונות ישנים מתויגים "ערכי" או "בידורי" הוצגו כך
+   בכרטיסים. "ערכי" הוא השם הישן של "בעל ערך", ו"בידורי" ירדה (09/10),
+   ולכן רעיון כזה מוצג כעוד לא ממוין. רק תצוגה וסינון, הנתונים לא משתנים. */
+export function displayCategory(category) {
+  if (category === 'ערכי') return 'בעל ערך';
+  if (category === 'בידורי') return '';
+  return category || '';
+}
+
 
 // 31 זוויות ההנגשה. חייבות להיות זהות ל-functions/ideas-constants.js,
 // ובדיקה כובלת את השתיים (test/idea-chat-context.test.mjs).
@@ -154,9 +163,10 @@ export function canonicalAngle(name) {
 export function filterIdeas(ideas, { text = '', category = '', audienceScope = '', persuasionStage = '', rating = '' } = {}) {
   const needle = text.trim().toLowerCase();
   return ideas.filter((idea) => {
+    const shown = displayCategory(idea.category);
     if (category === '__none__') {
-      if (idea.category) return false;
-    } else if (category && idea.category !== category) return false;
+      if (shown) return false;
+    } else if (category && shown !== category) return false;
     if (persuasionStage && idea.persuasionStage !== persuasionStage) return false;
     if (rating && idea.rating !== rating) return false;
     if (audienceScope && idea.audienceScope !== audienceScope) return false;
@@ -204,7 +214,7 @@ export function sortIdeas(ideas, order) {
   // "מתגלגלת" ונקברת מתחת לרעיונות חדשים/מדורגים יותר, וקשה למצוא אותה
   // כדי להשלים. זה תמיד המפתח הראשי במיון; סדר המיון הנבחר עדיין קובע
   // את הסדר בתוך כל אחת משתי הקבוצות (טיוטות מול השאר).
-  const draftRank = (idea) => (idea.category ? 1 : 0);
+  const draftRank = (idea) => (displayCategory(idea.category) ? 1 : 0);
   if (order === 'oldest') {
     sorted.sort((a, b) => draftRank(a) - draftRank(b) || time(a) - time(b));
   } else if (order === 'rating') {

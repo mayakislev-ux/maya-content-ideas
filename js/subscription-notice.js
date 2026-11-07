@@ -60,7 +60,7 @@ export function showExpiredNotice(errorEl, access) {
   if (access && access.renewOffer) {
     errorEl.innerHTML = `הגישה הסתיימה. ${RENEW_OFFER} ${renewLink()}`;
   } else {
-    errorEl.textContent = 'המנוי הסתיים. אנא פני למאיה כדי לחדש';
+    errorEl.textContent = 'המנוי הסתיים. לחידוש אפשר לפנות למאיה';
   }
   errorEl.hidden = false;
 }

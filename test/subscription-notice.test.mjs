@@ -54,7 +54,7 @@ test('אחרי התאריך: הודעת חידוש עם קישור רק למי �
   assert.ok(offered.innerHTML.includes('79') && offered.innerHTML.includes(RENEW_WHATSAPP_URL));
   const plain = { hidden: true };
   showExpiredNotice(plain, {});
-  assert.equal(plain.textContent, 'המנוי הסתיים. אנא פני למאיה כדי לחדש');
+  assert.equal(plain.textContent, 'המנוי הסתיים. לחידוש אפשר לפנות למאיה');
   assert.equal(plain.innerHTML, undefined);
 });
 

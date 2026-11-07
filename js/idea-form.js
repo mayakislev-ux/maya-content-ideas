@@ -67,7 +67,7 @@ function within(promise, ms, onTimeout) {
 /** סיווג אוטומטי של רעיון לפי הטקסט שלו. אותה פונקציה שכפתור "שה-AI
     יזהה" משתמש בה. תקלה או המתנה ארוכה מחזירות null, והרעיון נשמר בלי
     סיווג (טיוטה) במקום ללכת לאיבוד. */
-async function autoClassify(title) {
+export async function autoClassify(title) {
   try {
     const result = await within(classifyIdea({ title }), CLASSIFY_TIMEOUT_MS, (resolve) => resolve(null));
     const d = (result && result.data) || {};
@@ -332,7 +332,7 @@ async function runAiClassification() {
     console.error('classifyIdea failed:', err);
     if (persuasionSelect.value === AI_OPTION) persuasionSelect.value = '';
     const hasHebrewText = /[֐-׿]/.test(err.message || '');
-    alert(hasHebrewText ? err.message : 'משהו השתבש בהצעה האוטומטית, נסו שוב או בחרו ידנית.');
+    alertDialog(hasHebrewText ? err.message : 'משהו השתבש בהצעה האוטומטית, נסו שוב או בחרו ידנית.');
   } finally {
     aiChip.textContent = originalChipText;
     aiChip.disabled = false;
@@ -374,7 +374,7 @@ export function wireIdeaForm() {
     closeModal();
     showToast('הרעיון נמחק', {
       actionLabel: 'בטלו',
-      onAction: () => restoreIdea(deletedId),
+      onAction: () => restoreIdea(deletedId).catch((err) => { console.error('undo delete failed:', err); showToast('הביטול לא הצליח, בדקו חיבור ונסו שוב'); }),
     });
   });
 

@@ -291,6 +291,11 @@ export function showIdeasPopupError(message, { onRetry = null } = {}) {
   showError(message, { canRetry: Boolean(onRetry) });
 }
 
+/** סוגר את חלון הרעיונות (למשל לפני הקלטה חדשה מ"לנסות שוב"). */
+export function closeIdeasPopup() {
+  closeRecorder();
+}
+
 export function ideasPopupOpen() {
   const modal = el('recorder-modal');
   return Boolean(modal && !modal.hidden);
@@ -513,7 +518,7 @@ function renderResults() {
     cat.style.setProperty('--tag', categoryColorVar(idea.category));
     cat.textContent = idea.category;
     meta.appendChild(cat);
-    if (idea.rating && idea.rating.startsWith('🔥')) {
+    if (withRatings && idea.rating && idea.rating.startsWith('🔥')) {
       const hot = document.createElement('span');
       hot.className = 'rec-tag rec-tag--hot';
       hot.textContent = '🔥 חזק';
@@ -567,7 +572,7 @@ async function saveChosen() {
         hookText: idea.context || '',
         persuasionStage: idea.persuasionStage || '',
         audienceScope: idea.audienceScope || '',
-        rating: idea.rating || '',
+        rating: withRatings ? (idea.rating || '') : '',
         source: saveSource,
         ...(extraFields || {}),
       }));
@@ -619,6 +624,14 @@ export function wireRecorderEntry({ onCloseIdeaModal } = {}) {
   entry.addEventListener('click', openRecorder);
   const label = document.querySelector('label[for="field-title"]');
   (label || textarea).insertAdjacentElement('beforebegin', entry);
+}
+
+/* 07/11/2026 (ביקורת): במסך החדש (מאיה בלבד כרגע) אין דירוג. השרת עדיין
+   מחזיר דירוג לכל רעיון, אבל כאן לא מציגים "🔥 חזק" ולא שומרים אותו.
+   app.js מכבה את זה מאותו מתג של המסך החדש. */
+let withRatings = true;
+export function setRecorderRatings(on) {
+  withRatings = Boolean(on);
 }
 
 /** בעריכת רעיון קיים אין טעם בהקלטה. */

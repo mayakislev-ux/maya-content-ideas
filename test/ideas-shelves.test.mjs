@@ -627,4 +627,118 @@ describe('המסך (jsdom)', { skip: hasJsdom ? false : 'jsdom לא מותקן' 
     assert.equal($('#idea-modal').hidden, true, 'מהבית נפתח טופס רעיון');
     homeMic.setHomeMicVisible(false);
   });
+
+  /* ---------- 07/11/2026: ממצאי הביקורת המלאה ---------- */
+
+  test('הוספה מהירה במסך החדש: נשמר, מסווג ברקע לשדות ריקים בלבד, ובלי "טיוטה" בהודעה', async () => {
+    archive.setIdeasRedesign(true);
+    const addedBefore = calls.added.length;
+    const updatedBefore = calls.updated.length;
+    classifyReply = { category: 'מכירתי', persuasionStage: s3, audienceScope: 'רחב' };
+    const input = $('#quick-add-input');
+    input.value = 'לקוחה שאלה כמה עולה טיפול';
+    $('#quick-add-btn').click();
+    await until(() => calls.added.length > addedBefore, 'נשמר');
+    assert.equal(calls.added.at(-1).category, '', 'נשמר קודם בלי לחכות לסיווג');
+    assert.ok(!/טיוטה/.test(lastToast()), 'ההודעה אומרת טיוטה במסך החדש');
+    await until(() => calls.updated.length > updatedBefore, 'סיווג ברקע');
+    const upd = calls.updated.at(-1);
+    assert.equal(upd.path, 'ideas/new1');
+    assert.equal(upd.data.category, 'מכירתי');
+    assert.equal(upd.data.audienceScope, 'רחב');
+    classifyReply = null;
+  });
+
+  test('סיווג שנכשל: הרעיון נשאר, והודעה שקטה שאפשר לבחור קטגוריה', async () => {
+    const notes = [];
+    const ok = await archive.classifyQuickIdea('x1', 'רעיון', {
+      classify: async () => null,
+      update: async () => { throw new Error('לא אמור להישמר'); },
+      notify: (m) => notes.push(m),
+    });
+    assert.equal(ok, false);
+    assert.match(notes[0], /הרעיון נשמר/);
+    assert.match(notes[0], /קטגוריה/);
+    /* שדה שכבר מולא בינתיים לא נדרס */
+    const saved = [];
+    await archive.classifyQuickIdea('x2', 'רעיון', {
+      classify: async () => ({ category: 'אישי', persuasionStage: s1, audienceScope: 'עיקרי' }),
+      current: () => ({ category: 'מכירתי', persuasionStage: '', audienceScope: '' }),
+      update: async (id, f) => { saved.push(f); },
+      notify: () => {},
+    });
+    assert.deepEqual(saved[0], { persuasionStage: s1, audienceScope: 'עיקרי' });
+  });
+
+  test('בלי המתג (לקוחות): הוספה מהירה לא מסווגת ברקע', async () => {
+    archive.setIdeasRedesign(false);
+    const classifyBefore = calls.classify.length;
+    const addedBefore = calls.added.length;
+    $('#quick-add-input').value = 'רעיון של לקוחה';
+    $('#quick-add-btn').click();
+    await until(() => calls.added.length > addedBefore, 'נשמר');
+    await tick();
+    assert.equal(calls.classify.length, classifyBefore);
+    archive.setIdeasRedesign(true);
+  });
+
+  test('לחיצה על שמירה עם תיבה ריקה: הסמן עובר לתיבה ויש רמז', () => {
+    const input = $('#quick-add-input');
+    input.value = '   ';
+    $('#quick-add-btn').click();
+    assert.equal(document.activeElement, input);
+    assert.match(lastToast(), /קודם כותבים את הרעיון/);
+  });
+
+  test('ערכי מוצג כבעל ערך, ובידורי כלא ממוין בלי 🎭 (לקוחות)', () => {
+    archive.setIdeasRedesign(false);
+    archive.renderArchive(IDEAS, { onItemClick: () => {} });
+    const text = $('#archive-list').textContent;
+    assert.ok(!/🎭|בידורי/.test(text), 'בידורי מוצג');
+    assert.ok(!/(^|\s)ערכי(\s|$)/.test(text), 'ערכי מוצג');
+    const oldValue = [...$$('#archive-list .archive-item')].find((el) => /רעיון ישן בשם הישן/.test(el.textContent));
+    assert.match(oldValue.textContent, /בעל ערך/);
+    /* מסך ההתקדמות: ערכי נספר בבעל ערך, בידורי בטיוטות */
+    const pills = $('#stat-scroll').textContent;
+    assert.ok(!/בידורי|ערכי/.test(pills));
+    assert.match($('#drafts-pending-btn').textContent, /📝 2/);
+    archive.setIdeasRedesign(true);
+  });
+
+  test('"1 טיוטות" נכתב ביחיד', () => {
+    archive.setIdeasRedesign(false);
+    archive.renderArchive(IDEAS.filter((i) => i.id !== 'b1'), { onItemClick: () => {} });
+    assert.match($('#drafts-pending-btn').textContent, /טיוטה ממתינה לסיווג/);
+    archive.renderArchive(IDEAS, { onItemClick: () => {} });
+    archive.setIdeasRedesign(true);
+  });
+
+  test('סינון הטיוטות מהמסך "ההתקדמות שלי" גלוי כ"טיוטות ✕" ואפשר להסיר אותו', () => {
+    archive.setIdeasRedesign(false);
+    archive.renderArchive(IDEAS, { onItemClick: () => {} });
+    $('#drafts-pending-btn').click();
+    assert.equal($('#drafts-filter-chip').hidden, false);
+    assert.equal($('#archive-title-label').textContent, 'טיוטות');
+    assert.equal($$('#archive-list > .archive-item-outer').length, 2);
+    $('#drafts-filter-chip').click();
+    assert.equal($('#drafts-filter-chip').hidden, true);
+    assert.equal($('#filter-category').value, '');
+    assert.equal($('#archive-title-label').textContent, 'הרעיונות שלי');
+    assert.ok($('.quick-chip[data-category=""]').classList.contains('active'));
+    archive.setIdeasRedesign(true);
+  });
+
+  test('ב"רעיונות שבוצעו" הכותרת אומרת את זה, ובחזרה חוזרת', () => {
+    $('#completed-toggle-btn').click();
+    assert.equal($('#archive-title-label').textContent, 'רעיונות שבוצעו');
+    $('#completed-toggle-btn').click();
+    assert.equal($('#archive-title-label').textContent, 'הרעיונות שלי');
+  });
+
+  test('"בטלו" שנכשל מראה הודעה במקום לשתוק', async () => {
+    const toast = await import('../js/toast.js');
+    toast.showToast('הרעיון נמחק', { actionLabel: 'בטלו', onAction: () => Promise.reject(new Error('offline')) });
+    $$('.toast-action-btn').at(-1).click();
+    await until(() => /הביטול לא הצליח/.test(lastToast()), 'הודעת כישלון');
+  });
 });
