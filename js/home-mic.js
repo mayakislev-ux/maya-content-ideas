@@ -631,6 +631,17 @@ function removeSpokenFromBox(spoken) {
 
 /* ---------- חיווט ---------- */
 
+/* 07/11/2026: שורת ההסבר של הכרטיס כשהוא במנוחה (למשל בלי "מהקהל,
+   מהפרסונה" למי שאין לה טבלאות). */
+export function setHomeMicIdleText(value) {
+  if (!original || !value) return;
+  original.text = value;
+  if (!session) {
+    const text = el('home-mic-text');
+    if (text) text.textContent = value;
+  }
+}
+
 export function wireHomeMic() {
   const btn = el('home-mic-card');
   if (!btn || btn.dataset.wired) return;

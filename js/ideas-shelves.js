@@ -19,7 +19,8 @@ import { OWNER_EMAIL } from './client-view.js';
    כלקוחה, כדי שלא תפספס אותו. השאר רואים את המסך הקיים.
    כדי לפתוח לכולם: להחליף את השורה שבתוך הפונקציה ב-return true; */
 export function ideasRedesignFor(email) {
-  return email === OWNER_EMAIL;
+  /* 07/11/2026 (מאיה: "לפתוח את העדכונים אצל כולן ברור"): פתוח לכל משתמשת מחוברת */
+  return Boolean(email);
 }
 
 /* ---------- שלושת הכפתורים ----------

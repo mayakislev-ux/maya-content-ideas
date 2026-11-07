@@ -127,11 +127,10 @@ describe('האפליקציה המלאה (jsdom)', { skip: hasJsdom ? false : 'js
     assert.equal(d.body.style.overflow, '', 'הגלילה נשארה נעולה');
   });
 
-  test('פס תצוגת הלקוחה אומר שהמסכים החדשים מוצגים רק למאיה', () => {
+  test('פס תצוגת הלקוחה: המסכים החדשים פתוחים לכולן, אז אין הסתייגות', () => {
     const bar = $('.preview-bar');
     assert.ok(bar, 'אין פס תצוגת לקוחה');
-    assert.ok(!/ככה לקוחה עם מנוי מלא רואה/.test(bar.textContent));
-    assert.match(bar.textContent, /המסכים החדשים .* מוצגים כרגע רק לך/);
+    assert.ok(!/מוצגים כרגע רק לך/.test(bar.textContent));
   });
 
   test('"חזרה לאפליקציה" מהמדריך חוזרת למסך שממנו נכנסו', async () => {

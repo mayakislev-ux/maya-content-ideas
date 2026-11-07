@@ -9,8 +9,8 @@ import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/fireba
 import { subscribeToIdeas } from './ideas-store.js';
 import { renderArchive, wireArchiveControls, getCurrentIdeas, getAllIdeas, wirePullToRefresh, wireGoalEditModal, setIdeasRedesign } from './archive-view.js';
 import { ideasRedesignFor } from './ideas-shelves.js';
-import { wireHomeMic, setHomeMicVisible } from './home-mic.js';
-import { wireNoIdea, setNoIdeaHome } from './no-idea.js';
+import { wireHomeMic, setHomeMicVisible, setHomeMicIdleText } from './home-mic.js';
+import { wireNoIdea, setNoIdeaHome, hasSheet } from './no-idea.js';
 import { wireMyDetails, openMyDetails } from './my-details.js';
 import { setRecorderRatings } from './idea-recorder.js';
 import { openAddModal, openEditModal, wireIdeaForm, setSimpleIdeaForm } from './idea-form.js';
@@ -754,9 +754,8 @@ onAuthChange(async (user) => {
        הבית "אין לי רעיון?", מסך הרעיונות בשלושה סוגים), שעדיין רק של מאיה.
        היא רוצה לראות אותם גם כאן, ולכן הפס אומר את זה במקום להבטיח
        "ככה לקוחה רואה". */
-    const newScreensNote = ideasRedesignFor(user.email)
-      ? ' המסכים החדשים (מסך הבית ומסך הרעיונות) מוצגים כרגע רק לך, לקוחות עדיין רואים את הקודמים.'
-      : '';
+    /* 07/11/2026: המסכים החדשים נפתחו לכל הלקוחות, אז אין מה להסתייג */
+    const newScreensNote = '';
     bar.querySelector('[data-client-view-text]').textContent = (viewed
       ? '👁 את בתוך החשבון של ' + (viewed.name || viewed.email) + '. כל מה שתשני כאן נשמר אצלה באמת.'
       : '👁 את בתצוגת לקוחה עם מנוי מלא. מה שתעשי נשמר בחשבון שלך.') + newScreensNote;
@@ -833,6 +832,13 @@ onAuthChange(async (user) => {
   setNoIdeaHome(ideasRedesign);
   setHomeMicVisible(ideasRedesign);
   setRecorderRatings(!ideasRedesign);
+  /* 07/11/2026 (מאיה): למי שאין טבלאות (משתתפות המרתון הזמניות) הכרטיס
+     לא מבטיח "מהקהל, מהפרסונה", כי הדלתות האלה לא מוצגות אצלן */
+  if (ideasRedesign) {
+    getProfile().then((profile) => {
+      if (!hasSheet(profile)) setHomeMicIdleText('מספרים מה קרה היום, או משכפלים רפרנס מהתחום שלך');
+    }).catch(() => {});
+  }
 
   /* 26/10/2026: שלושת הכפתורים שהמודולים האלה שירתו ירדו לבקשתה, ולכן
      אין יותר מה לחבר כאן. המודולים עצמם נשארו בריפו ולא נמחקו, כדי
