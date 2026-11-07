@@ -644,7 +644,7 @@ async function renderPulledIdea() {
   const card = cosmicCard(`
     <h2>🎲 הרעיון הזה</h2>
     <p style="font-size:17px;font-weight:700" id="va-idea-title">${escapeHtml(idea.title)}</p>
-    ${idea.hookText ? `<p>${escapeHtml(idea.hookText)}</p>` : ''}
+    ${idea.hookText ? `<p>${escapeHtml(idea.hookText.length > 300 ? `${idea.hookText.slice(0, 299).trim()}…` : idea.hookText)}</p>` : ''}
     <div class="cosmic-btn-row">
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-accept-idea-btn">ממשיכים ←</button>
     </div>
@@ -659,7 +659,11 @@ async function renderPulledIdea() {
        לתיבה נקי, הסיפור נשאר איתו, והזווית עוברת לשדה שלה ונוסעת הלאה. */
     const parsed = parseIdeaTitle(idea.title);
     const ideaText = parsed.story ? `${parsed.text}. סיפור: ${parsed.story}` : parsed.text;
-    state.hook = idea.hookText || ideaText;
+    /* 07/11/2026: ברעיון מהקלטה hookText הוא כל מה שהיא אמרה על הרעיון
+       (לפעמים דקה וחצי), ולא הוק. הוא נכנס כתיאור הרעיון, וההוק מתחיל
+       מהכותרת הקצרה. */
+    const fromVoice = Boolean(idea.transcript);
+    state.hook = fromVoice ? ideaText : (idea.hookText || ideaText);
     state.ideaDescription = idea.hookText || ideaText;
     state.ideaAngle = parsed.angle || null;
     celebrate();

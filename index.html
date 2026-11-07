@@ -931,6 +931,19 @@
       <textarea id="field-title" class="field-title-textarea field-hero-textarea" placeholder="על מה הסרטון הזה?" required></textarea>
       <p id="field-title-hint" class="field-hint" hidden>רעיון ארוך - אפשר גם, אבל שקלי/שקול אם יש לקצר לשם קריאות נוחה יותר</p>
 
+      <!-- 07/11/2026 (מאיה: "הוא תימצת לי את הרעיון שאמרתי ממש בקצרה ואז אני
+           אשכח מה אמרתי"): בעריכת רעיון שיש לו פירוט (hookText), ובמיוחד רעיון
+           מהקלטה, רואים כאן את המילים שלה עצמה ואפשר לערוך אותן. ואם נשמר כל
+           התמלול (transcript), הוא מתחת בלחיצה. js/idea-form.js -->
+      <div id="field-said-wrap" class="field-said" hidden>
+        <label id="field-said-label" class="field-label-row" for="field-said">🗣️ מה אמרת</label>
+        <textarea id="field-said" class="field-said__text" rows="5"></textarea>
+        <details id="field-transcript-wrap" class="field-said__full" hidden>
+          <summary>כל ההקלטה</summary>
+          <p id="field-transcript"></p>
+        </details>
+      </div>
+
       <!-- 06/11/2026 (מאיה): בטופס הקצר (idea-form--simple, js/idea-form.js)
            כל מה שמסומן data-simple-hide לא מוצג: דירוג, קהל, שלב שכנוע,
            פורמט וסדרה. הסוג, הקהל והשלב מסווגים לבד בשמירה. -->

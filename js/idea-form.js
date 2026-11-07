@@ -99,7 +99,7 @@ async function simpleFormData(original) {
   if (needs.category || needs.persuasionStage || needs.audienceScope) {
     classified = await autoClassify(title);
   }
-  const data = { title, sourceLink };
+  const data = { title, sourceLink, ...saidField() };
   if (original) {
     if (hasCategory) data.category = chosen;
     else if (classified && classified.category) data.category = classified.category;
@@ -118,8 +118,32 @@ let openedSnapshot = '';
 
 const FORM_FIELD_IDS = [
   'field-title', 'field-category', 'field-rating', 'field-link', 'field-persuasion',
-  'field-audience-scope', 'field-format', 'field-series-name', 'field-series-order',
+  'field-audience-scope', 'field-format', 'field-series-name', 'field-series-order', 'field-said',
 ];
+
+/* 07/11/2026 (מאיה: "ואז אני אשכח מה אמרתי"): "מה אמרת" בעריכה. מוצג רק
+   כשלרעיון יש פירוט (hookText) או תמלול, ונשמר רק כשהוא מוצג, כדי שרעיון
+   בלי פירוט יישמר בדיוק כמו קודם. */
+function showSaid(idea) {
+  const wrap = document.getElementById('field-said-wrap');
+  if (!wrap) return;
+  const said = String((idea && idea.hookText) || '');
+  const transcript = String((idea && idea.transcript) || '').trim();
+  wrap.hidden = !(said.trim() || transcript);
+  document.getElementById('field-said').value = said;
+  const fromVoice = Boolean(idea && (idea.source === 'הקלטה' || transcript));
+  document.getElementById('field-said-label').textContent = fromVoice ? '🗣️ מה אמרת' : '📝 פירוט הרעיון';
+  const full = document.getElementById('field-transcript-wrap');
+  full.hidden = !transcript || transcript === said.trim();
+  full.open = false;
+  document.getElementById('field-transcript').textContent = transcript;
+}
+
+function saidField() {
+  const wrap = document.getElementById('field-said-wrap');
+  if (!wrap || wrap.hidden) return {};
+  return { hookText: document.getElementById('field-said').value.trim() };
+}
 
 function formSnapshot() {
   const values = FORM_FIELD_IDS.map((id) => {
@@ -204,6 +228,7 @@ export function openAddModal(prefillTitle = '') {
   populateSeriesDatalist();
   document.getElementById('delete-idea-btn').hidden = true;
   editingIdea = null;
+  showSaid(null);
   /* בטופס הקצר הסוג נבחר לבד בשמירה, ולכן בהוספה הוא לא מוצג בכלל */
   document.getElementById('category-section').hidden = simpleForm;
   setRecorderEntryVisible(!simpleForm);
@@ -232,6 +257,7 @@ export function openEditModal(idea, overrideTitle = '') {
   document.getElementById('field-series-order').value = idea.seriesOrder || '';
   document.getElementById('delete-idea-btn').hidden = false;
   editingIdea = idea;
+  showSaid(idea);
   /* בעריכה רואים את הסוג שזוהה ואפשר לתקן אותו בלחיצה על אחד משלושת הצבעים */
   document.getElementById('category-section').hidden = false;
   setRecorderEntryVisible(false);
@@ -441,6 +467,7 @@ export function wireIdeaForm() {
       // את השמירה על שדה חובה חדש.
       series: isSeries && seriesName ? seriesName : '',
       seriesOrder: isSeries && seriesName && seriesOrderRaw ? Number(seriesOrderRaw) : null,
+      ...saidField(),
     };
     const errors = validateIdea(data);
     const errorEl = document.getElementById('form-error');

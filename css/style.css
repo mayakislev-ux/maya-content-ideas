@@ -8532,6 +8532,149 @@ body[data-plan="refs"] .hub-full-only { display: none !important; }
   .home-mic-card--live .home-mic-card__mic { animation: none; }
 }
 
+/* ---------- 07/11/2026: ההקלטה בתוך החלון (js/idea-recorder.js) ----------
+   מאיה: "המסך קופץ למעלה ולא קופץ פופאפ מסודר של המיקרופון". מיקרופון
+   גדול, שעון, הטקסט החי בתוך החלון, "סיימתי" וביטול. ואחרי זה, על כל
+   רעיון: "מה אמרת" (המילים שלה) ו"✨ עוד כיוונים לאותו רעיון". */
+.rec-mic {
+  display: grid;
+  place-items: center;
+  width: 84px;
+  height: 84px;
+  margin: 0.6rem auto 0.9rem;
+  border-radius: 50%;
+  background: var(--warm);
+  color: #fff;
+  box-shadow:
+    0 10px 30px rgba(255, 46, 168, 0.38),
+    0 0 0 10px rgba(255, 46, 168, 0.14),
+    0 0 0 22px rgba(255, 46, 168, 0.06);
+}
+.rec-mic svg { width: 36px; height: 36px; }
+.rec-mic--live { animation: home-mic-pulse 1.4s ease-out infinite; }
+.rec-question {
+  margin: 0 0 0.6rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: var(--card-radius-sm);
+  background: var(--accent-tint);
+  color: var(--text);
+  font-weight: 600;
+  line-height: 1.5;
+  text-align: center;
+}
+.rec-question[hidden] { display: none; }
+.rec-questions-btn { display: block; width: 100%; margin-top: 0.6rem; }
+.rec-questions-btn[hidden] { display: none; }
+.rec-questions {
+  max-height: 46vh;
+  overflow-y: auto;
+  margin: 0.6rem 0 0.2rem;
+  padding: 0.2rem 0.1rem;
+  border-radius: var(--card-radius-sm);
+  background: var(--surface);
+  overscroll-behavior: contain;
+}
+.rec-questions[hidden] { display: none; }
+.rec-questions__head {
+  margin: 0.7rem 0.6rem 0.35rem;
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--muted);
+}
+.rec-questions__list { list-style: none; margin: 0; padding: 0 0.4rem 0.4rem; display: grid; gap: 0.35rem; }
+.rec-questions__list li[hidden] { display: none; }
+.modal-content .rec-questions__search {
+  display: block;
+  width: calc(100% - 0.8rem);
+  box-sizing: border-box;
+  margin: 0 0.4rem 0.5rem;
+  min-height: 44px;
+  font-size: 16px;
+}
+.rec-questions__empty { margin: 0.4rem 0.6rem 0.6rem; font-size: 0.88rem; color: var(--muted); }
+.rec-questions__empty[hidden] { display: none; }
+.rec-questions__item {
+  width: 100%;
+  min-height: 44px;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: var(--card-bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  text-align: start;
+  cursor: pointer;
+}
+.rec-questions__item:hover,
+.rec-questions__item:focus-visible { border-color: var(--accent-300); background: var(--accent-tint); }
+.rec-live-text {
+  max-height: 32vh;
+  min-height: 4.5rem;
+  overflow-y: auto;
+  margin: 0 0 0.6rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: var(--card-radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.rec-live-text--empty { color: var(--muted); text-align: center; }
+.rec-item__said {
+  margin: 0;
+  padding: 0.5rem 0.65rem;
+  border-radius: 10px;
+  background: var(--card-bg);
+  font-size: 0.88rem;
+}
+.rec-item__said summary { cursor: pointer; font-weight: 700; color: var(--muted); }
+.rec-item__said-text { margin: 0.35rem 0 0; color: var(--text); line-height: 1.55; white-space: pre-wrap; }
+.rec-tag--angle { border-inline-start-color: var(--accent); }
+.rec-angles { display: flex; flex-direction: column; gap: 0.4rem; }
+.rec-angles__btn { align-self: flex-start; padding-inline: 0; font-weight: 700; }
+.rec-angles__btn[hidden] { display: none; }
+.rec-angles__error { margin: 0; font-size: 0.85rem; color: var(--warm-700); font-weight: 600; }
+.rec-angles__head { margin: 0.2rem 0 0; font-size: 0.85rem; font-weight: 800; color: var(--muted); }
+.rec-angles__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.45rem; }
+.rec-angles__item {
+  display: grid;
+  gap: 0.3rem;
+  justify-items: start;
+  padding: 0.55rem 0.65rem;
+  border-radius: 10px;
+  background: var(--card-bg);
+}
+.rec-angles__title { margin: 0; font-weight: 600; line-height: 1.45; color: var(--text); }
+.rec-angles__actions { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; }
+.rec-angles__add { min-height: 38px; padding: 0.35rem 0.85rem; font-size: 0.88rem; }
+.rec-angles__add:disabled { opacity: 0.6; cursor: default; }
+.rec-transcript { margin: 0.6rem 0 0; font-size: 0.88rem; }
+.rec-transcript[hidden] { display: none; }
+.rec-transcript summary { cursor: pointer; font-weight: 700; color: var(--muted); }
+.rec-transcript__text {
+  max-height: 30vh;
+  overflow-y: auto;
+  margin: 0.4rem 0 0;
+  padding: 0.6rem 0.75rem;
+  border-radius: var(--card-radius-sm);
+  background: var(--surface);
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+.field-said { margin: 0.4rem 0 0.8rem; }
+.field-said[hidden] { display: none; }
+.field-said__text { width: 100%; box-sizing: border-box; min-height: 6rem; line-height: 1.55; }
+.field-said__full { margin-top: 0.4rem; font-size: 0.88rem; }
+.field-said__full[hidden] { display: none; }
+.field-said__full summary { cursor: pointer; font-weight: 700; color: var(--muted); }
+.field-said__full p { margin: 0.4rem 0 0; max-height: 30vh; overflow-y: auto; white-space: pre-wrap; line-height: 1.55; }
+@media (prefers-reduced-motion: reduce) {
+  .rec-mic--live { animation: none; }
+}
+
 /* 06/11/2026 (מאיה): "בצ'אט של הבדיקת רעיון במובייל כאילו לא רואים את
    המסל ואז צריך לגלול למעלה, לא נוח במסך, והמסל של הצ'אט מאוד קטן".
 

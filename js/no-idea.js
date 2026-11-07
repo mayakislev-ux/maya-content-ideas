@@ -4,47 +4,42 @@
 
    הכרטיס הגדול במסך הבית (#home-mic-card, js/home-mic.js) נקרא עכשיו
    "אין לי רעיון?", ולחיצה עליו פותחת כאן ארבע דלתות, בסדר הזה:
-     1. ממה שקרה היום / השבוע: מקליטים (אותה הקלטה במקום כמו קודם, עם
-        "שאלה של היום"), או שולחים צילום מסך של שאלה (ideasFromImage).
+     1. ממה שקרה היום / השבוע: מקליטים בתוך חלון (עם "שאלה של היום", או
+        שאלה שבוחרים מ-80 השאלות של מאיה, js/reel-questions.js). 07/11/2026 (מאיה: "תמחקי את
+        השאלה שראיתי ברשת תשאירי רק לספר בקול"): צילום המסך ירד מהמסך.
+        ideasFromImage נשארה בשרת, בלי שימוש.
      2. מקהל היעד: שורות מהלשונית "ניתוח קהל יעד" בקובץ (readSheetSections),
         ושורה -> 3 רעיונות (ideasFromRow). שמירה מסמנת את השורה.
      3. מהפרסונה השיווקית: אותו דבר על "פרסונה שיווקית".
      4. לשכפל רפרנס: סרטון אקראי מהמאגר בתחום, ומשם לשכפול הקיים.
 
    הרעיונות מוצגים ונשמרים באותו חלון של המיקרופון (js/idea-recorder.js).
-   הכל מאחורי ideasRedesignFor (js/ideas-shelves.js), כלומר רק מאיה כרגע.
+   הכל מאחורי ideasRedesignFor (js/ideas-shelves.js), שפתוח עכשיו לכולם.
    כל כישלון מוצג במילים: כפתור שלא עושה כלום גרוע משגיאה. */
 import { auth, functions } from './firebase-init.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
 import { subjectUid, withAsUid } from './client-view.js';
 import { getProfile } from './user-profile.js';
-import {
-  openIdeasPopup, setIdeasPopupProgress, showIdeasInPopup, showIdeasPopupError,
-} from './idea-recorder.js';
+import { openIdeasPopup, showIdeasInPopup, showIdeasPopupError, openSpeakPopup } from './idea-recorder.js';
 import { startHomeRecording, homeMicCanRecord, setHomeMicIdleTap } from './home-mic.js';
+import { REEL_QUESTIONS, REEL_QUESTIONS_TITLE } from './reel-questions.js';
 
-const ideasFromImage = httpsCallable(functions, 'ideasFromImage', { timeout: 120000 });
 const ideasFromRow = httpsCallable(functions, 'ideasFromRow', { timeout: 120000 });
 const readSheetSections = httpsCallable(functions, 'readSheetSections', { timeout: 60000 });
 
 /* ---------- עזרים טהורים (נבדקים) ---------- */
 
-/* הרשימה של מאיה. שיחות מכירה הן שאלה אחת כאן, לא קטגוריה נפרדת. */
-export const DAILY_PROMPTS = [
-  'שיחה מעניינת שהייתה לכם עם חבר / משפחה / לקוח',
-  'מחשבה שעלתה לכם במהלך היום',
-  'משהו שקרה לכם בעסק',
-  'סיטואציה שנתקלתם בה',
-  'סרטון שראיתם וגרם לכם לרצות להגיב או להגיד משהו',
-  'משהו שקרה לכם ופתאום התחבר למסרים שלכם',
-  'מה לקוח/ה אמר/ה בשיחת מכירה',
-];
+/* 07/11/2026: "שאלה של היום" מתחלפת מתוך 80 השאלות של מאיה
+   (js/reel-questions.js), אותה רשימה של "💬 בחרו שאלה וענו עליה". */
+export const DAILY_PROMPTS = REEL_QUESTIONS;
 
 /** השאלה של היום: מתחלפת כל יום (לפי התאריך המקומי), אותה שאלה כל היום. */
 export function promptOfDay(date = new Date()) {
   const day = Math.floor(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / 86400000);
   return DAILY_PROMPTS[((day % DAILY_PROMPTS.length) + DAILY_PROMPTS.length) % DAILY_PROMPTS.length];
 }
+
+export { REEL_QUESTIONS, REEL_QUESTIONS_TITLE };
 
 export const ROW_SHOWN_CHARS = 300;
 
@@ -80,61 +75,6 @@ export function pickReference(list, previousId = null, rand = Math.random) {
   if (!list || !list.length) return null;
   const options = list.length > 1 ? list.filter((v) => v.id !== previousId) : list;
   return options[Math.floor(rand() * options.length) % options.length];
-}
-
-/* מתחת ל-4MB: בקידוד base64 זה עדיין מתחת לתקרה של Claude */
-export const MAX_IMAGE_BYTES = Math.floor(3.7 * 1024 * 1024);
-export const MAX_IMAGE_SIDE = 1600;
-const SENDABLE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-
-/** מידות אחרי הקטנה, כך שהצלע הארוכה עד 1600. */
-export function fitSize(width, height, max = MAX_IMAGE_SIDE) {
-  const k = Math.min(1, max / Math.max(width || 1, height || 1));
-  return { width: Math.max(1, Math.round(width * k)), height: Math.max(1, Math.round(height * k)) };
-}
-
-function readAsBase64(blob) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result || '').replace(/^data:[^,]*,/, ''));
-    reader.onerror = () => reject(new Error('לא הצלחנו לקרוא את התמונה. לבחור אותה שוב'));
-    reader.readAsDataURL(blob);
-  });
-}
-
-/* מקטינים ל-1600 פיקסלים ב-JPEG. בדפדפן בלי createImageBitmap שולחים כמו שהיא. */
-async function downscale(file) {
-  if (typeof createImageBitmap !== 'function') return null;
-  const bitmap = await createImageBitmap(file);
-  const { width, height } = fitSize(bitmap.width, bitmap.height);
-  const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
-  const ctx = canvas.getContext && canvas.getContext('2d');
-  if (!ctx) return null;
-  ctx.drawImage(bitmap, 0, 0, width, height);
-  if (bitmap.close) bitmap.close();
-  const blob = await new Promise((resolve) => { canvas.toBlob(resolve, 'image/jpeg', 0.85); });
-  if (!blob) return null;
-  return { blob, mediaType: 'image/jpeg' };
-}
-
-/** קובץ שנבחר -> { image (base64), mediaType }, או שגיאה בעברית. */
-export async function prepareImage(file) {
-  if (!file) throw new Error('לא נבחרה תמונה');
-  if (file.type && !file.type.startsWith('image/')) throw new Error('אפשר לבחור רק תמונה (צילום מסך)');
-  let out = null;
-  try {
-    out = await downscale(file);
-  } catch (err) {
-    console.warn('no-idea: downscale failed, sending as is', err);
-  }
-  if (!out) {
-    if (!SENDABLE_TYPES.includes(file.type)) throw new Error('את סוג התמונה הזה אי אפשר לשלוח. אפשר לצלם מסך רגיל ולנסות שוב');
-    out = { blob: file, mediaType: file.type };
-  }
-  if (out.blob.size > MAX_IMAGE_BYTES) throw new Error('התמונה גדולה מדי (עד 4MB)');
-  return { image: await readAsBase64(out.blob), mediaType: out.mediaType };
 }
 
 function errorText(err, fallback) {
@@ -248,10 +188,7 @@ function ensureModal() {
           ${doorCard({ door: 'today', tag: 'div', icon: '🎙️', title: 'ממה שקרה היום / השבוע', text: '' })}
             <span class="no-idea-door__actions">
               <button type="button" id="no-idea-record" class="btn-primary no-idea-door__btn">🎙️ לספר בקול</button>
-              <button type="button" id="no-idea-shot" class="no-idea-soft-btn no-idea-door__btn">📷 שאלה שראיתי ברשת</button>
             </span>
-            <span class="rec-lead rec-lead--soft no-idea-shot-hint">ראית שאלה בקבוצה, בתגובות או בהודעה שקיבלת? מעלים צילום מסך שלה, והיא הופכת לרעיונות לסרטון.</span>
-            <input type="file" id="no-idea-shot-input" accept="image/*" hidden>
           </div>
           ${doorCard({ door: 'audience', icon: '👥', title: 'מקהל היעד', text: 'שורה מהלשונית "ניתוח קהל יעד" שלך הופכת ל-3 רעיונות' })}</button>
           ${doorCard({ door: 'persona', icon: '✨', title: 'מהפרסונה השיווקית: הבידול שלך', text: 'הסיפור, הערכים והבידול שלך, מהלשונית "פרסונה שיווקית"' })}</button>
@@ -298,8 +235,6 @@ function ensureModal() {
   el('no-idea-close-btn').addEventListener('click', closeDoors);
   modal.addEventListener('click', (e) => { if (e.target === modal) closeDoors(); });
   el('no-idea-record').addEventListener('click', recordToday);
-  el('no-idea-shot').addEventListener('click', () => el('no-idea-shot-input').click());
-  el('no-idea-shot-input').addEventListener('change', onShotChosen);
   modal.querySelectorAll('button.no-idea-door').forEach((btn) => {
     btn.addEventListener('click', () => {
       const door = btn.dataset.door;
@@ -382,62 +317,20 @@ function reopen(step) {
 
 function recordToday() {
   if (!homeMicCanRecord()) {
-    doorsStatus('הקלטה קולית לא זמינה בדפדפן הזה. אפשר לכתוב בתיבה במסך הבית, או לשלוח צילום מסך');
+    doorsStatus('הקלטה קולית לא זמינה בדפדפן הזה. אפשר לכתוב בתיבה במסך הבית');
     return;
   }
   closeDoors();
-  const box = el('quick-add-input');
-  if (box && box.scrollIntoView) box.scrollIntoView({ block: 'center', behavior: 'smooth' });
-  startHomeRecording({ prompt: promptOfDay() });
-}
-
-const SHOT_POPUP = { title: '✨ רעיונות מצילום המסך' };
-
-async function onShotChosen(e) {
-  const input = e.target;
-  const file = input.files && input.files[0];
-  input.value = '';
-  if (!file) return;
-  closeDoors();
-  const token = ++requestSeq;
-  openIdeasPopup({ ...SHOT_POPUP, progress: 'מכינים את התמונה...', back: { label: 'חזרה לדלתות', onClick: () => reopen('doors') } });
-  let prepared;
-  try {
-    prepared = await prepareImage(file);
-  } catch (err) {
-    console.error('no-idea: prepare image failed', err);
-    if (token === requestSeq) showIdeasPopupError(errorText(err, 'לא הצלחנו לקרוא את התמונה. לבחור אותה שוב'));
-    return;
-  }
-  sendShot(prepared, token);
-}
-
-async function sendShot(prepared, token) {
-  setIdeasPopupProgress('קוראים את צילום המסך ומוצאים בו רעיונות...');
-  try {
-    const res = await ideasFromImage(withAsUid(prepared));
-    if (token !== requestSeq) return;
-    const data = (res && res.data) || {};
-    const seen = String(data.seen || '').trim();
-    showIdeasInPopup(Array.isArray(data.ideas) ? data.ideas : [], {
-      context: seen ? `מצילום המסך: "${shortRowText(seen, 200)}"` : '',
-      where: 'בצילום המסך',
-      source: 'צילום מסך',
-      emptyText: seen
-        ? `לא מצאנו בצילום הזה רעיון לתוכן. מה שראינו בו: "${shortRowText(seen, 200)}"`
-        : 'לא מצאנו בצילום הזה רעיון לתוכן. אפשר לנסות צילום של שאלה או תגובה מהקהל.',
-    });
-  } catch (err) {
-    console.error('no-idea: ideasFromImage failed', err);
-    if (token !== requestSeq) return;
-    showIdeasPopupError(errorText(err, 'לא הצלחנו לקרוא את צילום המסך הפעם.'), {
-      onRetry: () => {
-        const again = ++requestSeq;
-        openIdeasPopup({ ...SHOT_POPUP, progress: 'קוראים את צילום המסך...', back: { label: 'חזרה לדלתות', onClick: () => reopen('doors') } });
-        sendShot(prepared, again);
-      },
-    });
-  }
+  /* 07/11/2026 (מאיה: "המסך קופץ למעלה ולא קופץ פופאפ מסודר של
+     המיקרופון"): בלי גלילה במסך הבית. ההקלטה כולה בחלון אחד, ומשם לתוצאות. */
+  const prompt = promptOfDay();
+  openSpeakPopup({
+    prompt,
+    questions: REEL_QUESTIONS,
+    questionsTitle: REEL_QUESTIONS_TITLE,
+    back: { label: 'חזרה לדלתות', onClick: () => reopen('doors') },
+    onStart: ({ question }) => startHomeRecording({ prompt, popup: true, question }),
+  });
 }
 
 /* ---------- דלתות 2 ו-3: הטבלה מהקובץ ---------- */
