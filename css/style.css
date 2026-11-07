@@ -8581,7 +8581,18 @@ body[data-plan="refs"] .hub-full-only { display: none !important; }
   font-weight: 800;
   color: var(--muted);
 }
-.rec-questions__list { list-style: none; margin: 0; padding: 0 0.4rem; display: grid; gap: 0.35rem; }
+.rec-questions__list { list-style: none; margin: 0; padding: 0 0.4rem 0.4rem; display: grid; gap: 0.35rem; }
+.rec-questions__list li[hidden] { display: none; }
+.modal-content .rec-questions__search {
+  display: block;
+  width: calc(100% - 0.8rem);
+  box-sizing: border-box;
+  margin: 0 0.4rem 0.5rem;
+  min-height: 44px;
+  font-size: 16px;
+}
+.rec-questions__empty { margin: 0.4rem 0.6rem 0.6rem; font-size: 0.88rem; color: var(--muted); }
+.rec-questions__empty[hidden] { display: none; }
 .rec-questions__item {
   width: 100%;
   min-height: 44px;

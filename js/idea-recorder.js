@@ -362,30 +362,53 @@ export function showIdeasPopupError(message, { onRetry = null, text = '' } = {})
 
 /* ---------- 07/11/2026: ההקלטה עצמה בתוך החלון ---------- */
 
-/** השאלות לבחירה: [{ title, questions: [...] }]. נבנה מחדש בכל פתיחה. */
-function renderQuestions(groups) {
+/** השאלות לבחירה (רשימה שטוחה, בסדר שלה), עם כותרת וחיפוש. נבנה בכל פתיחה. */
+function renderQuestions(questions, title = '') {
   const box = el('rec-questions');
   box.innerHTML = '';
-  for (const group of groups || []) {
-    if (!group || !Array.isArray(group.questions) || !group.questions.length) continue;
+  const list = (questions || []).filter((q) => typeof q === 'string' && q.trim());
+  el('rec-questions-btn').hidden = !list.length;
+  if (!list.length) return;
+  if (title) {
     const head = document.createElement('p');
     head.className = 'rec-questions__head';
-    head.textContent = group.title;
-    const list = document.createElement('ul');
-    list.className = 'rec-questions__list';
-    for (const q of group.questions) {
-      const li = document.createElement('li');
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.className = 'rec-questions__item';
-      b.textContent = q;
-      b.addEventListener('click', () => beginSpeaking(q));
-      li.appendChild(b);
-      list.appendChild(li);
-    }
-    box.append(head, list);
+    head.textContent = title;
+    box.appendChild(head);
   }
-  el('rec-questions-btn').hidden = !box.children.length;
+  const search = document.createElement('input');
+  search.type = 'search';
+  search.id = 'rec-questions-search';
+  search.className = 'rec-questions__search';
+  search.placeholder = 'חיפוש שאלה (למשל: לקוח, מחיר, טעות)';
+  search.setAttribute('aria-label', 'חיפוש שאלה');
+  const ol = document.createElement('ol');
+  ol.className = 'rec-questions__list';
+  const empty = document.createElement('p');
+  empty.className = 'rec-questions__empty';
+  empty.textContent = 'אין שאלה עם המילה הזאת';
+  empty.hidden = true;
+  list.forEach((q, i) => {
+    const li = document.createElement('li');
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'rec-questions__item';
+    b.dataset.n = String(i + 1);
+    b.textContent = `${i + 1}. ${q}`;
+    b.addEventListener('click', () => beginSpeaking(q));
+    li.appendChild(b);
+    ol.appendChild(li);
+  });
+  search.addEventListener('input', () => {
+    const term = search.value.trim();
+    let shown = 0;
+    [...ol.children].forEach((li, i) => {
+      const hit = !term || list[i].includes(term);
+      li.hidden = !hit;
+      if (hit) shown += 1;
+    });
+    empty.hidden = shown > 0;
+  });
+  box.append(search, ol, empty);
 }
 
 function toggleQuestions() {
@@ -402,7 +425,7 @@ function beginSpeaking(question) {
 
 /** הפופאפ של "🎙️ לספר בקול", לפני שמתחילים. onStart({ question }) מתחיל
     את ההקלטה בתוך הלחיצה עצמה, כדי שהמיקרופון ייפתח גם באייפון. */
-export function openSpeakPopup({ prompt = '', questions = [], onStart = null, back = null, title = '🎙️ ממה שקרה היום' } = {}) {
+export function openSpeakPopup({ prompt = '', questions = [], questionsTitle = '', onStart = null, back = null, title = '🎙️ ממה שקרה היום' } = {}) {
   ensureModal();
   closeRecorder();
   found = [];
@@ -411,7 +434,7 @@ export function openSpeakPopup({ prompt = '', questions = [], onStart = null, ba
   speakStart = onStart;
   el('rec-question').textContent = prompt ? `💡 שאלה של היום: ${prompt}` : '';
   el('rec-question').hidden = !prompt;
-  renderQuestions(questions);
+  renderQuestions(questions, questionsTitle);
   el('rec-questions').hidden = true;
   el('rec-questions-btn').setAttribute('aria-expanded', 'false');
   showStep('speak');

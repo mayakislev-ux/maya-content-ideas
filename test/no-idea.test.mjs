@@ -521,8 +521,9 @@ describe('"אין לי רעיון?" במסך הבית (jsdom)', { skip: hasJsdom
   });
 
   test('שאלה של היום: מתחלפת כל יום, קבועה באותו יום, מתוך הרשימה של מאיה', () => {
-    assert.equal(noIdea.DAILY_PROMPTS.length, 7);
-    assert.ok(noIdea.DAILY_PROMPTS.includes('מה לקוח/ה אמר/ה בשיחת מכירה'));
+    /* 07/11/2026: מתוך 80 השאלות של מאיה (js/reel-questions.js) */
+    assert.equal(noIdea.DAILY_PROMPTS, noIdea.REEL_QUESTIONS);
+    assert.equal(noIdea.DAILY_PROMPTS.length, 80);
     const d = (day, h) => new Date(2026, 10, day, h);
     assert.equal(noIdea.promptOfDay(d(6, 1)), noIdea.promptOfDay(d(6, 23)));
     const week = Array.from({ length: 7 }, (_, i) => noIdea.promptOfDay(d(1 + i, 12)));

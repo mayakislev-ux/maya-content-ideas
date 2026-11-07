@@ -313,22 +313,19 @@ describe('"לספר בקול" בחלון (jsdom)', { skip: hasJsdom ? false : 'j
     assert.equal($('#rec-step-speak').hidden, false, 'חלון "לספר בקול" לא נפתח');
   }
 
-  test('שאלות: יותר מ-45, בקבוצות של מאיה, קונקרטיות ובלשון לכולם', () => {
-    const groups = noIdea.REEL_QUESTIONS;
-    assert.deepEqual(groups.map((g) => g.title),
-      ['מהיום־יום', 'מהלקוחות', 'דעות ואג׳נדות', 'סיפור אישי', 'טעויות ומיתוסים', 'מאחורי הקלעים', 'מכירה']);
-    const all = groups.flatMap((g) => g.questions);
-    assert.ok(all.length >= 45, `רק ${all.length} שאלות`);
-    assert.equal(new Set(all).size, all.length, 'שאלה כפולה');
-    for (const q of all) {
-      assert.match(q, /\?$/, `לא שאלה: ${q}`);
-      assert.ok(q.length <= 90, `ארוכה מדי לקריאה בטלפון: ${q}`);
-      assert.ok(!/[—–]/.test(q), `מקף ארוך: ${q}`);
-      assert.ok(!/(אלייך|עלייך|שלכן|אתן |מסכימה|אוהבת|שומעת)/.test(q), `לשון נקבה בלבד: ${q}`);
-    }
-    for (const q of ['מה לקוח/ה שאל/ה אותך השבוע שהפתיע אותך?', 'איזו עצה נפוצה בתחום שלך את/ה לא מסכים/ה איתה?', 'מה הטעות הכי יקרה שעשית בעסק?']) {
-      assert.ok(all.includes(q), `חסרה: ${q}`);
-    }
+  test('השאלות: 80 השאלות של מאיה, במילים ובסדר שלה, בלי מקף ארוך', async () => {
+    const mod = await import('../js/reel-questions.js');
+    const all = mod.REEL_QUESTIONS;
+    assert.equal(noIdea.REEL_QUESTIONS, all);
+    assert.equal(mod.REEL_QUESTIONS_TITLE, '80 שאלות ליצירת רילסים אישיים, מקצועיים ומבדלים');
+    assert.equal(all.length, 80);
+    assert.equal(new Set(all).size, 80, 'שאלה כפולה');
+    for (const q of all) assert.ok(!/[—–]/.test(q), `מקף ארוך: ${q}`);
+    /* הראשונה (המקף הוחלף בפסיק), השנייה, אחת מהאמצע והאחרונה, מילה במילה */
+    assert.equal(all[0], 'איזה חלום או תוצאה שהלקוחות שלכם רוצים להשיג, אתם כבר השגתם בעצמכם? איך זה קרה?');
+    assert.equal(all[1], 'איזו בעיה, תחושת תסכול או אמונה מגבילה שאתם מזהים אצל הלקוחות שלכם, חוויתם בעצמכם בעבר?');
+    assert.equal(all[20], 'איזו טעות מקצועית עשיתם בתחילת הדרך והיום לא הייתם חוזרים עליה בשום מצב?');
+    assert.equal(all[79], 'לאיזה אדם או לקוח אתם יודעים שאתם יכולים לעזור במיוחד, ולאיזה אדם השירות שלכם פשוט לא מתאים?');
   });
 
   test('אייפון: דלת -> חלון -> בוחרים שאלה -> מקליטים, הטקסט החי בתוך החלון -> "סיימתי" -> רעיון עם המילים שלה -> שמירה', async () => {
@@ -343,12 +340,25 @@ describe('"לספר בקול" בחלון (jsdom)', { skip: hasJsdom ? false : 'j
     $('#rec-questions-btn').click();
     assert.equal($('#rec-questions').hidden, false);
     assert.equal($('#rec-questions-btn').getAttribute('aria-expanded'), 'true');
-    const heads = $$('.rec-questions__head').map((n) => n.textContent);
-    assert.equal(heads.length, 7);
+    assert.deepEqual($$('.rec-questions__head').map((n) => n.textContent), ['80 שאלות ליצירת רילסים אישיים, מקצועיים ומבדלים']);
     const items = $$('.rec-questions__item');
-    assert.equal(items.length, noIdea.REEL_QUESTIONS.flatMap((g) => g.questions).length);
-    const q = 'מה הטעות הכי יקרה שעשית בעסק?';
-    items.find((b) => b.textContent === q).click();
+    assert.equal(items.length, 80);
+    assert.deepEqual(items.map((b) => b.textContent), noIdea.REEL_QUESTIONS.map((x, i) => `${i + 1}. ${x}`), 'הסדר שלה השתנה');
+    /* חיפוש מסנן, בלי לשנות סדר */
+    const search = $('#rec-questions-search');
+    search.value = 'טעות מקצועית';
+    search.dispatchEvent(new w.Event('input', { bubbles: true }));
+    const shown = items.filter((b) => !b.parentElement.hidden);
+    assert.equal(shown.length, 1);
+    assert.equal($('.rec-questions__empty').hidden, true);
+    search.value = 'זברה';
+    search.dispatchEvent(new w.Event('input', { bubbles: true }));
+    assert.equal($('.rec-questions__empty').hidden, false);
+    search.value = '';
+    search.dispatchEvent(new w.Event('input', { bubbles: true }));
+    assert.equal(items.filter((b) => !b.parentElement.hidden).length, 80);
+    const q = noIdea.REEL_QUESTIONS[20];
+    shown[0].click();
 
     /* השאלה למעלה, ומקליטים בתוך אותו חלון */
     assert.equal($('#rec-step-live').hidden, false, 'בחירת שאלה לא התחילה הקלטה');
