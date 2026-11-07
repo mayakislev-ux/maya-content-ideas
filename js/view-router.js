@@ -4,8 +4,23 @@
 const VIEWS = ['home', 'archive', 'progress', 'chat', 'guide', 'ideas-guide', 'inspiration', 'roadmap', 'content-plan', 'warming', 'video-assistant', 'feedback'];
 const EMBED_VIEWS = ['roadmap', 'content-plan'];
 const LAST_VIEW_KEY = 'last-view';
+/* 07/11/2026 (ביקורת): "חזרה לאפליקציה" מתוך מדריך מוטמע תמיד הוביל
+   לרשימת הרעיונות. עכשיו זוכרים מאיזה מסך נכנסו, ושם חוזרים. */
+let currentView = null;
+let embedReturn = null;
+
+/** המסך שממנו נכנסו למדריך המוטמע הנוכחי, או null אם לא ידוע. */
+export function embedReturnView() {
+  return embedReturn;
+}
 
 export function showView(name) {
+  if (EMBED_VIEWS.includes(name)) {
+    if (currentView && !EMBED_VIEWS.includes(currentView)) embedReturn = currentView;
+  } else {
+    embedReturn = null;
+  }
+  currentView = name;
   for (const view of VIEWS) {
     const el = document.getElementById(`${view}-view`);
     if (el) el.hidden = view !== name;

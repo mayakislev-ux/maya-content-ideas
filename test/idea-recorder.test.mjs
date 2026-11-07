@@ -295,6 +295,27 @@ describe('הזרימה במסך (jsdom)', { skip: hasJsdom ? false : 'jsdom לא
     assert.equal($('#idea-modal').hidden, true);
   });
 
+  test('במסך החדש (מאיה): בלי "🔥 חזק" ובלי לשמור דירוג, גם כשהשרת מחזיר אותו', async () => {
+    const recMod = await import('../js/idea-recorder.js');
+    recMod.setRecorderRatings(false);
+    try {
+      const before = added.length;
+      recMod.openIdeasPopup({ progress: 'רגע...' });
+      recMod.showIdeasInPopup([
+        { title: 'רעיון חם מהבית', context: '', category: 'מכירתי', persuasionStage: '', audienceScope: 'עיקרי', rating: '🔥 חייב לצלם' },
+      ], { source: 'הקלטה' });
+      await until(() => !$('#rec-step-results').hidden, 'מסך התוצאות');
+      assert.ok(!/🔥/.test($('#rec-step-results').textContent), 'תגית 🔥 חזק מוצגת');
+      $('#rec-save-btn').click();
+      await until(() => added.length > before, 'שמירה');
+      assert.equal(added.at(-1).data.rating, '');
+      assert.equal(added.at(-1).data.title, 'רעיון חם מהבית');
+    } finally {
+      recMod.setRecorderRatings(true);
+      if (!$('#recorder-modal').hidden) $('#recorder-modal').hidden = true;
+    }
+  });
+
   test('שגיאה מהשרת מוצגת, ו"לנסות שוב" שולח את אותה הקלטה בלי להקליט מחדש', async () => {
     form.openAddModal();
     $('#rec-entry').click();

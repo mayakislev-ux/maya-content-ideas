@@ -63,14 +63,16 @@ export function rowsWithMarks(rows, ideas, savedNow = new Set()) {
   return (rows || []).map((text) => ({ text, done: used.has(text) }));
 }
 
-/** מאגר הרפרנסים לתחום: בתחום אם יש בו, אחרת הכל. עדיף סרטונים עם תקציר. */
+/** מאגר הרפרנסים לתחום. 07/11/2026 (ביקורת): אף פעם לא מתחום אחר.
+    תת-קטגוריה שאין בה סרטונים -> כל התחום. תחום בלי סרטונים, או בלי תחום
+    בכלל -> רשימה ריקה, והמסך אומר את זה. עדיף סרטונים עם תקציר. */
 export function referencePool(videos, domain, subCategory = '') {
   const all = (videos || []).filter((v) => v && v.url);
   const inDomain = domain ? all.filter((v) => v.domain === domain) : [];
   const inSub = subCategory ? inDomain.filter((v) => v.subCategory === subCategory) : [];
-  const base = inSub.length ? inSub : (inDomain.length ? inDomain : all);
+  const base = inSub.length ? inSub : inDomain;
   const summarized = base.filter((v) => String(v.contentSummary || '').trim());
-  return { list: summarized.length ? summarized : base, fallback: Boolean(domain) && !inDomain.length };
+  return { list: summarized.length ? summarized : base };
 }
 
 /** סרטון אקראי, לא אותו אחד פעמיים ברצף (כשיש יותר מאחד). */
@@ -179,6 +181,8 @@ const deps = {
   duplicate: async () => {},
   guessDomain: async () => null,
   saveDomain: async () => {},
+  /* פותח את "הפרטים שלי", שם בוחרים את התחום (js/my-details.js) */
+  openDetails: null,
 };
 
 /* ---------- מצב ---------- */
@@ -283,6 +287,7 @@ function ensureModal() {
             <button type="button" id="no-idea-ref-next" class="no-idea-soft-btn">🎲 עוד אחד</button>
           </div>
         </div>
+        <button type="button" id="no-idea-ref-setfield" class="btn-primary rec-main-btn" hidden>✏️ לבחור את התחום שלי</button>
         <button type="button" id="no-idea-ref-retry" class="btn-primary rec-main-btn" hidden>לנסות שוב</button>
       </div>
     </div>`;
@@ -308,6 +313,7 @@ function ensureModal() {
   el('no-idea-retry').addEventListener('click', () => loadTable(table.kind, { fresh: true }));
   el('no-idea-ref-next').addEventListener('click', () => showReference());
   el('no-idea-ref-retry').addEventListener('click', openReference);
+  el('no-idea-ref-setfield').addEventListener('click', openFieldSettings);
   el('no-idea-ref-dup').addEventListener('click', duplicateReference);
   return modal;
 }
@@ -647,10 +653,23 @@ function refStatus(text, { error = false } = {}) {
   node.setAttribute('role', error ? 'alert' : 'status');
 }
 
+/* "לבחור את התחום שלי": סוגר את הדלתות ופותח את "הפרטים שלי".
+   אחרי השמירה פותחים שוב את דלת הרפרנס עם התחום החדש. */
+function openFieldSettings() {
+  if (typeof deps.openDetails !== 'function') return;
+  closeDoors();
+  deps.openDetails({ onSaved: () => { reopen('ref'); openReference(); } });
+}
+
+function showSetField(on) {
+  el('no-idea-ref-setfield').hidden = !(on && typeof deps.openDetails === 'function');
+}
+
 async function openReference() {
   showStep('ref');
   el('no-idea-ref-card').hidden = true;
   el('no-idea-ref-retry').hidden = true;
+  showSetField(false);
   refStatus('שולפים רפרנס מהמאגר...');
   const token = ++requestSeq;
   try {
@@ -679,16 +698,18 @@ async function openReference() {
     }
     if (token !== requestSeq) return;
     if (!domain) {
-      refStatus('לא הצלחנו לזהות את התחום שלך, אז לא נגריל רפרנס מתחום אחר. אפשר לבחור תחום בעוזר לסרטון ולנסות שוב.', { error: true });
+      refStatus('לא הצלחנו לזהות את התחום שלך, ולכן לא נגריל רפרנס מתחום אחר. אפשר לבחור את התחום ב"הפרטים שלי" ולנסות שוב.', { error: true });
+      showSetField(true);
       el('no-idea-ref-retry').hidden = false;
       return;
     }
     const pool = referencePool(videos, domain, subCategory);
     if (!pool.list.length) {
-      refStatus('אין עדיין רפרנסים במאגר.', { error: true });
+      refStatus(`אין עדיין רפרנסים במאגר בתחום שלך (${domain}), ולכן לא נגריל רפרנס מתחום אחר. אם התחום לא נכון, אפשר לתקן אותו ב"הפרטים שלי".`, { error: true });
+      showSetField(true);
       return;
     }
-    reference = { pool: pool.list, current: null, note: pool.fallback ? 'אין עדיין רפרנסים בתחום שלך, אז הנה אחד מכל התחומים.' : '' };
+    reference = { pool: pool.list, current: null, note: '' };
     showReference();
   } catch (err) {
     console.error('no-idea: loadBankVideos failed', err);
@@ -759,8 +780,6 @@ export function setNoIdeaHome(on) {
   if (recent) recent.hidden = Boolean(on);
   /* 07/11/2026 (מאיה: "ההתקדמות שלי - מיותר"): הכניסה בתפריט ירדה.
      עם המסך החדש אין כניסה ל"ההתקדמות שלי", בכוונה. */
-  const tab = el('tab-progress');
-  if (tab) tab.hidden = true;
   if (!on) closeDoors();
 }
 

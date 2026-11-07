@@ -1,6 +1,7 @@
-import { filterIdeas, sortIdeas, categoryColorVar, categoryIcon, CATEGORIES } from './ideas-logic.js';
+import { filterIdeas, sortIdeas, categoryColorVar, categoryIcon, CATEGORIES, displayCategory } from './ideas-logic.js';
 import { getInstantThumbnail, fetchThumbnail } from './video-preview.js';
-import { addQuickIdea, markIdeaCompleted, uncompleteIdea, deleteIdea, restoreIdea, deleteIdeasBulk, restoreIdeasBulk } from './ideas-store.js';
+import { addQuickIdea, updateIdea, markIdeaCompleted, uncompleteIdea, deleteIdea, restoreIdea, deleteIdeasBulk, restoreIdeasBulk } from './ideas-store.js';
+import { autoClassify } from './idea-form.js';
 import { showToast } from './toast.js';
 import { serverErrorText } from './server-error.js';
 import { animateCountUp } from './count-up.js';
@@ -28,9 +29,40 @@ const QUICK_ADD_TOASTS = [
   '💡 עוד רעיון אחד קרוב יותר לתוכן הבא שלך',
   '📥 נשמר בבטחה - תחזרו אליו כשיהיה לכם את הזמן',
 ];
+/* 07/11/2026: במסך החדש הרעיון מסווג לבד אחרי השמירה, ולכן אין "טיוטה" */
+const QUICK_ADD_TOASTS_CLASSIFIED = QUICK_ADD_TOASTS.slice(1);
+
+/** 07/11/2026 (ביקורת): בהוספה המהירה במסך החדש הרעיון נשמר בלי קטגוריה
+    ונשאר אפור ב"לא ממוין". עכשיו, אחרי שהשמירה הצליחה, הסיווג רץ ברקע
+    (אותו סיווג של הטופס) וממלא רק שדות שעדיין ריקים. אם הסיווג נכשל
+    הרעיון נשאר שמור, ומופיעה הודעה שקטה שאפשר לבחור קטגוריה לבד. */
+export async function classifyQuickIdea(id, title, opts = {}) {
+  const classify = opts.classify || autoClassify;
+  const update = opts.update || updateIdea;
+  const current = opts.current || (() => currentIdeas.find((i) => i.id === id));
+  const notify = opts.notify || showToast;
+  const failNote = () => notify('הרעיון נשמר, אבל לא הצלחנו לשייך אותו לקטגוריה. אפשר לבחור קטגוריה בעריכת הרעיון.', { duration: 7000 });
+  let classified = null;
+  try { classified = await classify(title); } catch (err) { console.error('quick classify failed:', err); }
+  if (!classified || !classified.category) { failNote(); return false; }
+  const now = current() || {};
+  const fields = {};
+  for (const key of ['category', 'persuasionStage', 'audienceScope']) {
+    if (!now[key] && classified[key]) fields[key] = classified[key];
+  }
+  if (!Object.keys(fields).length) return true;
+  try {
+    await update(id, fields);
+    return true;
+  } catch (err) {
+    console.error('quick classify save failed:', err);
+    failNote();
+    return false;
+  }
+}
 
 const LEVELS = [
-  { min: 0, name: 'בתחלת הדרך', icon: '🌱' },
+  { min: 0, name: 'בתחילת הדרך', icon: '🌱' },
   { min: 10, name: 'בקצב עולה', icon: '🌿' },
   { min: 25, name: 'בהתקדמות משמעותית', icon: '🌳' },
   { min: 50, name: 'ברמת מומחיות', icon: '⭐' },
@@ -54,12 +86,12 @@ async function celebrateMilestone(count, ideas) {
 
   const counts = CATEGORIES.map((category) => ({
     category,
-    n: ideas.filter((idea) => idea.category === category).length,
+    n: ideas.filter((idea) => displayCategory(idea.category) === category).length,
   })).sort((a, b) => b.n - a.n);
   const leader = counts[0];
-  let detail = 'המשיכי ככה';
+  let detail = 'ממשיכים ככה';
   if (leader && leader.n > 0) {
-    detail = `הכי הרבה כתבת ב"${leader.category}" (${leader.n})`;
+    detail = `הכי הרבה רעיונות ב"${leader.category}" (${leader.n})`;
   } else {
     const profile = await getProfile();
     detail = profile && profile.pronoun === 'אתה' ? 'תמשיך ככה' : 'המשיכי ככה';
@@ -282,14 +314,14 @@ function renderStatScroll() {
 
   const counts = CATEGORIES.map((category) => ({
     category,
-    count: active.filter((idea) => idea.category === category).length,
+    count: active.filter((idea) => displayCategory(idea.category) === category).length,
   })).filter((row) => row.count > 0);
 
   // רעיונות בלי קטגוריה (הוספה מהירה) נעלמים בשקט מבניית תכנית תוכן
   // (getReadyIdeas שם סופרת רק idea.category) - הפיל הזה נותן תזכורת קבועה
   // וגלויה, לא רק כשיש פחות מ-MIN_READY_IDEAS רעיונות מסווגים (אז כבר יש
   // הודעת gate נפרדת ב-content-plan.js, אבל היא נעלמת ברגע שיש מספיק).
-  const draftCount = active.filter((idea) => !idea.category).length;
+  const draftCount = active.filter((idea) => !displayCategory(idea.category)).length;
 
   container.innerHTML = `
     <button type="button" class="stat-pill stat-pill-level${leveledUp ? ' level-up-glow' : ''}" id="goal-edit-btn">
@@ -308,7 +340,7 @@ function renderStatScroll() {
     ${draftCount > 0
       ? `<button type="button" class="stat-pill stat-pill-draft" id="drafts-pending-btn">
       <span class="n">📝 ${draftCount}</span>
-      <span class="l">טיוטות ממתינות לסיווג</span>
+      <span class="l">${draftCount === 1 ? 'טיוטה ממתינה לסיווג' : 'טיוטות ממתינות לסיווג'}</span>
     </button>`
       : ''}
   `;
@@ -415,6 +447,15 @@ export function wireArchiveControls(onItemClick) {
     applyFilters(onItemClick);
   });
 
+  const draftsChip = document.getElementById('drafts-filter-chip');
+  if (draftsChip) {
+    draftsChip.addEventListener('click', () => {
+      categorySelect.value = '';
+      categoryChips.forEach((c) => c.classList.toggle('active', !c.dataset.category));
+      applyFilters(onItemClick);
+    });
+  }
+
   const toggleBtn = document.getElementById('completed-toggle-btn');
   toggleBtn.addEventListener('click', () => {
     showingCompleted = !showingCompleted;
@@ -459,11 +500,19 @@ export function wireArchiveControls(onItemClick) {
     /* בזמן הקלטה מהבית התיבה נעולה, והטקסט עוד נכתב לתוכה */
     if (quickAddInput.readOnly) return;
     const title = quickAddInput.value.trim();
-    if (!title || quickAddBusy) return;
+    if (quickAddBusy) return;
+    /* 07/11/2026 (ביקורת): לחיצה על "שמירת רעיון" עם תיבה ריקה לא עשתה
+       כלום. עכשיו הסמן עובר לתיבה ויש רמז קצר מה לעשות. */
+    if (!title) {
+      quickAddInput.focus();
+      showToast('קודם כותבים את הרעיון בתיבה, ואז שומרים', { duration: 3000 });
+      return;
+    }
     quickAddBusy = true;
     quickAddBtn.disabled = true;
+    let savedRef = null;
     try {
-      await addQuickIdea(title);
+      savedRef = await addQuickIdea(title);
     } catch (err) {
       console.error('addQuickIdea failed:', err);
       const denied = String(err && err.code).endsWith('permission-denied');
@@ -484,7 +533,9 @@ export function wireArchiveControls(onItemClick) {
       draftStore.clear();
     }
     if (navigator.vibrate) navigator.vibrate(15);
-    showToast(`⭐ ${todaysIdeaCountLabel()} ${QUICK_ADD_TOASTS[Math.floor(Math.random() * QUICK_ADD_TOASTS.length)]}`);
+    const toasts = redesign ? QUICK_ADD_TOASTS_CLASSIFIED : QUICK_ADD_TOASTS;
+    showToast(`⭐ ${todaysIdeaCountLabel()} ${toasts[Math.floor(Math.random() * toasts.length)]}`);
+    if (redesign && savedRef && savedRef.id) classifyQuickIdea(savedRef.id, title);
   };
   quickAddBtn.addEventListener('click', submitQuickAdd);
   quickAddInput.addEventListener('keydown', (e) => {
@@ -493,6 +544,23 @@ export function wireArchiveControls(onItemClick) {
       submitQuickAdd();
     }
   });
+}
+
+/* 07/11/2026 (ביקורת): הכותרת נשארה "הרעיונות שלי" גם במסך "רעיונות
+   שבוצעו", וסינון הטיוטות מהמסך "ההתקדמות שלי" היה נסתר. הכותרת עכשיו
+   תמיד אומרת מה רואים, וסינון הטיוטות מופיע כצ'יפ "טיוטות ✕" שאפשר להסיר. */
+function syncArchiveHeading(category) {
+  const label = document.getElementById('archive-title-label');
+  const draftsChip = document.getElementById('drafts-filter-chip');
+  const drafts = category === '__none__';
+  if (draftsChip) draftsChip.hidden = !drafts;
+  if (drafts) {
+    document.querySelectorAll('.quick-chip[data-category]').forEach((c) => c.classList.remove('active'));
+  }
+  if (!label) return;
+  if (showingCompleted) label.textContent = 'רעיונות שבוצעו';
+  else if (drafts) label.textContent = 'טיוטות';
+  else label.textContent = CATEGORIES.includes(category) ? category : 'הרעיונות שלי';
 }
 
 function applyFilters(onItemClick) {
@@ -512,6 +580,7 @@ function applyFilters(onItemClick) {
     categorySelect.value = '';
     category = '';
   }
+  syncArchiveHeading(category);
   const scoped = currentIdeas.filter((idea) => Boolean(idea.completedAt) === showingCompleted);
   const filtered = filterIdeas(scoped, { text, category, audienceScope, persuasionStage, rating });
   const sorted = sortIdeas(filtered, sortOrder);
@@ -763,7 +832,7 @@ function renderCalmCard(idea, onItemClick, { showCategory = false } = {}) {
     e.stopPropagation();
     try {
       await markIdeaCompleted(idea.id);
-      showToast('✓ סומן כבוצע', { actionLabel: 'בטלו', onAction: () => uncompleteIdea(idea.id) });
+      showToast('✓ סומן כבוצע', { actionLabel: 'בטלו', onAction: () => uncompleteIdea(idea.id).catch((err) => { console.error('undo complete failed:', err); showToast('הביטול לא הצליח, בדקו חיבור ונסו שוב'); }) });
     } catch (err) {
       console.error('toggle complete failed:', err);
       showToast('הפעולה נכשלה, נסו שוב');
@@ -901,7 +970,7 @@ async function bulkDelete(ids) {
   selectedIds.clear();
   if (lastOnItemClick) applyFilters(lastOnItemClick);
   const undo = done.length
-    ? { actionLabel: 'בטלו', onAction: () => { restoreIdeasBulk(done).then((r) => { if (r.failed.length) showToast('הביטול לא הצליח לגמרי, נסו שוב'); }); } }
+    ? { actionLabel: 'בטלו', onAction: () => { restoreIdeasBulk(done).then((r) => { if (r.failed.length) showToast('הביטול לא הצליח לגמרי, נסו שוב'); }).catch((err) => { console.error('undo bulk delete failed:', err); showToast('הביטול לא הצליח, בדקו חיבור ונסו שוב'); }); } }
     : {};
   if (!failed.length) {
     showToast(done.length === 1 ? '🗑️ רעיון אחד נמחק' : `🗑️ ${done.length} רעיונות נמחקו`, { ...undo, duration: 7000 });
@@ -926,7 +995,7 @@ function confirmSingleDelete() {
 
 async function deleteOne(idea) {
   await deleteIdea(idea.id);
-  showToast('הרעיון נמחק', { actionLabel: 'בטלו', onAction: () => restoreIdea(idea.id) });
+  showToast('הרעיון נמחק', { actionLabel: 'בטלו', onAction: () => restoreIdea(idea.id).catch((err) => { console.error('undo delete failed:', err); showToast('הביטול לא הצליח, בדקו חיבור ונסו שוב'); }) });
 }
 
 function renderItem(idea, onItemClick, index = 0) {
@@ -968,10 +1037,11 @@ function renderItem(idea, onItemClick, index = 0) {
   li.appendChild(trail);
 
   const inner = document.createElement('div');
-  inner.style.setProperty('--card-color', categoryColorVar(idea.category));
+  const shownCategory = displayCategory(idea.category);
+  inner.style.setProperty('--card-color', categoryColorVar(shownCategory));
   inner.style.setProperty('--stagger-i', Math.min(index, 12));
   inner.className = 'archive-item';
-  if (!idea.category) inner.classList.add('archive-item-draft');
+  if (!shownCategory) inner.classList.add('archive-item-draft');
   if (idea.completedAt) inner.classList.add('archive-item-completed');
   li.appendChild(inner);
 
@@ -1017,10 +1087,10 @@ function renderItem(idea, onItemClick, index = 0) {
   const tagsRow = document.createElement('div');
   tagsRow.className = 'archive-item-tags';
 
-  if (idea.category) {
+  if (shownCategory) {
     const tag = document.createElement('span');
     tag.className = 'card-category-tag';
-    tag.textContent = `${categoryIcon(idea.category)} ${idea.category}`;
+    tag.textContent = `${categoryIcon(shownCategory)} ${shownCategory}`;
     tagsRow.appendChild(tag);
   } else {
     const draftTag = document.createElement('span');
