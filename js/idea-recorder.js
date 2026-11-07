@@ -18,10 +18,12 @@ import { addIdea } from './ideas-store.js';
 import { showToast } from './toast.js';
 import { confirmDialog } from './confirm-dialog.js';
 import { categoryColorVar } from './ideas-logic.js';
+import { withAsUid } from './client-view.js';
 
 export const MAX_SECONDS = 600;
 const BUCKET = 'gs://content-ideas-becd7-story-assets';
 const ideasFromRecording = httpsCallable(functions, 'ideasFromRecording', { timeout: 300000 });
+const ideaAngles = httpsCallable(functions, 'ideaAngles', { timeout: 60000 });
 
 /* ---------- עזרים טהורים (נבדקים) ---------- */
 
@@ -84,6 +86,18 @@ let extraFields = null;
 let saveSource = 'הקלטה';
 let backAction = null;
 let foundIn = 'בהקלטה';
+/* 07/11/2026 (מאיה): "שאני לוחצת על לספר מה היה היום אז כאילו המסך קופץ
+   למעלה ולא קופץ פופאפ מסודר של המיקרופון". ההקלטה של "ממה שקרה היום"
+   קורית עכשיו בתוך החלון הזה: שלב 'speak' (לפני שמתחילים: שאלה של היום
+   ו"💬 בחרו שאלה וענו עליה"), שלב 'live' (מיקרופון גדול, שעון, הטקסט
+   נכתב בתוך החלון תוך כדי, "סיימתי" וביטול), ומשם לאותן תוצאות.
+   המנוע עצמו (זיהוי דיבור / קטעים לתמלול) נשאר ב-js/home-mic.js. */
+let speakStart = null;
+let liveHandlers = null;
+/* כל מה שנאמר, כדי שיהיה אפשר לראות אותו ולהעביר לתיבה כרעיון אחד */
+let fullText = '';
+const MIC_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>';
+const LIVE_EMPTY = 'מה שאומרים יופיע כאן תוך כדי דיבור';
 const TITLE_FORM = '🎙️ לספר ולמצוא רעיונות';
 const HINT_FORM = 'הקלטה ארוכה לוקחת עד דקה. אפשר לחכות כאן.';
 /* נקבע ב-wireRecorderEntry: סוגר את טופס "רעיון חדש" אחרי שמירה */
@@ -101,11 +115,18 @@ function clearTimer() {
   timer = null;
 }
 
+const STEPS = ['intro', 'recording', 'speak', 'live', 'working', 'results', 'error'];
+
 function showStep(step) {
-  ['intro', 'recording', 'working', 'results', 'error'].forEach((s) => {
+  STEPS.forEach((s) => {
     const node = el(`rec-step-${s}`);
     if (node) node.hidden = s !== step;
   });
+  /* באמצע הקלטה אין "חזרה": היא הייתה משאירה את המיקרופון פתוח */
+  const back = el('rec-back-btn');
+  if (back) back.hidden = !backAction || step === 'live';
+  const content = el('recorder-modal') && el('recorder-modal').querySelector('.modal-content');
+  if (content) content.scrollTop = 0;
 }
 
 function ensureModal() {
@@ -141,6 +162,30 @@ function ensureModal() {
         <button type="button" id="rec-discard-btn" class="btn-text rec-secondary">לבטל את ההקלטה</button>
       </div>
 
+      <div id="rec-step-speak" hidden>
+        <p id="rec-question" class="rec-question"></p>
+        <span class="rec-mic" aria-hidden="true">${MIC_SVG}</span>
+        <p class="rec-lead rec-center">מספרים בקול מה היה: מה לקוח/ה שאל/ה, מה הרגיז, מה הצחיק, מה עבד. עד 10 דקות.</p>
+        <button type="button" id="rec-speak-go" class="btn-primary rec-main-btn">🎙️ להתחיל להקליט</button>
+        <button type="button" id="rec-questions-btn" class="no-idea-soft-btn rec-questions-btn" aria-expanded="false" aria-controls="rec-questions">💬 בחרו שאלה וענו עליה</button>
+        <div id="rec-questions" class="rec-questions" hidden></div>
+        <button type="button" id="rec-cancel-speak" class="btn-text rec-secondary">ביטול</button>
+      </div>
+
+      <div id="rec-step-live" hidden>
+        <p id="rec-live-question" class="rec-question" hidden></p>
+        <span class="rec-mic rec-mic--live" aria-hidden="true">${MIC_SVG}</span>
+        <div class="rec-live">
+          <span class="rec-dot" aria-hidden="true"></span>
+          <span id="rec-live-clock" class="rec-clock">0:00</span>
+          <span class="rec-limit">/ 10:00</span>
+        </div>
+        <p id="rec-live-hint" class="rec-hint rec-center" role="status" aria-live="polite"></p>
+        <div id="rec-live-text" class="rec-live-text rec-live-text--empty" aria-live="polite">${LIVE_EMPTY}</div>
+        <button type="button" id="rec-live-done" class="btn-primary rec-main-btn">⏹ סיימתי</button>
+        <button type="button" id="rec-live-cancel" class="btn-text rec-secondary">ביטול</button>
+      </div>
+
       <div id="rec-step-working" hidden>
         <div class="rec-spinner" aria-hidden="true"></div>
         <p id="rec-working-text" class="rec-lead rec-center" aria-live="polite">מעלים את ההקלטה...</p>
@@ -152,12 +197,18 @@ function ensureModal() {
         <p id="rec-results-lead" class="rec-lead"></p>
         <ul id="rec-list" class="rec-list"></ul>
         <button type="button" id="rec-save-btn" class="btn-primary rec-main-btn">לשמור</button>
+        <details id="rec-transcript" class="rec-transcript" hidden>
+          <summary>🗣️ כל מה שאמרת</summary>
+          <p id="rec-transcript-text" class="rec-transcript__text"></p>
+        </details>
+        <button type="button" id="rec-to-box" class="btn-text rec-secondary" hidden>📝 להעביר את כל מה שאמרתי לתיבה, כרעיון אחד</button>
         <button type="button" id="rec-close-results" class="btn-text rec-secondary">סגירה בלי לשמור</button>
       </div>
 
       <div id="rec-step-error" hidden>
         <p id="rec-error-text" class="rec-lead" role="alert"></p>
         <button type="button" id="rec-retry-btn" class="btn-primary rec-main-btn">לנסות שוב עם אותה הקלטה</button>
+        <button type="button" id="rec-to-box-error" class="btn-text rec-secondary" hidden>📝 להעביר את מה שאמרתי לתיבה, כרעיון אחד</button>
         <button type="button" id="rec-new-btn" class="btn-text rec-secondary">להקליט מחדש</button>
         <button type="button" id="rec-close-error" class="btn-text rec-secondary">סגירה</button>
       </div>
@@ -182,13 +233,20 @@ function ensureModal() {
   el('rec-close-error').addEventListener('click', closeRecorder);
   el('rec-close-working').addEventListener('click', closeRecorder);
   el('rec-back-btn').addEventListener('click', goBack);
+  el('rec-speak-go').addEventListener('click', () => beginSpeaking(''));
+  el('rec-questions-btn').addEventListener('click', toggleQuestions);
+  el('rec-cancel-speak').addEventListener('click', closeRecorder);
+  el('rec-live-done').addEventListener('click', () => { if (liveHandlers && liveHandlers.onDone) liveHandlers.onDone(); });
+  el('rec-live-cancel').addEventListener('click', cancelLive);
+  el('rec-to-box').addEventListener('click', moveTextToBox);
+  el('rec-to-box-error').addEventListener('click', moveTextToBox);
   return modal;
 }
 
 /* ---------- פתיחה וסגירה ---------- */
 
 function currentStep() {
-  return ['intro', 'recording', 'working', 'results', 'error'].find((s) => {
+  return STEPS.find((s) => {
     const node = el(`rec-step-${s}`);
     return node && !node.hidden;
   });
@@ -204,10 +262,11 @@ function onEscape(e) {
   e.stopImmediatePropagation();
   const step = currentStep();
   if (step === 'recording') discardRecording();
+  else if (step === 'live') cancelLive();
   else if (step === 'results') closeResultsAsking();
   else if (step === 'working') {
     /* באמצע שליחה מהטופס: לא סוגרים, התשובה בדרך. מהבית הטקסט כבר בתיבה. */
-    if (origin !== 'form') closeRecorder();
+    if (origin !== 'form' && !el('rec-close-working').hidden) closeRecorder();
   }
   else closeRecorder();
 }
@@ -232,6 +291,9 @@ function setOrigin(next, { title, context = '', back = null } = {}) {
   saveSource = 'הקלטה';
   foundIn = 'בהקלטה';
   backAction = back && typeof back.onClick === 'function' ? back : null;
+  speakStart = null;
+  liveHandlers = null;
+  fullText = '';
   el('rec-title').textContent = title || TITLE_FORM;
   el('rec-context-line').textContent = context;
   el('rec-context-line').hidden = !context;
@@ -250,12 +312,14 @@ function setOrigin(next, { title, context = '', back = null } = {}) {
    2. setIdeasPopupProgress: מעדכן את שורת ההתקדמות.
    3. showIdeasInPopup: אותה רשימה ואותה שמירה בדיוק כמו אחרי הקלטה.
    4. showIdeasPopupError: שגיאה גלויה, ו"לנסות שוב" מריץ את onRetry. */
-export function openIdeasPopup({ title = '✨ הרעיונות ממה שסיפרת', progress = '', context = '', back = null } = {}) {
+export function openIdeasPopup({ title = '✨ הרעיונות ממה שסיפרת', progress = '', context = '', back = null, closable = true } = {}) {
   ensureModal();
   closeRecorder();
   found = [];
   lastBlob = null;
   setOrigin('home', { title, context, back });
+  /* closable: false בהקלטה בחלון, כשמה שנאמר עוד לא נמצא באף מקום אחר */
+  el('rec-close-working').hidden = !closable;
   el('rec-working-text').textContent = progress;
   showStep('working');
   el('recorder-modal').hidden = false;
@@ -268,10 +332,13 @@ export function setIdeasPopupProgress(text) {
 
 /** ideas כמו שהשרת מחזיר. onSaved(savedIdeas) נקרא רק כשהכל נשמר.
     context: שורה מעל הרשימה שאומרת מאיפה הרעיונות (ריק = בלי לשנות).
-    extra: שדות שנשמרים עם כל רעיון (sourceRow וכו'). source: שדה source בשמירה. */
-export function showIdeasInPopup(ideas, { onSaved: done = null, emptyText = '', context = '', extra = null, source = '', where = '' } = {}) {
+    extra: שדות שנשמרים עם כל רעיון (sourceRow וכו'). source: שדה source בשמירה.
+    text: כל מה שנאמר (מההקלטה בחלון). מוצג ב"כל מה שאמרת", ואפשר להעביר
+    אותו לתיבה כרעיון אחד. רעיון יחיד בלי "quote" מקבל את כל הטקסט. */
+export function showIdeasInPopup(ideas, { onSaved: done = null, emptyText = '', context = '', extra = null, source = '', where = '', text = '' } = {}) {
   if (!ideasPopupOpen()) return;
   onSaved = done;
+  fullText = String(text || '').trim();
   emptyLead = emptyText;
   if (context) {
     contextLine = context;
@@ -282,13 +349,157 @@ export function showIdeasInPopup(ideas, { onSaved: done = null, emptyText = '', 
   if (source) saveSource = source;
   if (where) foundIn = where;
   found = (Array.isArray(ideas) ? ideas : []).map((idea) => ({ ...idea, keep: true }));
+  if (found.length === 1 && !found[0].quote && fullText) found[0].quote = fullText;
   renderResults();
 }
 
-export function showIdeasPopupError(message, { onRetry = null } = {}) {
+export function showIdeasPopupError(message, { onRetry = null, text = '' } = {}) {
   if (!ideasPopupOpen()) return;
   retryAction = onRetry;
+  fullText = String(text || '').trim();
   showError(message, { canRetry: Boolean(onRetry) });
+}
+
+/* ---------- 07/11/2026: ההקלטה עצמה בתוך החלון ---------- */
+
+/** השאלות לבחירה: [{ title, questions: [...] }]. נבנה מחדש בכל פתיחה. */
+function renderQuestions(groups) {
+  const box = el('rec-questions');
+  box.innerHTML = '';
+  for (const group of groups || []) {
+    if (!group || !Array.isArray(group.questions) || !group.questions.length) continue;
+    const head = document.createElement('p');
+    head.className = 'rec-questions__head';
+    head.textContent = group.title;
+    const list = document.createElement('ul');
+    list.className = 'rec-questions__list';
+    for (const q of group.questions) {
+      const li = document.createElement('li');
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'rec-questions__item';
+      b.textContent = q;
+      b.addEventListener('click', () => beginSpeaking(q));
+      li.appendChild(b);
+      list.appendChild(li);
+    }
+    box.append(head, list);
+  }
+  el('rec-questions-btn').hidden = !box.children.length;
+}
+
+function toggleQuestions() {
+  const box = el('rec-questions');
+  box.hidden = !box.hidden;
+  el('rec-questions-btn').setAttribute('aria-expanded', box.hidden ? 'false' : 'true');
+}
+
+function beginSpeaking(question) {
+  const startFn = speakStart;
+  if (typeof startFn !== 'function') return;
+  startFn({ question: question || '' });
+}
+
+/** הפופאפ של "🎙️ לספר בקול", לפני שמתחילים. onStart({ question }) מתחיל
+    את ההקלטה בתוך הלחיצה עצמה, כדי שהמיקרופון ייפתח גם באייפון. */
+export function openSpeakPopup({ prompt = '', questions = [], onStart = null, back = null, title = '🎙️ ממה שקרה היום' } = {}) {
+  ensureModal();
+  closeRecorder();
+  found = [];
+  lastBlob = null;
+  setOrigin('home', { title, back });
+  speakStart = onStart;
+  el('rec-question').textContent = prompt ? `💡 שאלה של היום: ${prompt}` : '';
+  el('rec-question').hidden = !prompt;
+  renderQuestions(questions);
+  el('rec-questions').hidden = true;
+  el('rec-questions-btn').setAttribute('aria-expanded', 'false');
+  showStep('speak');
+  el('recorder-modal').hidden = false;
+}
+
+/** עוברים לשלב ההקלטה באותו חלון. onDone = "סיימתי", onCancel = ביטול (אחרי אישור). */
+export function showLivePopup({ question = '', onDone = null, onCancel = null, title = '🎙️ ממה שקרה היום' } = {}) {
+  ensureModal();
+  if (!ideasPopupOpen()) {
+    closeRecorder();
+    setOrigin('home', { title });
+  }
+  speakStart = null;
+  liveHandlers = { onDone, onCancel };
+  const q = el('rec-live-question');
+  q.textContent = question ? `💬 ${question}` : '';
+  q.hidden = !question;
+  el('rec-live-clock').textContent = '0:00';
+  setLiveText('');
+  setLiveHint('');
+  el('rec-live-done').disabled = true;
+  showStep('live');
+  el('recorder-modal').hidden = false;
+}
+
+function setLiveText(text) {
+  const node = el('rec-live-text');
+  const t = String(text || '').trim();
+  node.textContent = t || LIVE_EMPTY;
+  node.classList.toggle('rec-live-text--empty', !t);
+  node.scrollTop = node.scrollHeight;
+}
+
+function setLiveHint(text, error = false) {
+  const node = el('rec-live-hint');
+  node.textContent = text || '';
+  node.classList.toggle('home-mic-status--error', Boolean(error));
+  node.setAttribute('role', error ? 'alert' : 'status');
+}
+
+/** עדכון שלב ההקלטה. שדה שלא הועבר נשאר כמו שהוא. ready: אפשר ללחוץ "סיימתי". */
+export function setLivePopup({ clock, text, hint, error = false, ready } = {}) {
+  if (!livePopupOpen()) return;
+  if (clock !== undefined) el('rec-live-clock').textContent = clock;
+  if (text !== undefined) setLiveText(text);
+  if (hint !== undefined) setLiveHint(hint, error);
+  if (ready !== undefined) el('rec-live-done').disabled = !ready;
+}
+
+export function livePopupOpen() {
+  return ideasPopupOpen() && currentStep() === 'live';
+}
+
+async function cancelLive() {
+  const handlers = liveHandlers;
+  const ok = await confirmDialog('לבטל את ההקלטה? מה שנאמר עד עכשיו לא יישמר.', {
+    okLabel: 'לבטל את ההקלטה',
+    cancelLabel: 'להמשיך להקליט',
+  });
+  if (!ok || handlers !== liveHandlers) return;
+  liveHandlers = null;
+  closeRecorder();
+  if (handlers && handlers.onCancel) {
+    try { handlers.onCancel(); } catch (err) { console.error('recorder: cancel failed', err); }
+  }
+}
+
+/* "להעביר לתיבה": כל מה שנאמר עובר לתיבת "מה הרעיון שקפץ לך עכשיו?",
+   ושם שומרים אותו כרעיון אחד עם הסיווג הרגיל. מה שכבר היה בתיבה נשאר. */
+function moveTextToBox() {
+  const text = fullText;
+  const box = el('quick-add-input');
+  if (!text || !box) return;
+  const before = box.value.trim();
+  box.value = before ? `${before} ${text}` : text;
+  box.dispatchEvent(new Event('input', { bubbles: true }));
+  closeRecorder();
+  try { box.focus(); } catch { /* בלי פוקוס זה עדיין בתיבה */ }
+  showToast('מה שאמרת נמצא בתיבה. אפשר לערוך ולשמור כרעיון אחד');
+}
+
+function showTextTools() {
+  const has = Boolean(fullText) && Boolean(el('quick-add-input'));
+  el('rec-to-box').hidden = !has;
+  el('rec-to-box-error').hidden = !has;
+  el('rec-transcript').hidden = !fullText;
+  el('rec-transcript-text').textContent = fullText;
 }
 
 /** סוגר את חלון הרעיונות (למשל לפני הקלטה חדשה מ"לנסות שוב"). */
@@ -456,6 +667,7 @@ function showError(message, { canRetry = true } = {}) {
   el('rec-error-text').textContent = message;
   el('rec-retry-btn').hidden = !(canRetry && retryAction);
   el('rec-retry-btn').textContent = origin === 'form' ? 'לנסות שוב עם אותה הקלטה' : 'לנסות שוב';
+  showTextTools();
   showStep('error');
 }
 
@@ -468,7 +680,7 @@ function updateSaveButton() {
   btn.textContent = n === 0 ? 'לא נבחר אף רעיון' : (n === 1 ? 'לשמור רעיון אחד' : `לשמור ${n} רעיונות`);
 }
 
-function renderResults() {
+function renderResults({ keepScroll = false } = {}) {
   const list = el('rec-list');
   list.innerHTML = '';
   const lead = el('rec-results-lead');
@@ -476,6 +688,7 @@ function renderResults() {
     lead.textContent = emptyLead || 'לא מצאנו בהקלטה רעיון לתוכן. אפשר להקליט שוב ולספר על משהו שקרה עם לקוח/ה, שאלה ששאלו אותך או דעה שיש לך על התחום.';
     el('rec-save-btn').hidden = true;
     el('rec-close-results').textContent = 'סגירה';
+    showTextTools();
     showStep('results');
     return;
   }
@@ -525,21 +738,152 @@ function renderResults() {
       meta.appendChild(hot);
     }
 
+    if (idea.angle) {
+      const ang = document.createElement('span');
+      ang.className = 'rec-tag rec-tag--angle';
+      ang.textContent = `✨ ${idea.angle}`;
+      meta.appendChild(ang);
+    }
+
     body.appendChild(title);
     body.appendChild(meta);
-    if (idea.context) {
+    if (idea.quote) {
+      /* 07/11/2026 (מאיה: "ואז אני אשכח מה אמרתי"): המילים שלה עצמה,
+         והן מה שנשמר עם הרעיון. קצר פתוח מיד, ארוך בלחיצה. */
+      const said = document.createElement('details');
+      said.className = 'rec-item__said';
+      said.open = idea.quote.length <= SAID_OPEN_CHARS;
+      const sum = document.createElement('summary');
+      sum.textContent = '🗣️ מה אמרת (נשמר עם הרעיון)';
+      const txt = document.createElement('p');
+      txt.className = 'rec-item__said-text';
+      txt.textContent = idea.quote;
+      said.append(sum, txt);
+      body.appendChild(said);
+    } else if (idea.context) {
       const ctx = document.createElement('p');
       ctx.className = 'rec-item__context';
       ctx.textContent = idea.context;
       body.appendChild(ctx);
     }
+    body.appendChild(anglesBlock(idea));
 
     li.appendChild(check);
     li.appendChild(body);
     list.appendChild(li);
   });
   updateSaveButton();
+  showTextTools();
+  const content = el('recorder-modal').querySelector('.modal-content');
+  const scroll = content ? content.scrollTop : 0;
   showStep('results');
+  if (keepScroll && content) content.scrollTop = scroll;
+}
+
+/* ---------- 07/11/2026: "✨ עוד כיוונים לאותו רעיון" ----------
+   מאיה: "החכמה היא לא כל פעם להמציא רעיון אחר אלא לקחת אותו רעיון ולהביא
+   אותו דרך עוד כיוונים". אותו רעיון, 3-5 כיוונים (ideaAngles בשרת). כל
+   כיוון נכנס לרשימה כרעיון משלו, עם אותן מילים שלה, או מחליף את הכותרת. */
+const SAID_OPEN_CHARS = 280;
+
+function anglesBlock(idea) {
+  const wrap = document.createElement('div');
+  wrap.className = 'rec-angles';
+  const st = idea.anglesState || { status: 'idle' };
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'btn-text rec-angles__btn';
+  btn.textContent = st.status === 'loading' ? 'מביאים כיוונים...' : (st.status === 'error' ? '✨ לנסות שוב להביא כיוונים' : '✨ עוד כיוונים לאותו רעיון');
+  btn.disabled = st.status === 'loading';
+  btn.hidden = st.status === 'done';
+  btn.addEventListener('click', () => loadAngles(idea));
+  wrap.appendChild(btn);
+  if (st.status === 'error') {
+    const err = document.createElement('p');
+    err.className = 'rec-angles__error';
+    err.setAttribute('role', 'alert');
+    err.textContent = st.error;
+    wrap.appendChild(err);
+  }
+  if (st.status === 'done') {
+    const head = document.createElement('p');
+    head.className = 'rec-angles__head';
+    head.textContent = '✨ אותו רעיון, עוד כיוונים:';
+    const ul = document.createElement('ul');
+    ul.className = 'rec-angles__list';
+    for (const a of st.list) {
+      const li = document.createElement('li');
+      li.className = 'rec-angles__item';
+      const tag = document.createElement('span');
+      tag.className = 'rec-tag rec-tag--angle';
+      tag.textContent = a.angle;
+      const t = document.createElement('p');
+      t.className = 'rec-angles__title';
+      t.textContent = a.title;
+      const actions = document.createElement('div');
+      actions.className = 'rec-angles__actions';
+      const add = document.createElement('button');
+      add.type = 'button';
+      add.className = 'no-idea-soft-btn rec-angles__add';
+      add.textContent = a.added ? '✓ נוסף לרשימה' : '➕ להוסיף כרעיון';
+      add.disabled = Boolean(a.added);
+      add.addEventListener('click', () => addAngleIdea(idea, a));
+      const swap = document.createElement('button');
+      swap.type = 'button';
+      swap.className = 'btn-text rec-angles__swap';
+      swap.textContent = '↺ להחליף את הכותרת';
+      swap.addEventListener('click', () => {
+        idea.title = a.title;
+        renderResults({ keepScroll: true });
+      });
+      actions.append(add, swap);
+      li.append(tag, t, actions);
+      ul.appendChild(li);
+    }
+    wrap.append(head, ul);
+  }
+  return wrap;
+}
+
+async function loadAngles(idea) {
+  if (idea.anglesState && idea.anglesState.status === 'loading') return;
+  idea.anglesState = { status: 'loading' };
+  renderResults({ keepScroll: true });
+  const question = (extraFields && extraFields.sourceQuestion) || '';
+  try {
+    const res = await ideaAngles(withAsUid({
+      title: String(idea.title || '').trim(),
+      quote: String(idea.quote || idea.context || '').slice(0, 6000),
+      ...(question ? { question } : {}),
+    }));
+    const list = res && res.data && Array.isArray(res.data.angles) ? res.data.angles : [];
+    if (!list.length) throw new Error('לא יצאו כיוונים הפעם. לנסות שוב בעוד רגע');
+    idea.anglesState = { status: 'done', list: list.map((a) => ({ angle: String(a.angle || ''), title: String(a.title || '') })).filter((a) => a.title) };
+  } catch (err) {
+    console.error('recorder: ideaAngles failed', err);
+    const msg = String((err && err.message) || '');
+    idea.anglesState = { status: 'error', error: /[֐-׿]/.test(msg) ? msg : 'לא הצלחנו להביא כיוונים הפעם. לנסות שוב בעוד רגע' };
+  }
+  if (ideasPopupOpen() && currentStep() === 'results' && found.includes(idea)) renderResults({ keepScroll: true });
+}
+
+function addAngleIdea(idea, a) {
+  if (a.added) return;
+  a.added = true;
+  const at = found.indexOf(idea);
+  const copy = {
+    title: a.title,
+    angle: a.angle,
+    quote: idea.quote || '',
+    context: idea.context || '',
+    category: idea.category,
+    persuasionStage: idea.persuasionStage || '',
+    audienceScope: idea.audienceScope || '',
+    rating: idea.rating || '',
+    keep: true,
+  };
+  found.splice(at < 0 ? found.length : at + 1, 0, copy);
+  renderResults({ keepScroll: true });
 }
 
 function withTimeout(promise, ms = 15000) {
@@ -569,7 +913,8 @@ async function saveChosen() {
       await withTimeout(addIdea({
         title: idea.title.trim(),
         category: idea.category,
-        hookText: idea.context || '',
+        /* 07/11/2026: המילים שלה עצמה כשיש (הקלטה), אחרת ההסבר כמו קודם */
+        hookText: idea.quote || idea.context || '',
         persuasionStage: idea.persuasionStage || '',
         audienceScope: idea.audienceScope || '',
         rating: withRatings ? (idea.rating || '') : '',

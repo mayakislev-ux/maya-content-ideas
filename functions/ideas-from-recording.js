@@ -20,6 +20,8 @@ const MAX_IDEAS = 15;
 /* 06/11/2026: מיקרופון הבית מתמלל תוך כדי דיבור ושולח לכאן טקסט במקום
    קובץ. 10 דקות דיבור הן בערך 1,500 מילים, כ-9,000 תווים. */
 const MAX_TEXT_CHARS = 20000;
+/* "quote" יכול להיות כל ההקלטה כשהיא רעיון אחד */
+const MAX_QUOTE_CHARS = MAX_TEXT_CHARS;
 
 function validUploadPath(path, uid) {
   if (typeof path !== 'string' || !uid) return false;
@@ -51,8 +53,15 @@ function genderRules(audience) {
 }
 
 /* source: 'audio' (ההקלטה עצמה) או 'text' (תמלול שכבר נעשה בדפדפן).
-   אותם כללים ואותו סיווג בדיוק, רק הפתיחה משתנה. */
-function buildPrompt({ categories, categoryDefinitions, stages, audienceScopes }, { source = 'audio', audience = '' } = {}) {
+   אותם כללים ואותו סיווג בדיוק, רק הפתיחה משתנה.
+
+   07/11/2026 (מאיה): "הקלטתי 1:30 שדיברתי על ניהול אנרגיה אז הוא פיצל לי
+   ל-3 רעיונות, אבל בתכלס זה רעיון 1". ולכן: נושא אחד רציף = רעיון אחד,
+   מפצלים רק במעבר ברור לנושא אחר. ו"הוא תימצת לי את הרעיון שאמרתי ממש
+   בקצרה ואז אני אשכח מה אמרתי": לכל רעיון יש "quote", הקטע שלה עצמה,
+   מילה במילה (בלי מילות מילוי), ולא תקציר.
+   question: שאלה שהיא בחרה מהרשימה וענתה עליה (אם בחרה). */
+function buildPrompt({ categories, categoryDefinitions, stages, audienceScopes }, { source = 'audio', audience = '', question = '' } = {}) {
   const isText = source === 'text';
   const what = isText ? 'הטקסט' : 'ההקלטה';
   const inWhat = isText ? 'בטקסט' : 'בהקלטה';
@@ -63,14 +72,26 @@ function buildPrompt({ categories, categoryDefinitions, stages, audienceScopes }
   const single = isText
     ? '\n- אם כל הטקסט הוא רעיון אחד קצר, להחזיר אותו כרעיון אחד, כמעט מילה במילה.'
     : '';
-  return `${intro}
-המטרה: למצוא בתוך ${what} את כל הרעיונות לסרטוני תוכן שיווקי שיש ${inIt}, לפי המתודולוגיה של מאיה קיסלב (אקדמיית המהלך השיווקי).
+  const q = clean(question, 300);
+  const asked = q
+    ? `
+הדובר/ת בחר/ה שאלה וענה/תה עליה בקול. השאלה: "${q}"
+- ה-"title" של הרעיון שעונה על השאלה הוא התשובה שלו/ה לשאלה, במשפט אחד במילים שלו/ה (לא השאלה עצמה).
+- אם הדובר/ת סטה/תה לנושא אחר לגמרי, גם הוא רעיון, לפי אותם כללים.`
+    : '';
+  return `${intro}${asked}
+המטרה: למצוא בתוך ${what} את הרעיונות לסרטוני תוכן שיווקי שיש ${inIt}, לפי המתודולוגיה של מאיה קיסלב (אקדמיית המהלך השיווקי).
 
-כללים:
-- רעיון = סרטון אחד עם מסר אחד. אם נאמרו כמה דברים שונים, כל אחד רעיון נפרד. אם אותו דבר חזר כמה פעמים, רעיון אחד.
-- "title": הרעיון במשפט אחד או שניים, בעברית פשוטה, בגוף ראשון ובמילים של הדובר/ת ככל האפשר. לא כותרת שיווקית מנופחת ולא תסריט.
-- "context": מה בדיוק נאמר ${inWhat} שממנו הרעיון יצא (הסיפור, הציטוט, הפרט הקונקרטי), עד שלושה משפטים. הפרטים הקונקרטיים הם מה שהופך רעיון לחזק, אז לא לוותר עליהם.
-- רק רעיונות שאפשר באמת לצלם עליהם סרטון לקהל של העסק. דיבור טכני, "רגע אני בודקת", או דברים שלא קשורים לעסק ולא לאישיות של בעל/ת העסק, לא נכנסים.
+כמה רעיונות - הכלל הכי חשוב:
+- רעיון אחד = נושא אחד. כשהדובר/ת מדבר/ת ברצף על אותו נושא, גם דקה או כמה דקות, עם כמה דוגמאות, טיפים, סיפורים, הסברים או זוויות בתוך אותו נושא, זה רעיון אחד בלבד. כל הדוגמאות והפרטים נכנסים ל-"quote" של אותו רעיון, ולא הופכים לרעיונות נפרדים.
+- מפצלים לכמה רעיונות רק כשהדובר/ת עובר/ת בבירור לנושא אחר שלא קשור לקודם (למשל מסיפור על לקוחה לדעה על מחירים בתחום). תת-נקודה, דוגמה נוספת או טיפ נוסף על אותו נושא הם לא נושא אחר.
+- בספק, רעיון אחד. אם אותו דבר חזר כמה פעמים, רעיון אחד.
+
+כללים לכל רעיון:
+- "title": הרעיון במשפט אחד קצר (עד 15 מילים), בעברית פשוטה, בגוף ראשון ובמילים של הדובר/ת. זה השם של הרעיון ברשימה. לא כותרת שיווקית מנופחת ולא תסריט.
+- "quote": המילים של הדובר/ת עצמו/ה על הרעיון הזה: כל הקטע ${inWhat} שבו דיבר/ה עליו, מילה במילה ובאותו סדר. מותר רק להוריד מילות מילוי ("אממ", "אההה", "כאילו" או "בעצם" שחוזרים בלי משמעות), גמגומים, מילים שחזרו פעמיים והתחלות משפט שנקטעו${isText ? ', ולתקן מילה שהתמלול שמע לא נכון כשברור מה נאמר' : ''}. אסור לסכם, לקצר, לנסח מחדש, לשנות לגוף שלישי או להוסיף מילים. אם הדובר/ת דיבר/ה על הרעיון דקה וחצי, ה-"quote" הוא כל דקה וחצי הזאת. זה מה שישמור לדובר/ת את מה שאמר/ה, כדי שלא ישכח/תשכח.
+- "context": משפט אחד שאומר על מה הסרטון ומה הפרט הקונקרטי שהופך אותו לחזק (הסיפור, הציטוט של הלקוח/ה, המספר).
+- רק רעיונות שאפשר באמת לצלם עליהם סרטון לקהל של העסק. דיבור טכני, "רגע אני בודקת", או דברים שלא קשורים לעסק ולא לאישיות של בעל/ת העסק, לא נכנסים (גם לא ל-"quote").
 - אם אין ${inWhat} אף רעיון (שקט, רעש, שיחה לא קשורה), להחזיר רשימה ריקה. לא להמציא.
 - עד ${MAX_IDEAS} רעיונות, החזקים קודם.${single}
 ${genderRules(audience)}
@@ -105,6 +126,7 @@ const RESPONSE_SCHEMA = {
         type: 'OBJECT',
         properties: {
           title: { type: 'STRING' },
+          quote: { type: 'STRING' },
           context: { type: 'STRING' },
           categoryIndex: { type: 'INTEGER' },
           persuasionStageIndex: { type: 'INTEGER' },
@@ -138,8 +160,12 @@ function normalizeIdeas(raw, { categories, stages, audienceScopes, strongRating,
     const key = title.replace(/[^\p{L}\p{N}]+/gu, '');
     if (seen.has(key)) continue;
     seen.add(key);
+    /* 07/11/2026: המילים שלה עצמה. רק כשיש, כדי שרעיונות משורה או מצילום
+       מסך (בלי "quote") יישארו בדיוק כמו קודם. */
+    const quote = clean(item.quote, MAX_QUOTE_CHARS);
     out.push({
       title,
+      ...(quote ? { quote } : {}),
       context: clean(item.context, 900),
       category,
       persuasionStage: stages[Number(item.persuasionStageIndex) - 1] || '',
@@ -217,7 +243,8 @@ async function callGemini({ projectId, accessToken, parts, thinkingLevel = 'MEDI
  *
  * המקום במכסה נשמר מראש ומוחזר אם החילוץ לא הגיע לסוף. הקובץ נמחק תמיד.
  *
- * data: { path } (הקלטה ב-Storage) או { text } (תמלול מוכן, מיקרופון הבית).
+ * data: { path } (הקלטה ב-Storage) או { text } (תמלול מוכן, מיקרופון הבית),
+ * ובשניהם question (רשות): השאלה שהלקוח/ה בחר/ה וענה/תה עליה.
  */
 function createIdeasFromRecordingHandler(deps) {
   const { HttpsError } = deps;
@@ -231,7 +258,7 @@ function createIdeasFromRecordingHandler(deps) {
       return '';
     }
   }
-  async function fromText(uid, raw) {
+  async function fromText(uid, raw, question) {
     if (typeof raw !== 'string') throw new HttpsError('invalid-argument', 'הטקסט לא הגיע. לנסות שוב');
     const text = raw.replace(/\u0000/g, '').trim();
     if (!text) throw new HttpsError('invalid-argument', 'אין טקסט למצוא בו רעיונות');
@@ -247,7 +274,7 @@ function createIdeasFromRecordingHandler(deps) {
         out = await callGemini({
           projectId: deps.projectId,
           accessToken,
-          parts: [{ text: buildPrompt(deps.taxonomy, { source: 'text', audience }) }, { text: `הטקסט:\n<<<\n${text}\n>>>` }],
+          parts: [{ text: buildPrompt(deps.taxonomy, { source: 'text', audience, question }) }, { text: `הטקסט:\n<<<\n${text}\n>>>` }],
           thinkingLevel: 'LOW',
           fetchImpl: deps.fetchImpl,
         });
@@ -277,7 +304,9 @@ function createIdeasFromRecordingHandler(deps) {
     const uid = request.auth.uid;
     await deps.enforceAllowlist(request.auth.token && request.auth.token.email);
     const data = request.data || {};
-    if (data.text !== undefined && data.text !== null) return fromText(uid, data.text);
+    /* 07/11/2026: השאלה שנבחרה מהרשימה ("💬 בחרו שאלה וענו עליה"), אם נבחרה */
+    const question = typeof data.question === 'string' ? clean(data.question, 300) : '';
+    if (data.text !== undefined && data.text !== null) return fromText(uid, data.text, question);
     const path = data.path;
     if (!validUploadPath(path, uid)) throw new HttpsError('invalid-argument', 'ההקלטה לא נמצאה. להקליט שוב');
 
@@ -305,7 +334,7 @@ function createIdeasFromRecordingHandler(deps) {
         out = await callGemini({
           projectId: deps.projectId,
           accessToken,
-          parts: [{ fileData: { fileUri: `gs://${deps.bucket.name}/${path}`, mimeType: type } }, { text: buildPrompt(deps.taxonomy, { audience }) }],
+          parts: [{ fileData: { fileUri: `gs://${deps.bucket.name}/${path}`, mimeType: type } }, { text: buildPrompt(deps.taxonomy, { audience, question }) }],
           fetchImpl: deps.fetchImpl,
         });
       } catch (err) {
@@ -344,4 +373,5 @@ module.exports = {
   MAX_AUDIO_BYTES,
   MAX_IDEAS,
   MAX_TEXT_CHARS,
+  MAX_QUOTE_CHARS,
 };

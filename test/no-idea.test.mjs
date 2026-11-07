@@ -515,7 +515,7 @@ describe('"אין לי רעיון?" במסך הבית (jsdom)', { skip: hasJsdom
       ['ממה שקרה היום / השבוע', 'מקהל היעד', 'מהפרסונה השיווקית: הבידול שלך', 'לשכפל רפרנס']);
     for (const d of doors) assert.ok(d.classList.contains('home-mic-card'), 'הדלת לא באותו מראה של הכרטיס');
     assert.equal($('#no-idea-prompt').textContent, `💡 שאלה של היום: ${noIdea.promptOfDay()}`);
-    assert.deepEqual($$('.no-idea-door__actions button').map((b) => b.textContent), ['🎙️ לספר בקול', '📷 שאלה שראיתי ברשת']);
+    assert.deepEqual($$('.no-idea-door__actions button').map((b) => b.textContent), ['🎙️ לספר בקול']);
     $('#no-idea-close-btn').click();
     assert.equal($('#no-idea-modal').hidden, true);
   });
@@ -530,69 +530,38 @@ describe('"אין לי רעיון?" במסך הבית (jsdom)', { skip: hasJsdom
     for (const p of noIdea.DAILY_PROMPTS) assert.ok(!/[—–]/.test(p));
   });
 
-  test('דלת 1, "לספר בקול": החלון נסגר וההקלטה במקום מתחילה, עם השאלה של היום', async () => {
+  test('דלת 1, "לספר בקול": נפתח חלון מסודר (לא הקלטה בכרטיס), עם השאלה של היום, ומשם מקליטים בתוך החלון', async () => {
     $('#home-mic-card').click();
     $('#no-idea-record').click();
     assert.equal($('#no-idea-modal').hidden, true);
-    await until(() => $('#home-mic-card').classList.contains('home-mic-card--live'), 'הקלטה');
-    assert.ok($('#home-mic-text').textContent.includes(`שאלה של היום: ${noIdea.promptOfDay()}`));
-    assert.equal($('#quick-add-input').readOnly, true);
-    /* כשמקליטים, לחיצה על הכרטיס היא "סיימתי" ולא פותחת שוב את הדלתות */
+    assert.equal($('#recorder-modal').hidden, false, 'לא נפתח חלון ההקלטה');
+    assert.equal($('#rec-step-speak').hidden, false);
+    assert.equal($('#rec-question').textContent, `💡 שאלה של היום: ${noIdea.promptOfDay()}`);
+    assert.equal($('#home-mic-card').classList.contains('home-mic-card--live'), false, 'הכרטיס במסך הבית התחיל להקליט');
+    $('#rec-speak-go').click();
+    await until(() => !$('#rec-live-done').disabled, 'הקלטה בחלון');
+    assert.equal($('#rec-step-live').hidden, false);
+    assert.equal($('#home-mic-card').classList.contains('home-mic-card--live'), false, 'הכרטיס התחיל להקליט');
+    assert.equal($('#quick-add-input').readOnly, false, 'התיבה ננעלה, למרות שההקלטה בחלון');
     handlers.transcribeDictation = async () => ({ text: '' });
-    $('#home-mic-card').click();
-    assert.equal($('#no-idea-modal').hidden, true);
-    await until(() => !$('#home-mic-card').classList.contains('home-mic-card--live'), 'סיום');
+    $('#rec-live-done').click();
     await until(() => !$('#rec-step-error').hidden, 'הודעה על הקלטה ריקה');
+    assert.match($('#rec-error-text').textContent, /לא שמענו דיבור/);
     $('#rec-close-error').click();
   });
 
-  test('דלת 1, צילום מסך: התמונה נשלחת, הרעיונות בחלון עם מה שהיה בצילום, ונשמרים', async () => {
-    handlers.ideasFromImage = async () => ({
-      seen: 'שאלה בקבוצה: איך מתחילים לצלם',
-      ideas: [{ title: 'איך מתחילים לצלם כשמתביישים', context: 'מהקבוצה', category: 'בעל ערך', persuasionStage: '', audienceScope: 'עיקרי', rating: '⭐ שווה לצלם' }],
-    });
+  test('07/11: "שאלה שראיתי ברשת" ירדה מהדלת. נשאר רק "לספר בקול"', () => {
     $('#home-mic-card').click();
-    const input = $('#no-idea-shot-input');
-    assert.equal(input.getAttribute('accept'), 'image/*');
-    const file = new w.File([PNG], 'shot.png', { type: 'image/png' });
-    Object.defineProperty(input, 'files', { value: [file], configurable: true });
-    input.dispatchEvent(new w.Event('change', { bubbles: true }));
-    assert.equal($('#no-idea-modal').hidden, true);
-    assert.equal($('#recorder-modal').hidden, false);
-    await until(() => !$('#rec-step-results').hidden, 'רעיונות מהצילום');
-    const call = calls.filter((c) => c.name === 'ideasFromImage').at(-1);
-    assert.equal(call.payload.mediaType, 'image/png');
-    assert.equal(call.payload.image, PNG.toString('base64'));
-    assert.equal($('#rec-title').textContent, '✨ רעיונות מצילום המסך');
-    assert.equal($('#rec-context-line').textContent, 'מצילום המסך: "שאלה בקבוצה: איך מתחילים לצלם"');
-    assert.match($('#rec-results-lead').textContent, /בצילום המסך/);
-    const before = added.length;
-    $('#rec-save-btn').click();
-    await until(() => $('#recorder-modal').hidden, 'נשמר ונסגר');
-    assert.equal(added.length, before + 1);
-    assert.equal(added.at(-1).data.source, 'צילום מסך');
-    assert.ok(!('sourceRow' in added.at(-1).data), 'רעיון שלא בא משורה קיבל sourceRow');
-  });
-
-  test('צילום מסך: שגיאה מהשרת גלויה בחלון, עם "לנסות שוב"', async () => {
-    handlers.ideasFromImage = async () => { throw Object.assign(new Error('הגעת למכסת השימוש היומית ב-AI, נסו שוב מחר'), { code: 'functions/resource-exhausted' }); };
-    $('#home-mic-card').click();
-    const input = $('#no-idea-shot-input');
-    Object.defineProperty(input, 'files', { value: [new w.File([PNG], 's.png', { type: 'image/png' })], configurable: true });
-    input.dispatchEvent(new w.Event('change', { bubbles: true }));
-    await until(() => !$('#rec-step-error').hidden, 'שגיאה');
-    assert.match($('#rec-error-text').textContent, /מכסת השימוש/);
-    assert.equal($('#rec-retry-btn').hidden, false);
-    /* קובץ שאינו תמונה: שגיאה מיידית, בלי לשלוח */
-    const sent = calls.filter((c) => c.name === 'ideasFromImage').length;
-    $('#rec-close-error').click();
-    $('#home-mic-card').click();
-    Object.defineProperty(input, 'files', { value: [new w.File(['x'], 'a.pdf', { type: 'application/pdf' })], configurable: true });
-    input.dispatchEvent(new w.Event('change', { bubbles: true }));
-    await until(() => !$('#rec-step-error').hidden, 'שגיאה על קובץ');
-    assert.match($('#rec-error-text').textContent, /רק תמונה/);
-    assert.equal(calls.filter((c) => c.name === 'ideasFromImage').length, sent);
-    $('#rec-close-error').click();
+    assert.equal($('#no-idea-shot'), null);
+    assert.equal($('#no-idea-shot-input'), null);
+    assert.equal($('.no-idea-shot-hint'), null);
+    assert.ok(!/שאלה שראיתי ברשת|צילום מסך/.test($('#no-idea-modal').textContent));
+    const src = readFileSync(new URL('../js/no-idea.js', import.meta.url), 'utf8');
+    assert.doesNotMatch(src, /httpsCallable\(functions, 'ideasFromImage'/);
+    /* השרת נשאר פרוס, בלי שימוש */
+    const index = readFileSync(new URL('../functions/index.js', import.meta.url), 'utf8');
+    assert.match(index, /exports\.ideasFromImage = onCall/);
+    $('#no-idea-close-btn').click();
   });
 
   test('מקהל היעד: קבוצות, נושאים, שורות עם ✓, שורה -> 3 רעיונות -> שמירה עם sourceRow -> ✓', async () => {

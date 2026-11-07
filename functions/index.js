@@ -90,6 +90,8 @@ const DAILY_LIMITS = {
   ideasFromImage: 20,
   ideasFromRow: 60,
   readSheetSections: 40,
+  /* 07/11/2026: "✨ עוד כיוונים לאותו רעיון" על רעיון שיצא מההקלטה. קריאה קטנה של Sonnet, פחות מסנט. */
+  ideaAngles: 60,
   /* 05/11/2026: "✍️ תיאור לסרטון" בסיכום העוזר לסרטון. קריאה קטנה של Haiku. */
   writeVideoDescription: 30,
   /* 05/11/2026: שתיהן קראו ל-enforceRateLimit בלי שורה כאן, ו-count >= undefined
@@ -2993,6 +2995,16 @@ exports.syncRefsSubscriptions = require('./refs-subscription').syncRefsSubscript
     getAudience,
     actingUid,
     taxonomy,
+  }));
+  /* 07/11/2026 (מאיה): "שיציע רעיונות פרובוקטיביים ועוצרי גלילה, עוד כיוונים
+     לאותו הרעיון". אותו רעיון, 3-5 כיוונים, במילים שלה. ideas-from-sources.js */
+  exports.ideaAngles = onCall({ secrets: [anthropicApiKey], region: 'us-central1', timeoutSeconds: 60 }, ifs.createIdeaAnglesHandler({
+    HttpsError,
+    enforceAllowlist: (email) => enforceAllowlist(email),
+    checkRate: (uid) => reserveRateLimit(uid, 'ideaAngles'),
+    callClaude: claudeFor('ideaAngles'),
+    getAudience,
+    actingUid,
   }));
   exports.readSheetSections = onCall({ secrets: [sheetsServiceAccountKey], region: 'us-central1', timeoutSeconds: 60 }, ifs.createReadSheetSectionsHandler({
     HttpsError,

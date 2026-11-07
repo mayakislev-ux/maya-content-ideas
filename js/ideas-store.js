@@ -59,13 +59,22 @@ export async function addIdea({
   sourceRow = '',
   sourceSection = '',
   sourceTab = '',
+  transcript = '',
+  sourceQuestion = '',
 }) {
   /* 06/11/2026: רעיון שנולד משורה בטבלה ("אין לי רעיון?" במסך הבית) שומר
      את השורה, כדי שהשורה תסומן "✓ כבר יש עליה רעיון". רק כשיש, כדי שרעיון
      רגיל יישמר בדיוק כמו קודם. */
   const fromRow = sourceRow ? { sourceRow, sourceSection, sourceTab } : {};
+  /* 07/11/2026 (מאיה: "ואז אני אשכח מה אמרתי"): רעיון מהקלטה שומר את כל
+     התמלול, ואת השאלה שנבחרה אם נבחרה. המילים שלה על הרעיון עצמו ב-hookText. */
+  const fromVoice = {
+    ...(transcript ? { transcript } : {}),
+    ...(sourceQuestion ? { sourceQuestion } : {}),
+  };
   return addDoc(ideasCollection(), {
     ...fromRow,
+    ...fromVoice,
     title,
     category,
     hookText,
