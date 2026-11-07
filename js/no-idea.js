@@ -669,9 +669,10 @@ export function setNoIdeaHome(on) {
   if (widget) widget.hidden = Boolean(on);
   const recent = document.querySelector('.home-recent-section');
   if (recent) recent.hidden = Boolean(on);
-  /* הווידג'ט היה הכניסה היחידה ל"ההתקדמות שלי". עכשיו היא בתפריט. */
+  /* 07/11/2026 (מאיה: "ההתקדמות שלי - מיותר"): הכניסה בתפריט ירדה.
+     עם המסך החדש אין כניסה ל"ההתקדמות שלי", בכוונה. */
   const tab = el('tab-progress');
-  if (tab) tab.hidden = !on;
+  if (tab) tab.hidden = true;
   if (!on) closeDoors();
 }
 

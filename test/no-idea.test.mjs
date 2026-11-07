@@ -455,11 +455,9 @@ describe('"אין לי רעיון?" במסך הבית (jsdom)', { skip: hasJsdom
     assert.match($('#home-mic-text').textContent, /מספרים מה קרה, או שולפים רעיון מהקהל, מהפרסונה או מרפרנס/);
     assert.equal($('#home-progress-widget').hidden, true);
     assert.equal($('.home-recent-section').hidden, true);
-    /* "ההתקדמות שלי" לא נעלמה: יש לה כניסה בתפריט */
-    assert.equal($('#tab-progress').hidden, false);
-    assert.match($('#tab-progress').textContent, /ההתקדמות שלי/);
+    /* 07/11: מאיה: "ההתקדמות שלי - מיותר". אין כניסה בתפריט */
+    assert.equal($('#tab-progress').hidden, true);
     const app = readFileSync(new URL('../js/app.js', import.meta.url), 'utf8');
-    assert.match(app, /getElementById\('tab-progress'\)\.addEventListener\('click', \(\) => showView\('progress'\)\)/);
     assert.match(app, /setNoIdeaHome\(ideasRedesign\);\s*setHomeMicVisible\(ideasRedesign\);/);
     /* בלי המתג: הכל כמו קודם */
     noIdea.setNoIdeaHome(false);
