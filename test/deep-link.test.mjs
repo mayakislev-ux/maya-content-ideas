@@ -27,8 +27,12 @@ describe('קישור ישיר למסך', () => {
     assert.equal(deepLinkView('?view=guide'), 'guide');
   });
 
+  test('ותכנית התוכן, מהפופאפ "התהליך הסתיים" בפורטל (08/11/2026)', () => {
+    assert.equal(deepLinkView('?v=2026110822&view=content-plan'), 'content-plan');
+  });
+
   test('מסך שלא ברשימה לא נפתח מקישור', () => {
-    for (const bad of ['?view=chat', '?view=content-plan', '?view=home', '?view=', '', null, '?action=add']) {
+    for (const bad of ['?view=chat', '?view=home', '?view=', '', null, '?action=add']) {
       assert.equal(deepLinkView(bad), null, String(bad));
     }
   });
