@@ -471,7 +471,7 @@ async function runExactDateBased(logger, tag, { pass = 'main', test = null } = {
     if (claimed.stuck) {
       logger.error(`❓ ${label}: השליחה הראשית נתקעה באמצע`);
       await sendGreenApiMessage(id, token, MAYA_PRIVATE,
-        `⚠️ ההודעה "${type}" לקבוצת ${row['מחזור']}: השליחה של 9:00 נתקעה באמצע ולא ידוע אם יצאה. כדאי להציץ בקבוצה. המערכת לא תשלח שוב לבד.`).catch(() => {});
+        `⚠️ ההודעה "${type}" לקבוצת ${row['מחזור']}: השליחה של ${tag.slice(1)} נתקעה באמצע ולא ידוע אם יצאה. כדאי להציץ בקבוצה. המערכת לא תשלח שוב לבד.`).catch(() => {});
       continue;
     }
 
@@ -518,6 +518,12 @@ exports.agentDateBasedExact0900 = onSchedule({ schedule: '0 9 * * *', timeZone: 
   () => runExactDateBased(console, '=09:00'));
 exports.agentDateBasedExact0900Retry = onSchedule({ schedule: '10 9 * * *', timeZone: 'Asia/Jerusalem', region, secrets },
   () => runExactDateBased(console, '=09:00', { pass: 'retry' }));
+/* 08/11/2026 (מאיה): הודעת סגירת ההגשות למחזור 6, ביום רביעי 11.11 "בשעה
+   18:00 בוודאות". אותו מנגנון בדיוק כמו 9:00, עם תג =18:00 בטבלה. */
+exports.agentDateBasedExact1800 = onSchedule({ schedule: '0 18 * * *', timeZone: 'Asia/Jerusalem', region, secrets },
+  () => runExactDateBased(console, '=18:00'));
+exports.agentDateBasedExact1800Retry = onSchedule({ schedule: '10 18 * * *', timeZone: 'Asia/Jerusalem', region, secrets },
+  () => runExactDateBased(console, '=18:00', { pass: 'retry' }));
 
 /* 13/10/2026: הפעלה ידנית של הודעת המשימות, באותו רגע.
  *
