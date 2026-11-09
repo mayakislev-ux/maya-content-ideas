@@ -17,6 +17,7 @@ const webpush = {
     return pusher.sendNotification(...args);
   },
 };
+const { buildFormatRecommendPrompt, parseFormatPicks } = require('./format-recommend');
 const { buildSystemPrompt, ADMIN_OPEN_MODE } = require('./system-prompt');
 const { buildOngoingWarmingPrompt, buildPresaleWarmingPrompt, capExistingIdeas } = require('./warming-system-prompt');
 const { buildContentPlanPrompt } = require('./content-plan-system-prompt');
@@ -71,6 +72,8 @@ const DAILY_LIMITS = {
   generateContentPlan: 20,
   matchInspirationQuery: 40,
   extractOpeningHook: 40,
+  /* 09/11/2026: המלצת פורמט במסך הפורמטים, קריאה קטנה של האייקו. */
+  recommendFormatsForIdea: 80,
   /* 04/11/2026: כל קריאה צופה בסרטון שלם, 2-6 סנט. */
   transcribeReference: 15,
   /* 06/11/2026: הקלטה קולית עד 10 דקות שממנה יוצאים כמה רעיונות. ג'מיני מקשיב לכל ההקלטה, 2-5 סנט. */
@@ -1404,6 +1407,29 @@ exports.extractOpeningHook = onCall({ secrets: [anthropicApiKey], region: 'us-ce
     throw new HttpsError('internal', 'לא הצלחתי לזהות את ההוק, נסו שוב');
   }
   return { hook };
+});
+
+/* 09/11/2026: "בוחרים פורמט הנגשה" - המלצה שקוראת את הרעיון, המסר והאריזה
+   (במקום חיפוש מילים בלבד). ראה functions/format-recommend.js. */
+exports.recommendFormatsForIdea = onCall({ secrets: [anthropicApiKey], region: 'us-central1', timeoutSeconds: 30 }, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'יש להתחבר כדי להשתמש בתכונה הזו');
+  }
+  await enforceAllowlist(request.auth.token.email, { allowRefs: true });
+  const d = request.data || {};
+  const pick = (k, max) => { const v = String(d[k] || '').trim(); assertMaxLength(v, max, k); return v; };
+  const packaging = pick('packaging', 3000);
+  if (!packaging) throw new HttpsError('invalid-argument', 'חסרה האריזה');
+  const input = { packaging, idea: pick('idea', 2000), message: pick('message', 2000), angle: pick('angle', 200), startingPoint: pick('startingPoint', 200) };
+  await enforceRateLimit(request.auth.uid, 'recommendFormatsForIdea');
+  const data = await callAnthropic(
+    anthropicApiKey.value(),
+    { model: 'claude-haiku-4-5-20251001', max_tokens: 500, temperature: 0, messages: [{ role: 'user', content: buildFormatRecommendPrompt(input) }] },
+    'recommendFormatsForIdea'
+  );
+  const picks = parseFormatPicks(getResponseText(data));
+  if (!picks.length) throw new HttpsError('internal', 'לא הצלחתי להמליץ על פורמט');
+  return { picks };
 });
 
 // "מאגר להשראה" - tags a batch of not-yet-tagged videos with a FORMAT tag

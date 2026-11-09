@@ -7899,6 +7899,32 @@ body:has(> .preview-bar) { --hdr-safe-top: 0px; }
   white-space: nowrap;
 }
 .cosmic-recommend-hint { margin: 0 0 12px; }
+/* 09/11/2026: הוק שזוהה מהאריזה - צהוב, כמו תיבת ההקשר של העוזר (#fff4cc). */
+.va-auto-hook-note {
+  margin: 0 0 4px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  line-height: 1.6;
+  color: #5c4500;
+  background: #fff4cc;
+  border: 1px solid #f2d36b;
+}
+#video-assistant-view .cosmic-textarea.va-auto-hook {
+  background: #fff4cc;
+  border-color: #e9c440;
+}
+.va-auto-hook-more { margin-top: 16px; }
+/* 09/11/2026: הנימוק של ההמלצה בתוך הפורמט שנפתח, באותה משפחת ענבר של התווית. */
+.cosmic-recommend-why {
+  margin: 0 0 10px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-weight: 600;
+  line-height: 1.55;
+  color: #7a4d0b;
+  background: #fdf3e2;
+  border: 1px solid #f0d6a8;
+}
 
 /* 29/10/2026: בחירת לקוחה בפס של תצוגת הלקוחה. כשנבחרה לקוחה הפס מתחלף
    לגוון האזהרה של שעון המנוי, כי כל עריכה כאן נשמרת אצלה באמת. */

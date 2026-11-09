@@ -24,7 +24,7 @@ import { buildDuplicationPrompt, buildScriptPrompt, buildCreativePackagingPrompt
 import {
   FORMATS, FORMAT_EXAMPLES, SCRIPT_STRUCTURE, STARTING_POINTS, CONTENT_TYPES, recommendFormats,
   buildExtractionPrompt, buildHookFindingPrompt, buildHookReinforcementPrompt, buildScriptDistillationPrompt,
-  buildSceneRewritePrompt,
+  buildSceneRewritePrompt, hookFromPackaging,
 } from './video-assistant-content.js';
 import { playReroll, playSuccess, setMuted, getMuted } from './video-assistant-sound.js';
 import { embedUrlFor, embedShape } from './video-preview.js';
@@ -32,7 +32,7 @@ import { languageName } from './inspiration-readability.js';
 import {
   fetchIdeas, fetchInspirationBank, getSavedDomain, guessDomain, saveDomain, saveSession, loadSession,
   saveScript, listScripts, deleteScript,
-  extractOpeningHook, classifyContentType,
+  extractOpeningHook, classifyContentType, recommendFormatsForIdea,
   transcribeReference,
 } from './video-assistant-store.js';
 import { uploadForTranscription, discardUpload } from './transcribe-upload.js';
@@ -906,16 +906,81 @@ const FORMAT_ICONS = {
 };
 
 // ===== בחירת פורמט הנגשה - אקורדיון אמיתי בתוך האפליקציה (16/10) =====
+/* 09/11/2026 (מאיה: "הוא בחר וויס אובר בלבד ... עדיף שתמיד ייתן כמה
+   אופציות אבל רק מה שמתאים ... יותר חד ומדויק ולהפעיל הגיון").
+   חיפוש המילים סימן וויס אובר רק כי באריזה הופיעה המילה "קריינות". עכשיו
+   ההמלצה באה מהשרת (recommendFormatsForIdea), שקורא את הרעיון, המסר והאריזה
+   ומחזיר 2-3 פורמטים מדורגים עם נימוק. עד שהיא מגיעה אין סימון בכלל (לא
+   מראים המלצה שגויה לרגע), ואם היא נכשלת חוזרים לחיפוש המילים. */
+let formatRecCache = { key: '', picks: null, pending: false };
+
+function formatRecInput() {
+  return {
+    packaging: String(state.packaging || ''),
+    idea: String(state.ideaTopic || state.ideaBeforePackaging || state.ideaDescription || ''),
+    message: String(state.ideaPunchline || ''),
+    angle: String(state.ideaAngle || ''),
+    startingPoint: String(state.startingPoint || ''),
+  };
+}
+
+function formatPicksNow() {
+  if (!state.packaging) return { picks: [], loading: false };
+  const input = formatRecInput();
+  const key = JSON.stringify(input);
+  if (formatRecCache.key === key && formatRecCache.picks) return { picks: formatRecCache.picks, loading: false };
+  if (formatRecCache.key !== key || !formatRecCache.pending) {
+    formatRecCache = { key, picks: null, pending: true };
+    recommendFormatsForIdea(input)
+      .then((picks) => (picks && picks.length ? picks : null))
+      .catch(() => null)
+      .then((picks) => {
+        if (formatRecCache.key !== key) return;
+        formatRecCache = { key, picks: picks || recommendFormats(input.packaging).map((name) => ({ name, why: '' })), pending: false };
+        /* לא בונים את המסך מחדש (זה סוגר פורמט פתוח ומקפיץ למעלה): רק
+           מוסיפים את הכתום, התוויות והנימוקים לרשימה שכבר על המסך. */
+        if (state.screen === 'format-choice') applyFormatPicks(formatRecCache.picks);
+      });
+  }
+  return { picks: [], loading: true };
+}
+
+function formatPickParts(picks, loading) {
+  const pickBy = new Map(picks.map((p, i) => [p.name, { ...p, rank: i }]));
+  const recommended = new Set(pickBy.keys());
+  const tagFor = (name) => (pickBy.get(name).rank === 0 ? 'הכי מתאים לרעיון הזה' : 'מומלץ לאריזה הזו');
+  const tagHtml = (name) => (recommended.has(name) ? `<span class="cosmic-recommend-tag">${tagFor(name)}</span>` : '');
+  const whyHtml = (name) => (recommended.has(name) && pickBy.get(name).why ? `<p class="cosmic-recommend-why">למה זה מתאים לך: ${escapeHtml(pickBy.get(name).why)}</p>` : '');
+  const hint = loading
+    ? '<p class="cosmic-hint cosmic-recommend-hint cosmic-recommend-loading">רגע, בודקים אילו פורמטים הכי מתאימים לרעיון ולאריזה שלך...</p>'
+    : (recommended.size ? `<p class="cosmic-hint cosmic-recommend-hint">סימנו בכתום את הפורמטים שהכי מתאימים לרעיון ולאריזה שבחרת${recommended.size > 1 ? ', הראשון הכי חזק' : ''}. פותחים כל אחד כדי לראות למה. זו רק הצעה, אפשר לבחור כל פורמט אחר.</p>` : '');
+  return { recommended, tagHtml, whyHtml, hint };
+}
+
+function applyFormatPicks(picks) {
+  const root = screenEl();
+  const loadingEl = root && root.querySelector('.cosmic-recommend-loading');
+  if (!loadingEl) return;
+  const { recommended, tagHtml, whyHtml, hint } = formatPickParts(picks, false);
+  root.querySelectorAll('.cosmic-accordion-item').forEach((item) => {
+    const name = item.dataset.format;
+    if (!recommended.has(name)) return;
+    item.classList.add('is-recommended');
+    item.querySelector('summary > span').insertAdjacentHTML('beforeend', tagHtml(name));
+    item.querySelector('.cosmic-accordion-body').insertAdjacentHTML('afterbegin', whyHtml(name));
+  });
+  if (hint) loadingEl.insertAdjacentHTML('afterend', hint);
+  loadingEl.remove();
+}
+
 function renderFormatChoice() {
-  /* 06/11/2026 (מאיה: "אחרי שמסננים אריזה קריאייטיבית קל להחליט איזה
-     פורמטים מתאימים אז אולי שיסמן בכתום מה הוא ממליץ? פשוט מפחדת שיטעה").
-     ההמלצה באה מ-recommendFormats: חיפוש מילים קבוע בטקסט האריזה, בלי
-     בינה מלאכותית. רק מסגרת כתומה ותווית, בלי להסתיר ובלי לשנות את הסדר. */
-  const recommended = new Set(state.packaging ? recommendFormats(state.packaging) : []);
+  const { picks, loading } = formatPicksNow();
+  const { recommended, tagHtml, whyHtml, hint } = formatPickParts(picks, loading);
   const itemsHtml = FORMATS.map((f, i) => `
     <details class="cosmic-accordion-item${recommended.has(f.name) ? ' is-recommended' : ''}" data-format="${escapeHtml(f.name)}" ${state.selectedFormat === f.name ? 'open' : ''}>
-      <summary><span><span class="cosmic-format-icon">${FORMAT_ICONS[f.name] || '🎬'}</span>${escapeHtml(f.name)}${recommended.has(f.name) ? '<span class="cosmic-recommend-tag">מומלץ לאריזה הזו</span>' : ''}</span></summary>
+      <summary><span><span class="cosmic-format-icon">${FORMAT_ICONS[f.name] || '🎬'}</span>${escapeHtml(f.name)}${tagHtml(f.name)}</span></summary>
       <div class="cosmic-accordion-body">
+        ${whyHtml(f.name)}
         <p style="margin:0">${escapeHtml(f.description)}</p>
         ${FORMAT_EXAMPLES[f.name] ? `<button type="button" class="cosmic-examples-btn" data-format-examples="${i}">👀 לראות דוגמה</button>` : ''}
         <button type="button" class="cosmic-pick-btn" data-pick-format="${i}">הפורמט שלי</button>
@@ -925,7 +990,7 @@ function renderFormatChoice() {
   cosmicCard(`
     <h2>בוחרים פורמט הנגשה</h2>
     <p>לכל רעיון יכולים להתאים כמה פורמטים - לפתוח כל אחד לקרוא על מה מדובר, ולבחור את מה שהכי מרגיש נכון.</p>
-    ${recommended.size ? '<p class="cosmic-hint cosmic-recommend-hint">סימנו בכתום פורמטים שמתאימים לאריזה שבחרת. זו רק הצעה, אפשר לבחור כל פורמט אחר.</p>' : ''}
+    ${hint}
     ${state.selectedFormat ? `<div class="cosmic-selected-chip">✓ נבחר: ${escapeHtml(state.selectedFormat)}</div>` : ''}
     <div class="cosmic-accordion">${itemsHtml}</div>
   `);
@@ -2311,22 +2376,52 @@ async function renderScratchHook() {
      מבנק ההוקים לפי המגילה. */
   const prompt = buildHookFindingPrompt({ idea: state.ideaDescription || '', script: state.rawDump || '', audience, domain: domain, creative });
   const marks = [state.ideaDescription, state.rawDump, audience, creative];
-  if (state.screen === 'scratch-hook') seedDraft('va-scratch-hook-input', state.hook);
-  cosmicCard(`
-    <h2>מציאת הוק</h2>
-    ${chatgptHookNote()}
-    ${creativeReminderHtml()}
+  /* 09/11/2026: הוק שכתוב באריזה במפורש נכנס לתיבה לבד, מסומן בצהוב, והפרומפט
+     עובר לאפשרות "לא אהבת?". ראה hookFromPackaging. */
+  const detected = hookFromPackaging(creative);
+  if (state.screen === 'scratch-hook') seedDraft('va-scratch-hook-input', state.hook || detected);
+  /* ההודעה והפרומפט המקופל רק כשבתיבה באמת יושב ההוק שזוהה. הוק שהיא
+     כתבה או תיבה שהיא ריקנה = המסך הרגיל. */
+  const drafts = state.drafts || {};
+  const k = draftKey(state.screen, 'va-scratch-hook-input');
+  const boxValue = Object.prototype.hasOwnProperty.call(drafts, k) ? drafts[k] : (state.hook || '');
+  const autoHook = detected && String(boxValue || '').trim() === detected ? detected : '';
+  const promptBlock = `
     <p>הפרומפט כולל בנק הוקים אמיתי מוטמע - ChatGPT יתאים לך ממנו הוק מדויק. להעתיק, להדביק, ולחזור עם ההוק שבחרת.</p>
     ${creative ? '<p class="cosmic-hint">ההוקים נבנים סביב הקריאייטיב: מה שאומרים תוך כדי הפתיחה שבחרת או מיד אחריה.</p>' : ''}
     ${promptPeek(highlightPlaceholders(prompt, marks))}
-    ${copyBtn(prompt, 'להעתיק פרומפט ל-ChatGPT')}
+    ${copyBtn(prompt, 'להעתיק פרומפט ל-ChatGPT')}`;
+  const inputBlock = `
     <textarea class="cosmic-textarea" id="va-scratch-hook-input" placeholder="להדביק כאן את ההוק שבחרת..." style="margin-top:14px"></textarea>
     <div class="cosmic-btn-row" style="margin-top:14px">
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-scratch-hook-done-btn">ממשיכים ←</button>
-    </div>
+    </div>`;
+  cosmicCard(autoHook ? `
+    <h2>מציאת הוק</h2>
+    ${creativeReminderHtml()}
+    <div class="va-auto-hook-note" id="va-auto-hook-note">✨ <strong>ההוק זוהה אוטומטית מהאריזה הקריאייטיבית</strong> וכבר נמצא בתיבה. אם לא אהבת אותו, אפשר לקבל הוקים אחרים מהפרומפט למטה.</div>
+    ${inputBlock}
+    <details class="va-more va-auto-hook-more">
+      <summary>לא אהבת את ההוק? לפרומפט שימצא הוק אחר</summary>
+      ${chatgptHookNote()}
+      ${promptBlock}
+    </details>
+  ` : `
+    <h2>מציאת הוק</h2>
+    ${chatgptHookNote()}
+    ${creativeReminderHtml()}
+    ${promptBlock}
+    ${inputBlock}
   `);
   wireCopyButtons(screenEl());
   mountSmartPaste(document.getElementById('va-scratch-hook-input'));
+  if (autoHook) {
+    const input = document.getElementById('va-scratch-hook-input');
+    /* הצהוב רק כל עוד מה שבתיבה הוא ההוק שזוהה. היא שינתה, הוא שלה. */
+    const mark = () => input.classList.toggle('va-auto-hook', input.value.trim() === autoHook);
+    setTimeout(mark, 0);
+    input.addEventListener('input', mark);
+  }
   document.getElementById('va-scratch-hook-done-btn').addEventListener('click', () => {
     const hook = document.getElementById('va-scratch-hook-input').value.trim();
     if (pastedManyOptions(hook)) return;
