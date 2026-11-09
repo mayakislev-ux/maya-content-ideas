@@ -4,7 +4,7 @@
 // (user-profile.js) בלי לשכפל אותם.
 import { db, auth, functions } from './firebase-init.js';
 import {
-  collection, query, where, getDocs, doc, getDoc, setDoc, deleteDoc, orderBy, limit,
+  collection, query, where, getDocs, doc, getDoc, setDoc, updateDoc, deleteDoc, orderBy, limit,
 } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
 import { getProfile, saveProfile } from './user-profile.js';
@@ -123,8 +123,18 @@ function scriptsCol() {
   return collection(db, 'videoAssistantScripts', subjectUid(auth.currentUser.uid), 'items');
 }
 
+/* 09/11/2026: mergeFields ולא דריסה של כל המסמך. השדות שהעוזר שומר
+   (title, done, createdAt, updatedAt, state) נכתבים במלואם כמו קודם, ו-contentKind
+   (ערך/אישי/מכירתי, ראו functions/script-type.js) לא נמחק בשמירה הבאה. */
 export async function saveScript(id, data) {
-  await setDoc(doc(scriptsCol(), id), data);
+  await setDoc(doc(scriptsCol(), id), data, { mergeFields: Object.keys(data) });
+}
+
+/** סוג התוכן שהיא בחרה ידנית ברשימה. גובר על הסיווג האוטומטי. */
+export async function setScriptKind(id, type) {
+  const contentKind = { type, by: 'user', at: Date.now() };
+  await updateDoc(doc(scriptsCol(), id), { contentKind });
+  return contentKind;
 }
 
 /* 50 האחרונים: כל פריט נושא את כל הסטייט, ורשימה שמורידה הכל תאט עם הזמן. */

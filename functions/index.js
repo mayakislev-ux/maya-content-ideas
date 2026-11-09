@@ -2808,6 +2808,7 @@ Object.assign(exports, require('./seminar-attendees'));
 Object.assign(exports, require('./partner-details-form'));
 Object.assign(exports, require('./seminar-registration-count'));
 Object.assign(exports, require('./seminar-registration-count'));
+Object.assign(exports, require('./script-type'));
 
 Object.assign(exports, require('./marathon-launch'));
 /* 08/10/2026: קליטת שאלון ההכנה לפגישת אסטרטגיה, כדי שהתשובות יגיעו

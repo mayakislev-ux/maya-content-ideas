@@ -31,7 +31,7 @@ import { embedUrlFor, embedShape } from './video-preview.js';
 import { languageName } from './inspiration-readability.js';
 import {
   fetchIdeas, fetchInspirationBank, getSavedDomain, guessDomain, saveDomain, saveSession, loadSession,
-  saveScript, listScripts, deleteScript,
+  saveScript, listScripts, deleteScript, setScriptKind,
   extractOpeningHook, classifyContentType, recommendFormatsForIdea,
   transcribeReference,
 } from './video-assistant-store.js';
@@ -373,7 +373,7 @@ function applyDomainTheme(domain) {
 const scriptsLibrary = createScriptsLibrary({
   getState: () => state,
   saveAll: () => saveAll(),
-  store: { listScripts, saveScript, deleteScript },
+  store: { listScripts, saveScript, deleteScript, setScriptKind },
   openModal, closeModal, copyBtn, wireCopyButtons, confirmDialog, showToast,
   resume: (s, item) => {
     /* 05/11/2026 (ביקורת): "✨ תמלול מדויק" שעוד רץ שייך לסרטון הקודם.

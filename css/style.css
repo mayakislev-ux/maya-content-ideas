@@ -8774,3 +8774,33 @@ body[data-plan="refs"] .hub-full-only { display: none !important; }
     scroll-margin-bottom: calc(var(--chat-composer-h, 8rem) + 1rem);
   }
 }
+
+/* 09/11/2026: ערך / אישי / מכירתי ליד כל תסריט ב"התסריטים שלי" */
+.va-kind {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1.5px solid currentColor;
+  background: #fff;
+  margin-inline-end: 8px;
+  vertical-align: 2px;
+  font-family: inherit;
+}
+.va-kind--value { color: var(--cat-baal-erech); }
+.va-kind--personal { color: var(--cat-ishi); }
+.va-kind--sale { color: var(--cat-mechirti); }
+.va-lib-item__title .va-kind { background: currentColor; }
+.va-lib-item__title .va-kind--value { background: var(--cat-baal-erech); color: #fff; border-color: var(--cat-baal-erech); }
+.va-lib-item__title .va-kind--personal { background: var(--cat-ishi); color: #fff; border-color: var(--cat-ishi); }
+.va-lib-item__title .va-kind--sale { background: var(--cat-mechirti); color: #fff; border-color: var(--cat-mechirti); }
+.va-kind-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 12px; }
+.va-kind-row__label { font-size: 13px; color: #5d7d99; margin-inline-end: 2px; }
+.va-kind-row__hint { font-size: 12px; color: #5d7d99; }
+.va-kind-row .va-kind { cursor: pointer; font-size: 13px; padding: 7px 14px; margin: 0; }
+.va-kind-row .va-kind.is-on.va-kind--value { background: var(--cat-baal-erech); color: #fff; }
+.va-kind-row .va-kind.is-on.va-kind--personal { background: var(--cat-ishi); color: #fff; }
+.va-kind-row .va-kind.is-on.va-kind--sale { background: var(--cat-mechirti); color: #fff; }
+.va-kind-row .va-kind:disabled { opacity: .6; cursor: default; }

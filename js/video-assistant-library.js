@@ -159,6 +159,24 @@ function libDate(ms) {
 
 const HEADING = '<h2 style="margin-top:0">📝 התסריטים שלי</h2>';
 
+/* 09/11/2026 (מאיה: "ליד כל תסריט לסמן להן אם זה ערך אישי מכירתי").
+   הסוג נקבע בשרת (functions/script-type.js): מה שנבחר בעוזר, או סיווג
+   אוטומטי של התסריט. היא יכולה לשנות בלחיצה, והבחירה שלה נשמרת. הצבעים
+   הם צבעי הקטגוריות של כל האפליקציה: ערך ירוק, אישי ורוד, מכירתי אדום. */
+export const KINDS = [
+  { type: 'בעל ערך', tone: 'value', label: 'ערך' },
+  { type: 'אישי', tone: 'personal', label: 'אישי' },
+  { type: 'מכירתי', tone: 'sale', label: 'מכירתי' },
+];
+export function kindOf(item) {
+  const k = item && item.contentKind;
+  return KINDS.find((x) => k && x.type === k.type) || null;
+}
+export function kindChip(item) {
+  const k = kindOf(item);
+  return k ? `<span class="va-kind va-kind--${k.tone}">${k.label}</span>` : '';
+}
+
 /**
  * deps:
  *   getState()            הסטייט של העוזר עכשיו
@@ -216,7 +234,7 @@ export function createScriptsLibrary(deps) {
     box.innerHTML = `${HEADING}
       ${items.length ? `<ul class="va-lib-list">${items.map((it) => `
         <li><button type="button" class="va-lib-item" data-id="${escapeHtml(it.id)}">
-          <span class="va-lib-item__title">${escapeHtml(it.title || 'סרטון בלי שם')}</span>
+          <span class="va-lib-item__title">${kindChip(it)}${escapeHtml(it.title || 'סרטון בלי שם')}</span>
           <span class="va-lib-item__meta">${it.done ? '✓ מוכן' : 'בבנייה'} · ${escapeHtml(libDate(it.updatedAt))}</span>
         </button></li>`).join('')}</ul>`
         : '<p>עוד אין כאן תסריטים. כל סרטון שמתחילים לבנות נשמר כאן לבד, תוך כדי כתיבה.</p>'}`;
@@ -264,6 +282,11 @@ export function createScriptsLibrary(deps) {
       <button type="button" class="va-text-link" id="va-lib-back">→ לכל התסריטים</button>
       <h2 style="margin-top:4px">${escapeHtml(item.title || 'סרטון בלי שם')}</h2>
       <p class="va-lib-item__meta">${item.done ? '✓ מוכן' : 'בבנייה'} · ${escapeHtml(libDate(item.updatedAt))}</p>
+      ${editing ? '' : `<div class="va-kind-row" role="group" aria-label="סוג התוכן">
+        <span class="va-kind-row__label">סוג התוכן:</span>
+        ${KINDS.map((k) => `<button type="button" class="va-kind va-kind--${k.tone}${kindOf(item) === k ? ' is-on' : ''}" data-kind="${escapeHtml(k.type)}" aria-pressed="${kindOf(item) === k}">${k.label}</button>`).join('')}
+        ${kindOf(item) ? '' : '<span class="va-kind-row__hint">עוד לא סווג. אפשר לבחור</span>'}
+      </div>`}
       ${live ? '<p class="va-lib-live">זה הסרטון שפתוח עכשיו בעוזר. מה שנשמר כאן עובר גם לשם.</p>' : ''}
       ${steps.length
         ? `<ol class="va-lib-journey">${steps.map(editing ? stepEditHtml : stepViewHtml).join('')}</ol>`
@@ -281,6 +304,21 @@ export function createScriptsLibrary(deps) {
           <button type="button" class="va-text-link va-lib-delete" id="va-lib-delete">למחוק את הסרטון הזה</button>
         </div>`}`;
     const savedEl = box.querySelector('#va-lib-saved');
+
+    box.querySelectorAll('[data-kind]').forEach((btn) => btn.addEventListener('click', async () => {
+      const type = btn.getAttribute('data-kind');
+      if (kindOf(item) && kindOf(item).type === type) return;
+      box.querySelectorAll('[data-kind]').forEach((b) => { b.disabled = true; });
+      try {
+        item.contentKind = await store.setScriptKind(item.id, type);
+        renderItem(overlay, items, item, { saved: 'סוג התוכן נשמר ✓' });
+      } catch (err) {
+        console.error('setScriptKind failed:', err);
+        box.querySelectorAll('[data-kind]').forEach((b) => { b.disabled = false; });
+        savedEl.textContent = 'השמירה לא עברה. כדאי לבדוק שיש אינטרנט ולנסות שוב';
+        savedEl.classList.add('is-error');
+      }
+    }));
 
     box.querySelector('#va-lib-back').addEventListener('click', async () => {
       if (!(await leaveOk())) return;
