@@ -87,6 +87,23 @@ describe('הכתום במסך הפורמטים (jsdom)', { skip: hasJsdom ? fals
     delete handlers.recommendFormatsForIdea;
   });
 
+  /* 09/11/2026 (מאיה: הכתום מגיע בדיליי): הבקשה יוצאת כבר בזמן ההדבקה */
+  test('ההמלצה נשלחת כבר במסך האריזה, ובמסך הפורמטים היא מוכנה מיד', async () => {
+    const { $, $$, open, type } = ui;
+    handlers.recommendFormatsForIdea = async () => ({ data: { picks: [{ name: 'דיבור למצלמה', why: 'סיבה' }, { name: 'ראיון / שיחה', why: 'סיבה 2' }] } });
+    const before = calls.filter((c) => c.name === 'recommendFormatsForIdea').length;
+    await open({ branch: 'idea', screen: 'creative-packaging', ideaDescription: 'רעיון', ideaTopic: 'לידים קרים ודייט ראשון', ideaPunchline: 'קודם מחממים' }, '#va-packaging-input');
+    type($('#va-packaging-input'), 'את יושבת מול המצלמה עם כוס יין ושואלת: הייתם מתחתנים בדייט הראשון?');
+    await until(() => calls.filter((c) => c.name === 'recommendFormatsForIdea').length === before + 1, 'לא נשלח בזמן ההדבקה');
+    $('[data-start="סיפור אישי"]').click();
+    $('#va-packaging-done-btn').click();
+    await until(() => $$('[data-pick-format]').length, 'מסך הפורמטים');
+    assert.equal($('.cosmic-recommend-loading'), null, 'עדיין "בודקים"');
+    assert.deepEqual($$('.is-recommended').map((d) => d.dataset.format), ['דיבור למצלמה', 'ראיון / שיחה']);
+    assert.equal(calls.filter((c) => c.name === 'recommendFormatsForIdea').length, before + 1, 'נשלח פעמיים');
+    delete handlers.recommendFormatsForIdea;
+  });
+
   test('השרת נכשל: חוזרים לחיפוש המילים ולא נתקעים על "בודקים"', async () => {
     const { $, $$, open } = ui;
     handlers.recommendFormatsForIdea = async () => { throw new Error('boom'); };
@@ -140,5 +157,19 @@ describe('השרת: הפרומפט והניקוי של התשובה (09/11/2026)
     assert.deepEqual(picks.map((p) => p.name), ['דיבור למצלמה', 'ראיון / שיחה', 'וויס אובר']);
     assert.equal(picks[0].why, 'כי, היא מספרת');
     assert.deepEqual(parseFormatPicks('לא JSON'), []);
+  });
+});
+
+describe('פרומפט ההוקים נצמד לקריאייטיב ולרעיון (09/11/2026)', () => {
+  test('ההוראה וגם תזכורת בסוף, עם הקריאייטיב והרעיון עצמם', async () => {
+    const { buildHookFindingPrompt } = await import('../js/video-assistant-content.js');
+    const creative = 'ההוק:"תגידו, הייתם מסכימים להתחתן עם מישהו בדייט הראשון?"';
+    const p = buildHookFindingPrompt({ idea: 'לידים קרים', script: 'תסריט', audience: 'בעלות עסקים', domain: 'שיווק', creative });
+    assert.match(p, /כל הוק עושה שני דברים יחד/);
+    assert.match(p, /גם על אלה שנבנים מהתבניות/);
+    assert.match(p, /אסור להדביק את אותו משפט פתיחה מילה במילה/);
+    const tail = p.slice(p.lastIndexOf('תזכורת אחרונה'));
+    assert.ok(tail.includes(creative) && tail.includes('לידים קרים'), 'התזכורת בסוף בלי הקריאייטיב או הרעיון');
+    assert.ok(!buildHookFindingPrompt({ idea: 'x', script: 'y', audience: 'a', domain: 'd', creative: '' }).includes('תזכורת אחרונה'));
   });
 });

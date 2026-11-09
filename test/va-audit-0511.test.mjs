@@ -12,6 +12,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { register, createRequire } from 'node:module';
 import { INITIAL_STATE, nextStep } from '../js/video-assistant-flow.js';
 import {
+  CREATIVE_FOCUS,
   creativeBlock, buildExtractionPrompt, buildHookFindingPrompt, buildHookReinforcementPrompt,
   buildScriptDistillationPrompt, buildSceneRewritePrompt,
 } from '../js/video-assistant-content.js';
@@ -49,7 +50,12 @@ test('קריאייטיב: התחום והקהל עדיין פותחים, והנ�
     const without = BUILT[name]('');
     assert.match(withC, /^התחום שלי הוא: שיווק\nהקהל יעד שלי: שכירות\n\n/, name);
     const header = 'התחום שלי הוא: שיווק\nהקהל יעד שלי: שכירות\n\n';
-    assert.equal(withC, header + creativeBlock(CREATIVE, withC.split('\n')[4]) + without.slice(header.length), name);
+    /* 09/11/2026: ההוראה של ההוק היא כמה שורות, ובסוף פרומפט ההוק יש תזכורת אחרונה */
+    const body = header + creativeBlock(CREATIVE, CREATIVE_FOCUS[name]) + without.slice(header.length);
+    assert.ok(withC.startsWith(body), name);
+    const rest = withC.slice(body.length);
+    if (name === 'hook') assert.match(rest, /^\n\nתזכורת אחרונה לפני שאתה כותב הוקים/);
+    else assert.equal(rest, '', name);
   }
 });
 

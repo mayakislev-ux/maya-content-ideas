@@ -914,34 +914,46 @@ const FORMAT_ICONS = {
    מראים המלצה שגויה לרגע), ואם היא נכשלת חוזרים לחיפוש המילים. */
 let formatRecCache = { key: '', picks: null, pending: false };
 
-function formatRecInput() {
+function formatRecInput(packaging = state.packaging, startingPoint = state.startingPoint) {
   return {
-    packaging: String(state.packaging || ''),
+    packaging: String(packaging || ''),
     idea: String(state.ideaTopic || state.ideaBeforePackaging || state.ideaDescription || ''),
     message: String(state.ideaPunchline || ''),
     angle: String(state.ideaAngle || ''),
-    startingPoint: String(state.startingPoint || ''),
+    startingPoint: String(startingPoint || ''),
   };
+}
+
+/* 09/11/2026 (מאיה: הסימון הכתום מגיע בדיליי). ההמלצה מתחילה כבר במסך
+   האריזה, בזמן שמדביקים ובוחרים נקודת יציאה, כך שכשמגיעים למסך הפורמטים
+   היא כבר מחכה שם. נקודת היציאה לא חלק מהמפתח: לחיצה על צ'יפ לא שולחת שוב. */
+function formatRecKey(input) {
+  return JSON.stringify([input.packaging.trim(), input.idea, input.message, input.angle]);
+}
+
+function requestFormatPicks(input) {
+  const key = formatRecKey(input);
+  if (formatRecCache.key === key && (formatRecCache.picks || formatRecCache.pending)) return key;
+  formatRecCache = { key, picks: null, pending: true };
+  recommendFormatsForIdea(input)
+    .then((picks) => (picks && picks.length ? picks : null))
+    .catch(() => null)
+    .then((picks) => {
+      if (formatRecCache.key !== key) return;
+      formatRecCache = { key, picks: picks || recommendFormats(input.packaging).map((name) => ({ name, why: '' })), pending: false };
+      /* לא בונים את המסך מחדש (זה סוגר פורמט פתוח ומקפיץ למעלה): רק
+         מוסיפים את הכתום, התוויות והנימוקים לרשימה שכבר על המסך. */
+      if (state.screen === 'format-choice') applyFormatPicks(formatRecCache.picks);
+    });
+  return key;
 }
 
 function formatPicksNow() {
   if (!state.packaging) return { picks: [], loading: false };
   const input = formatRecInput();
-  const key = JSON.stringify(input);
+  const key = formatRecKey(input);
   if (formatRecCache.key === key && formatRecCache.picks) return { picks: formatRecCache.picks, loading: false };
-  if (formatRecCache.key !== key || !formatRecCache.pending) {
-    formatRecCache = { key, picks: null, pending: true };
-    recommendFormatsForIdea(input)
-      .then((picks) => (picks && picks.length ? picks : null))
-      .catch(() => null)
-      .then((picks) => {
-        if (formatRecCache.key !== key) return;
-        formatRecCache = { key, picks: picks || recommendFormats(input.packaging).map((name) => ({ name, why: '' })), pending: false };
-        /* לא בונים את המסך מחדש (זה סוגר פורמט פתוח ומקפיץ למעלה): רק
-           מוסיפים את הכתום, התוויות והנימוקים לרשימה שכבר על המסך. */
-        if (state.screen === 'format-choice') applyFormatPicks(formatRecCache.picks);
-      });
-  }
+  requestFormatPicks(input);
   return { picks: [], loading: true };
 }
 
@@ -2165,7 +2177,21 @@ async function renderCreativePackaging() {
   `));
   let startingPoint = state.startingPoint;
   wireChips('[data-start]', 'data-start', (v) => { startingPoint = v; });
+  /* מתחילים לבדוק פורמטים כבר עכשיו (ראה requestFormatPicks) */
+  const packagingInput = document.getElementById('va-packaging-input');
+  let prefetchTimer = null;
+  const prefetch = () => {
+    clearTimeout(prefetchTimer);
+    prefetchTimer = setTimeout(() => {
+      const text = packagingInput.value.trim();
+      if (text.length >= 20 && parseOptions(text).length < 2) requestFormatPicks(formatRecInput(text, startingPoint));
+    }, 900);
+  };
+  packagingInput.addEventListener('input', prefetch);
+  packagingInput.addEventListener('paste', prefetch);
+  if (packagingInput.value.trim()) prefetch();
   document.getElementById('va-packaging-done-btn').addEventListener('click', () => {
+    clearTimeout(prefetchTimer);
     const packaging = document.getElementById('va-packaging-input').value.trim();
     if (pastedManyOptions(packaging)) return;
     if (!packaging) {
@@ -2538,7 +2564,8 @@ async function renderScratchDistill() {
     /* הצהוב מסמן מה מולא לבד, ולכן התחום והקהל שייכים לשם גם הם. */
     const values = [state.ideaDescription, state.hook, state.hookReinforcement, state.rawDump, cta, funnel,
       audience, domain, creative];
-    wrap.innerHTML = `${promptPeek(highlightPlaceholders(prompt, values))}${copyBtn(prompt, 'להעתיק פרומפט ל-ChatGPT')}`;
+    /* 09/11/2026 (מאיה: "לפעמים הוא חד יותר מהצ'אט") */
+    wrap.innerHTML = `${promptPeek(highlightPlaceholders(prompt, values))}${copyBtn(prompt, "להעתיק פרומפט ל-ChatGPT / ג'מיני")}`;
     wireCopyButtons(wrap);
   }
   document.querySelectorAll('#va-scratch-cta-row [data-cta]').forEach((b) => b.addEventListener('click', () => {
