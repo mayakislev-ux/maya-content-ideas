@@ -115,6 +115,7 @@ export function openDescriptionTool(deps) {
       <div class="cosmic-prompt-box va-desc__text" id="va-desc-text">${escapeHtml(r.description)}</div>
       ${deps.copyBtn(r.description, 'להעתיק את התיאור')}
       ${hooks.length ? `<p class="va-desc__label" style="margin-top:16px">הצעות להוק כתוב על המסך (לא חובה):</p>
+      <p class="cosmic-hint" style="margin:0 0 8px">הטקסט על המסך מחזק את מה שנאמר בפתיחה ולא מגלה לאן הסרטון הולך. לפעמים הכי חזק זה פשוט כתוביות של משפט הפתיחה.</p>
       <ul class="va-desc__hooks">${hooks.map((h) => `<li><p>${escapeHtml(h)}</p>${deps.copyBtn(h, 'להעתיק')}</li>`).join('')}</ul>` : ''}
     </div>`;
     deps.wireCopyButtons(result);

@@ -197,3 +197,17 @@ test('index.js מייצא את writeVideoDescription, עם מכסה יומית, 
   assert.match(block, /enforceRateLimit\(uid, 'writeVideoDescription'\)/);
   assert.match(block, /claude-haiku-4-5-20251001/);
 });
+
+/* 09/11/2026 (מאיה): טקסט על המסך מחזק את הדיבור ולא מסגיר את הנושא */
+test('הוק כתוב: פער סקרנות = רק כתוביות של שני משפטי הפתיחה', () => {
+  const script = '"הייתם קונים רכב בלי לעשות נסיעת מבחן?" (מחזיקה מפתחות)\n"גם אם המוכר היה נשבע לכם שהוא מושלם?"\nאז למה אתן נרשמות לטיפול לייזר של 12 מפגשים?';
+  assert.deepEqual(vd.trimCuriosityHooks(['הייתם קונים רכב בלי נסיעת מבחן?', 'גם אם המוכר היה נשבע שהוא מושלם?', '12 מפגשים בלי ניסיון אחד?'], script),
+    ['הייתם קונים רכב בלי נסיעת מבחן?', 'גם אם המוכר היה נשבע שהוא מושלם?']);
+  const plain = 'אתם יושבים, מעצבים מודעה ב-AI\nרק שהבן אדם בצד השני אפילו לא עוצר.\nהכי מצחיק שאתם בכלל משלמים כדי שאנשים ידלגו עליכם.';
+  const three = ['משלמים כדי שידלגו עליכם', 'AI או בן אדם אמיתי?', 'איזו פרסומת הייתם עוצרים?'];
+  assert.deepEqual(vd.trimCuriosityHooks(three, plain), three);
+  assert.deepEqual(vd.trimCuriosityHooks(three, ''), three);
+  const p = vd.buildVideoDescriptionPrompt({ script, videoType: 'סרטון דיבור' });
+  assert.match(p, /אסור לחשוף בטקסט את הנושא האמיתי של הסרטון/);
+  assert.match(p, /פחות פניות, יותר סגירות/);
+});
