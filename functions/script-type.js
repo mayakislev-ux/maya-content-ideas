@@ -17,7 +17,6 @@
    יותר מה לסווג היא רושמת done ב-ops/backfillScriptTypes ומפסיקה. למחוק
    אותה אחרי שהיא סיימה. */
 const { onDocumentWritten } = require('firebase-functions/v2/firestore');
-const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { defineSecret } = require('firebase-functions/params');
 const admin = require('firebase-admin');
 const { CLASSIFY_MODEL, buildClassifyPrompt, parseClassification } = require('./classify-idea');
@@ -113,46 +112,7 @@ exports.scriptTypeOnWrite = onDocumentWritten(
   }
 );
 
-exports.backfillScriptTypes = onSchedule(
-  { schedule: 'every 10 minutes', secrets: [anthropicApiKey], region: 'us-central1', timeoutSeconds: 540 },
-  async () => {
-    const db = admin.firestore();
-    const ops = db.doc('ops/backfillScriptTypes');
-    const st = (await ops.get()).data() || {};
-    if (st.done) return;
-    const users = await db.collection('videoAssistantScripts').listDocuments();
-    let done = 0;
-    let failed = 0;
-    let waiting = 0;
-    let left = 0;
-    const counts = { ...(st.counts || {}) };
-    for (const u of users) {
-      const snap = await u.collection('items').get();
-      for (const d of snap.docs) {
-        const item = d.data();
-        const dec = decideKind(item);
-        if (!dec) {
-          if (!(item.contentKind && TYPES.includes(item.contentKind.type))) waiting += 1;
-          continue;
-        }
-        if (done + failed >= BATCH) { left += 1; continue; }
-        try {
-          const kind = await kindFor(anthropicApiKey.value(), item);
-          if (!kind) { failed += 1; continue; }
-          await d.ref.update({ contentKind: { ...kind, backfill: '2026-11-09' } });
-          counts[`${kind.type}|${kind.by}`] = (counts[`${kind.type}|${kind.by}`] || 0) + 1;
-          done += 1;
-        } catch (err) {
-          failed += 1;
-          console.error('backfillScriptTypes item failed', d.ref.path, err.message);
-        }
-      }
-    }
-    /* פריט שנכשל שוב ושוב לא תוקע את הסיום לנצח */
-    const finished = left === 0 && (failed === 0 || (st.runs || 0) >= 4);
-    await ops.set({ counts, lastRun: Date.now(), lastDone: done, lastFailed: failed, left, waitingNoScript: waiting, runs: (st.runs || 0) + 1, done: finished }, { merge: true });
-    console.log('backfillScriptTypes', JSON.stringify({ users: users.length, done, failed, left, waiting, counts, finished }));
-  }
-);
+/* backfillScriptTypes רצה ב-09/11/2026 ונמחקה אחרי שסיימה: 129 תסריטים של 30
+   משתמשות סווגו (אישי 69, בעל ערך 34, מכירתי 26). הקוד בהיסטוריה של git (445df16). */
 
 exports._internal = { decideKind, scriptText, ideaText, TYPES };
