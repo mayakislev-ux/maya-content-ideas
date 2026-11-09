@@ -3033,6 +3033,25 @@ exports.syncRefsSubscriptions = require('./refs-subscription').syncRefsSubscript
     getAudience,
     actingUid,
   }));
+  /* 09/11/2026: קהל היעד מהטבלה שמאיה אישרה בפורטל (audience-from-table.js) */
+  {
+    const aft = require('./audience-from-table');
+    let portalVerifyApp = null;
+    exports.audienceFromApprovedTable = onCall({ secrets: [sheetsServiceAccountKey, anthropicApiKey], region: 'us-central1', timeoutSeconds: 120, invoker: 'public' }, aft.createAudienceFromTableHandler({
+      HttpsError,
+      verifyPortalToken: (t) => {
+        if (!portalVerifyApp) portalVerifyApp = admin.initializeApp({ projectId: 'maya-client-portal' }, 'audience-verify');
+        return portalVerifyApp.auth().verifyIdToken(t);
+      },
+      uidByEmail: (email) => admin.auth().getUserByEmail(email).then((u) => u.uid).catch(() => null),
+      getProfile: getProfileOf,
+      saveProfile: (uid, update) => db.collection('profiles').doc(uid).set(update, { merge: true }),
+      readTab: (sheetId) => fetchSheetTabPicked(sheetId, require('./sheet-sections').pickAudienceTab),
+      sections: require('./sheet-sections'),
+      callModel: async (prompt) => getResponseText(await callAnthropic(anthropicApiKey.value(),
+        { model: 'claude-sonnet-4-5', max_tokens: 600, temperature: 0, messages: [{ role: 'user', content: prompt }] }, 'audienceFromApprovedTable')),
+    }));
+  }
   exports.readSheetSections = onCall({ secrets: [sheetsServiceAccountKey], region: 'us-central1', timeoutSeconds: 60 }, ifs.createReadSheetSectionsHandler({
     HttpsError,
     enforceAllowlist: (email) => enforceAllowlist(email),

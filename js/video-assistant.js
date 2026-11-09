@@ -444,6 +444,7 @@ async function renderProfileSetup(onDone) {
       <label for="va-pf-aud1">קהל היעד העיקרי</label>
       <input type="text" class="cosmic-textarea" id="va-pf-aud1" style="min-height:auto"
         placeholder="למשל: נשים 25-40 שמחפשות מעצבת גבות קבועה" value="${profile.primaryAudience ? escapeHtml(profile.primaryAudience) : ''}">
+      ${['table', 'maya'].includes(profile.audienceSource) ? '<p class="my-details-from-table">✓ נלקח מטבלת קהל היעד שמאיה אישרה</p>' : ''}
     </div>
     <div class="cosmic-field">
       <label for="va-pf-aud2">קהל יעד משני (רשות)</label>

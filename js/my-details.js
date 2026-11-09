@@ -65,6 +65,9 @@ export async function openMyDetails({ onSaved = null } = {}) {
   }
   el('my-details-business').value = profile.business || '';
   el('my-details-primary').value = profile.primaryAudience || '';
+  /* 09/11/2026: קהל שנלקח מהטבלה שאושרה בפורטל (functions/audience-from-table.js) */
+  const fromTable = el('my-details-from-table');
+  if (fromTable) fromTable.hidden = !['table', 'maya'].includes(profile.audienceSource);
   el('my-details-secondary').value = profile.secondaryAudience || '';
   fillOptions(el('my-details-domain'), Object.keys(SUBCATEGORIES_BY_DOMAIN), profile.videoAssistantDomain || '', 'לבחור תחום');
   fillSubs(el('my-details-domain').value, profile.videoAssistantSubCategory || '');

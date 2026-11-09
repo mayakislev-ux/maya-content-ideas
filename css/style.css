@@ -7899,6 +7899,8 @@ body:has(> .preview-bar) { --hdr-safe-top: 0px; }
   white-space: nowrap;
 }
 .cosmic-recommend-hint { margin: 0 0 12px; }
+/* 09/11/2026: קהל היעד נלקח מהטבלה שמאיה אישרה */
+.my-details-from-table { margin: 4px 0 0; font-size: .82rem; font-weight: 600; color: #2f7d4f; }
 /* 09/11/2026: הוק שזוהה מהאריזה - צהוב, כמו תיבת ההקשר של העוזר (#fff4cc). */
 .va-auto-hook-note {
   margin: 0 0 4px;
