@@ -40,7 +40,7 @@ import {
   linkPlatform, uploadProblem, composeTranscript, accurateNotice, accurateNoticeText, transcribeErrorInfo,
 } from './reference-transcribe.js';
 import { getProfile, saveProfile } from './user-profile.js';
-import { audienceOptions, pickedAudience, audienceChipLabel } from './audience-pick.js';
+import { audienceOptions, pickedAudience, audienceChipLabel, audienceEditUpdate, audienceAddUpdate, audienceDeleteUpdate } from './audience-pick.js';
 import { mountMaya, mayaVisibleFor } from './va-maya.js';
 /* 04/11/2026: צ'אט דיוק הרעיון חזר, כקפיצה לצ'אט עצמו ולא כעותק בתוך המסך */
 import { startIdeaChatFromAssistant } from './idea-chat.js';
@@ -337,29 +337,48 @@ function mountAudienceChip() {
   }).catch(() => {});
 }
 
-function openAudiencePicker(profile) {
+function openAudiencePicker(profile, { selected } = {}) {
   const options = audienceOptions(profile);
   const picked = pickedAudience(state.audiencePick, profile);
-  const isCustom = !!picked && picked.role === 'custom';
+  /* אחרי עריכה החלון נפתח מחדש עם מה שהיה מסומן בו, גם אם עוד לא נשמר */
+  const sel = selected || (picked ? picked.key : 'a0');
+  const isCustom = sel === 'custom';
   const rows = options.map((o) => `
-    <label class="va-aud-opt${picked && picked.key === o.key ? ' is-on' : ''}">
-      <input type="radio" name="va-aud" value="${o.key}" ${picked && picked.key === o.key ? 'checked' : ''}>
-      <span class="va-aud-opt__body">
-        <strong>${escapeHtml(o.name)} <em class="va-aud-tag">${o.tag}</em></strong>
-        <small>${escapeHtml(o.line)}</small>
-      </span>
-    </label>`).join('');
+    <div class="va-aud-row" data-key="${o.key}">
+      <label class="va-aud-opt${sel === o.key ? ' is-on' : ''}">
+        <input type="radio" name="va-aud" value="${o.key}" ${sel === o.key ? 'checked' : ''}>
+        <span class="va-aud-opt__body">
+          <strong>${escapeHtml(o.name)} <em class="va-aud-tag">${o.tag}</em></strong>
+          <small>${escapeHtml(o.line)}</small>
+        </span>
+      </label>
+      <div class="va-aud-actions">
+        <button type="button" class="va-text-link va-aud-edit" data-key="${o.key}">✏️ עריכה</button>
+        ${o.role !== 'primary' ? `<button type="button" class="va-text-link va-aud-del" data-key="${o.key}">מחיקה</button>` : ''}
+      </div>
+    </div>`).join('');
   const body = `
     <h2 style="margin-top:0">לאיזה קהל הסרטון הזה?</h2>
-    <p class="muted" style="margin-top:-6px">ברירת המחדל היא הקהל העיקרי. הבחירה תקפה לסרטון הזה בלבד.</p>
+    <p class="muted" style="margin-top:-6px">ברירת המחדל היא הקהל העיקרי. הבחירה תקפה לסרטון הזה בלבד. עריכה והוספה של קהל נשמרות בפרטים שלך.</p>
     <div class="va-aud-list">
       ${rows}
       <label class="va-aud-opt${isCustom ? ' is-on' : ''}">
         <input type="radio" name="va-aud" value="custom" ${isCustom ? 'checked' : ''}>
-        <span class="va-aud-opt__body"><strong>קהל אחר</strong><small>כותבים במשפט אחד למי הסרטון</small></span>
+        <span class="va-aud-opt__body"><strong>קהל אחר, רק לסרטון הזה</strong><small>כותבים במשפט אחד למי הסרטון</small></span>
       </label>
       <textarea class="cosmic-textarea" id="va-aud-custom" ${isCustom ? '' : 'hidden'} style="min-height:64px"
-        placeholder="למשל: בעלות סלון שרוצות לגייס עובדת ראשונה">${isCustom ? escapeHtml(picked.line) : ''}</textarea>
+        placeholder="למשל: בעלות סלון שרוצות לגייס עובדת ראשונה">${picked && picked.role === 'custom' ? escapeHtml(picked.line) : ''}</textarea>
+      ${options.length && options.length < 6 ? '<button type="button" class="va-text-link va-aud-add" id="va-aud-add">+ להוסיף קהל קבוע</button>' : ''}
+      <div class="va-aud-form" id="va-aud-form" hidden>
+        <label class="cosmic-field-label" for="va-aud-form-name">שם קצר לקהל</label>
+        <input class="cosmic-textarea va-aud-name-input" id="va-aud-form-name" maxlength="60" placeholder="למשל: מתחילות מאפס">
+        <label class="cosmic-field-label" for="va-aud-form-line">מי הם, מה מצבם ומה הם מרגישים</label>
+        <textarea class="cosmic-textarea" id="va-aud-form-line" style="min-height:72px" placeholder="למשל: שכירות 25-35 שרוצות מקצוע משלהן ומפחדות להתחיל"></textarea>
+        <div class="cosmic-btn-row" style="margin-top:8px">
+          <button type="button" class="cosmic-btn" id="va-aud-form-cancel">ביטול</button>
+          <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-aud-form-save">שמירת הקהל</button>
+        </div>
+      </div>
     </div>
     <div class="cosmic-btn-row" style="margin-top:14px">
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-aud-save">שמירה</button>
@@ -367,6 +386,12 @@ function openAudiencePicker(profile) {
   const overlay = openModal(body);
   const root = (overlay && overlay.querySelector) ? overlay : document;
   const custom = root.querySelector('#va-aud-custom');
+  const form = root.querySelector('#va-aud-form');
+  const formName = root.querySelector('#va-aud-form-name');
+  const formLine = root.querySelector('#va-aud-form-line');
+  let editing = null;   /* key של הקהל שעורכים, או 'new' */
+  const checkedKey = () => { const r = root.querySelector('input[name="va-aud"]:checked'); return r ? r.value : sel; };
+
   root.querySelectorAll('input[name="va-aud"]').forEach((r) => r.addEventListener('change', () => {
     root.querySelectorAll('.va-aud-opt').forEach((el) => el.classList.toggle('is-on', el.contains(r) && r.checked));
     if (custom) {
@@ -374,6 +399,62 @@ function openAudiencePicker(profile) {
       if (!custom.hidden) custom.focus();
     }
   }));
+
+  function openForm(key) {
+    editing = key;
+    const o = options.find((x) => x.key === key);
+    formName.value = o ? o.name : '';
+    formLine.value = o ? o.line : '';
+    form.hidden = false;
+    const row = key === 'new' ? null : root.querySelector(`.va-aud-row[data-key="${key}"]`);
+    if (row) row.after(form); else root.querySelector('.va-aud-list').appendChild(form);
+    formLine.focus();
+  }
+  root.querySelectorAll('.va-aud-edit').forEach((b) => b.addEventListener('click', () => openForm(b.dataset.key)));
+  const addBtn = root.querySelector('#va-aud-add');
+  if (addBtn) addBtn.addEventListener('click', () => openForm('new'));
+  root.querySelector('#va-aud-form-cancel').addEventListener('click', () => { form.hidden = true; editing = null; });
+
+  async function persist(update, keepKey) {
+    if (!update) return;
+    try {
+      await saveProfile(update);
+    } catch (err) {
+      console.error('saveProfile (audiences) failed:', err);
+      showToast('השמירה לא עברה. כדאי לבדוק שיש אינטרנט');
+      return;
+    }
+    const fresh = await getProfile().catch(() => null) || { ...profile, ...update };
+    /* אם נערך הקהל שנבחר לסרטון, הבחירה ממשיכה עם הנוסח החדש */
+    if (state.audiencePick && state.audiencePick.key) {
+      const now = audienceOptions(fresh).find((o) => o.key === state.audiencePick.key);
+      state.audiencePick = now && now.role !== 'primary' ? { key: now.key, line: now.line } : null;
+      saveAll().catch((err) => console.error('saveSession failed:', err));
+    }
+    closeModal();
+    showToast('הקהל נשמר');
+    openAudiencePicker(fresh, { selected: keepKey });
+    mountAudienceChip();
+  }
+  root.querySelector('#va-aud-form-save').addEventListener('click', () => {
+    const name = formName.value;
+    const line = formLine.value.trim();
+    if (!line) { showToast('כתבו במשפט אחד מי הקהל'); formLine.focus(); return; }
+    const update = editing === 'new' ? audienceAddUpdate(profile, { name, line }) : audienceEditUpdate(profile, editing, { name, line });
+    const keepKey = editing === 'new' ? `a${options.length}` : checkedKey();
+    persist(update, keepKey);
+  });
+  /* מחיקה בשתי לחיצות: הראשונה שואלת על הכפתור עצמו, השנייה מוחקת */
+  root.querySelectorAll('.va-aud-del').forEach((b) => b.addEventListener('click', () => {
+    if (!b.classList.contains('is-confirm')) {
+      b.classList.add('is-confirm');
+      b.textContent = 'בטוח? ללחוץ שוב למחיקה';
+      return;
+    }
+    if (state.audiencePick && state.audiencePick.key === b.dataset.key) state.audiencePick = null;
+    persist(audienceDeleteUpdate(profile, b.dataset.key), 'a0');
+  }));
+
   root.querySelector('#va-aud-save').addEventListener('click', () => {
     const r = root.querySelector('input[name="va-aud"]:checked');
     if (!r) { closeModal(); return; }

@@ -56,3 +56,45 @@ export function audienceChipLabel(picked) {
   if (picked.role === 'custom') return 'קהל: אחר';
   return `קהל: ${picked.name}`;
 }
+
+/* 10/11/2026 (מאיה, צילום מסך של החלון): "שיהיה אופציה מיידית לערוך את זה
+   כאן". עריכה, הוספה ומחיקה של קהל מתוך החלון נשמרות בפרופיל: הרשימה כולה
+   ב-audiences, והשורה הראשונה והשנייה גם ב-primaryAudience ו-secondaryAudience,
+   כי משם כל שאר המוח השיווקי קורא. */
+function baseList(profile) {
+  return audienceOptions(profile).map((o) => ({ name: o.name, line: o.line }));
+}
+function withMirrors(list) {
+  return {
+    audiences: list,
+    primaryAudience: list[0] ? list[0].line : '',
+    secondaryAudience: list[1] ? list[1].line : '',
+  };
+}
+const clip = (v, n) => String(v || '').replace(/\s+/g, ' ').trim().slice(0, n);
+
+/** עריכת קהל קיים (key כמו ב-audienceOptions). null אם אין מה לשמור. */
+export function audienceEditUpdate(profile, key, { name, line }) {
+  const list = baseList(profile);
+  const i = Number(String(key || '').replace(/^a/, ''));
+  if (!Number.isInteger(i) || !list[i] || !clip(line, 300)) return null;
+  list[i] = { name: clip(name, 60) || list[i].name, line: clip(line, 300) };
+  return withMirrors(list);
+}
+
+/** קהל חדש בסוף הרשימה */
+export function audienceAddUpdate(profile, { name, line }) {
+  const list = baseList(profile);
+  if (!clip(line, 300) || list.length >= 6) return null;
+  list.push({ name: clip(name, 60) || `קהל ${list.length + 1}`, line: clip(line, 300) });
+  return withMirrors(list);
+}
+
+/** מחיקת קהל. את העיקרי לא מוחקים, רק עורכים. */
+export function audienceDeleteUpdate(profile, key) {
+  const list = baseList(profile);
+  const i = Number(String(key || '').replace(/^a/, ''));
+  if (!Number.isInteger(i) || i < 1 || !list[i]) return null;
+  list.splice(i, 1);
+  return withMirrors(list);
+}

@@ -3,7 +3,7 @@
    העיקרי". */
 import { test, describe, before } from 'node:test';
 import assert from 'node:assert/strict';
-import { audienceOptions, pickedAudience, audienceChipLabel } from '../js/audience-pick.js';
+import { audienceOptions, pickedAudience, audienceChipLabel, audienceEditUpdate, audienceAddUpdate, audienceDeleteUpdate } from '../js/audience-pick.js';
 import { hasJsdom, setupAssistant, store, until, SESSION } from './helpers/va-dom.mjs';
 
 const TABLE = {
@@ -41,6 +41,27 @@ describe('רשימת הקהלים', () => {
     assert.equal(pickedAudience({ key: 'a7', line: 'נמחק' }, TABLE).role, 'primary');
     assert.equal(pickedAudience({ custom: true, line: 'מורות ליוגה' }, TABLE).line, 'מורות ליוגה');
     assert.equal(audienceChipLabel(pickedAudience(null, TABLE)), 'קהל: מתחילות מאפס (עיקרי)');
+  });
+});
+
+describe('עריכה מתוך החלון (מאיה: "אופציה מיידית לערוך את זה כאן")', () => {
+  test('עריכת המשני מעדכנת גם את secondaryAudience', () => {
+    const u = audienceEditUpdate(TABLE, 'a1', { name: 'נייליסטיות', line: 'נייליסטיות שרוצות יותר לקוחות' });
+    assert.equal(u.secondaryAudience, 'נייליסטיות שרוצות יותר לקוחות');
+    assert.equal(u.audiences[1].line, 'נייליסטיות שרוצות יותר לקוחות');
+    assert.equal(u.primaryAudience, TABLE.primaryAudience);
+    assert.equal(audienceEditUpdate(TABLE, 'a1', { line: '  ' }), null);
+  });
+  test('הוספה בלי טבלה: הקהל השני נהיה המשני', () => {
+    const u = audienceAddUpdate({ primaryAudience: 'א' }, { name: 'ב שם', line: 'ב' });
+    assert.deepEqual(u.audiences, [{ name: 'הקהל העיקרי', line: 'א' }, { name: 'ב שם', line: 'ב' }]);
+    assert.equal(u.secondaryAudience, 'ב');
+  });
+  test('מחיקה: את העיקרי לא מוחקים, ומחיקת המשני מקדמת את הבא', () => {
+    assert.equal(audienceDeleteUpdate(TABLE, 'a0'), null);
+    const u = audienceDeleteUpdate(TABLE, 'a1');
+    assert.equal(u.audiences.length, 2);
+    assert.equal(u.secondaryAudience, 'בעלות סלון שרוצות עובדת ראשונה');
   });
 });
 
@@ -84,6 +105,27 @@ describe('כפתור הקהל בעוזר (jsdom)', { skip: hasJsdom ? false : 'j
     $('#va-aud-save').click();
     await until(() => promptText().includes('מורות ליוגה שפותחות סטודיו'), 'הקהל האחר לא בפרומפט');
     assert.equal($('#va-aud-chip-label').textContent, 'קהל: אחר');
+  });
+
+  test('עריכה ומחיקה בתוך החלון נשמרות בפרופיל', async () => {
+    const { $, $$, open, type } = ui;
+    await open({ branch: 'scratch', screen: 'scratch-hook', ideaDescription: 'רעיון3', rawDump: 'מגילה' }, '#va-scratch-hook-input');
+    await until(() => $('#va-aud-chip') && !$('#va-aud-chip').hidden, 'אין כפתור קהל');
+    $('#va-aud-chip').click();
+    await until(() => $('.va-aud-edit[data-key="a1"]'), 'אין כפתור עריכה');
+    $('.va-aud-edit[data-key="a1"]').click();
+    assert.equal($('#va-aud-form').hidden, false);
+    type($('#va-aud-form-line'), 'נייליסטיות שרוצות יותר לקוחות');
+    $('#va-aud-form-save').click();
+    await until(() => (store.get('profiles/u1').secondaryAudience || '') === 'נייליסטיות שרוצות יותר לקוחות', 'המשני לא נשמר');
+    await until(() => $$('.va-aud-opt small').some((el) => el.textContent === 'נייליסטיות שרוצות יותר לקוחות'), 'החלון לא התעדכן');
+    const del = $('.va-aud-del[data-key="a2"]');
+    del.click();
+    assert.match(del.textContent, /בטוח/);
+    assert.equal(store.get('profiles/u1').audiences.length, 3, 'נמחק בלחיצה אחת');
+    del.click();
+    await until(() => store.get('profiles/u1').audiences.length === 2, 'לא נמחק');
+    $('#va-modal-close').click();
   });
 
   test('במסך הפתיחה אין כפתור', async () => {

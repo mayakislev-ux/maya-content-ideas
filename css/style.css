@@ -8893,3 +8893,13 @@ body[data-plan="refs"] .hub-full-only { display: none !important; }
 @media (prefers-reduced-motion: reduce) {
   .va-maya img, .va-maya.is-changing img, .va-maya--celebrate img { animation: none; }
 }
+
+/* 10/11/2026: עריכה, הוספה ומחיקה של קהל מתוך החלון */
+.va-aud-row { display: grid; gap: 4px; }
+.va-aud-actions { display: flex; gap: 14px; justify-content: flex-start; padding-inline-start: 34px; font-size: 13px; }
+.va-aud-actions .va-text-link, .va-aud-add { color: #0b6fa8; font-size: 13px; }
+.va-aud-del.is-confirm { color: #b3261e; font-weight: 700; }
+.va-aud-add { justify-self: start; }
+.va-aud-form { display: grid; gap: 6px; padding: 12px; border: 1px dashed #0b6fa8; border-radius: 14px; background: #fff; text-align: start; }
+.va-aud-form[hidden] { display: none; }
+.va-aud-name-input { min-height: 0; height: 44px; resize: none; }
