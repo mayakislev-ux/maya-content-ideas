@@ -603,7 +603,11 @@
   <main id="video-assistant-view" class="view cosmic-theme" hidden>
     <div class="va-topbar">
       <button type="button" id="video-assistant-back-btn" class="hub-back-btn" style="position:relative;z-index:1;color:#fff">‹ <span class="va-back-full">חזרה למרכז למידה</span><span class="va-back-refs">חזרה למאגר ההשראה</span></button>
-      <button type="button" id="video-assistant-scripts-btn" class="va-scripts-btn">📝 התסריטים שלי</button>
+      <div class="va-topbar-end">
+        <button type="button" id="video-assistant-scripts-btn" class="va-scripts-btn">📝 התסריטים שלי</button>
+        <!-- 10/11/2026 (מאיה): כפתור הקהל מתחת ל"התסריטים שלי" -->
+        <button type="button" id="va-aud-chip" class="va-aud-chip" hidden>🎯 <span id="va-aud-chip-label">קהל</span></button>
+      </div>
       <button type="button" id="video-assistant-mute-btn" class="cosmic-mute-btn" aria-label="השתקת צלילים">🔊</button>
     </div>
     <div id="video-assistant-screen"></div>

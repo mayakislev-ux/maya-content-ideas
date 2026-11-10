@@ -222,6 +222,11 @@ h1, h2, h3 {
   font-family: 'Ploni Black', 'Segoe UI', Arial, sans-serif;
 }
 
+/* 10/11/2026 (מאיה: "הפונט בסרגל העליון לא אותו פונט כמו 'ערב טוב', לא
+   קריא"). כפתור ושדה בדפדפן לא יורשים את הגופן של הדף, ולכן כל הלשוניות
+   יצאו בגופן ברירת המחדל של הדפדפן. מכאן הם יורשים, בכל המוח השיווקי. */
+button, input, select, textarea { font-family: inherit; }
+
 .screen { min-height: 100vh; display: flex; flex-direction: column; }
 .screen[hidden] { display: none; }
 
@@ -8903,3 +8908,25 @@ body[data-plan="refs"] .hub-full-only { display: none !important; }
 .va-aud-form { display: grid; gap: 6px; padding: 12px; border: 1px dashed #0b6fa8; border-radius: 14px; background: #fff; text-align: start; }
 .va-aud-form[hidden] { display: none; }
 .va-aud-name-input { min-height: 0; height: 44px; resize: none; }
+
+/* 10/11/2026: כפתור הקהל בסרגל העליון של העוזר, מתחת ל"התסריטים שלי".
+   הסרגל על הרקע הכהה, ולכן הכפתור כאן כהה-שקוף כמו "התסריטים שלי". */
+#video-assistant-view .va-topbar-end {
+  margin-inline-start: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  min-width: 0;
+  max-width: 100%;
+}
+#video-assistant-view .va-topbar-end .va-scripts-btn { margin-inline-start: 0; }
+#video-assistant-view .va-topbar .va-aud-chip {
+  margin: 0;
+  background: rgba(255,255,255,.12);
+  border: 1px solid rgba(255,255,255,.28);
+  color: #fff;
+  max-width: min(260px, 70vw);
+}
+#video-assistant-view .va-topbar .va-aud-chip:hover { background: rgba(255,255,255,.2); }
+#video-assistant-view .va-topbar .va-aud-chip.is-changed { background: #0b6fa8; border-color: #7fd1ff; }

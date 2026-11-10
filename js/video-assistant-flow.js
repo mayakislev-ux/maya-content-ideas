@@ -198,12 +198,21 @@ export function nextStep(state, action) {
   return { ...next, history: push(state) };
 }
 
+/* 10/11/2026 (מאיה): מסך "בודקים לפני שממשיכים" (רלוונטי לקהל או משרת את
+   המותג) ירד: "תוריד, לא רלוונטי". כל מעבר שהוביל אליו הולך ישר למסך שהיה
+   אחריו. המסך עצמו נשאר רק לסשן שכבר עומד עליו. */
+function afterRelevance(state) {
+  if (state.branch === 'footage') return { ...state, screen: 'footage-speech-find', footageKind: 'speech' };
+  if (state.branch === 'reference') return { ...state, screen: 'transcribe' };
+  return { ...state, screen: 'idea-sharpen' };
+}
+
 function step(state, action) {
   switch (action.type) {
     // ===== שלושת מסלולי הפתיחה (ניסוח מדויק של מאיה, 16/10) =====
     // "מצאתי רפרנס לשכפול" / "יש לי קטע שצולם" / "יש לי רעיון מ-0"
     case 'CHOOSE_FOOTAGE':
-      return { ...state, screen: 'relevance-check', branch: 'footage' };
+      return afterRelevance({ ...state, branch: 'footage' });
     case 'CHOOSE_REFERENCE':
       return { ...state, screen: 'reference-source-choice', branch: 'reference' };
     /* 28/10/2026 (מאיה: "עומס מנטלי... צריך יותר סדר"). עד היום רעיון
@@ -216,7 +225,7 @@ function step(state, action) {
     // ===== מסלול "מצאתי רפרנס" - יש לה כבר אחד, או שצריך להגריל לה (17/10,
     // מאיה: "צריך להיות 2 כפתורים יש לי רפרנס / אין לי רפרנס ואז להגריל") =====
     case 'CHOOSE_HAS_REFERENCE':
-      return { ...state, screen: 'relevance-check' };
+      return afterRelevance(state);
     case 'CHOOSE_PULL_REFERENCE':
       return { ...state, screen: 'pulled-reference' };
 
@@ -235,7 +244,7 @@ function step(state, action) {
       if (state.branch === 'footage') {
         return { ...state, screen: 'idea-sharpen', ideaDescription: action.text };
       }
-      return { ...state, screen: 'relevance-check', ideaDescription: action.text };
+      return afterRelevance({ ...state, ideaDescription: action.text });
     case 'CHOOSE_PULL_IDEA':
       return { ...state, screen: 'pulled-idea' };
 
@@ -247,7 +256,7 @@ function step(state, action) {
       /* ההגרלה שמה את כותרת הרעיון גם ב-hook. ברעיון זה לא הוק, ובלי
          הניקוי הוא הופיע כ"ההוק" מוכן ב"התסריט שלך" עוד לפני שנבחר. */
       if (state.branch === 'idea') return { ...state, screen: 'idea-sharpen', ideaTopic: null, ideaPunchline: null, hook: null };
-      return { ...state, screen: 'relevance-check' };
+      return afterRelevance(state);
 
     // ===== השער המשותף: "רלוונטי לקהל היעד, או משרת את המותג?" =====
     case 'RELEVANCE_CONFIRMED':

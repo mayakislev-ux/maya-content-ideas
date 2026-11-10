@@ -104,7 +104,7 @@ describe('חזרה אחורה לא מוחקת מה שהודבק (jsdom)', { skip
 
   test('שכפול: תסריט שהודבק שורד חזרה מ"להקריא בקול", בתיבה, בסשן ובפריט השמור', async () => {
     const start = walk({ ...INITIAL_STATE, history: [] }, [
-      { type: 'CHOOSE_REFERENCE' }, { type: 'CHOOSE_HAS_REFERENCE' }, { type: 'RELEVANCE_CONFIRMED' },
+      { type: 'CHOOSE_REFERENCE' }, { type: 'CHOOSE_HAS_REFERENCE' },
     ]);
     await open({ ...start, transcript: 'ההוק המקורי. ועוד תמלול', openingHook: 'ההוק המקורי' }, '#va-transcript-input');
     $('#va-transcribe-done-btn').click();
@@ -206,7 +206,7 @@ describe('חזרה אחורה לא מוחקת מה שהודבק (jsdom)', { skip
 
 test('BACK במכונת המצבים: שומר מה שהודבק, מחליף בנוסח החדש, ולא סוחב לפתיחה', () => {
   let s = walk({ ...INITIAL_STATE, history: [] }, [
-    { type: 'CHOOSE_REFERENCE' }, { type: 'CHOOSE_HAS_REFERENCE' }, { type: 'RELEVANCE_CONFIRMED' },
+    { type: 'CHOOSE_REFERENCE' }, { type: 'CHOOSE_HAS_REFERENCE' },
     { type: 'CONFIRM_DONE' }, { type: 'HOOK_CHOSEN', hook: 'הוק' }, { type: 'HER_WORDS_SUBMITTED', text: 'שלי' },
     { type: 'SCRIPT_READY', text: 'א' },
   ]);
@@ -239,7 +239,7 @@ test('BACK מהסיכום לשכתוב הסצנה: התסריט המקורי נ�
    הרפרנס או הרעיון הקודם לא נסחבים אליו. */
 test('BACK אל מחוץ לשלב הכתיבה לא סוחב הוק ותסריט', () => {
   let s = walk({ ...INITIAL_STATE, history: [] }, [
-    { type: 'CHOOSE_REFERENCE' }, { type: 'CHOOSE_HAS_REFERENCE' }, { type: 'RELEVANCE_CONFIRMED' },
+    { type: 'CHOOSE_REFERENCE' }, { type: 'CHOOSE_HAS_REFERENCE' },
     { type: 'CONFIRM_DONE' }, { type: 'HOOK_CHOSEN', hook: 'הוק' }, { type: 'HER_WORDS_SUBMITTED', text: 'שלי' },
     { type: 'SCRIPT_READY', text: 'תסריט' },
   ]);
@@ -247,7 +247,7 @@ test('BACK אל מחוץ לשלב הכתיבה לא סוחב הוק ותסריט
   assert.equal(s.screen, 'transcribe');
   assert.equal(s.finalScript, 'תסריט', 'בדיקת התמלול באמצע מחקה את התסריט');
   s = nextStep(s, { type: 'BACK' });
-  assert.equal(s.screen, 'relevance-check');
+  assert.equal(s.screen, 'reference-source-choice');
   assert.equal(s.hook, null);
   assert.equal(s.finalScript, null);
 
@@ -267,7 +267,7 @@ test('BACK אל מחוץ לשלב הכתיבה לא סוחב הוק ותסריט
 
 test('BACK: בשכפול, ריק שנשלח בכוונה נשאר ריק', () => {
   let r = walk({ ...INITIAL_STATE, history: [] }, [
-    { type: 'CHOOSE_REFERENCE' }, { type: 'CHOOSE_HAS_REFERENCE' }, { type: 'RELEVANCE_CONFIRMED' },
+    { type: 'CHOOSE_REFERENCE' }, { type: 'CHOOSE_HAS_REFERENCE' },
     { type: 'CONFIRM_DONE' }, { type: 'HOOK_CHOSEN', hook: 'הוק' }, { type: 'HER_WORDS_SUBMITTED', text: 'A' },
     { type: 'BACK' }, { type: 'HER_WORDS_SUBMITTED', text: '' }, { type: 'BACK' },
   ]);

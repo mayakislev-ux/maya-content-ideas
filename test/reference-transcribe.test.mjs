@@ -219,11 +219,12 @@ describe('בדפדפן (jsdom)', { skip: hasJsdom ? false : 'jsdom לא מותק
     await until(() => $('#va-accurate-btn') && $('#va-reference-link').value === video.url, 'מסך התמלול עם הכפתור');
   }
 
-  test('הכפתור במסך התמלול, עם הסבר כמה זמן זה לוקח ועם העלאה מהגלריה', async () => {
+  /* 10/11/2026 (מאיה): הכפתור נקרא "לתמלול אוטומטי ומיידי", וההסבר על ג'מיני ירד מהמסך */
+  test('הכפתור במסך התמלול, בלי הסבר על ג׳מיני, ועם העלאה מהגלריה', async () => {
     document.body.dataset.plan = 'refs';
     await openTranscribeScreen();
-    assert.equal($('#va-accurate-btn').textContent.trim(), '✨ תמלול מדויק');
-    assert.match($('.va-accurate-hint').textContent, /20-60 שניות/);
+    assert.equal($('#va-accurate-btn').textContent.trim(), '✨ לתמלול אוטומטי ומיידי');
+    assert.equal($('.va-accurate-hint'), null);
     assert.match($('#va-accurate-upload-btn').textContent, /להעלות את הסרטון מהגלריה/);
     assert.equal($('#va-accurate-file').getAttribute('accept'), 'video/*');
     assert.ok($('#va-accurate-status').hidden);

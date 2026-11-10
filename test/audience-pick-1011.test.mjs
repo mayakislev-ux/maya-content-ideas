@@ -132,6 +132,8 @@ describe('כפתור הקהל בעוזר (jsdom)', { skip: hasJsdom ? false : 'j
     const { $, open } = ui;
     await open({ screen: 'opening' }, '#va-card');
     await until(() => !$('#va-scratch-hook-input'), 'המסך הקודם עדיין');
-    assert.equal($('#va-aud-chip'), null);
+    /* 10/11/2026: הכפתור בסרגל העליון, ובמסך הפתיחה הוא מוסתר */
+    assert.equal($('#va-aud-chip').hidden, true);
+    assert.ok($('.va-topbar-end #va-aud-chip'), 'הכפתור לא מתחת להתסריטים שלי');
   });
 });

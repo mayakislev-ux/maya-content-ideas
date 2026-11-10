@@ -9,18 +9,16 @@ test('initial state is the opening screen with empty history', () => {
 
 /* 02/11/2026 (מאיה: "בואי נשאיר רק את הקטע שצולם דיבור, וזה פשוט לא צריך
    את הבחירה של ה-2 כפתורים"). */
-test('footage path: footage -> relevance check -> straight into curating the speech, no type choice', () => {
+/* 10/11/2026 (מאיה): מסך "בודקים לפני שממשיכים" ירד מכל המסלולים. */
+test('footage path: footage -> straight into curating the speech, no relevance check, no type choice', () => {
   let s = nextStep(INITIAL_STATE, { type: 'CHOOSE_FOOTAGE' });
-  assert.equal(s.screen, 'relevance-check');
-  assert.equal(s.branch, 'footage');
-  s = nextStep(s, { type: 'RELEVANCE_CONFIRMED' });
   assert.equal(s.screen, 'footage-speech-find');
+  assert.equal(s.branch, 'footage');
   assert.equal(s.footageKind, 'speech');
 });
 
 test('footage, speech clip: one sequence (find -> shorten -> sharpen -> done), not a choice (18/10)', () => {
   let s = nextStep(INITIAL_STATE, { type: 'CHOOSE_FOOTAGE' });
-  s = nextStep(s, { type: 'RELEVANCE_CONFIRMED' });
   assert.equal(s.screen, 'footage-speech-find');
   s = nextStep(s, { type: 'FOOTAGE_SPEECH_NEXT' });
   assert.equal(s.screen, 'footage-speech-shorten');
@@ -70,7 +68,6 @@ test('footage branch records which path was actually taken, for a concrete summa
   // שלי") - בלי footageKind/footageOutcome מסך הסיכום לא יכול לדעת מה
   // באמת קרה במסלול הזה.
   let speech = nextStep(INITIAL_STATE, { type: 'CHOOSE_FOOTAGE' });
-  speech = nextStep(speech, { type: 'RELEVANCE_CONFIRMED' });
   assert.equal(speech.footageKind, 'speech');
 
   // 02/11/2026: רק סרטון שנשמר באמצע המסלול הוויזואלי מגיע לכאן
@@ -92,21 +89,17 @@ test('reference path: opening choice leads to a has/pull sub-choice first (17/10
   assert.equal(s.branch, 'reference');
 });
 
-test('reference path, pull from bank: sub-choice -> pulled-reference -> relevance -> transcribe', () => {
+test('reference path, pull from bank: sub-choice -> pulled-reference -> transcribe', () => {
   let s = nextStep(INITIAL_STATE, { type: 'CHOOSE_REFERENCE' });
   s = nextStep(s, { type: 'CHOOSE_PULL_REFERENCE' });
   assert.equal(s.screen, 'pulled-reference');
   s = nextStep(s, { type: 'ACCEPT_PICK' });
-  assert.equal(s.screen, 'relevance-check');
-  s = nextStep(s, { type: 'RELEVANCE_CONFIRMED' });
   assert.equal(s.screen, 'transcribe');
 });
 
 test('reference path, already has one: sub-choice skips the pick screen entirely', () => {
   let s = nextStep(INITIAL_STATE, { type: 'CHOOSE_REFERENCE' });
   s = nextStep(s, { type: 'CHOOSE_HAS_REFERENCE' });
-  assert.equal(s.screen, 'relevance-check');
-  s = nextStep(s, { type: 'RELEVANCE_CONFIRMED' });
   assert.equal(s.screen, 'transcribe');
 });
 
@@ -152,11 +145,12 @@ test('a pulled idea from the bank comes back to the idea screen', () => {
   assert.equal(s.screen, 'pulled-idea');
 });
 
-test('a pulled reference still goes through the relevance check', () => {
+test('a pulled reference no longer stops at the relevance check (10/11)', () => {
   let s = nextStep(INITIAL_STATE, { type: 'CHOOSE_REFERENCE' });
   s = nextStep(s, { type: 'CHOOSE_PULL_REFERENCE' });
   s = nextStep(s, { type: 'ACCEPT_PICK' });
-  assert.equal(s.screen, 'relevance-check');
+  assert.equal(s.screen, 'transcribe');
+  assert.ok(!s.history.some((h) => h.screen === 'relevance-check'));
 });
 
 /* 26/10/2026 (מאיה): "בחלק של כתיבת תסריט מ-0 יש שם תקלה חמורה, שאת
@@ -278,13 +272,13 @@ test('REROLL keeps the current screen, only bumps the count, and leaves no back-
 });
 
 test('BACK undoes the previous real navigation, one step at a time', () => {
-  let s = nextStep(INITIAL_STATE, { type: 'CHOOSE_FOOTAGE' });
-  s = nextStep(s, { type: 'RELEVANCE_CONFIRMED' });
-  assert.equal(s.screen, 'footage-speech-find');
+  let s = nextStep(INITIAL_STATE, { type: 'CHOOSE_REFERENCE' });
+  s = nextStep(s, { type: 'CHOOSE_HAS_REFERENCE' });
+  assert.equal(s.screen, 'transcribe');
 
   s = nextStep(s, { type: 'BACK' });
-  assert.equal(s.screen, 'relevance-check');
-  assert.equal(s.branch, 'footage');
+  assert.equal(s.screen, 'reference-source-choice', 'BACK still lands on the removed relevance screen');
+  assert.equal(s.branch, 'reference');
 
   s = nextStep(s, { type: 'BACK' });
   assert.equal(s.screen, 'opening');
@@ -323,7 +317,6 @@ test('חידוד הרעיון יושב בין הרעיון לפורמט, ולא 
   let s = nextStep(INITIAL_STATE, { type: 'CHOOSE_IDEA' });
   s = nextStep(s, { type: 'CHOOSE_TYPE_IDEA' });
   s = nextStep(s, { type: 'IDEA_TYPED', text: 'רעיון' });
-  s = nextStep(s, { type: 'RELEVANCE_CONFIRMED' });
   assert.equal(s.screen, 'idea-sharpen', 'אחרי הרעיון לא מגיעים לחידוד');
   s = nextStep(s, { type: 'IDEA_SHARPENED', idea: 'ביקורת על קורסים זולים' });
   assert.equal(s.screen, 'creative-packaging', 'אחרי המסר לא מגיעים לאריזה הקריאייטיבית');
@@ -331,7 +324,16 @@ test('חידוד הרעיון יושב בין הרעיון לפורמט, ולא 
   assert.equal(s.screen, 'format-choice', 'הפורמט לא בא אחרי האריזה');
 });
 
-test('קטע מצולם נכנס ישר לליקוט אחרי הרלוונטיות, לא לבחירת סוג ולא לחידוד', () => {
+/* סשן ישן שנשמר כשהוא עומד על מסך הרלוונטיות (לפני 10/11) עדיין ממשיך. */
+test('סשן שמור על מסך הרלוונטיות ממשיך עם RELEVANCE_CONFIRMED לכל מסלול', () => {
+  const ref = nextStep({ ...INITIAL_STATE, screen: 'relevance-check', branch: 'reference' }, { type: 'RELEVANCE_CONFIRMED' });
+  assert.equal(ref.screen, 'transcribe');
+  const idea = nextStep({ ...INITIAL_STATE, screen: 'relevance-check', branch: 'idea', ideaDescription: 'x' }, { type: 'RELEVANCE_CONFIRMED' });
+  assert.equal(idea.screen, 'idea-sharpen');
+  assert.equal(nextStep(idea, { type: 'BACK' }).screen, 'relevance-check');
+});
+
+test('קטע מצולם בסשן שמור על הרלוונטיות נכנס ישר לליקוט, לא לבחירת סוג ולא לחידוד', () => {
   const s = nextStep({ ...INITIAL_STATE, screen: 'relevance-check', branch: 'footage' },
     { type: 'RELEVANCE_CONFIRMED' });
   assert.equal(s.screen, 'footage-speech-find');
@@ -378,9 +380,10 @@ test('קטע מצולם: חזרה מחידוד הרעיון מחזירה למס�
   assert.equal(s.screen, 'type-idea');
 });
 
-test('רעיון רגיל עדיין עובר בבדיקת רלוונטיות ובזווית', () => {
+test('רעיון רגיל נכנס ישר לחידוד, בלי בדיקת רלוונטיות (10/11)', () => {
   const s = nextStep({ ...INITIAL_STATE, screen: 'type-idea' }, { type: 'IDEA_TYPED', text: 'רעיון' });
-  assert.equal(s.screen, 'relevance-check');
+  assert.equal(s.screen, 'idea-sharpen');
+  assert.equal(s.ideaDescription, 'רעיון');
 });
 
 test('28/10: הנושא והפואנטה נשמרים בנפרד, והפואנטה היא הרעיון שממשיך', () => {

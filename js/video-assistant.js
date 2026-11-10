@@ -323,8 +323,11 @@ function fitView() {
 function mountAudienceChip() {
   const chip = document.getElementById('va-aud-chip');
   if (!chip) return;
+  /* הכפתור יושב בסרגל העליון (index.html), ולכן מוסתר במסך הפתיחה כאן */
+  if (state.screen === 'opening') { chip.hidden = true; return; }
+  const screenNow = state.screen;
   getProfile().then((profile) => {
-    if (!chip.isConnected) return;
+    if (!chip.isConnected || state.screen !== screenNow) return;
     const options = audienceOptions(profile);
     if (!options.length) return;   /* בלי קהל בפרופיל אין מה להחליף */
     const picked = pickedAudience(state.audiencePick, profile);
@@ -482,7 +485,6 @@ function cosmicCard(innerHtml, { showProgress = true } = {}) {
       <button type="button" class="cosmic-btn" id="va-start-over-btn" style="padding:4px 12px;font-size:13px">להתחיל מההתחלה</button>
     </div>` : ''}
     ${back || showProgress ? `<div class="va-head">${back}${showProgress ? progressHtml() : ''}</div>` : ''}
-    ${state.screen !== 'opening' ? '<button type="button" class="va-aud-chip" id="va-aud-chip" hidden>🎯 <span id="va-aud-chip-label">קהל</span></button>' : ''}
     ${innerHtml}
   </div>`;
   mountAudienceChip();
@@ -671,7 +673,6 @@ async function renderOpening() {
       <button type="button" class="cosmic-btn" id="va-reference-btn">סרטון שאהבתי (שכפול)</button>
       <button type="button" class="cosmic-btn" id="va-footage-btn">יש לי קטע שצולם</button>
     </div>
-    <p class="muted" style="font-size:13px;margin-top:10px">קטע שצולם = ליקוט מתוך דיבור שכבר צילמתם. קטע בלי דיבור (תהליך, לפני ואחרי)? בוחרים "יש לי רעיון = מ-0" ובונים סביבו.</p>
   `);
   document.getElementById('va-footage-btn').addEventListener('click', () => dispatch({ type: 'CHOOSE_FOOTAGE' }));
   document.getElementById('va-reference-btn').addEventListener('click', () => dispatch({ type: 'CHOOSE_REFERENCE' }));
@@ -1535,11 +1536,11 @@ function renderTranscribe() {
   }
   cosmicCard(`
     <h2>${describe ? 'מה קורה ברפרנס?' : 'לתמלל את הרפרנס'}</h2>
-    ${fromBank ? bankNoticeHtml() : `<p>להדביק לינק לסרטון וללחוץ על "✨ תמלול מדויק", או להדביק כאן את התמלול בעצמכם</p>`}
+    ${fromBank ? bankNoticeHtml() : ''}
     <input type="url" class="cosmic-textarea" id="va-reference-link" style="min-height:auto"
       inputmode="url" dir="ltr" placeholder="לינק לסרטון מטיקטוק או מאינסטגרם">
     ${accurateBlockHtml()}
-    <textarea class="cosmic-textarea" id="va-transcript-input" style="margin-top:8px" placeholder="${describe ? 'לתאר כאן מה קורה בסרטון...' : 'להדביק כאן את התמלול...'}"></textarea>
+    <textarea class="cosmic-textarea" id="va-transcript-input" style="margin-top:8px" placeholder="${describe ? 'לתאר כאן מה קורה בסרטון...' : 'התמלול יופיע כאן'}"></textarea>
     <div class="cosmic-btn-row" style="margin-top:14px">
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-transcribe-done-btn">ממשיכים ←</button>
     </div>
@@ -1587,8 +1588,7 @@ function resetAccurateRuns() {
 
 function accurateBlockHtml() {
   return `<div class="va-accurate" id="va-accurate">
-    <button type="button" class="cosmic-btn va-accurate-btn" id="va-accurate-btn">✨ תמלול מדויק</button>
-    <p class="va-accurate-hint">ג'מיני צופה בסרטון ומחזיר מה שנאמר, מה שכתוב על המסך ומה רואים בו. לוקח בדרך כלל 20-60 שניות.</p>
+    <button type="button" class="cosmic-btn va-accurate-btn" id="va-accurate-btn">✨ לתמלול אוטומטי ומיידי</button>
     <button type="button" class="va-text-link" id="va-accurate-upload-btn">📤 להעלות את הסרטון מהגלריה</button>
     <input type="file" accept="video/*" id="va-accurate-file" hidden>
     <div class="va-accurate-status" id="va-accurate-status" role="status" aria-live="polite" hidden></div>
