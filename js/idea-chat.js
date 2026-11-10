@@ -1,7 +1,7 @@
 import { auth } from './firebase-init.js';
 import { getProfile, saveProfile } from './user-profile.js';
 import { showView } from './view-router.js';
-import { openAddModal, openEditModal } from './idea-form.js';
+import { openAddModal, openEditModal, autoClassify } from './idea-form.js';
 import { getCurrentIdeas } from './archive-view.js';
 import { findSimilarIdea } from './ideas-logic.js';
 import { showWelcomeTour } from './welcome-tour.js';
@@ -13,7 +13,7 @@ import { wireChatComposer, autoGrow } from './chat-composer.js';
 import { extractIdeaSummary, ideaTextOnly, labeledIdea, RECOGNIZED_MARKER } from './idea-reply.js';
 import { burstConfetti } from './confetti.js';
 import { confirmDialog } from './confirm-dialog.js';
-import { updateIdea } from './ideas-store.js';
+import { updateIdea, addIdea } from './ideas-store.js';
 import { showToast } from './toast.js';
 import { serverErrorText } from './server-error.js';
 import { actsAsOwner, viewedClient } from './client-view.js';
@@ -271,26 +271,67 @@ async function saveFinalIdea(finalizedText) {
 }
 
 function addPostIdeaButtons(bubble, finalizedText, ideaSummary) {
+  /* 10/11/2026 (מאיה: "תוך כדי כתיבת התסריט אני רוצה לשמור רעיון, והוא
+     מעביר אותי למסך רעיונות ויוצא לגמרי מהרובוט, כי הייתי שם באמצע").
+     כשהצ'אט נפתח מתוך העוזר, השמירה נעשית כאן בשקט, וחוזרים לעוזר עם
+     הרעיון, המסר והזווית ממולאים. מחוץ לעוזר: כמו קודם, חלון השמירה. */
+  if (chatReturn && chatReturn.handoff) {
+    const idea = (ideaSummary && ideaSummary.idea) || finalizedText;
+    const message = (ideaSummary && ideaSummary.message) || '';
+    /* 06/11/2026 (מאיה): "הוא בוחר זווית אבל אחר כך כשאני מעבירה את הרעיון
+       לביצוע הוא שוכח מהזווית". עד היום רק הרעיון והמסר חזרו לעוזר. */
+    const angle = (ideaSummary && ideaSummary.angle) || '';
+
+    const goBtn = document.createElement('button');
+    goBtn.type = 'button';
+    goBtn.className = 'chat-cta-btn chat-back-assistant-btn';
+    goBtn.textContent = '💾 לשמור את הרעיון ולהמשיך לבנות את הסרטון';
+    goBtn.addEventListener('click', async () => {
+      goBtn.disabled = true;
+      goBtn.textContent = 'שומרים...';
+      const saved = await saveIdeaQuietly(finalizedText, message);
+      if (!saved) showToast('השמירה בבנק הרעיונות לא עברה, אבל הרעיון עובר לעוזר');
+      else showToast('✓ הרעיון נשמר בבנק, ממשיכים לבנות את הסרטון');
+      returnFromChat({ idea, message, angle });
+    });
+    bubble.appendChild(goBtn);
+
+    const backBtn = document.createElement('button');
+    backBtn.type = 'button';
+    backBtn.className = 'chat-cta-btn chat-save-btn';
+    backBtn.textContent = '↩ להמשיך בלי לשמור בבנק';
+    backBtn.addEventListener('click', () => returnFromChat({ idea, message, angle }));
+    bubble.appendChild(backBtn);
+    return;
+  }
+
   const saveBtn = document.createElement('button');
   saveBtn.type = 'button';
   saveBtn.className = 'chat-cta-btn chat-save-btn';
   saveBtn.textContent = '💾 שמירה כרעיון';
   saveBtn.addEventListener('click', () => saveFinalIdea(finalizedText));
   bubble.appendChild(saveBtn);
+}
 
-  /* נפתח מתוך העוזר: הדרך הטבעית היא לחזור אליו עם הרעיון והמסר המדויקים */
-  if (chatReturn && chatReturn.handoff) {
-    const backBtn = document.createElement('button');
-    backBtn.type = 'button';
-    backBtn.className = 'chat-cta-btn chat-back-assistant-btn';
-    backBtn.textContent = '↩ לחזור לעוזר עם הרעיון המדויק';
-    const idea = (ideaSummary && ideaSummary.idea) || finalizedText;
-    const message = (ideaSummary && ideaSummary.message) || '';
-    /* 06/11/2026 (מאיה): "הוא בוחר זווית אבל אחר כך כשאני מעבירה את הרעיון
-       לביצוע הוא שוכח מהזווית". עד היום רק הרעיון והמסר חזרו לעוזר. */
-    const angle = (ideaSummary && ideaSummary.angle) || '';
-    backBtn.addEventListener('click', () => returnFromChat({ idea, message, angle }));
-    bubble.appendChild(backBtn);
+/* שמירה לבנק בלי לצאת מהמסך: הסיווג האוטומטי של הטופס הקצר, ואם הוא לא
+   עונה בזמן, נשמר בלי סוג (בדיוק כמו בטופס). true אם נשמר. */
+async function saveIdeaQuietly(title, message = '') {
+  const text = String(title || '').trim();
+  if (!text) return false;
+  try {
+    const cls = (await autoClassify(text)) || {};
+    await addIdea({
+      title: text,
+      category: cls.category || '',
+      persuasionStage: cls.persuasionStage || '',
+      audienceScope: cls.audienceScope || '',
+      hookText: String(message || '').trim(),
+      source: 'assistant-chat',
+    });
+    return true;
+  } catch (err) {
+    console.error('saveIdeaQuietly failed:', err);
+    return false;
   }
 }
 

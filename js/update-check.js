@@ -40,11 +40,40 @@ function isImmutableAsset(url) {
   );
 }
 
+/* 10/11/2026 (מאיה: "לחצתי 10 פעמים על עדכון גרסה וזה לא מעדכן ונתקע").
+   שתי סיבות, שתיהן תוקנו:
+   1. כמה פרסומים ברצף: בזמן שגרסה חדשה מתפשטת, שרת אחד מגיש את הדף הישן
+      ושרת אחר את החותמת החדשה. הדף נטען, החלון קפץ שוב, וחוזר חלילה.
+      עכשיו, אחרי עדכון בלחיצה, החלון לא קופץ שוב 5 דקות.
+   2. reg.update() יכול להיתקע כשהרשת איטית, ואז הדף לא נטען בכלל.
+      עכשיו כל הניקוי מוגבל ל-4 שניות, ואחריהן טוענים בכל מקרה. */
+const MANUAL_KEY = 'moach.manualUpdatedAt';
+const MANUAL_QUIET_MS = 5 * 60 * 1000;
+function updatedByHandRecently() {
+  try {
+    const at = Number(sessionStorage.getItem(MANUAL_KEY) || 0);
+    return Number.isFinite(at) && Date.now() - at < MANUAL_QUIET_MS;
+  } catch {
+    return false;
+  }
+}
+function capped(promise, ms) {
+  return Promise.race([promise, new Promise((resolve) => setTimeout(resolve, ms))]);
+}
+
 async function updateNow(button) {
   if (button) {
     button.disabled = true;
     button.textContent = 'מעדכנים...';
+    try { sessionStorage.setItem(MANUAL_KEY, String(Date.now())); } catch { /* בלי אחסון: בלי השקט */ }
   }
+  await capped(cleanupForUpdate(), 4000);
+  const url = new URL(window.location.href);
+  url.searchParams.set('v', String(Date.now()));
+  window.location.replace(url.toString());
+}
+
+async function cleanupForUpdate() {
   try {
     const reg = await navigator.serviceWorker?.getRegistration();
     await reg?.update();
@@ -62,9 +91,6 @@ async function updateNow(button) {
   } catch (err) {
     console.warn('update cleanup failed (reloading anyway):', err);
   }
-  const url = new URL(window.location.href);
-  url.searchParams.set('v', String(Date.now()));
-  window.location.replace(url.toString());
 }
 
 // 05/10/2026 (מאיה: "במובייל שום דבר לא התעדכן, לא יודעת"):
@@ -224,7 +250,7 @@ async function check() {
     if (!stamp || !Number.isFinite(server)) return;
     if (loadedStamp === null) loadedStamp = pageStamp() ?? server;
     // שנייה של מרווח: GitHub Pages מחתים את כל הקבצים באותה שנייה
-    if (server > loadedStamp + 1000) showUpdateDialog();
+    if (server > loadedStamp + 1000 && !updatedByHandRecently()) showUpdateDialog();
   } catch (err) {
     // רשת לא יציבה - ננסה בבדיקה הבאה
   }
