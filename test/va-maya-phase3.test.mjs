@@ -49,6 +49,8 @@ describe('שלב 3 בעוזר (jsdom)', { skip: hasJsdom ? false : 'jsdom לא �
     m.mountMaya($('#va-card'), 'scratch-dump');
     await until(() => $('.va-maya img'), 'אין דמות');
     await until(() => /maya-coffee\.webp$/.test($('.va-maya img').getAttribute('src')), 'לא נעמדה עם קפה', 1800);
+    /* 11/11/2026 (סוכן בדיקה): הדהייה נמחקת, אחרת ההנהון והחכה קפואים */
+    await until(() => !$('.va-maya').classList.contains('is-changing'), 'הדהייה לא נמחקה, האנימציות קפואות', 200);
     /* 11/11/2026: מגילה ארוכה לא מחליפה תנוחה, רק בועה */
     m.setMayaNod(LONG_MEGILLAH_WORDS + 5);
     assert.match($('.va-maya img').getAttribute('src'), /maya-coffee\.webp$/);

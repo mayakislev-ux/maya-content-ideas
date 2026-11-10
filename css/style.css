@@ -9163,15 +9163,16 @@ body.va-stage-on #video-assistant-view .va-maya { opacity: 0; transition: opacit
 #video-assistant-view .va-maya { transition: opacity .25s; }
 /* הצצה: האמות על הקצה העליון, לא על סרגל ההתקדמות */
 @media (min-width: 961px) {
-  #video-assistant-view .va-maya.va-maya--peek { top: -162px; }
+  #video-assistant-view .va-maya.va-maya--peek { top: -142px; }
+  #video-assistant-view .va-maya.va-maya--missyou { height: 340px; }
 }
 /* מחשב קטן / אייפד לרוחב (961-1240): הגובה נגזר מהמקום שנשאר ליד הכרטיס,
    כדי שאף תנוחה לא תיחתך בקצה (התנוחות הרגילות ברוחב עד 0.74 מהגובה,
    מסך ירוק והתגעגעתי עד 0.95) */
 @media (min-width: 961px) and (max-width: 1240px) {
   #video-assistant-view .va-maya:not(.va-maya--peek):not(.va-maya--swing) { height: min(420px, calc((50vw - 290px) / .76)); }
-  #video-assistant-view .va-maya.va-maya--greenscreen,
-  #video-assistant-view .va-maya.va-maya--missyou { height: min(340px, calc((50vw - 290px) / .97)); }
+  #video-assistant-view .va-maya.va-maya--greenscreen:not(.va-maya--peek):not(.va-maya--swing),
+  #video-assistant-view .va-maya.va-maya--missyou:not(.va-maya--peek):not(.va-maya--swing) { height: min(340px, calc((50vw - 290px) / .97)); }
 }
 /* במחשב הבועה נפתחת מהקצה הימני של הדמות פנימה (לכיוון הכרטיס), לא נחתכת בקצה המסך */
 @media (min-width: 961px) {
@@ -9185,6 +9186,8 @@ body.va-stage-on #video-assistant-view .va-maya { opacity: 0; transition: opacit
   #video-assistant-view .va-maya.va-maya--peek .va-maya-bubble { left: 50%; transform: translateX(-50%); }
   #video-assistant-view .va-maya.va-maya--peek .va-maya-bubble.is-on { transform: translateX(-50%); }
   .va-maya-bubble { max-width: calc(100vw - 48px); }
+  /* הזנב של הבועה מצביע על הדמות הקטנה בפינה ולא על אמצע הבועה */
+  #video-assistant-view .va-maya:not(.va-maya--peek) .va-maya-bubble::after { left: 30px; }
 }
 /* הראש בהצצה ובישיבה לא נחתך בחלק העליון של המסך (hidden חותך גם למעלה) */
 @supports (overflow-x: clip) {

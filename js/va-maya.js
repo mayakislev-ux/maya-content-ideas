@@ -37,6 +37,8 @@ const HOOK_SCREENS = new Set(['prompt1', 'scratch-hook']);
 /** איזו תנוחה לכל מסך */
 export function poseFor(screen) {
   if (screen === 'summary') return 'clapper';
+  /* מסך הפתיחה: חיבוק, כדי שהברכה (נפנוף, חורף, מדליה...) תופיע בו */
+  if (screen === 'opening') return 'hug';
   /* שלב 3: פפיון על האריזה, משקולת בחיזוק ההוק */
   if (screen === 'creative-packaging') return 'gift';
   if (screen === 'scratch-hook-reinforce') return 'dumbbell';
@@ -57,6 +59,7 @@ export function mayaHidden() {
 function setHidden(on) {
   try { localStorage.setItem(HIDE_KEY, on ? '1' : '0'); } catch { /* בלי אחסון: רק לסשן הזה */ }
   document.querySelectorAll('.va-maya, .home-maya').forEach((f) => { f.hidden = on; });
+  document.querySelectorAll('.home-capture-card .home-maya').forEach((f) => f.parentElement.classList.toggle('has-home-maya', !on));
   const view = document.getElementById('video-assistant-view');
   if (view && document.querySelector('#va-card .va-maya')) view.classList.toggle('has-maya', !on);
   const btn = document.getElementById('va-maya-toggle');
@@ -167,9 +170,12 @@ export function mountMaya(card, screen) {
   img.draggable = false;
   fig.appendChild(img);
   card.appendChild(fig);
+  /* הדהייה נמחקת אחרי 450ms, ואז האנימציה של התנוחה (הנהון, חכה, נדנוד) חוזרת */
+  fig._fadeT = setTimeout(() => fig.classList.remove('is-changing'), 450);
+  if (fig._fadeT && fig._fadeT.unref) fig._fadeT.unref();
   /* 10/11/2026 (מאיה: "אפקט כניסה, זה נראה לא חלק ומוזר"): הכניסה בהליכה
      ירדה. היא פשוט מופיעה ברכות (is-changing = דהייה עדינה). */
-  if (!lastPose) fig.classList.add('is-changing');
+  fig.classList.add('is-changing');
   /* 10/11/2026 (מאיה: "כשלוחצים על הדמות לא אהבתי שהיא פתאום משתנה, זה
      מוזר"): לחיצה לא מחליפה תנוחה. רק בועה: ביטוי שלך, ובלחיצה כפולה בדיחה. */
   /* לחיצה כפולה מזוהה בעצמנו (באייפון dblclick לא אמין): שתי לחיצות ב-320ms */
@@ -202,11 +208,7 @@ export function mountMaya(card, screen) {
   const view = card.closest('#video-assistant-view');
   if (view) view.classList.toggle('has-maya', !mayaHidden());
   lastPose = pose;
-  /* שלב 3: בסיכום קלאפר "אקשן!", ואז מחזיקה את התסריט המודפס */
-  if (screen === 'summary') {
-    const t = setTimeout(() => { if (fig.isConnected && basePose === 'clapper') setMayaPose('script'); }, 2600);
-    if (t && typeof t.unref === 'function') t.unref();
-  }
+  /* בסיכום רק הקלאפר (בלי מעבר לתסריט המודפס: מאיה לא רוצה שינוי בתוך מסך) */
 }
 
 /* 10/11/2026 (מאיה, צילום מסך: "כל פעם שיורדת קצת למטה במסך המאיה לא נשארת

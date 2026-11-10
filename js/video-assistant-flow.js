@@ -124,6 +124,8 @@ const WRITING_ORDER = {
   /* 10/11/2026: בסדר החדש המגילה נכתבת כשהמסלול עוד 'idea' (לפני האריזה) */
   /* 11/11/2026 (סוכני בדיקה): חזרה עד מסך הרעיון מחקה את המגילה, וחזרה
      מהפורמט מחקה את הקריאייטיב שהודבק. עכשיו כל השלבים של הסדר החדש כאן. */
+  /* קטע שצולם (חזותי): הקריאייטיב והפורמט נשמרים בחזרה אחורה */
+  footage: ['creative-packaging', 'format-choice', 'needs-script-check'],
   idea: ['idea-sharpen', 'scratch-dump', 'creative-packaging', 'format-choice', 'needs-script-check', 'scratch-hook', 'scratch-hook-reinforce', 'scratch-distill', 'scratch-scene'],
 };
 

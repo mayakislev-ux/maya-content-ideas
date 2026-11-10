@@ -286,3 +286,12 @@ test('BACK: בשכפול, ריק שנשלח בכוונה נשאר ריק', () =>
   assert.equal(r.screen, 'her-words');
   assert.equal(r.herWords, '', 'מה שנמחק בכוונה חזר');
 });
+
+test('11/11/2026: קטע שצולם, חזרה מהפורמט לקריאייטיב שומרת את מה שהודבק', () => {
+  const r = { ...INITIAL_STATE, history: [], branch: 'footage', screen: 'creative-packaging', ideaDescription: 'x' };
+  let s = nextStep(r, { type: 'PACKAGING_CHOSEN', packaging: 'קריאייטיב' });
+  assert.equal(s.screen, 'format-choice');
+  s = nextStep(s, { type: 'BACK' });
+  assert.equal(s.screen, 'creative-packaging');
+  assert.equal(s.packaging, 'קריאייטיב');
+});

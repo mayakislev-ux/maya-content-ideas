@@ -98,7 +98,8 @@ const SCREEN_LABEL = {
   prompt2: 'התסריט',
   'read-aloud': 'הקראה בקול',
   'type-idea': 'הרעיון',
-  'content-basics': 'נקודת יציאה וסוג תוכן',
+  'reference-source-choice': 'בחירת רפרנס',
+  'pulled-reference': 'הרפרנס שלך',
 };
 const PHASE_BY_SCREEN = {
   opening: 0, 'reference-source-choice': 0, 'idea-source-choice': 0, 'type-idea': 0, 'pulled-idea': 0, 'pulled-reference': 0,
@@ -106,7 +107,7 @@ const PHASE_BY_SCREEN = {
   'scratch-dump': 1, 'scratch-intro': 1,
   'creative-packaging': 2, 'content-basics': 2,
   'footage-type-choice': 3, 'format-choice': 3, 'needs-script-check': 3, 'scratch-hook': 3, 'scratch-hook-reinforce': 3,
-  transcribe: 1, prompt1: 3, 'her-words': 2, prompt2: 4, 'read-aloud': 4,
+  transcribe: 1, prompt1: 3, 'her-words': 3, prompt2: 4, 'read-aloud': 4,
   'scratch-distill': 4, 'scratch-scene': 4,
   'footage-speech-find': 3, 'footage-speech-shorten': 3, 'footage-speech-sharpen': 3, 'footage-speech-done': 3,
   'footage-visual-scan': 3, 'footage-visual-extract': 3, 'footage-visual-reframe': 3,
@@ -159,7 +160,10 @@ function dispatch(action) {
      אם היא תישאר, היא עלולה למלא מחדש תיבה שנוקתה בכוונה. */
   /* 11/11/2026 (סוכני בדיקה): בחזרה אחורה הטיוטה של המסך שעוזבים נשארת,
      אחרת מגילה שנכתבה ועוד לא נשלחה נמחקה כשחזרו לתקן את הרעיון. */
-  state.drafts = action.type === 'START_FROM_BANK' ? {}
+  /* סרטון חדש (להתחיל מחדש, שכפול מהמאגר, או חזרה עד מסך הפתיחה) מתחיל
+     בלי טיוטות, כדי שמגילה של סרטון קודם לא תמלא את התיבה של החדש. */
+  const newVideo = fresh || state.screen === 'opening';
+  state.drafts = newVideo ? {}
     : (state.screen === leaving || action.type === 'BACK' ? drafts : clearScreenDrafts(drafts, leaving));
   saveAll().catch((err) => console.error('saveSession failed:', err));
   // 17/10/2026 (מאיה: "המעבר בין המסכים עושה סחרחורת"): מעבר הפורטל (#32)
