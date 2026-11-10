@@ -8804,3 +8804,7 @@ body[data-plan="refs"] .hub-full-only { display: none !important; }
 .va-kind-row .va-kind.is-on.va-kind--personal { background: var(--cat-ishi); color: #fff; }
 .va-kind-row .va-kind.is-on.va-kind--sale { background: var(--cat-mechirti); color: #fff; }
 .va-kind-row .va-kind:disabled { opacity: .6; cursor: default; }
+
+/* 10/11/2026: ההוק מהאריזה כהצעה, לא בתיבה */
+.va-auto-hook-note .va-auto-hook-text { display: block; margin: 6px 0; font-weight: 700; font-size: 1.05em; }
+.va-auto-hook-note .va-use-pack-hook { margin-top: 10px; font-size: 14px; padding: 8px 14px; }

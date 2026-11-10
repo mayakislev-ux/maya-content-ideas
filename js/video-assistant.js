@@ -2410,18 +2410,13 @@ async function renderScratchHook() {
   /* 06/11/2026 (מאיה): "שתעיפי לגמרי את שיטת השכפול ההפוך, סתם מבלבל".
      השורה האופציונלית של תמלול רפרנס ירדה, וההוקים נבנים תמיד
      מבנק ההוקים לפי המגילה. */
-  const prompt = buildHookFindingPrompt({ idea: ideaForPrompt(state), script: state.rawDump || '', audience, domain: domain, creative });
-  const marks = [state.ideaDescription, state.rawDump, audience, creative];
-  /* 09/11/2026: הוק שכתוב באריזה במפורש נכנס לתיבה לבד, מסומן בצהוב, והפרומפט
-     עובר לאפשרות "לא אהבת?". ראה hookFromPackaging. */
+  /* 10/11/2026 (מאיה): הוק מהאריזה כבר לא נכנס לתיבה לבד. הוא הצעה בכרטיס
+     נפרד, הפרומפט פתוח כרגיל ובודק גם אותו מול בנק ההוקים, ומי שבטוחה לוחצת
+     "אני רוצה את ההוק מהאריזה כמו שהוא". ראה hookFromPackaging. */
   const detected = hookFromPackaging(creative);
-  if (state.screen === 'scratch-hook') seedDraft('va-scratch-hook-input', state.hook || detected);
-  /* ההודעה והפרומפט המקופל רק כשבתיבה באמת יושב ההוק שזוהה. הוק שהיא
-     כתבה או תיבה שהיא ריקנה = המסך הרגיל. */
-  const drafts = state.drafts || {};
-  const k = draftKey(state.screen, 'va-scratch-hook-input');
-  const boxValue = Object.prototype.hasOwnProperty.call(drafts, k) ? drafts[k] : (state.hook || '');
-  const autoHook = detected && String(boxValue || '').trim() === detected ? detected : '';
+  const prompt = buildHookFindingPrompt({ idea: ideaForPrompt(state), script: state.rawDump || '', audience, domain: domain, creative, suggestedHook: detected });
+  const marks = [state.ideaDescription, state.rawDump, audience, creative, detected];
+  if (state.screen === 'scratch-hook') seedDraft('va-scratch-hook-input', state.hook || '');
   const promptBlock = `
     <p>הפרומפט כולל בנק הוקים אמיתי מוטמע - ChatGPT יתאים לך ממנו הוק מדויק. להעתיק, להדביק, ולחזור עם ההוק שבחרת.</p>
     ${creative ? '<p class="cosmic-hint">ההוקים נבנים סביב הקריאייטיב: מה שאומרים תוך כדי הפתיחה שבחרת או מיד אחריה.</p>' : ''}
@@ -2432,31 +2427,32 @@ async function renderScratchHook() {
     <div class="cosmic-btn-row" style="margin-top:14px">
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-scratch-hook-done-btn">ממשיכים ←</button>
     </div>`;
-  cosmicCard(autoHook ? `
-    <h2>מציאת הוק</h2>
-    ${creativeReminderHtml()}
-    <div class="va-auto-hook-note" id="va-auto-hook-note">✨ <strong>ההוק זוהה אוטומטית מהאריזה הקריאייטיבית</strong> וכבר נמצא בתיבה. אם לא אהבת אותו, אפשר לקבל הוקים אחרים מהפרומפט למטה.</div>
-    ${inputBlock}
-    <details class="va-more va-auto-hook-more">
-      <summary>לא אהבת את ההוק? לפרומפט שימצא הוק אחר</summary>
-      ${chatgptHookNote()}
-      ${promptBlock}
-    </details>
-  ` : `
+  const suggestion = detected ? `
+    <div class="va-auto-hook-note" id="va-auto-hook-note">💡 <strong>באריזה הקריאייטיבית היה הוק מוצע:</strong>
+      <span class="va-auto-hook-text">"${escapeHtml(detected)}"</span>
+      <span>לא בטוח שהוא הכי חזק, ולכן הפרומפט למטה בודק גם אותו מול בנק ההוקים ומציע גרסה משופרת אם צריך.</span>
+      <button type="button" class="cosmic-btn va-use-pack-hook" id="va-use-pack-hook">אני רוצה את ההוק מהאריזה כמו שהוא</button>
+    </div>` : '';
+  cosmicCard(`
     <h2>מציאת הוק</h2>
     ${chatgptHookNote()}
     ${creativeReminderHtml()}
+    ${suggestion}
     ${promptBlock}
     ${inputBlock}
   `);
   wireCopyButtons(screenEl());
   mountSmartPaste(document.getElementById('va-scratch-hook-input'));
-  if (autoHook) {
+  if (detected) {
     const input = document.getElementById('va-scratch-hook-input');
-    /* הצהוב רק כל עוד מה שבתיבה הוא ההוק שזוהה. היא שינתה, הוא שלה. */
-    const mark = () => input.classList.toggle('va-auto-hook', input.value.trim() === autoHook);
+    const mark = () => input.classList.toggle('va-auto-hook', input.value.trim() === detected);
     setTimeout(mark, 0);
     input.addEventListener('input', mark);
+    document.getElementById('va-use-pack-hook').addEventListener('click', () => {
+      input.value = detected;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.focus();
+    });
   }
   document.getElementById('va-scratch-hook-done-btn').addEventListener('click', () => {
     const hook = document.getElementById('va-scratch-hook-input').value.trim();

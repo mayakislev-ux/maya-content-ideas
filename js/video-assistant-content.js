@@ -481,7 +481,19 @@ export function buildExtractionPrompt({ idea, contentType, startingPoint, audien
 // המסמך האמיתי שלה, שהחסירה בדיוק את הפירוט שגורם למודל להבין נכון
 // (ההסבר על 3 סוגי ההוק, דוגמת ה"סיסמתיים" הפסולים, ושלב השאלות המלא
 // כשאין מספיק נתונים בתסריט) - הוחלפה במלואה במסמך המקורי, מילה במילה.
-export function buildHookFindingPrompt({ idea, script, audience, domain, creative }) {
+/* 10/11/2026 (מאיה: "יש באריזה רעיונות לפתיחה והוקים חזקים, ואז הוא ממלא
+   אוטומטית ... לא כולן מבינות ופשוט ממשיכות הלאה, אבל זה לא בטוח חזק").
+   הוק שהגיע מהאריזה עובר את אותו סינון כמו כל הוק אחר. */
+function suggestedHookBlock(hook) {
+  const h = String(hook || '').trim();
+  if (!h) return '';
+  return `
+
+באריזה הקריאייטיבית הוצע ההוק: "${h}"
+תבדוק אותו מול בנק ההוקים ומול מה שהוק טוב חייב להיות. אם הוא חזק, תכלול אותו בין האפשרויות ותכתוב בשורה אחת למה הוא חזק. אם הוא חלש, תכתוב גרסה משופרת שלו בין האפשרויות ותכתוב בשורה אחת מה שיפרת.`;
+}
+
+export function buildHookFindingPrompt({ idea, script, audience, domain, creative, suggestedHook }) {
   return `${contextHeader({ domain, audience })}${creativeBlock(creative, CREATIVE_FOCUS.hook)}למי שתקוע בלמצוא משפט פתיחה חזק - עוצר גלילה
 ריכזתי לכם כאן בחוברת כמויות של הוקים שאתם יכולים לשכפל ולהשתמש בסרטונים שלכם, כמובן אתם לא חייבים - ברגע שהבנתם את הפואנטה אתם יכולים גם לחשוב לבד על הוק או יותר מזה? תשכפלו הוקים מהרשת!!!!
 אם ראיתם סרטון שהתפוצץ(לא שלכם) , אתם לגמרי יכולים להעתיק אחד לאחד את ההוק של אותו יוצר, כמובן לא את שאר התוכן, כי אם לו זה עבד כנראה שזה יעבוד גם לכם.
@@ -621,7 +633,7 @@ ${HOOK_TEMPLATES.join('\n')}
 [${fillBracket(audience, 'כאן כותבים בצורה ברורה מי הקהל יעד שאתם פונים אליו')}]
 —-
 התסריט:
-[${fillBracket(script, 'כאן מצרפים את התסריט')}]${creativeTail(creative, idea)}`;
+[${fillBracket(script, 'כאן מצרפים את התסריט')}]${suggestedHookBlock(suggestedHook)}${creativeTail(creative, idea)}`;
 }
 
 // פרומפט 3: חיזוק הוק

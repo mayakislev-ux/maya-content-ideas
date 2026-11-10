@@ -81,7 +81,7 @@ test('כל המסכים במסלול מ-0 שולחים את הקריאייטיב
     assert.match(between(a, b), /creativeReminderHtml\(\)/, a);
   }
   assert.match(between('async function openExtractionHelperModal', 'function renderScratchDump'), /buildExtractionPrompt\(\{[^}]*creative \}\)/);
-  assert.match(between('async function renderScratchHook', 'async function renderScratchHookReinforce'), /buildHookFindingPrompt\(\{[^}]*creative \}\)/);
+  assert.match(between('async function renderScratchHook', 'async function renderScratchHookReinforce'), /buildHookFindingPrompt\(\{[^}]*creative, suggestedHook: detected \}\)/);
   assert.match(between('async function renderScratchHookReinforce', 'const CTA_TYPES'), /buildHookReinforcementPrompt\(\{[^}]*creative \}\)/);
   assert.match(between('async function renderScratchDistill', 'async function renderScratchScene'), /carousel: isCarousel\(state\), dynamicText: isDynamicText\(state\), creative,/);
   assert.match(between('async function renderScratchScene', '// ===== מסך הסיכום הסופי'), /buildSceneRewritePrompt\(\{[^}]*creative \}\)/);

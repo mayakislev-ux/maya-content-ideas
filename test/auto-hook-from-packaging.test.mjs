@@ -34,20 +34,29 @@ describe('מסך מציאת הוק (jsdom)', { skip: hasJsdom ? false : 'jsdom �
   let ui;
   before(async () => { ui = await setupAssistant(); });
 
-  test('יש הוק באריזה: נכנס לתיבה, צהוב, הודעה, הפרומפט בפנים, וממשיכים איתו', async () => {
+  /* 10/11/2026 (מאיה): ההוק מהאריזה הוא הצעה ולא ברירת מחדל */
+  test('יש הוק באריזה: התיבה ריקה, כרטיס הצעה, הפרומפט פתוח ובודק אותו, וכפתור לבחור אותו', async () => {
     const { $, open, type } = ui;
     await open({ branch: 'scratch', screen: 'scratch-hook', ideaDescription: 'רעיון', rawDump: 'מגילה', packaging: MAYA }, '#va-scratch-hook-input');
+    await until(() => $('#va-auto-hook-note'), 'אין כרטיס הצעה');
     const input = $('#va-scratch-hook-input');
-    assert.equal(input.value, 'הייתם אוכלים עוגת שוקולד עם קטשופ?');
-    await until(() => input.classList.contains('va-auto-hook'), 'התיבה לא צהובה');
-    assert.match($('#va-auto-hook-note').textContent, /ההוק זוהה אוטומטית מהאריזה הקריאייטיבית/);
-    assert.match($('#va-auto-hook-note').textContent, /אם לא אהבת/);
-    const more = $('.va-auto-hook-more');
-    assert.ok(more && more.querySelector('.va-copy-btn'), 'הפרומפט לא זמין');
+    assert.equal(input.value, '', 'ההוק נכנס לתיבה לבד');
+    assert.match($('#va-auto-hook-note').textContent, /באריזה הקריאייטיבית היה הוק מוצע/);
+    assert.ok($('#va-auto-hook-note').textContent.includes('הייתם אוכלים עוגת שוקולד עם קטשופ?'));
+    assert.equal($('.va-auto-hook-more'), null, 'הפרומפט מקופל');
+    const prompt = [...document.querySelectorAll('.va-copy-btn')].map((b) => decodeURIComponent(b.getAttribute('data-copy-text'))).find((p) => p.includes('בנק')) || '';
+    assert.ok(prompt.includes('באריזה הקריאייטיבית הוצע ההוק: "הייתם אוכלים עוגת שוקולד עם קטשופ?"'), 'ההוק לא בפרומפט');
+    assert.match(prompt, /אם הוא חלש, תכתוב גרסה משופרת שלו/);
 
+    $('#va-scratch-hook-done-btn').click();
+    assert.equal(store.get(SESSION).hook ?? null, null, 'המשיכו בלי לבחור הוק');
+
+    $('#va-use-pack-hook').click();
+    assert.equal(input.value, 'הייתם אוכלים עוגת שוקולד עם קטשופ?');
+    await until(() => input.classList.contains('va-auto-hook'), 'לא מסומן');
     type(input, 'הוק אחר שלי');
-    assert.equal(input.classList.contains('va-auto-hook'), false, 'נשאר צהוב אחרי שינוי');
-    type(input, 'הייתם אוכלים עוגת שוקולד עם קטשופ?');
+    assert.equal(input.classList.contains('va-auto-hook'), false);
+    $('#va-use-pack-hook').click();
     $('#va-scratch-hook-done-btn').click();
     await until(() => store.get(SESSION).hook === 'הייתם אוכלים עוגת שוקולד עם קטשופ?', 'ההוק לא נשמר');
   });
@@ -55,17 +64,19 @@ describe('מסך מציאת הוק (jsdom)', { skip: hasJsdom ? false : 'jsdom �
   test('אין הוק באריזה: המסך כמו קודם, תיבה ריקה בלי צהוב', async () => {
     const { $, open } = ui;
     await open({ branch: 'scratch', screen: 'scratch-hook', ideaDescription: 'רעיון', rawDump: 'מגילה', packaging: 'את מחזיקה עוגה ומסתכלת למצלמה' }, '#va-scratch-hook-input');
+    await until(() => !$('#va-auto-hook-note'), 'המסך הקודם עדיין');
     assert.equal($('#va-scratch-hook-input').value, '');
     assert.equal($('#va-auto-hook-note'), null);
     assert.equal($('.va-auto-hook-more'), null);
     assert.ok($('.va-copy-btn'), 'הפרומפט נעלם');
   });
-  test('כבר יש הוק שהיא כתבה: התיבה שלה, בלי הודעת "זוהה" ובלי צהוב', async () => {
+  test('כבר יש הוק שהיא כתבה: התיבה שלה ולא צהובה', async () => {
     const { $, open } = ui;
     await open({ branch: 'scratch', screen: 'scratch-hook', ideaDescription: 'רעיון', rawDump: 'מגילה', packaging: MAYA, hook: 'ההוק שלי' }, '#va-scratch-hook-input');
     /* המסך הקודם הוא אותו מסך, מחכים שהחדש באמת עלה */
     await until(() => $('#va-scratch-hook-input').value === 'ההוק שלי', 'ההוק שלה לא בתיבה');
-    assert.equal($('#va-auto-hook-note'), null);
+    /* 10/11/2026: ההצעה מהאריזה עדיין מוצגת, אבל התיבה שלה ולא צהובה */
+    assert.ok($('#va-auto-hook-note'));
     assert.equal($('#va-scratch-hook-input').classList.contains('va-auto-hook'), false);
   });
 
