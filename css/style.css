@@ -8808,3 +8808,44 @@ body[data-plan="refs"] .hub-full-only { display: none !important; }
 /* 10/11/2026: ההוק מהאריזה כהצעה, לא בתיבה */
 .va-auto-hook-note .va-auto-hook-text { display: block; margin: 6px 0; font-weight: 700; font-size: 1.05em; }
 .va-auto-hook-note .va-use-pack-hook { margin-top: 10px; font-size: 14px; padding: 8px 14px; }
+
+/* ----- 10/11/2026: כפתור הקהל בעוזר ליצירת סרטון ----- */
+.va-aud-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 0 12px;
+  margin-inline-start: auto;
+  padding: 6px 12px;
+  background: rgba(255,255,255,.10);
+  border: 1px solid rgba(255,255,255,.28);
+  border-radius: 999px;
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.va-aud-chip[hidden] { display: none; }
+.va-aud-chip:hover { background: rgba(255,255,255,.2); }
+.va-aud-chip.is-changed { border-color: var(--cosmic-glow, #ff2ea8); box-shadow: 0 0 12px color-mix(in srgb, var(--cosmic-glow, #ff2ea8) 45%, transparent); }
+.va-aud-list { display: grid; gap: 8px; text-align: start; }
+.va-aud-opt {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border: 1px solid rgba(255,255,255,.22);
+  border-radius: 14px;
+  cursor: pointer;
+}
+.va-aud-opt.is-on { border-color: var(--cosmic-glow, #ff2ea8); background: rgba(255,255,255,.08); }
+.va-aud-opt input { margin-top: 4px; flex: none; }
+.va-aud-opt__body { display: grid; gap: 2px; }
+.va-aud-opt__body small { opacity: .8; line-height: 1.45; }
+.va-aud-tag { font-style: normal; font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 999px; background: rgba(255,255,255,.16); margin-inline-start: 4px; }
+.va-aud-list textarea[hidden] { display: none; }

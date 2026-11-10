@@ -40,6 +40,7 @@ import {
   linkPlatform, uploadProblem, composeTranscript, accurateNotice, accurateNoticeText, transcribeErrorInfo,
 } from './reference-transcribe.js';
 import { getProfile, saveProfile } from './user-profile.js';
+import { audienceOptions, pickedAudience, audienceChipLabel } from './audience-pick.js';
 /* 04/11/2026: צ'אט דיוק הרעיון חזר, כקפיצה לצ'אט עצמו ולא כעותק בתוך המסך */
 import { startIdeaChatFromAssistant } from './idea-chat.js';
 import { showView } from './view-router.js';
@@ -121,7 +122,7 @@ function dispatch(action) {
   resumedNotice = false;
   const leaving = state.screen;
   const drafts = state.drafts || {};
-  const { scriptId, scriptCreatedAt } = state;
+  const { scriptId, scriptCreatedAt, audiencePick } = state;
   state = nextStep(state, action);
   /* חזרה אחורה משחזרת סטייט מלפני שהפריט ב"התסריטים שלי" נוצר. בלי זה
      אותו סרטון היה נשמר שוב כפריט חדש. רק "להתחיל מחדש" פותח פריט חדש. */
@@ -130,6 +131,9 @@ function dispatch(action) {
   const fresh = action.type === 'RESTART' || action.type === 'START_FROM_BANK';
   if (fresh) resetAccurateRuns();
   if (!fresh && scriptId && !state.scriptId && state.branch) state = { ...state, scriptId, scriptCreatedAt };
+  /* הקהל שנבחר בכפתור הקהל נשאר גם בחזרה אחורה. רק סרטון חדש חוזר לעיקרי. */
+  /* חזרה עד מסך הפתיחה היא התחלה של סרטון אחר, ולכן גם שם חוזרים לעיקרי. */
+  if (!fresh && audiencePick !== undefined && state.screen !== 'opening') state = { ...state, audiencePick };
   /* מה שהוקלד במסך שעזבנו כבר הפך לסטייט אמיתי, ולכן הטיוטה שלו מיותרת.
      אם היא תישאר, היא עלולה למלא מחדש תיבה שנוקתה בכוונה. */
   state.drafts = action.type === 'START_FROM_BANK' ? {}
@@ -311,6 +315,83 @@ function fitView() {
   view.style.setProperty('--va-fit', `${Math.max(360, Math.round(window.innerHeight - top))}px`);
 }
 
+/* ===== כפתור הקהל (10/11/2026) =====
+   מאיה: "כפתור כזה בצד שאפשר תמיד לשנות, וזה יהיה בדיפולט על העיקרי".
+   מופיע בכל מסך חוץ מהפתיחה. הבחירה נכנסת לכל פרומפט מכאן והלאה
+   (myAudience), ונשמרת בסשן של הסרטון הזה בלבד. */
+function mountAudienceChip() {
+  const chip = document.getElementById('va-aud-chip');
+  if (!chip) return;
+  getProfile().then((profile) => {
+    if (!chip.isConnected) return;
+    const options = audienceOptions(profile);
+    if (!options.length) return;   /* בלי קהל בפרופיל אין מה להחליף */
+    const picked = pickedAudience(state.audiencePick, profile);
+    const label = document.getElementById('va-aud-chip-label');
+    if (label) label.textContent = audienceChipLabel(picked);
+    chip.title = picked ? picked.line : '';
+    chip.classList.toggle('is-changed', !!picked && picked.role !== 'primary');
+    chip.hidden = false;
+    chip.onclick = () => openAudiencePicker(profile);
+  }).catch(() => {});
+}
+
+function openAudiencePicker(profile) {
+  const options = audienceOptions(profile);
+  const picked = pickedAudience(state.audiencePick, profile);
+  const isCustom = !!picked && picked.role === 'custom';
+  const rows = options.map((o) => `
+    <label class="va-aud-opt${picked && picked.key === o.key ? ' is-on' : ''}">
+      <input type="radio" name="va-aud" value="${o.key}" ${picked && picked.key === o.key ? 'checked' : ''}>
+      <span class="va-aud-opt__body">
+        <strong>${escapeHtml(o.name)} <em class="va-aud-tag">${o.tag}</em></strong>
+        <small>${escapeHtml(o.line)}</small>
+      </span>
+    </label>`).join('');
+  const body = `
+    <h2 style="margin-top:0">לאיזה קהל הסרטון הזה?</h2>
+    <p class="muted" style="margin-top:-6px">ברירת המחדל היא הקהל העיקרי. הבחירה תקפה לסרטון הזה בלבד.</p>
+    <div class="va-aud-list">
+      ${rows}
+      <label class="va-aud-opt${isCustom ? ' is-on' : ''}">
+        <input type="radio" name="va-aud" value="custom" ${isCustom ? 'checked' : ''}>
+        <span class="va-aud-opt__body"><strong>קהל אחר</strong><small>כותבים במשפט אחד למי הסרטון</small></span>
+      </label>
+      <textarea class="cosmic-textarea" id="va-aud-custom" ${isCustom ? '' : 'hidden'} style="min-height:64px"
+        placeholder="למשל: בעלות סלון שרוצות לגייס עובדת ראשונה">${isCustom ? escapeHtml(picked.line) : ''}</textarea>
+    </div>
+    <div class="cosmic-btn-row" style="margin-top:14px">
+      <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-aud-save">שמירה</button>
+    </div>`;
+  const overlay = openModal(body);
+  const root = (overlay && overlay.querySelector) ? overlay : document;
+  const custom = root.querySelector('#va-aud-custom');
+  root.querySelectorAll('input[name="va-aud"]').forEach((r) => r.addEventListener('change', () => {
+    root.querySelectorAll('.va-aud-opt').forEach((el) => el.classList.toggle('is-on', el.contains(r) && r.checked));
+    if (custom) {
+      custom.hidden = r.value !== 'custom';
+      if (!custom.hidden) custom.focus();
+    }
+  }));
+  root.querySelector('#va-aud-save').addEventListener('click', () => {
+    const r = root.querySelector('input[name="va-aud"]:checked');
+    if (!r) { closeModal(); return; }
+    if (r.value === 'custom') {
+      const line = (custom && custom.value || '').trim();
+      if (!line) { showToast('כתבו במשפט אחד מי הקהל'); if (custom) custom.focus(); return; }
+      state.audiencePick = { custom: true, line: line.slice(0, 300) };
+    } else {
+      const o = options.find((x) => x.key === r.value);
+      state.audiencePick = o && o.role !== 'primary' ? { key: o.key, line: o.line } : null;
+    }
+    saveAll().catch((err) => console.error('saveSession failed:', err));
+    closeModal();
+    const now = pickedAudience(state.audiencePick, profile);
+    showToast(now && now.role !== 'primary' ? `הסרטון נכתב עכשיו ל: ${now.name}` : 'חוזרים לקהל העיקרי');
+    render();
+  });
+}
+
 function cosmicCard(innerHtml, { showProgress = true } = {}) {
   const back = backButtonHtml();
   screenEl().innerHTML = `<div class="cosmic-card" id="va-card">
@@ -319,8 +400,10 @@ function cosmicCard(innerHtml, { showProgress = true } = {}) {
       <button type="button" class="cosmic-btn" id="va-start-over-btn" style="padding:4px 12px;font-size:13px">להתחיל מההתחלה</button>
     </div>` : ''}
     ${back || showProgress ? `<div class="va-head">${back}${showProgress ? progressHtml() : ''}</div>` : ''}
+    ${state.screen !== 'opening' ? '<button type="button" class="va-aud-chip" id="va-aud-chip" hidden>🎯 <span id="va-aud-chip-label">קהל</span></button>' : ''}
     ${innerHtml}
   </div>`;
+  mountAudienceChip();
   const backBtn = document.getElementById('va-back-btn');
   if (backBtn) backBtn.addEventListener('click', () => dispatch({ type: 'BACK' }));
   const startOverBtn = document.getElementById('va-start-over-btn');
@@ -1658,13 +1741,14 @@ async function myDomain() {
    במקום להעתיק את אותו תנאי בכל מסך מחדש. */
 async function myAudience() {
   const profile = await getProfile();
-  return profile && profile.primaryAudience ? profile.primaryAudience : '';
+  /* 10/11/2026: הקהל שנבחר בכפתור הקהל לסרטון הזה, ובלי בחירה: העיקרי */
+  const picked = pickedAudience(state.audiencePick, profile);
+  return picked ? picked.line : '';
 }
 
 async function renderPrompt1() {
   const t = ++renderSeq;
-  const profile = await getProfile();
-  const audience = profile && profile.primaryAudience ? profile.primaryAudience : '';
+  const audience = await myAudience();
   const domain = await myDomain();
   if (t !== renderSeq) return;
 
@@ -2335,7 +2419,7 @@ async function openExtractionHelperModal() {
   const resultEl = overlay.querySelector('#va-ext-result');
   /* היא יכלה לסגור את הפופאפ בזמן הזיהוי */
   if (!resultEl || !resultEl.isConnected) return;
-  const audience = (profile && profile.primaryAudience) || '';
+  const audience = (pickedAudience(state.audiencePick, profile) || {}).line || '';
   const domain = (domainInfo && domainInfo.domain) || (profile && profile.business) || '';
   const startingPoint = state.startingPoint || '';
   /* 05/11/2026 (מאיה): הקריאייטיב שנבחר נכנס גם לפרומפט ה-SOS */
@@ -2402,8 +2486,7 @@ function renderScratchDump() {
 
 async function renderScratchHook() {
   const t = ++renderSeq;
-  const profile = await getProfile();
-  const audience = profile && profile.primaryAudience ? profile.primaryAudience : '';
+  const audience = await myAudience();
   const domain = await myDomain();
   if (t !== renderSeq) return;
   const creative = creativeNow();

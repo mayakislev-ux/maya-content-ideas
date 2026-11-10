@@ -69,3 +69,27 @@ test('רק מאיה, ותקלות לא שוברות כלום', async () => {
   assert.deepEqual(await af.createAudienceFromTableHandler(noUser.d)({ data: { idToken: TOKEN, email: 'a@b.co' } }), { updated: false, reason: 'no-brain-user' });
   assert.equal(junk.saved.length + noTab.saved.length + noUser.saved.length, 0);
 });
+
+/* 10/11/2026: כל קבוצה בטבלה נשמרת כקהל, כדי שבעוזר אפשר יהיה להחליף קהל לסרטון */
+test('כל הקבוצות נשמרות בשמות שלהן, והראשונה היא העיקרי', async () => {
+  const rows = [
+    ['שאלות לניתוח קהל היעד', 'קבוצה 1: מתחילות מאפס', 'קבוצה 2: נייליסטיות', 'קבוצה 3: בעלות סלון'],
+    ['איזה כאבים/בעיות יש לקהל?', 'תקועה', 'לא מקצועי', 'אין עובדות'],
+  ];
+  const { groups } = sections.parseAudienceTab(rows);
+  const p = af.buildAudiencePrompt({ groups });
+  assert.match(p, /בעלות סלון/);
+  assert.match(p, /"lines"/);
+  const { d, saved } = deps({
+    readTab: async () => ({ title: 'ניתוח קהל יעד', rows }),
+    callModel: async () => '{"lines":["א שורה","ב שורה","ג שורה"],"business":""}',
+  });
+  await af.createAudienceFromTableHandler(d)({ data: { idToken: TOKEN, email: 'a@b.co' } });
+  assert.equal(saved[0].u.primaryAudience, 'א שורה');
+  assert.equal(saved[0].u.secondaryAudience, 'ב שורה');
+  assert.deepEqual(saved[0].u.audiences, [
+    { name: 'מתחילות מאפס', line: 'א שורה' },
+    { name: 'נייליסטיות', line: 'ב שורה' },
+    { name: 'בעלות סלון', line: 'ג שורה' },
+  ]);
+});

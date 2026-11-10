@@ -3050,7 +3050,7 @@ exports.syncRefsSubscriptions = require('./refs-subscription').syncRefsSubscript
       readTab: (sheetId) => fetchSheetTabPicked(sheetId, require('./sheet-sections').pickAudienceTab),
       sections: require('./sheet-sections'),
       callModel: async (prompt) => getResponseText(await callAnthropic(anthropicApiKey.value(),
-        { model: 'claude-sonnet-4-5', max_tokens: 600, temperature: 0, messages: [{ role: 'user', content: prompt }] }, 'audienceFromApprovedTable')),
+        { model: 'claude-sonnet-4-5', max_tokens: 1200, temperature: 0, messages: [{ role: 'user', content: prompt }] }, 'audienceFromApprovedTable')),
     }));
   }
   exports.readSheetSections = onCall({ secrets: [sheetsServiceAccountKey], region: 'us-central1', timeoutSeconds: 60 }, ifs.createReadSheetSectionsHandler({
