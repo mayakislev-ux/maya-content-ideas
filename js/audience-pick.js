@@ -52,7 +52,7 @@ export function pickedAudience(pick, profile) {
 /** הכיתוב על הכפתור */
 export function audienceChipLabel(picked) {
   if (!picked) return 'לאיזה קהל?';
-  if (picked.role === 'primary') return `קהל: ${picked.name} (עיקרי)`;
+  if (picked.role === 'primary') return picked.name === 'הקהל העיקרי' ? 'קהל: עיקרי' : `קהל: ${picked.name} (עיקרי)`;
   if (picked.role === 'custom') return 'קהל: אחר';
   return `קהל: ${picked.name}`;
 }

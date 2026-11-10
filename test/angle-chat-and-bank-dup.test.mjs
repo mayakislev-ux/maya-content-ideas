@@ -238,7 +238,6 @@ describe('בדפדפן (jsdom)', { skip: hasJsdom ? false : 'jsdom לא מותק
     const punch = $('#va-idea-punch');
     type(topic, 'למה הממומן לא עובד');
     type(punch, 'העמוד הוא זה שמוכר, לא המודעה');
-    $('#va-relevance-check').checked = true;
     /* לוחצים מיד, לפני שהשמירה הרגילה (800ms) הספיקה לרוץ */
     $('#va-angle-chat-btn').click();
     await until(() => visible('chat-view'), 'הצ׳אט לא נפתח');
@@ -248,7 +247,6 @@ describe('בדפדפן (jsdom)', { skip: hasJsdom ? false : 'jsdom לא מותק
     assert.equal(saved.screen, 'idea-sharpen');
     assert.equal(saved.drafts['idea-sharpen|va-idea-sharp'], 'למה הממומן לא עובד');
     assert.equal(saved.drafts['idea-sharpen|va-idea-punch'], 'העמוד הוא זה שמוכר, לא המודעה');
-    assert.equal(saved.relevanceConfirmed, true);
 
     assert.ok(!visible('video-assistant-view'));
     assert.ok(visible('chat-back-to-assistant'), 'אין דרך ברורה לחזור');
@@ -264,7 +262,6 @@ describe('בדפדפן (jsdom)', { skip: hasJsdom ? false : 'jsdom לא מותק
     assert.ok(!visible('chat-view'));
     assert.equal($('#va-idea-sharp').value, '3 טעויות שמבריחות לקוחות מהעמוד');
     assert.equal($('#va-idea-punch').value, 'העמוד הוא זה שמוכר, לא המודעה', 'המסר נדרס');
-    assert.ok($('#va-relevance-check').checked, 'הסימון אבד');
     assert.ok(!visible('chat-back-to-assistant'));
   });
 

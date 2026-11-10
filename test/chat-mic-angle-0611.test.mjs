@@ -456,8 +456,6 @@ describe('באייפון (jsdom)', { skip: hasJsdom ? false : 'jsdom לא מות
     REPLY = 'הנה ניסוח חד יותר.\n[[IDEA_SUMMARY]]3 טעויות שמבריחות לקוחות מהעמוד||השוואה||||העמוד מוכר, לא המודעה';
     type($('#va-idea-sharp'), 'למה הממומן לא עובד');
     type($('#va-idea-punch'), 'העמוד מוכר');
-    $('#va-relevance-check').checked = true;
-    $('#va-relevance-check').dispatchEvent(new w.Event('change', { bubbles: true }));
     $('#va-angle-chat-btn').click();
     await until(() => visible('chat-view'), 'הצ\'אט לא נפתח');
     await until(() => $('.chat-back-assistant-btn'), 'אין כפתור חזרה עם הרעיון');

@@ -1984,7 +1984,8 @@ function wireMegillahGate({ prefix, inputId, doneId, onGo }) {
       megillahTooShort(countWords(text), inputId);
       return;
     }
-    confirmMegillahDetailed(text, { inputId, onGo });
+    /* 10/11/2026 (מאיה): הפופאפ "המגילה באמת מספיק מפורטת?" ירד, "מיותר" */
+    onGo(text);
   });
 }
 
@@ -2151,7 +2152,7 @@ function renderIdeaSharpen() {
       ${forFootage ? 'placeholder="למשל: למה אני עובדת עם מכשיר אחד ולא עם שלושה"' : ''}>${escapeHtml(idea)}</textarea>
     ${fromIdea ? '<button type="button" class="va-text-link" id="va-pull-idea-link">🎲 להגריל רעיון מהבנק שלי</button>' : ''}
     ${forFootage ? '' : `
-    <label class="cosmic-field-label va-punch-label" for="va-idea-punch">⭐ מה הפואנטה שורה תחתונה מהסרטון? מה אתם רוצים שהקהל שלכם יבין? מה המסר?</label>
+    <label class="cosmic-field-label va-punch-label" for="va-idea-punch">⭐ מה שורה תחתונה אתם רוצים שהצופים יבינו, ירגישו או יחשבו אחרי שיצפו בסרטון הזה?</label>
     <textarea class="cosmic-textarea va-punch-box" id="va-idea-punch" style="min-height:96px">${escapeHtml(punch)}</textarea>`}
 
     ${state.ideaAngle && !forFootage ? `<div class="va-angle-picked" id="va-angle-picked">
@@ -2167,10 +2168,6 @@ function renderIdeaSharpen() {
       <button type="button" class="cosmic-btn cosmic-btn--primary va-angle-cta__btn" id="va-angle-chat-btn">לא בטוחים שהרעיון חזק? לחצו כאן</button>
       <small class="va-angle-cta__safe">ואל דאגה, כל מה שתכתבו כאן נשמר אוטומטית ויחכה לכם כשתחזרו.</small>
     </div>` : ''}
-    ${fromIdea ? `<label class="va-check-row">
-      <input type="checkbox" id="va-relevance-check" ${state.relevanceConfirmed ? 'checked' : ''}>
-      <span>הרעיון רלוונטי לקהל היעד שלי, או משרת את המותג (מציג את האישיות, הערכים או תפיסת העולם שלי)</span>
-    </label>` : ''}
 
     <div class="cosmic-btn-row" style="margin-top:16px">
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-idea-next-btn">ממשיכים ←</button>
@@ -2209,13 +2206,6 @@ function renderIdeaSharpen() {
       box.focus();
       return;
     }
-    const relevance = document.getElementById('va-relevance-check');
-    if (relevance && !relevance.checked) {
-      showToast('רגע לפני שממשיכים: לסמן שהרעיון רלוונטי לקהל או משרת את המותג');
-      relevance.focus();
-      return;
-    }
-    if (relevance) state.relevanceConfirmed = true;
     dispatch(punchBox
       ? { type: 'IDEA_SHARPENED', idea: text, topic: box.value.trim(), punchline: punchBox.value.trim() }
       : { type: 'IDEA_SHARPENED', idea: text });
@@ -2253,8 +2243,6 @@ async function openAngleChat({ box, punchBox, angleBtn }) {
   let drafts = withDraft(state.drafts || {}, screen, 'va-idea-sharp', box.value);
   if (punchBox) drafts = withDraft(drafts, screen, 'va-idea-punch', punchBox.value);
   state.drafts = drafts;
-  const relevance = document.getElementById('va-relevance-check');
-  if (relevance) state.relevanceConfirmed = relevance.checked;
   angleBtn.disabled = true;
   let timer = null;
   try {
