@@ -3040,6 +3040,16 @@ exports.syncRefsSubscriptions = require('./refs-subscription').syncRefsSubscript
   {
     const aft = require('./audience-from-table');
     let portalVerifyApp = null;
+    /* 10/11/2026: הרנטגן בפורטל קורא מכאן את הקהל העיקרי (audience-for-portal.js). קריאה בלבד. */
+    exports.audienceForPortal = onCall({ region: 'us-central1', timeoutSeconds: 30, invoker: 'public' }, require('./audience-for-portal').createAudienceForPortalHandler({
+      HttpsError,
+      verifyPortalToken: (t) => {
+        if (!portalVerifyApp) portalVerifyApp = admin.initializeApp({ projectId: 'maya-client-portal' }, 'audience-verify');
+        return portalVerifyApp.auth().verifyIdToken(t);
+      },
+      uidByEmail: (email) => admin.auth().getUserByEmail(email).then((u) => u.uid).catch(() => null),
+      getProfile: getProfileOf,
+    }));
     exports.audienceFromApprovedTable = onCall({ secrets: [sheetsServiceAccountKey, anthropicApiKey], region: 'us-central1', timeoutSeconds: 120, invoker: 'public' }, aft.createAudienceFromTableHandler({
       HttpsError,
       verifyPortalToken: (t) => {
