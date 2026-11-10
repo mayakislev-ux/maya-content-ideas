@@ -9,7 +9,20 @@
      סיכום: קופצת עם קלאפר "אקשן!"
    בשאר המסכים היא מחבקת את הכרטיס מהצד, והיד שלה על הקצה שלו. */
 
-export const POSES = ['hug', 'dance', 'camera', 'mic', 'chairs', 'coffee', 'fishing', 'clapper'];
+export const POSES = ['hug', 'dance', 'camera', 'mic', 'chairs', 'coffee', 'fishing', 'clapper',
+  'peek', 'swing', 'walk', 'backlean', 'watch', 'yawn', 'wink', 'laugh'];
+
+/* שלב 1 מתוך 6 של "50 הרעיונות" (מאיה סימנה את כולם, 10/11/2026):
+   עוטפת את הכרטיס וחיה: מציצה מעליו עם הידיים על הקצה, יושבת על הפינה
+   ומנדנדת רגליים, נשענת בגב, נכנסת בהליכה, ועוברת מצד לצד בין המסכים.
+   בלי פעילות: שעון אחרי דקה, פיהוק אחרי שתיים. לחיצה עליה: קריצה, צחוק
+   או ריקוד. וכפתור להסתיר אותה. */
+const WRITING_SCREENS = new Set(['idea-sharpen', 'type-idea', 'transcribe', 'content-basics', 'creative-packaging', 'footage-speech-sharpen', 'scratch-distill', 'prompt2']);
+const SIDE_ROTATION = ['swing', 'backlean', 'hug'];
+export const IDLE_FIRST_MS = 60 * 1000;
+export const IDLE_SECOND_MS = 120 * 1000;
+const REACTIONS = ['wink', 'laugh', 'dance'];
+const HIDE_KEY = 'moach.mayaHidden';
 
 /* עד שמאיה מאשרת את הדמות במסך האמיתי, רק היא רואה אותה. לפתוח לכולן:
    FOR_ALL = true. */
@@ -26,7 +39,65 @@ export function poseFor(screen) {
   if (screen === 'summary') return 'clapper';
   if (MEGILLAH_SCREENS.has(screen)) return 'coffee';
   if (HOOK_SCREENS.has(screen)) return 'fishing';
-  return 'hug';
+  if (screen === 'format-choice') return 'hug';
+  if (WRITING_SCREENS.has(screen)) return 'peek';
+  /* "עוברת מצד לצד": בכל מסך אחר תנוחה אחרת, קבועה לאותו מסך */
+  let h = 0;
+  for (const ch of String(screen || '')) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return SIDE_ROTATION[h % SIDE_ROTATION.length];
+}
+
+/** האם הדמות מוסתרת (כפתור "להסתיר את מאיה") */
+export function mayaHidden() {
+  try { return localStorage.getItem(HIDE_KEY) === '1'; } catch { return false; }
+}
+function setHidden(on) {
+  try { localStorage.setItem(HIDE_KEY, on ? '1' : '0'); } catch { /* בלי אחסון: רק לסשן הזה */ }
+  document.querySelectorAll('.va-maya').forEach((f) => { f.hidden = on; });
+  const btn = document.getElementById('va-maya-toggle');
+  if (btn) { btn.textContent = on ? '👩 להחזיר את מאיה' : '🙈 להסתיר את מאיה'; btn.setAttribute('aria-pressed', String(on)); }
+}
+function ensureToggle() {
+  const bar = document.querySelector('#video-assistant-view .va-topbar-end');
+  if (!bar || document.getElementById('va-maya-toggle')) return;
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.id = 'va-maya-toggle';
+  btn.className = 'va-maya-toggle';
+  btn.addEventListener('click', () => setHidden(!mayaHidden()));
+  bar.appendChild(btn);
+  setHidden(mayaHidden());
+}
+
+/* בלי פעילות: שעון, ואז פיהוק. כל פעולה מחזירה אותה לתנוחה של המסך. */
+let idleTimers = [];
+let basePose = 'hug';
+let idleWired = false;
+function clearIdle() { idleTimers.forEach(clearTimeout); idleTimers = []; }
+function armIdle() {
+  clearIdle();
+  /* unref: בבדיקות (node) הטיימר לא מחזיק את התהליך פתוח. בדפדפן אין unref. */
+  const t1 = setTimeout(() => tempPose('watch'), IDLE_FIRST_MS);
+  const t2 = setTimeout(() => tempPose('yawn'), IDLE_SECOND_MS);
+  [t1, t2].forEach((t) => { if (t && typeof t.unref === 'function') t.unref(); });
+  idleTimers.push(t1, t2);
+}
+function onActivity() {
+  const fig = figEl();
+  if (fig && (fig.classList.contains('va-maya--watch') || fig.classList.contains('va-maya--yawn'))) setMayaPose(basePose);
+  armIdle();
+}
+function wireIdle() {
+  if (idleWired || typeof document === 'undefined') return;
+  idleWired = true;
+  ['keydown', 'pointerdown', 'input', 'scroll'].forEach((ev) => document.addEventListener(ev, onActivity, { passive: true, capture: true }));
+}
+function tempPose(pose) {
+  const fig = figEl();
+  if (!fig) return;
+  const keep = basePose;
+  setMayaPose(pose);
+  basePose = keep;
 }
 
 /** האביזר לפי הפורמט שפותחים או מרחפים עליו */
@@ -54,6 +125,14 @@ const ALT = {
   coffee: 'מאיה עם קפה, קוראת',
   fishing: 'מאיה עם חכה',
   clapper: 'מאיה קופצת עם קלאפר',
+  peek: 'מאיה מציצה מעל הכרטיס',
+  swing: 'מאיה יושבת על הכרטיס',
+  walk: 'מאיה נכנסת',
+  backlean: 'מאיה נשענת על הכרטיס',
+  watch: 'מאיה מסתכלת בשעון',
+  yawn: 'מאיה מפהקת',
+  wink: 'מאיה קורצת',
+  laugh: 'מאיה צוחקת',
 };
 
 let lastPose = null;
@@ -84,6 +163,27 @@ export function mountMaya(card, screen) {
   img.draggable = false;
   fig.appendChild(img);
   card.appendChild(fig);
+  /* נכנסת בהליכה בפעם הראשונה שהעוזר נפתח, ואז נעמדת בתנוחה של המסך */
+  if (!lastPose) {
+    fig.classList.add('is-entering');
+    img.src = 'assets/maya/maya-walk.webp';
+    setTimeout(() => {
+      if (!fig.isConnected) return;
+      fig.classList.remove('is-entering');
+      img.src = `assets/maya/maya-${pose}.webp`;
+    }, 1300);
+  }
+  /* לחיצה עליה: קריצה, צחוק או ריקוד, ואז חוזרת */
+  img.addEventListener('click', () => {
+    const r = REACTIONS[Math.floor(Math.random() * REACTIONS.length)];
+    tempPose(r);
+    setTimeout(() => { if (fig.isConnected) setMayaPose(basePose); }, 1800);
+  });
+  basePose = pose;
+  fig.hidden = mayaHidden();
+  ensureToggle();
+  wireIdle();
+  armIdle();
   /* בטלפון נשמר מקום לדמות מעל הכרטיס, רק כשהיא באמת מוצגת */
   const view = card.closest('#video-assistant-view');
   if (view) view.classList.add('has-maya');
@@ -99,6 +199,7 @@ export function setMayaPose(pose) {
   img.src = `assets/maya/maya-${pose}.webp`;
   img.alt = ALT[pose];
   lastPose = pose;
+  basePose = pose;
 }
 
 /** מצב רגעי על הדמות: 'is-cast' (זורקת חכה), 'is-reel' (שולפת הוק) */

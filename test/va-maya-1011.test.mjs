@@ -7,9 +7,11 @@ import { poseFor, poseForFormat, nodSeconds, saysConverting, POSES, mayaVisibleF
 import { hasJsdom, setupAssistant, until } from './helpers/va-dom.mjs';
 
 describe('תנוחה לכל מסך ולכל רגע', () => {
-  test('ברירת מחדל חיבוק, מגילה קפה, הוק חכה, סיכום קלאפר', () => {
-    assert.equal(poseFor('opening'), 'hug');
-    assert.equal(poseFor('idea-sharpen'), 'hug');
+  test('כתיבה מציצה, פורמט חיבוק, מגילה קפה, הוק חכה, סיכום קלאפר, והשאר מתחלף', () => {
+    assert.equal(poseFor('idea-sharpen'), 'peek');
+    assert.equal(poseFor('format-choice'), 'hug');
+    assert.ok(['swing', 'backlean', 'hug'].includes(poseFor('opening')));
+    assert.equal(poseFor('opening'), poseFor('opening'), 'אותו מסך, אותה תנוחה');
     assert.equal(poseFor('scratch-dump'), 'coffee');
     assert.equal(poseFor('her-words'), 'coffee');
     assert.equal(poseFor('scratch-hook'), 'fishing');
@@ -50,7 +52,8 @@ describe('הדמות בעוזר (jsdom)', { skip: hasJsdom ? false : 'jsdom לא
     mountMaya($('#va-card'), 'scratch-hook');
     await until(() => $('.va-maya img'), 'אין דמות');
     assert.equal($$('.va-maya').length, 1);
-    assert.match($('.va-maya img').getAttribute('src'), /maya-fishing\.webp$/);
+    /* בכניסה הראשונה היא נכנסת בהליכה, ואז נעמדת עם החכה */
+    await until(() => /maya-fishing\.webp$/.test($('.va-maya img').getAttribute('src')), 'החכה לא הופיעה אחרי הכניסה', 600);
     setMayaPose('camera');
     assert.match($('.va-maya img').getAttribute('src'), /maya-camera\.webp$/);
     assert.ok($('.va-maya').classList.contains('is-changing'));

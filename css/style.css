@@ -9038,3 +9038,38 @@ body[data-plan="refs"] .hub-full-only { display: none !important; }
   }
   #video-assistant-view .va-maya:not(.va-maya--hug) { left: calc(50% + 282px); }
 }
+
+/* ----- 10/11/2026 שלב 1 מתוך 6: עוטפת את הכרטיס וחיה -----
+   מציצה: הראש והאמות מעל הקצה העליון, היד משתלשלת על הכרטיס.
+   יושבת: על הפינה העליונה השמאלית, הרגליים על הכרטיס ומתנדנדות.
+   נשענת בגב / מחבקת / שאר התנוחות: צמודות לחלון ליד הקצה של הכרטיס. */
+#video-assistant-view .va-maya[hidden] { display: none; }
+#video-assistant-view .va-maya img { pointer-events: auto; cursor: pointer; }
+#video-assistant-view .va-maya.va-maya--peek,
+#video-assistant-view .va-maya.va-maya--swing { position: absolute; bottom: auto; }
+#video-assistant-view .va-maya.va-maya--peek { top: -112px; left: 22px; height: 240px; }
+#video-assistant-view .va-maya.va-maya--peek img { pointer-events: none; animation: va-maya-peek 5s ease-in-out infinite; transform-origin: 50% 70%; }
+@keyframes va-maya-peek { 0%, 100% { transform: rotate(0); } 40% { transform: rotate(-2deg); } 70% { transform: rotate(1.5deg); } }
+#video-assistant-view .va-maya.va-maya--swing { top: -196px; left: -52px; height: 330px; }
+#video-assistant-view .va-maya.va-maya--swing img { pointer-events: none; animation: va-maya-swing 2.4s ease-in-out infinite; transform-origin: 70% 60%; }
+@keyframes va-maya-swing { 0%, 100% { transform: rotate(-1.5deg); } 50% { transform: rotate(1.5deg); } }
+@media (min-width: 961px) {
+  #video-assistant-view .va-maya.va-maya--backlean { left: calc(50% + 262px); }
+}
+#video-assistant-view .va-maya.is-entering img { animation: va-maya-walkin 1.3s ease-out both; }
+@keyframes va-maya-walkin { from { transform: translateX(260px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+#video-assistant-view .va-maya--yawn img { animation: va-maya-yawn 2.4s ease-in-out infinite; transform-origin: 50% 100%; }
+@keyframes va-maya-yawn { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(1.02) translateY(-3px); } }
+@media (max-width: 960px) {
+  #video-assistant-view .va-maya.va-maya--peek { top: -96px; left: 50%; transform: translateX(-50%); width: auto; height: 170px; }
+  #video-assistant-view .va-maya.va-maya--swing { top: -104px; left: 10px; width: auto; height: 104px; }
+}
+.va-maya-toggle {
+  min-height: 30px; padding: 0 12px; border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.28); background: rgba(255,255,255,.08); color: #fff;
+  font: inherit; font-size: 12.5px; cursor: pointer;
+}
+.va-maya-toggle:hover { background: rgba(255,255,255,.18); }
+@media (prefers-reduced-motion: reduce) {
+  #video-assistant-view .va-maya.is-entering img { animation: none; }
+}

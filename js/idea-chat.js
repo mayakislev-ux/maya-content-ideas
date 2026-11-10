@@ -287,12 +287,13 @@ function addPostIdeaButtons(bubble, finalizedText, ideaSummary) {
     goBtn.type = 'button';
     goBtn.className = 'chat-cta-btn chat-back-assistant-btn';
     goBtn.textContent = '💾 לשמור את הרעיון ולהמשיך לבנות את הסרטון';
-    goBtn.addEventListener('click', async () => {
+    /* 10/11/2026 (מאיה: "הכפתורים איטיים"): השמירה חיכתה לסיווג (עד 12
+       שניות). עכשיו חוזרים לעוזר מיד, והשמירה רצה ברקע ומודיעה כשסיימה. */
+    goBtn.addEventListener('click', () => {
       goBtn.disabled = true;
-      goBtn.textContent = 'שומרים...';
-      const saved = await saveIdeaQuietly(finalizedText, message);
-      if (!saved) showToast('השמירה בבנק הרעיונות לא עברה, אבל הרעיון עובר לעוזר');
-      else showToast('✓ הרעיון נשמר בבנק, ממשיכים לבנות את הסרטון');
+      saveIdeaQuietly(finalizedText, message).then((saved) => {
+        showToast(saved ? '✓ הרעיון נשמר בבנק הרעיונות' : 'השמירה בבנק הרעיונות לא עברה, אבל הרעיון כבר בעוזר');
+      });
       returnFromChat({ idea, message, angle });
     });
     bubble.appendChild(goBtn);
