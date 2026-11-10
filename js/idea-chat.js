@@ -319,15 +319,22 @@ async function saveIdeaQuietly(title, message = '') {
   const text = String(title || '').trim();
   if (!text) return false;
   try {
+    /* סוקר 10/11: רעיון שהוגרל מהבנק וחודד כאן מתעדכן במקום, ולא נשמר שוב כעותק */
+    const match = findSimilarIdea(getCurrentIdeas(), originalIdeaText || text);
+    if (match) {
+      await withTimeout(updateIdea(match.id, { title: text }), 10000);
+      return true;
+    }
     const cls = (await autoClassify(text)) || {};
-    await addIdea({
+    /* סוקר 10/11: בלי תקרת זמן, קליטה חלשה השאירה את הכפתור על "שומרים..." לתמיד */
+    await withTimeout(addIdea({
       title: text,
       category: cls.category || '',
       persuasionStage: cls.persuasionStage || '',
       audienceScope: cls.audienceScope || '',
       hookText: String(message || '').trim(),
       source: 'assistant-chat',
-    });
+    }), 10000);
     return true;
   } catch (err) {
     console.error('saveIdeaQuietly failed:', err);
