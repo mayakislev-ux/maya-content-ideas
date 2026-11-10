@@ -51,7 +51,8 @@ export function descriptionPayload(state, script, ctx) {
   const c = ctx || {};
   return {
     script: cut(script, 8000),
-    idea: cut(s.ideaTopic || s.ideaBeforePackaging || s.ideaDescription, 2000),
+    /* 10/11/2026: בלי נושא, המסר כבר נשלח בשדה שלו ולא נכפל דרך ideaBeforePackaging */
+    idea: cut(s.ideaTopic || (s.ideaPunchline ? '' : (s.ideaBeforePackaging || s.ideaDescription)), 2000),
     message: cut(s.ideaPunchline, 1000),
     angle: cut(s.packaging, 1000),
     hook: cut(s.hook, 1000),

@@ -140,8 +140,12 @@ export function nextStep(state, action) {
     const back = { ...prev, history: state.history.slice(0, -1) };
     /* 06/11/2026: חזרה מהאריזה למסך הרעיון השאירה את שתי התיבות ריקות, כי
        הסטייט הקודם נשמר לפני שהרעיון נכתב. מה שכבר נכתב נשאר. */
-    for (const key of ['ideaTopic', 'ideaPunchline', 'ideaAngle']) {
-      if (back[key] == null && state[key] != null) back[key] = state[key];
+    /* 10/11/2026: לא עד מסך הפתיחה. משם בוחרים מסלול חדש (רפרנס, קטע
+       שצולם), והרעיון של הסרטון הנטוש היה ממשיך לתיאור ולשם של הסרטון החדש. */
+    if (back.screen !== 'opening') {
+      for (const key of ['ideaTopic', 'ideaPunchline', 'ideaAngle']) {
+        if (back[key] == null && state[key] != null) back[key] = state[key];
+      }
     }
     /* חזרה משחזרת סטייט מלפני שהתסריט נכתב, וגם הפריט ב"התסריטים שלי" נשמר
        ממנו. בלי זה תסריט שהודבק נמחק מכל מקום. */
@@ -418,20 +422,49 @@ function step(state, action) {
 /* 10/11/2026 (מאיה: "הוא העתיק לפרומפט רק את המסר בלי הרעיון, חמור").
    אצל מור אדרי הנושא והמסר היו אותו משפט בדיוק, והפרומפט יצא "X. המסר: X".
    כשהם זהים, או שאחד מכיל את השני, נכנס משפט אחד ולא כפול. */
+/* השוואה בלי רווחים כפולים, ירידות שורה וסימני פיסוק */
+export function normText(s) {
+  return String(s || '').replace(/[\s.,!?"'״׳:;()\-–—]+/g, ' ').trim();
+}
+
+/** אחד מכיל את השני (או זהים), אחרי ניקוי */
+function overlaps(a, b) {
+  const x = normText(a);
+  const y = normText(b);
+  return Boolean(x && y) && (x === y || x.includes(y) || y.includes(x));
+}
+
 export function ideaWithMessage(topic, punchline) {
   const tp = String(topic || '').trim();
   const p = String(punchline || '').trim();
-  const norm = (s) => s.replace(/[s.,!?"'״׳-]+/g, ' ').trim();
   if (!tp) return p;
   if (!p) return tp;
-  if (norm(tp) === norm(p) || norm(p).includes(norm(tp))) return p;
-  if (norm(tp).includes(norm(p))) return tp;
+  if (overlaps(tp, p)) return normText(tp).length > normText(p).length ? tp : p;
   return `הרעיון: ${tp}. המסר: ${p}`;
 }
 
 /** אותו משפט בשתי התיבות: אין רעיון נפרד, רק מסר */
 export function sameIdeaAndMessage(topic, punchline) {
-  const norm = (s) => String(s || '').replace(/[s.,!?"'״׳-]+/g, ' ').trim();
-  return Boolean(norm(topic)) && norm(topic) === norm(punchline);
+  return Boolean(normText(topic)) && normText(topic) === normText(punchline);
+}
+
+/* 10/11/2026 (סריקה אחרי הבאג של מור): המשפט שממשיך מהמסך "רעיון ומסר"
+   (ideaDescription). קודם נבדק p.includes(topic) בלי ניקוי, ולכן "למה X"
+   מול "X" נכנס פעמיים. */
+export function sharpenedIdea(topic, punchline) {
+  const t = String(topic || '').trim();
+  const p = String(punchline || '').trim();
+  if (!p) return t;
+  if (!t || overlaps(t, p)) return normText(t).length > normText(p).length ? t : p;
+  return `${p}. נושא הסרטון: ${t}`;
+}
+
+/* האריזה כבר נשלחת לכל פרומפט בבלוק הקריאייטיב שלה (creative). הרעיון
+   שנכנס לסוגריים "הרעיון של התוכן" הוא בלעדיה, אחרת היא מופיעה פעמיים
+   עד ארבע פעמים, ו"לחבר את הקריאייטיב לרעיון" מחבר אותה לעצמה. */
+export function ideaForPrompt(state) {
+  const s = state || {};
+  if (s.packaging && s.ideaBeforePackaging) return s.ideaBeforePackaging;
+  return s.ideaDescription || '';
 }
 

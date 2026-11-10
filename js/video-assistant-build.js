@@ -6,6 +6,7 @@
    פונקציה טהורה של הסטייט, כדי שאפשר לבדוק כל מסלול בלי דפדפן. */
 
 import { withAngle, stripAngle } from './idea-reply.js';
+import { sharpenedIdea } from './video-assistant-flow.js';
 
 const clip = (t, n = 140) => {
   const s = String(t || '').trim();
@@ -171,7 +172,7 @@ export function syncIdea(state, field) {
   if (out.ideaTopic || out.ideaPunchline) {
     const t = String(out.ideaTopic || '').trim();
     const p = String(out.ideaPunchline || '').trim();
-    base = p ? (t && !p.includes(t) ? `${p}. נושא הסרטון: ${t}` : p) : t;
+    base = sharpenedIdea(t, p);
   } else if (field === 'ideaDescription' && !out.packaging) {
     base = out.ideaDescription;
   } else {

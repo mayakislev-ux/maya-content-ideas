@@ -14,7 +14,7 @@
 // לנשים וגברים, ומסך סיכום ברור בסוף שמראה בדיוק מה נעשה ומה נשאר.
 
 import { mountDrafts, clearScreenDrafts, draftKey, withDraft } from './video-assistant-drafts.js';
-import { INITIAL_STATE, isCarousel, isDynamicText, nextStep, migrateLegacyState, ideaWithMessage, sameIdeaAndMessage } from './video-assistant-flow.js';
+import { INITIAL_STATE, isCarousel, isDynamicText, nextStep, migrateLegacyState, ideaWithMessage, sameIdeaAndMessage, sharpenedIdea, ideaForPrompt } from './video-assistant-flow.js';
 import { pickIdea, pickReference } from './video-assistant-picker.js';
 import { buildParts, hasContent, scriptDoc } from './video-assistant-build.js';
 import { confirmDialog } from './confirm-dialog.js';
@@ -665,7 +665,8 @@ async function renderPulledIdea() {
        מהכותרת הקצרה. */
     const fromVoice = Boolean(idea.transcript);
     state.hook = fromVoice ? ideaText : (idea.hookText || ideaText);
-    state.ideaDescription = idea.hookText || ideaText;
+    /* 10/11/2026: הפירוט לא מחליף את הכותרת והסיפור, הוא נוסף אחריהם */
+    state.ideaDescription = idea.hookText && idea.hookText.trim() !== ideaText ? `${ideaText}. פירוט: ${idea.hookText.trim()}` : ideaText;
     state.ideaAngle = parsed.angle || null;
     celebrate();
     dispatch({ type: 'ACCEPT_PICK' });
@@ -918,7 +919,9 @@ let formatRecCache = { key: '', picks: null, pending: false };
 function formatRecInput(packaging = state.packaging, startingPoint = state.startingPoint) {
   return {
     packaging: String(packaging || ''),
-    idea: String(state.ideaTopic || state.ideaBeforePackaging || state.ideaDescription || ''),
+    /* 10/11/2026: בלי נושא, המסר והזווית כבר נשלחים בשדות שלהם. הנפילה ל-
+       ideaBeforePackaging ("מסר. זווית") הייתה שולחת אותם פעמיים. */
+    idea: String(state.ideaTopic || (state.ideaPunchline ? '' : (state.ideaBeforePackaging || state.ideaDescription)) || ''),
     message: String(state.ideaPunchline || ''),
     angle: String(state.ideaAngle || ''),
     startingPoint: String(startingPoint || ''),
@@ -2018,8 +2021,7 @@ function renderIdeaSharpen() {
   function mainIdea() {
     const topic = box.value.trim();
     if (!punchBox) return topic;
-    const p = punchBox.value.trim();
-    return topic && !p.includes(topic) ? `${p}. נושא הסרטון: ${topic}` : p;
+    return sharpenedIdea(topic, punchBox.value);
   }
   document.getElementById('va-idea-next-btn').addEventListener('click', () => {
     if (punchBox && !punchBox.value.trim()) {
@@ -2321,7 +2323,7 @@ function prepareExtractionHelper() {
 async function openExtractionHelperModal() {
   // 19/10/2026: גם קרוא ממסך "מה יש לך להגיד?" (מסלול הרפרנס), שבו ideaDescription ריק אבל hook כן מוגדר - fallback אליו
   // כדי שגם שם יהיה הקשר אמיתי, לא ריק.
-  const idea = state.ideaDescription || state.hook || '';
+  const idea = ideaForPrompt(state) || state.hook || '';
   const overlay = openModal(`
     <h2 style="margin-top:0">קשה למצוא מה להגיד?</h2>
     <div id="va-ext-result"><p class="cosmic-hint">מכינים את הפרומפט...</p></div>
@@ -2408,7 +2410,7 @@ async function renderScratchHook() {
   /* 06/11/2026 (מאיה): "שתעיפי לגמרי את שיטת השכפול ההפוך, סתם מבלבל".
      השורה האופציונלית של תמלול רפרנס ירדה, וההוקים נבנים תמיד
      מבנק ההוקים לפי המגילה. */
-  const prompt = buildHookFindingPrompt({ idea: state.ideaDescription || '', script: state.rawDump || '', audience, domain: domain, creative });
+  const prompt = buildHookFindingPrompt({ idea: ideaForPrompt(state), script: state.rawDump || '', audience, domain: domain, creative });
   const marks = [state.ideaDescription, state.rawDump, audience, creative];
   /* 09/11/2026: הוק שכתוב באריזה במפורש נכנס לתיבה לבד, מסומן בצהוב, והפרומפט
      עובר לאפשרות "לא אהבת?". ראה hookFromPackaging. */
@@ -2473,7 +2475,7 @@ async function renderScratchHookReinforce() {
   const domain = await myDomain();
   if (t !== renderSeq) return;
   const creative = creativeNow();
-  const prompt = buildHookReinforcementPrompt({ idea: state.ideaDescription || '', hook: state.hook || '', script: state.rawDump || '', audience, domain: domain, creative });
+  const prompt = buildHookReinforcementPrompt({ idea: ideaForPrompt(state), hook: state.hook || '', script: state.rawDump || '', audience, domain: domain, creative });
   if (state.screen === 'scratch-hook-reinforce') seedDraft('va-scratch-reinforce-input', state.hookReinforcement);
   cosmicCard(`
     <h2>חיזוק ההוק</h2>
@@ -2524,7 +2526,7 @@ async function renderScratchDistill() {
   if (t !== renderSeq) return;
   const creative = creativeNow();
   const buildPrompt = (ctaType, funnel) => buildScriptDistillationPrompt({
-    idea: state.ideaDescription || '', hook: state.hook || '', hookReinforcement: state.hookReinforcement || '',
+    idea: ideaForPrompt(state), hook: state.hook || '', hookReinforcement: state.hookReinforcement || '',
     rawScript: state.rawDump || '', ctaType, funnel,
     audience, domain: domain, carousel: isCarousel(state), dynamicText: isDynamicText(state), creative,
   });

@@ -670,6 +670,9 @@ function returnFromChat(result = null) {
 export function assistantSeedText({ topic = '', punchline = '' } = {}) {
   const t = String(topic || '').trim();
   const p = String(punchline || '').trim();
+  /* 10/11/2026: אותו משפט בשתי התיבות (או אחד שמכיל את השני) נשלח פעם אחת */
+  const norm = (s) => s.replace(/[\s.,!?"'״׳:;()\-–—]+/g, ' ').trim();
+  if (t && p && (norm(t).includes(norm(p)) || norm(p).includes(norm(t)))) return norm(t).length > norm(p).length ? t : p;
   if (t && p) return `על מה הסרטון: ${t}\nהמסר: ${p}`;
   return t || p;
 }
