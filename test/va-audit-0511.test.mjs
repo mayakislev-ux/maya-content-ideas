@@ -32,20 +32,22 @@ const BUILT = {
   scene: (c) => buildSceneRewritePrompt({ ...ctx, script: 'תסריט', creative: c }),
 };
 
-test('קריאייטיב: נכנס לכל פרומפט במסלול מ-0, עם הוראה להיצמד אליו', () => {
+test('קריאייטיב: נכנס לכל פרומפט במסלול מ-0 חוץ מההוק, עם הוראה להיצמד אליו', () => {
+  /* 10/11/2026 (מאיה): פרומפט ההוק בלי הקריאייטיב, "תמחקי את הקטע הזה" */
+  assert.ok(!BUILT.hook(CREATIVE).includes(CREATIVE), 'הקריאייטיב חזר לפרומפט ההוק');
   for (const [name, build] of Object.entries(BUILT)) {
+    if (name === 'hook') continue;
     const p = build(CREATIVE);
     assert.ok(p.includes(`הקריאייטיב שבחרתי לסרטון הזה (חובה להיצמד אליו): ${CREATIVE}`), name);
     assert.ok(p.includes('אסור להתעלם מהקריאייטיב'), name);
     assert.ok(p.includes('כל שאר ההנחיות כאן נשארות בדיוק כמו שהן'), name);
   }
-  assert.match(BUILT.hook(CREATIVE), /ההוקים חייבים להיבנות סביב הקריאייטיב/);
   assert.match(BUILT.script(CREATIVE), /התסריט נפתח בקריאייטיב הזה/);
   assert.match(BUILT.scene(CREATIVE), /הפתיחה נשארת הפעולה או הוויזואל/);
 });
 
 test('קריאייטיב: התחום והקהל עדיין פותחים, והנוסח שלה נשאר מילה במילה אחריו', () => {
-  for (const name of ['extraction', 'hook', 'reinforcement', 'script']) {
+  for (const name of ['extraction', 'reinforcement', 'script']) {
     const withC = BUILT[name](CREATIVE);
     const without = BUILT[name]('');
     assert.match(withC, /^התחום שלי הוא: שיווק\nהקהל יעד שלי: שכירות\n\n/, name);
@@ -54,8 +56,7 @@ test('קריאייטיב: התחום והקהל עדיין פותחים, והנ�
     const body = header + creativeBlock(CREATIVE, CREATIVE_FOCUS[name]) + without.slice(header.length);
     assert.ok(withC.startsWith(body), name);
     const rest = withC.slice(body.length);
-    if (name === 'hook') assert.match(rest, /^\n\nתזכורת אחרונה לפני שאתה כותב הוקים/);
-    else assert.equal(rest, '', name);
+    assert.equal(rest, '', name);
   }
 });
 
@@ -348,7 +349,8 @@ describe('ביקורת 05/11 בעוזר (jsdom)', { skip: hasJsdom ? false : 'js
     assert.match($('.va-creative-reminder').textContent, /הקריאייטיב שבחרת:/);
     assert.ok($('.va-creative-reminder').textContent.includes(CREATIVE));
     const copied = decodeURIComponent($('.va-copy-btn').getAttribute('data-copy-text'));
-    assert.ok(copied.includes(`(חובה להיצמד אליו): ${CREATIVE}`));
+    /* 10/11/2026: מוצג במסך כתזכורת, אבל לא נכנס לפרומפט ההוק */
+    assert.ok(!copied.includes(CREATIVE));
     assert.match($('.va-copy-btn').textContent, /ChatGPT/);
     assert.ok(!$('.va-copy-btn').textContent.includes("ג'מיני"));
   });

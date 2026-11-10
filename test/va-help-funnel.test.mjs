@@ -71,8 +71,10 @@ test('"עוד": הכפתור מופיע ומחליף בין קצר למלא', ()
    וההוק, החיזוק, ה-SOS והתסריט רק ב-ChatGPT. */
 test("שכפול: מציאת הוק הולכת לג'מיני או ל-ChatGPT, והכתיבה ל-ChatGPT", () => {
   const screen = between('async function renderPrompt1', 'async function renderPrompt2');
-  assert.match(screen, /geminiHookNote\(\)/);
-  assert.match(screen, /להעתיק פרומפט לג'מיני \/ ChatGPT/);
+  /* 10/11/2026 (מאיה): "פשוט מעתיקים ל-CHAT GPT", בלי הערת ג'מיני ובלי לראות את הפרומפט */
+  assert.ok(!/geminiHookNote\(\)/.test(screen));
+  assert.ok(!/promptPeek\(/.test(screen));
+  assert.match(screen, /להעתיק את הפרומפט ל-ChatGPT/);
   assert.ok(!/להדביק בג'מיני,|נשלח לג'מיני -|ג'מיני יביא|ג'מיני יתאים/.test(screen));
   assert.match(between('async function renderPrompt2', 'function renderReadAloud'), /להעתיק פרומפט ל-ChatGPT/);
   assert.match(between('async function renderScratchDistill', '// ===== מסך הסיכום הסופי'), /להעתיק פרומפט ל-ChatGPT/);

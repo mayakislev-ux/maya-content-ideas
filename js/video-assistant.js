@@ -898,10 +898,18 @@ function renderFootageTypeChoice() {
 // לאותו קטע. גם תוקן ניסוח לגוף פונה לנשים וגברים (X/י) בכל השלבים. ---
 // 19/10/2026 (מאיה: "צריך להשאיר רק את זה בלי כל החפירה לאחר מכן") -
 // כל הרשימות (מה להשאיר/מה למחוק) הוסרו, נשארה רק ההוראה המקורית.
+/* 10/11/2026 (מאיה): "בקטע שצולם ההסבר לא הכי מדויק. קודם עוברים על הקטע
+   ורואים אם יש פואנטה ועניין, ומסמנים סביבו 20-60 שניות. אז בונים את
+   הסרטון, שזה לרוב לקצר משמעותית ולבחור את ההוק מתוך הקטע, שלב הליקוט
+   השיווקי, כי לא בטוח שהסרטון יהיה בנוי לפי הסדר. ואז בקטעים שצולמו בלייב
+   ממליצה להוסיף הוק של טקסט על המסך, מסקרן, שיבינו את ההקשר, והפרומפט של
+   ההוק יכול לעזור, אבל בשביל למלא אותו צריך לספר מה יש בסרטון, מה רואים
+   ומה הפואנטה". ארבעת המסכים נשארו, והתוכן שלהם נכתב מחדש לפי זה. */
 function renderFootageSpeechFind() {
   cosmicCard(`
-    <h2>שלב 1: למצוא רגע חזק</h2>
-    <p>לחפש משפט שיש בו דעה / הפתעה / טעות / תוצאה / ויכוח. לסמן 20–60 שניות סביבו.</p>
+    <h2>שלב 1: למצוא רגע חזק בסרטון שצולם</h2>
+    <p>עוברים על כל הקטע ושואלים: יש כאן פואנטה? יש כאן משהו מעניין? רגע עם דעה, הפתעה, טעות, תוצאה או ויכוח.</p>
+    <p>כשמוצאים רגע כזה, מסמנים 20 עד 60 שניות סביבו.</p>
     <div class="cosmic-btn-row" style="margin-top:14px">
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-speech-find-next-btn">ממשיכים ←</button>
     </div>
@@ -911,15 +919,13 @@ function renderFootageSpeechFind() {
 
 function renderFootageSpeechShorten() {
   cosmicCard(`
-    <h2>שלב 2: לקצר</h2>
-    <p>לעבור על הצ'קליסט:</p>
+    <h2>שלב 2: הליקוט השיווקי</h2>
+    <p>עכשיו בונים מהקטע סרטון. זה בעיקר עריכה וסדר, והסרטון לא חייב להיות לפי הסדר שבו צולם:</p>
     <ul style="text-align:right;padding-inline-start:20px">
-      <li>האם ההתחלה מעניינת תוך 2 שניות?</li>
-      <li>האם אפשר למחוק את המשפט הראשון?</li>
-      <li>האם יש חזרה?</li>
-      <li>האם יש הסבר ארוך מדי?</li>
-      <li>האם הפואנטה מגיעה מאוחר?</li>
-      <li>אפשר לקצר 30% בלי לאבד משמעות?</li>
+      <li>מקצרים משמעותית ומשאירים רק את החלקים הכי חזקים</li>
+      <li>בוחרים הוק מתוך הקטע עצמו. אם המשפט הכי חזק באמצע, חותכים אותו ושמים בהתחלה</li>
+      <li>מורידים חזרות והסברים ארוכים</li>
+      <li>מוודאים שהפואנטה ברורה, ושהיא מגיעה בסוף</li>
     </ul>
     <div class="cosmic-btn-row" style="margin-top:14px">
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-speech-shorten-next-btn">ממשיכים ←</button>
@@ -928,38 +934,57 @@ function renderFootageSpeechShorten() {
   document.getElementById('va-speech-shorten-next-btn').addEventListener('click', () => dispatch({ type: 'FOOTAGE_SPEECH_NEXT' }));
 }
 
-function renderFootageSpeechSharpen() {
+/* הפרומפט של ההוק, עם הוראה שזה הוק כתוב על המסך מעל קטע מלייב */
+function footageTextHookPrompt({ seen, point, audience, domain }) {
+  return `${buildHookFindingPrompt({ idea: point, script: seen, audience, domain: domain, creative: '', suggestedHook: '' })}
+
+חשוב: זה סרטון שכבר צולם (לייב, סדנה, פודקאסט או שיחה). ההוק ייכתב כטקסט על המסך בתחילת הסרטון, מעל מה שרואים. הוא צריך להיות קצר (עד 10 מילים), מסקרן, ולהבהיר לצופה מה ההקשר של מה שהוא רואה עכשיו.
+מה יש בסרטון ומה רואים בו: ${seen}
+הפואנטה: ${point}`;
+}
+
+async function renderFootageSpeechSharpen() {
+  const t = ++renderSeq;
+  const audience = await myAudience();
+  const domain = await myDomain();
+  if (t !== renderSeq) return;
   cosmicCard(`
-    <h2>שלב 3: לחדד שיווקית</h2>
-    <p>קטע שיווקי טוב עומד בשלושה דברים:</p>
-    <ul style="text-align:right;padding-inline-start:20px;margin-bottom:14px">
-      <li>יש בו אמירה אחת ברורה</li>
-      <li>אפשר להבין על מה מדובר תוך 3 שניות</li>
-      <li>יש בו משהו שמניע לפעולה או לתגובה</li>
-    </ul>
-    <p style="font-weight:700;text-align:right;margin-bottom:4px">מה לעשות:</p>
-    <ul style="text-align:right;padding-inline-start:20px">
-      <li>להוסיף משפט פתיחה שאומר במפורש את התועלת או הנקודה</li>
-      <li>לוודא שיש בסוף מסקנה ברורה או קריאה לפעולה</li>
-      <li>להוסיף טקסט על המסך שמדגיש את הנקודה המרכזית</li>
-    </ul>
+    <h2>שלב 3: הוק כתוב על המסך</h2>
+    <p>בקטעים שצולמו בלייב מומלץ להוסיף בהתחלה הוק כתוב על המסך, מסקרן, כדי שיבינו מיד מה ההקשר. כדי ש-ChatGPT יציע הוקים טובים, צריך לספר לו מה יש בסרטון:</p>
+    <label class="cosmic-field-label" for="va-footage-seen">מה יש בסרטון? מה רואים בו?</label>
+    <textarea class="cosmic-textarea" id="va-footage-seen" style="min-height:72px" placeholder="למשל: אני בסדנה מול 20 בנות, מסבירה למה המחיר הנמוך מבריח לקוחות"></textarea>
+    <label class="cosmic-field-label" for="va-footage-point">מה הפואנטה?</label>
+    <textarea class="cosmic-textarea" id="va-footage-point" style="min-height:56px" placeholder="למשל: מחיר נמוך משדר שהעבודה לא שווה"></textarea>
+    <div id="va-footage-hook-copy" style="margin-top:10px"></div>
     <div class="cosmic-btn-row" style="margin-top:14px">
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-speech-sharpen-next-btn">ממשיכים ←</button>
     </div>
   `);
+  const seen = document.getElementById('va-footage-seen');
+  const point = document.getElementById('va-footage-point');
+  const slot = document.getElementById('va-footage-hook-copy');
+  const paint = () => {
+    const s1 = seen.value.trim();
+    const p1 = point.value.trim();
+    if (!s1 || !p1) {
+      slot.innerHTML = '<p class="cosmic-hint" style="margin:0">אחרי ששתי התיבות מלאות, יופיע כאן כפתור להעתקת הפרומפט ל-ChatGPT.</p>';
+      return;
+    }
+    slot.innerHTML = copyBtn(footageTextHookPrompt({ seen: s1, point: p1, audience, domain }), 'להעתיק את הפרומפט ל-ChatGPT');
+    wireCopyButtons(slot);
+  };
+  seen.addEventListener('input', paint);
+  point.addEventListener('input', paint);
+  paint();
   document.getElementById('va-speech-sharpen-next-btn').addEventListener('click', () => dispatch({ type: 'FOOTAGE_SPEECH_NEXT' }));
 }
 
-// 19/10/2026 (מאיה: "Hook → Point → Proof → End זה באנגלית ולא הבנתי") -
-// הוחלף בהסבר בעברית, בדיוק לפי מה שהיא תיארה: בוחרים את ההוק הכי
-// מסקרן וברור לתחילת הסרטון (גם ויזואלית), מומלץ להוסיף הוק כתוב על
-// המסך כדי שיבינו את ההקשר מיד, ואז מלקטים לפי הוק ← הרחבה ← פואנטה.
 function renderFootageSpeechDone() {
   const card = cosmicCard(`
     <h2>הקטע מוכן</h2>
-    <p>עכשיו מלקטים את הקטע שיווקית: לבחור את ההוק הכי מסקרן וברור לתחילת הסרטון - גם ויזואלית. מומלץ להוסיף הוק כתוב על המסך, כדי שיבינו את ההקשר מיד.</p>
-    <p class="cosmic-prompt-box" style="text-align:center;font-size:17px;font-weight:700">הוק ← הרחבת הנושא ← פואנטה / סיומת</p>
-    <p>כשהקטע בנוי ככה - הוא מוכן.</p>
+    <p>כך בנוי הסרטון שליקטת:</p>
+    <p class="cosmic-prompt-box" style="text-align:center;font-size:17px;font-weight:700">הוק כתוב על המסך ← הרגע הכי חזק מהקטע ← הפואנטה</p>
+    <p>אם ההוק מתוך הקטע והטקסט על המסך מסקרנים, והפואנטה ברורה בסוף, הוא מוכן לעלות.</p>
     <div class="cosmic-btn-row" style="margin-top:14px">
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-speech-done-btn">ממשיכים ←</button>
     </div>
@@ -1844,7 +1869,6 @@ async function renderPrompt1() {
   const hookForPrompt = state.openingHook || state.transcript || '';
 
   const prompt = buildDuplicationPrompt({ audience, domain, hook: hookForPrompt });
-  const highlightValues = [audience, domain, hookForPrompt];
   /* ההודעה רק כל עוד התמלול הוא זה שהגיע מהמאגר. אחרי שתוקן, הוא שלה. */
   const bankUntouched = state.bankNotice && state.bankNotice.reason === 'ok'
     && state.transcript === state.bankNotice.text;
@@ -1853,12 +1877,9 @@ async function renderPrompt1() {
   cosmicCard(`
     <h2>מציאת הוק</h2>
     ${bankUntouched ? bankNoticeHtml({ withEditLink: true }) : ''}
-    ${geminiHookNote()}
-    <div class="cosmic-context-box"><span>ההוק שזיהינו מתוך התמלול שלך:</span>${escapeHtml(hookForPrompt)}</div>
-    <p>רק ההוק הזה נשלח לג'מיני או ל-ChatGPT - לא כל התמלול. הוא ישכפל אותו ויביא לך 30 הוקים חדשים באותו מנגנון.</p>
-    <p>להעתיק, להדביק בג'מיני או ב-ChatGPT, ולחזור עם ההוק שהכי קרץ לך מתוך ה-30</p>
-    ${promptPeek(highlightPlaceholders(prompt, highlightValues))}
-    ${copyBtn(prompt, "להעתיק פרומפט לג'מיני / ChatGPT")}
+    <div class="cosmic-context-box"><span>ההוק שאיתרנו בסרטון המקורי:</span>${escapeHtml(hookForPrompt)}</div>
+    <p>עכשיו מוצאים הוק משלך: מעתיקים את הפרומפט ל-ChatGPT, והוא יביא הוקים חדשים באותו מנגנון שמתאימים לסרטון שלך. בוחרים את זה שהכי קורץ ומדביקים כאן.</p>
+    ${copyBtn(prompt, 'להעתיק את הפרומפט ל-ChatGPT')}
     <textarea class="cosmic-textarea" id="va-hook-input" placeholder="להדביק כאן את ההוק שבחרת..." style="margin-top:14px"></textarea>
     <div class="cosmic-btn-row" style="margin-top:14px">
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-hook-chosen-btn">ממשיכים ←</button>
@@ -2144,34 +2165,49 @@ function renderIdeaSharpen() {
      טקסט, מבלבל ועושה כאב ראש, חייב לפשט הכל". ירדו פסקת הפתיחה, שלושת
      הצעדים הממוספרים ושתי שורות ההסבר. נשארו כותרת, תיבות וכפתורים:
      השאלות שעל התיבות הן ההסבר. */
-  cosmicCard(`
-    <h2>${forFootage ? 'המסר של הקטע' : 'הרעיון שלך'}</h2>
-
-    <label class="cosmic-field-label" for="va-idea-sharp">${forFootage ? 'מה המסר של הקטע שכבר צולם?' : 'על מה הסרטון?'}</label>
-    <textarea class="cosmic-textarea" id="va-idea-sharp" style="min-height:${forFootage ? 96 : 56}px"
-      ${forFootage ? 'placeholder="למשל: למה אני עובדת עם מכשיר אחד ולא עם שלושה"' : ''}>${escapeHtml(idea)}</textarea>
-    ${fromIdea ? '<button type="button" class="va-text-link" id="va-pull-idea-link">🎲 להגריל רעיון מהבנק שלי</button>' : ''}
-    ${forFootage ? '' : `
-    <label class="cosmic-field-label va-punch-label" for="va-idea-punch">⭐ מה שורה תחתונה אתם רוצים שהצופים יבינו, ירגישו או יחשבו אחרי שיצפו בסרטון הזה?</label>
-    <textarea class="cosmic-textarea va-punch-box" id="va-idea-punch" style="min-height:96px">${escapeHtml(punch)}</textarea>`}
-
-    ${state.ideaAngle && !forFootage ? `<div class="va-angle-picked" id="va-angle-picked">
+  /* 10/11/2026 (מאיה, כיוון 4 מתוך 5): "שני צעדים ממוספרים", ובצעד הראשון
+     "על מה הסרטון/הרעיון?". כל שאלה בקופסה ממוספרת משלה, ההגרלה בתוך
+     הצעד הראשון, והצ'אט עבר מקופסה גדולה לפס טיפ דק. בקטע שצולם: כמו קודם. */
+  const angleBlock = state.ideaAngle && !forFootage ? `<div class="va-angle-picked" id="va-angle-picked">
       <span class="va-angle-picked__label">🎯 זווית ההנגשה שנבחרה:</span>
       <strong class="va-angle-picked__name" id="va-angle-picked-name">${escapeHtml(state.ideaAngle)}</strong>
       <small class="va-angle-picked__note">נכנסת לבד לאריזה, להוק ולתסריט</small>
       <button type="button" class="va-text-link" id="va-angle-remove">להוריד את הזווית</button>
-    </div>` : ''}
-
-    ${showAngleChat ? `<div class="va-angle-cta">
-      <p class="va-angle-cta__lead">🎯 דיוק רעיון ממוקד, חזק וספציפי הוא הסוד לסרטון מוצלח.</p>
-      <p class="va-angle-cta__warn">רעיון לא מדויק יהרוס את כל הכתיבה.</p>
-      <button type="button" class="cosmic-btn cosmic-btn--primary va-angle-cta__btn" id="va-angle-chat-btn">לא בטוחים שהרעיון חזק? לחצו כאן</button>
-      <small class="va-angle-cta__safe">ואל דאגה, כל מה שתכתבו כאן נשמר אוטומטית ויחכה לכם כשתחזרו.</small>
-    </div>` : ''}
-
+    </div>` : '';
+  const nextRow = `
     <div class="cosmic-btn-row" style="margin-top:16px">
       <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-idea-next-btn">ממשיכים ←</button>
+    </div>`;
+  cosmicCard(forFootage ? `
+    <h2>המסר של הקטע</h2>
+    <label class="cosmic-field-label" for="va-idea-sharp">מה המסר של הקטע שכבר צולם?</label>
+    <textarea class="cosmic-textarea" id="va-idea-sharp" style="min-height:96px"
+      placeholder="למשל: למה אני עובדת עם מכשיר אחד ולא עם שלושה">${escapeHtml(idea)}</textarea>
+    ${nextRow}
+  ` : `
+    <h2>הרעיון שלך</h2>
+    <div class="va-num">
+      <span class="va-num__n" aria-hidden="true">1</span>
+      <div class="va-num__in">
+        <label class="cosmic-field-label" for="va-idea-sharp">על מה הסרטון/הרעיון?</label>
+        <textarea class="cosmic-textarea" id="va-idea-sharp" style="min-height:56px">${escapeHtml(idea)}</textarea>
+        ${fromIdea ? '<button type="button" class="va-text-link" id="va-pull-idea-link">🎲 להגריל רעיון מהבנק שלי</button>' : ''}
+      </div>
     </div>
+    <div class="va-num">
+      <span class="va-num__n" aria-hidden="true">2</span>
+      <div class="va-num__in">
+        <label class="cosmic-field-label va-punch-label" for="va-idea-punch">⭐ מה שורה תחתונה אתם רוצים שהצופים יבינו, ירגישו או יחשבו אחרי שיצפו בסרטון הזה?</label>
+        <textarea class="cosmic-textarea va-punch-box" id="va-idea-punch" style="min-height:80px">${escapeHtml(punch)}</textarea>
+      </div>
+    </div>
+    ${angleBlock}
+    ${showAngleChat ? `<button type="button" class="va-angle-tip" id="va-angle-chat-btn">
+      <span aria-hidden="true">🎯</span>
+      <span class="va-angle-tip__text"><strong>לא בטוחים שהרעיון חזק?</strong> הצ'אט מחדד אותו, ומה שכתבתם נשמר</span>
+      <span class="va-angle-tip__go">לבדוק בצ'אט ←</span>
+    </button>` : ''}
+    ${nextRow}
   `);
 
   const box = document.getElementById('va-idea-sharp');
@@ -2573,7 +2609,6 @@ async function renderScratchHook() {
   if (state.screen === 'scratch-hook') seedDraft('va-scratch-hook-input', state.hook || '');
   const promptBlock = `
     <p>הפרומפט כולל בנק הוקים אמיתי מוטמע - ChatGPT יתאים לך ממנו הוק מדויק. להעתיק, להדביק, ולחזור עם ההוק שבחרת.</p>
-    ${creative ? '<p class="cosmic-hint">ההוקים נבנים סביב הקריאייטיב: מה שאומרים תוך כדי הפתיחה שבחרת או מיד אחריה.</p>' : ''}
     ${promptPeek(highlightPlaceholders(prompt, marks))}
     ${copyBtn(prompt, 'להעתיק פרומפט ל-ChatGPT')}`;
   const inputBlock = `

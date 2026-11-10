@@ -8930,3 +8930,58 @@ body[data-plan="refs"] .hub-full-only { display: none !important; }
 }
 #video-assistant-view .va-topbar .va-aud-chip:hover { background: rgba(255,255,255,.2); }
 #video-assistant-view .va-topbar .va-aud-chip.is-changed { background: #0b6fa8; border-color: #7fd1ff; }
+
+/* 10/11/2026: מסך "הרעיון שלך", כיוון 4: שני צעדים ממוספרים ופס טיפ לצ'אט */
+#video-assistant-view .va-num {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  background: #fff;
+  border: 1px solid var(--va-line, #d3e6f2);
+  border-radius: 18px;
+  padding: 14px;
+  margin: 0 0 12px;
+  text-align: start;
+}
+#video-assistant-view .va-num__n {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--va-navy, #16205a);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 15px;
+}
+#video-assistant-view .va-num__in { display: grid; gap: 8px; min-width: 0; }
+#video-assistant-view .va-num__in .cosmic-field-label { margin: 2px 0 0; }
+#video-assistant-view .va-num__in .cosmic-textarea { margin: 0; }
+#video-assistant-view .va-num__in .va-text-link { justify-self: start; padding-top: 0; color: var(--va-blue, #0b6fa8); }
+#video-assistant-view .va-angle-tip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin: 2px 0 0;
+  padding: 12px 14px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--va-fill, #e6f2fa);
+  color: var(--va-ink, #0f2340);
+  font: inherit;
+  font-size: 14px;
+  text-align: start;
+  cursor: pointer;
+}
+#video-assistant-view .va-angle-tip:hover { background: #d9ecf8; }
+#video-assistant-view .va-angle-tip:focus-visible { outline: 3px solid var(--va-blue, #0b6fa8); outline-offset: 2px; }
+#video-assistant-view .va-angle-tip__text { flex: 1 1 auto; min-width: 0; line-height: 1.45; }
+#video-assistant-view .va-angle-tip__go { flex: none; color: var(--va-blue, #0b6fa8); font-weight: 700; white-space: nowrap; }
+#video-assistant-view .va-angle-tip:disabled { opacity: .6; cursor: progress; }
+@media (max-width: 420px) {
+  #video-assistant-view .va-angle-tip { flex-wrap: wrap; }
+  #video-assistant-view .va-angle-tip__go { margin-inline-start: auto; }
+}
+#video-assistant-view .va-num__n[hidden], #video-assistant-view .va-num[hidden] { display: none; }

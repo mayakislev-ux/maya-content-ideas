@@ -216,19 +216,27 @@ describe('בדפדפן (jsdom)', { skip: hasJsdom ? false : 'jsdom לא מותק
     if ($('#va-start-over-btn')) { $('#va-start-over-btn').click(); await until(() => $('#va-idea-btn'), 'פתיחה'); }
   }
 
-  test('יצירה מ-0: הכפתור הבולט במסך הרעיון והמסר, בנוסח של מאיה', async () => {
+  /* 10/11/2026 (מאיה, "שני צעדים ממוספרים"): הקופסה הגדולה של הצ'אט ירדה,
+     ובמקומה פס טיפ דק מתחת לשני הצעדים. הוא עדיין כפתור, ועדיין אומר
+     שמה שנכתב נשמר. */
+  test('יצירה מ-0: פס הטיפ לצ׳אט במסך הרעיון והמסר, בנוסח של מאיה', async () => {
     setPlan('full');
     await openAssistantFresh();
     $('#va-idea-btn').click();
     await until(() => $('#va-idea-sharp'), 'מסך הרעיון');
-    const cta = $('.va-angle-cta');
-    assert.ok(cta, 'אין את הקופסה');
-    const text = cta.textContent.replace(/\s+/g, ' ');
-    assert.match(text, /דיוק רעיון ממוקד, חזק וספציפי הוא הסוד לסרטון מוצלח/);
-    assert.match(text, /רעיון לא מדויק יהרוס את כל הכתיבה/);
-    assert.match(text, /לא בטוחים שהרעיון חזק\? לחצו כאן/);
-    assert.match(text, /כל מה שתכתבו כאן נשמר אוטומטית/);
-    assert.ok($('#va-angle-chat-btn').classList.contains('cosmic-btn--primary'), 'הכפתור קטן ולא בולט');
+    assert.ok(!$('.va-angle-cta'), 'הקופסה הגדולה חזרה');
+    const tip = $('#va-angle-chat-btn');
+    assert.ok(tip, 'אין כניסה לצ׳אט');
+    assert.equal(tip.tagName, 'BUTTON');
+    assert.ok(tip.classList.contains('va-angle-tip'), 'הכניסה לצ׳אט לא בפס הטיפ');
+    const text = tip.textContent.replace(/\s+/g, ' ').trim();
+    assert.match(text, /לא בטוחים שהרעיון חזק\? הצ'אט מחדד אותו, ומה שכתבתם נשמר/);
+    assert.match(text, /לבדוק בצ'אט ←/);
+    /* הפס יושב אחרי שני הצעדים, לא בתוכם */
+    const steps = document.querySelectorAll('.va-num');
+    assert.equal(steps.length, 2, 'אין שני צעדים ממוספרים');
+    assert.ok(!tip.closest('.va-num'), 'הטיפ נכנס לתוך צעד');
+    assert.ok(steps[1].compareDocumentPosition(tip) & window.Node.DOCUMENT_POSITION_FOLLOWING, 'הטיפ לא אחרי הצעד השני');
   });
 
   test('לחיצה: נשמר לפני שעוזבים, הצ׳אט נפתח עם מה שנכתב, וחוזרים עם הרעיון המדויק', async () => {

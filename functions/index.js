@@ -1411,7 +1411,9 @@ exports.extractOpeningHook = onCall({ secrets: [anthropicApiKey], region: 'us-ce
 
 /* 09/11/2026: "בוחרים פורמט הנגשה" - המלצה שקוראת את הרעיון, המסר והאריזה
    (במקום חיפוש מילים בלבד). ראה functions/format-recommend.js. */
-exports.recommendFormatsForIdea = onCall({ secrets: [anthropicApiKey], region: 'us-central1', timeoutSeconds: 30 }, async (request) => {
+/* 10/11/2026 (מאיה: "העיקוף של הפורמט מופיע בדיליי, זה אמור להופיע ישר"):
+   השרת נרדם בין שימושים, וההתעוררות לקחה כמה שניות. מופע אחד תמיד ער. */
+exports.recommendFormatsForIdea = onCall({ secrets: [anthropicApiKey], region: 'us-central1', timeoutSeconds: 30, minInstances: 1 }, async (request) => {
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'יש להתחבר כדי להשתמש בתכונה הזו');
   }

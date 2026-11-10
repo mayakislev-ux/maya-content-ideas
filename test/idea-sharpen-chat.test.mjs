@@ -31,6 +31,24 @@ function fnBody(name, nextName) {
 const SHARPEN = fnBody('renderIdeaSharpen', 'renderContentBasics');
 const BASICS = fnBody('renderContentBasics', 'renderScratchIntro');
 
+/* 10/11/2026: לכל מסלול תבנית משלו (cosmicCard(forFootage ? ... : ...)),
+   עם שני חלקים משותפים (angleBlock, nextRow) שמוגדרים לפניה. כאן מריצים
+   באמת את כל הקטע הזה, מההגדרות ועד סוף הקריאה, ולא רק קוראים אותו. */
+const TPL_END = '\n  `);';
+const TPL_FROM = SHARPEN.indexOf('const angleBlock');
+const TPL_TO = SHARPEN.indexOf(TPL_END, TPL_FROM) + TPL_END.length;
+const TEMPLATE_SRC = SHARPEN.slice(TPL_FROM, TPL_TO);
+function renderSharpen(forFootage, { idea = 'נושא', punch = 'הפואנטה שלי' } = {}) {
+  assert.ok(TPL_FROM > 0 && TPL_TO > TPL_FROM, 'לא נמצאה תבנית המסך');
+  assert.ok(TEMPLATE_SRC.includes('cosmicCard('), 'התבנית לא נשלחת ל-cosmicCard');
+  let html = null;
+  const build = new Function('forFootage', 'refsOnly', 'escapeHtml', 'idea', 'punch', 'fromIdea', 'state', 'showAngleChat', 'cosmicCard',
+    TEMPLATE_SRC);
+  build(forFootage, false, (s) => s, idea, punch, !forFootage, {}, !forFootage, (h) => { html = h; });
+  assert.equal(typeof html, 'string', 'cosmicCard לא קיבל HTML');
+  return html;
+}
+
 describe('הזווית ירדה, והצ׳אט במקומה', () => {
   test('אין יותר מסך בחירת זווית', () => {
     assert.ok(!VA.includes('function renderAngle('), 'מסך הזווית חזר');
@@ -112,19 +130,16 @@ describe('הצ׳אט מדבר על מה שכתוב בתיבה, ורק עליו',
    התבנית עצמה מורצת באמת - עם ועד בלי קטע מצולם - ולא רק נבדקת כמקור.
    בדיקת מקור הייתה עוברת גם על תבנית שמתפרקת בהרצה. */
 describe('אותו מסך, שני מסלולים', () => {
-  const tplFrom = SHARPEN.indexOf('cosmicCard(`') + 'cosmicCard(`'.length;
-  const tplTo = SHARPEN.indexOf('\n  `);', tplFrom);
-  const render = (forFootage) => {
-    assert.ok(tplTo > tplFrom, 'לא נמצאה תבנית המסך');
-    const build = new Function('forFootage', 'refsOnly', 'escapeHtml', 'idea', 'punch', 'fromIdea', 'state', 'showAngleChat',
-      'return `' + SHARPEN.slice(tplFrom, tplTo) + '`');
-    return build(forFootage, false, (s) => s, 'הרעיון הגולמי שלי', 'הפואנטה הגולמית שלי', !forFootage, {}, !forFootage);
-  };
+  const render = (forFootage) => renderSharpen(forFootage, { idea: 'הרעיון הגולמי שלי', punch: 'הפואנטה הגולמית שלי' });
 
   /* 29/10/2026 (מאיה): "יש שם בשקוף דוגמה של החלקות, תבטלי, זה מבלבל". */
   test('רעיון מ-0: הכותרת והתווית, בלי דוגמת החלקה בשקוף', () => {
     const html = render(false);
     assert.match(html, /<h2>הרעיון שלך<\/h2>/);
+    /* 10/11/2026 (מאיה, "שני צעדים ממוספרים"): כל שאלה בקופסה ממוספרת משלה */
+    const steps = [...html.matchAll(/<span class="va-num__n"[^>]*>(\d)<\/span>/g)].map((m) => m[1]);
+    assert.deepEqual(steps, ['1', '2'], 'אין שני צעדים ממוספרים');
+    assert.ok(html.includes('על מה הסרטון/הרעיון?'), 'הצעד הראשון לא בנוסח שלה');
     /* 10/11/2026: הנוסח החדש של מאיה */
     assert.ok(html.includes('מה שורה תחתונה אתם רוצים שהצופים יבינו, ירגישו או יחשבו אחרי שיצפו בסרטון הזה?'), 'השאלה על הפואנטה לא בנוסח שלה');
     assert.ok(!html.includes('החלקה'), 'חזרה הדוגמה של ההחלקה');
@@ -136,7 +151,8 @@ describe('אותו מסך, שני מסלולים', () => {
     const html = render(true);
     assert.match(html, /<h2>המסר של הקטע<\/h2>/);
     assert.match(html, /placeholder="למשל: למה אני עובדת עם מכשיר אחד/);
-    assert.ok(html.includes('שכבר צולם'), 'לא כתוב שהחומר כבר קיים');
+    assert.ok(html.includes('מה המסר של הקטע שכבר צולם?'), 'לא כתוב שהחומר כבר קיים');
+    assert.ok(!html.includes('va-num'), 'בקטע שצולם אין צעדים ממוספרים, יש שאלה אחת');
     assert.ok(!html.includes('${'), 'נשארה אינטרפולציה לא פתורה');
   });
 
@@ -153,8 +169,10 @@ describe('ברור מה עושים כאן', () => {
   /* 28/10/2026 (מאיה): "מיליון טקסט, מבלבל ועושה כאב ראש, חייב לפשט
      הכל". ההסבר הוא השאלות שעל התיבות, לא פסקאות מעליהן. */
   test('בלי פסקת פתיחה ובלי רשימת צעדים, רק שאלות על התיבות', () => {
-    assert.ok(!/cosmic-howto|cosmic-lede|cosmic-hint/.test(SHARPEN.slice(SHARPEN.indexOf('cosmicCard(`'), SHARPEN.indexOf('\n  `);'))), 'חזר טקסט מסביב לתיבות');
-    assert.match(SHARPEN, /'על מה הסרטון\?'/, 'לתיבת הנושא אין שאלה');
+    for (const html of [renderSharpen(false), renderSharpen(true)]) {
+      assert.ok(!/cosmic-howto|cosmic-lede|cosmic-hint/.test(html), 'חזר טקסט מסביב לתיבות');
+    }
+    assert.match(renderSharpen(false), /<label class="cosmic-field-label" for="va-idea-sharp">על מה הסרטון\/הרעיון\?<\/label>/, 'לתיבת הנושא אין שאלה');
   });
 
   test('לתיבה יש תווית, ודוגמה רק לקטע שצולם', () => {
@@ -185,10 +203,7 @@ describe('הכותרת תואמת את המסך', () => {
    הסרטון? מה המסר? ואז הפואנטה הופכת להיות הרעיון, ורק אז הצ'אט".
    "מפחדת שזה עומס של שלבים" - ולכן זה שדה באותו מסך, לא מסך חדש. */
 describe('הפואנטה: הסעיף הכי קריטי', () => {
-  const tplFrom = SHARPEN.indexOf('cosmicCard(`') + 'cosmicCard(`'.length;
-  const tplTo = SHARPEN.indexOf('\n  `);', tplFrom);
-  const render = (forFootage) => new Function('forFootage', 'refsOnly', 'escapeHtml', 'idea', 'punch', 'fromIdea', 'state', 'showAngleChat',
-    'return `' + SHARPEN.slice(tplFrom, tplTo) + '`')(forFootage, false, (s) => s, 'נושא', 'הפואנטה שלי', !forFootage, {}, !forFootage);
+  const render = (forFootage) => renderSharpen(forFootage);
 
   /* 28/10/2026 (מאיה: "עומס מנטלי"): "מאיפה הרעיון?" ו"בודקים לפני
      שממשיכים" היו מסכים נפרדים, ועכשיו הם קישור ותיבת סימון כאן. */
@@ -196,6 +211,10 @@ describe('הפואנטה: הסעיף הכי קריטי', () => {
   test('ההגרלה במסך הרעיון, ותיבת הרלוונטיות ירדה', () => {
     const html = render(false);
     assert.ok(html.includes('id="va-pull-idea-link"'), 'אין קישור להגרלה');
+    /* 10/11/2026: ההגרלה יושבת בתוך הצעד הראשון, ליד תיבת הנושא */
+    const step1 = html.slice(html.indexOf('>1</span>'), html.indexOf('>2</span>'));
+    assert.ok(step1.includes('id="va-pull-idea-link"'), 'ההגרלה לא בצעד הראשון');
+    assert.ok(!render(true).includes('va-pull-idea-link'), 'בקטע שצולם אין הגרלה מהבנק');
     assert.ok(!html.includes('va-relevance-check'), 'תיבת הרלוונטיות חזרה');
     assert.ok(!/relevance && !relevance\.checked/.test(SHARPEN), 'חזר חסם על המשך בלי סימון');
   });
@@ -204,6 +223,9 @@ describe('הפואנטה: הסעיף הכי קריטי', () => {
     assert.ok(render(false).includes('id="va-idea-punch"'), 'אין שדה פואנטה');
     assert.ok(render(false).includes('הפואנטה שלי'), 'הפואנטה לא חוזרת לתיבה');
     assert.ok(!render(true).includes('va-idea-punch'), 'בקטע שצולם המסר כבר קיים, אין צורך בשדה נוסף');
+    /* הכניסה לצ'אט רק ביצירה מ-0 */
+    assert.ok(render(false).includes('id="va-angle-chat-btn"'), 'אין כניסה לצ׳אט ברעיון מ-0');
+    assert.ok(!render(true).includes('va-angle-chat-btn'), 'הצ׳אט הופיע בקטע שצולם');
   });
 
 

@@ -150,26 +150,29 @@ describe('השרת: הפרומפט והניקוי של התשובה (09/11/2026)
     const p = buildFormatRecommendPrompt({ idea: 'רעיון X', message: 'מסר Y', angle: '', startingPoint: 'סיפור אישי', packaging: 'אריזה Z' });
     for (const w of ['רעיון X', 'מסר Y', 'אריזה Z', 'סיפור אישי']) assert.ok(p.includes(w), w);
     assert.match(p, /גם אם כתוב שם "קריינות"/);
-    assert.match(p, /2 או 3 פורמטים/);
+    assert.match(p, /3 או 4 פורמטים מסגנונות שונים/);
+    assert.match(p, /הולכת ברחוב/);
   });
-  test('ניקוי: רק שמות אמיתיים, בלי כפולים, עד 3, בלי מקף ארוך', () => {
-    const picks = parseFormatPicks('הנה: {"picks":[{"name":"דיבור למצלמה","why":"כי — היא מספרת"},{"name":"פורמט מומצא","why":"x"},{"name":"דיבור למצלמה","why":"שוב"},{"name":"ראיון / שיחה","why":"a"},{"name":"וויס אובר","why":"b"},{"name":"מסך ירוק","why":"c"}]}');
-    assert.deepEqual(picks.map((p) => p.name), ['דיבור למצלמה', 'ראיון / שיחה', 'וויס אובר']);
+  test('ניקוי: רק שמות אמיתיים, בלי כפולים, עד 4, בלי מקף ארוך', () => {
+    const picks = parseFormatPicks('הנה: {"picks":[{"name":"דיבור למצלמה","why":"כי — היא מספרת"},{"name":"פורמט מומצא","why":"x"},{"name":"דיבור למצלמה","why":"שוב"},{"name":"ראיון / שיחה","why":"a"},{"name":"וויס אובר","why":"b"},{"name":"מסך ירוק","why":"c"},{"name":"טקסט דינמי","why":"d"}]}');
+    assert.deepEqual(picks.map((p) => p.name), ['דיבור למצלמה', 'ראיון / שיחה', 'וויס אובר', 'מסך ירוק']);
     assert.equal(picks[0].why, 'כי, היא מספרת');
     assert.deepEqual(parseFormatPicks('לא JSON'), []);
   });
 });
 
-describe('פרומפט ההוקים נצמד לקריאייטיב ולרעיון (09/11/2026)', () => {
-  test('ההוראה וגם תזכורת בסוף, עם הקריאייטיב והרעיון עצמם', async () => {
+/* 10/11/2026 (מאיה): "בכל ההוקים: את יושבת וחותכת תותים... הוקים ממש גרועים,
+   לא לפי החוקים ולא לפי התבנית שלי. תמחקי את הקטע הזה מהפרומפט". הבלוק של
+   09/11 שהצמיד את ההוקים לקריאייטיב ירד. */
+describe('פרומפט ההוקים בלי הקריאייטיב (10/11/2026)', () => {
+  test('עם קריאייטיב או בלי, הפרומפט זהה: בלי ההוראה ובלי התזכורת בסוף', async () => {
     const { buildHookFindingPrompt } = await import('../js/video-assistant-content.js');
-    const creative = 'ההוק:"תגידו, הייתם מסכימים להתחתן עם מישהו בדייט הראשון?"';
-    const p = buildHookFindingPrompt({ idea: 'לידים קרים', script: 'תסריט', audience: 'בעלות עסקים', domain: 'שיווק', creative });
-    assert.match(p, /כל הוק עושה שני דברים יחד/);
-    assert.match(p, /גם על אלה שנבנים מהתבניות/);
-    assert.match(p, /אסור להדביק את אותו משפט פתיחה מילה במילה/);
-    const tail = p.slice(p.lastIndexOf('תזכורת אחרונה'));
-    assert.ok(tail.includes(creative) && tail.includes('לידים קרים'), 'התזכורת בסוף בלי הקריאייטיב או הרעיון');
-    assert.ok(!buildHookFindingPrompt({ idea: 'x', script: 'y', audience: 'a', domain: 'd', creative: '' }).includes('תזכורת אחרונה'));
+    const creative = 'את יושבת וחותכת תותים באופן טבעי, ומתחילה לדבר תוך כדי הפעולה.';
+    const args = { idea: 'פערי מעמדות', script: 'תסריט', audience: 'בעלות עסקים', domain: 'שיווק' };
+    const withC = buildHookFindingPrompt({ ...args, creative });
+    assert.equal(withC, buildHookFindingPrompt({ ...args, creative: '' }));
+    assert.ok(!withC.includes('תותים'));
+    assert.ok(!withC.includes('כל הוק עושה שני דברים יחד'));
+    assert.ok(!withC.includes('תזכורת אחרונה'));
   });
 });
