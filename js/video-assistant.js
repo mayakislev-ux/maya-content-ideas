@@ -14,7 +14,7 @@
 // לנשים וגברים, ומסך סיכום ברור בסוף שמראה בדיוק מה נעשה ומה נשאר.
 
 import { mountDrafts, clearScreenDrafts, draftKey, withDraft } from './video-assistant-drafts.js';
-import { INITIAL_STATE, isCarousel, nextStep, migrateLegacyState } from './video-assistant-flow.js';
+import { INITIAL_STATE, isCarousel, isDynamicText, nextStep, migrateLegacyState } from './video-assistant-flow.js';
 import { pickIdea, pickReference } from './video-assistant-picker.js';
 import { buildParts, hasContent, scriptDoc } from './video-assistant-build.js';
 import { confirmDialog } from './confirm-dialog.js';
@@ -2517,7 +2517,7 @@ async function renderScratchDistill() {
   const buildPrompt = (ctaType, funnel) => buildScriptDistillationPrompt({
     idea: state.ideaDescription || '', hook: state.hook || '', hookReinforcement: state.hookReinforcement || '',
     rawScript: state.rawDump || '', ctaType, funnel,
-    audience, domain: domain, carousel: isCarousel(state), creative,
+    audience, domain: domain, carousel: isCarousel(state), dynamicText: isDynamicText(state), creative,
   });
   /* 28/10/2026 (מאיה): "מאוד קל לפספס איזו הנעה לפעולה רוצים, שימי לב".
      זו הייתה רשימה נפתחת שכבר בחרה "משפך" לבד, כך שאפשר היה להעתיק את
@@ -2531,6 +2531,7 @@ async function renderScratchDistill() {
     <h2>זיקוק התסריט הסופי</h2>
     ${creativeReminderHtml()}
     ${isCarousel(state) ? '<p class="cosmic-hint">בחרת פוסט קרוסלה, אז הפרומפט כותב טקסט קצר לכל שקופית, עד 10 שקופיות.</p>' : ''}
+    ${isDynamicText(state) ? '<p class="cosmic-hint">בחרת טקסט דינמי, אז הפרומפט כותב את התסריט לפי פריימים: פריים 1 ההוק, פריים 2 החיזוק, ומשם משפט אחד קצר וחד בכל פריים.</p>' : ''}
     <div class="va-cta-pick">
       <p class="va-cta-pick-title">⭐ קודם לבחור: מה הצופה צריך לעשות בסוף הסרטון?</p>
       <div class="cosmic-chip-row" id="va-scratch-cta-row">${ctaButtons}</div>
@@ -2679,9 +2680,9 @@ function buildSummarySteps() {
     if (state.packaging) steps.push(`האריזה הקריאייטיבית: "${state.packaging}".`);
     steps.push(`בחרת הוק: "${state.hook || ''}".`);
     steps.push(`חיזקת את ההוק: "${state.hookReinforcement || ''}".`);
-    steps.push(isCarousel(state) ? 'קיבלת את הטקסט לכל שקופית בקרוסלה.' : 'קיבלת תסריט סופי מזוקק.');
+    steps.push(isCarousel(state) ? 'קיבלת את הטקסט לכל שקופית בקרוסלה.' : (isDynamicText(state) ? 'קיבלת את התסריט מחולק לפריימים, משפט קצר בכל פריים.' : 'קיבלת תסריט סופי מזוקק.'));
     if (state.sceneRewritten) steps.push('שכתבת אותו לשפה של רשתות חברתיות, כדי שלא יישמע כמו הרצאה.');
-    steps.push(isCarousel(state) ? 'עכשיו: לעצב את השקופיות לפי הטקסט למטה.' : 'עכשיו: ללכת לצלם לפי התסריט למטה, ואז לערוך.');
+    steps.push(isCarousel(state) ? 'עכשיו: לעצב את השקופיות לפי הטקסט למטה.' : (isDynamicText(state) ? 'עכשיו: לבחור קטע וידאו לכל פריים, לשים עליו את המשפט שלו, ולהוסיף מוזיקה.' : 'עכשיו: ללכת לצלם לפי התסריט למטה, ואז לערוך.'));
   } else if (state.branch === 'idea') {
     steps.push(`הרעיון שלך: "${state.ideaBeforePackaging || state.ideaDescription || state.hook || ''}", ווידאת שהוא רלוונטי.`);
     if (state.packaging) steps.push(`האריזה הקריאייטיבית: "${state.packaging}".`);

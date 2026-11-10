@@ -100,6 +100,11 @@ export function isCarousel(state) {
   return state.selectedFormat === 'פוסט קרוסלה';
 }
 
+/* 10/11/2026 (מאיה): טקסט דינמי נכתב לפריימים, משפט קצר בכל פריים, ולא כמונולוג. */
+export function isDynamicText(state) {
+  return state.selectedFormat === 'טקסט דינמי';
+}
+
 function withoutHistory(state) {
   const { history, ...rest } = state;
   return rest;
@@ -393,7 +398,8 @@ function step(state, action) {
     // שלב 4: פרומפט זיקוק תסריט סופי
     case 'SCRATCH_SCRIPT_READY':
       /* שכתוב ל"מונולוג של 45 שניות" היה הורס קרוסלה, ולכן הוא לא מוצע לה. */
-      return { ...state, screen: isCarousel(state) ? 'summary' : 'scratch-scene', draftScript: action.text };
+      /* 10/11/2026: וגם לא לטקסט דינמי, שבנוי ממשפט קצר בכל פריים. */
+      return { ...state, screen: isCarousel(state) || isDynamicText(state) ? 'summary' : 'scratch-scene', draftScript: action.text };
     // שלב 5, במידת הצורך: שכתוב תסריט שיצא מסביר. בלי טקסט התסריט נשאר כמו שהוא.
     case 'SCRATCH_SCENE_DONE':
       return action.text
