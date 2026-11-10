@@ -8809,7 +8809,8 @@ body[data-plan="refs"] .hub-full-only { display: none !important; }
 .va-auto-hook-note .va-auto-hook-text { display: block; margin: 6px 0; font-weight: 700; font-size: 1.05em; }
 .va-auto-hook-note .va-use-pack-hook { margin-top: 10px; font-size: 14px; padding: 8px 14px; }
 
-/* ----- 10/11/2026: כפתור הקהל בעוזר ליצירת סרטון ----- */
+/* ----- 10/11/2026: כפתור הקהל בעוזר ליצירת סרטון -----
+   הכרטיס של העוזר בהיר (--va-card), ולכן הצבעים מהטוקנים שלו */
 .va-aud-chip {
   display: flex;
   align-items: center;
@@ -8819,33 +8820,76 @@ body[data-plan="refs"] .hub-full-only { display: none !important; }
   margin: 0 0 12px;
   margin-inline-start: auto;
   padding: 6px 12px;
-  background: rgba(255,255,255,.10);
-  border: 1px solid rgba(255,255,255,.28);
+  background: var(--va-fill, #e6f2fa);
+  border: 1px solid var(--va-line, #d3e6f2);
   border-radius: 999px;
-  color: #fff;
+  color: var(--va-ink, #0f2340);
   font: inherit;
   font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .va-aud-chip[hidden] { display: none; }
-.va-aud-chip:hover { background: rgba(255,255,255,.2); }
-.va-aud-chip.is-changed { border-color: var(--cosmic-glow, #ff2ea8); box-shadow: 0 0 12px color-mix(in srgb, var(--cosmic-glow, #ff2ea8) 45%, transparent); }
+.va-aud-chip:hover { border-color: var(--va-blue, #0b6fa8); }
+.va-aud-chip:focus-visible { outline: 3px solid var(--va-blue, #0b6fa8); outline-offset: 2px; }
+.va-aud-chip.is-changed { background: var(--va-blue, #0b6fa8); border-color: var(--va-blue, #0b6fa8); color: #fff; }
 .va-aud-list { display: grid; gap: 8px; text-align: start; }
 .va-aud-opt {
   display: flex;
   gap: 10px;
   align-items: flex-start;
   padding: 10px 12px;
-  border: 1px solid rgba(255,255,255,.22);
+  border: 1px solid #d3e6f2;
   border-radius: 14px;
+  background: #fff;
+  color: #0f2340;
   cursor: pointer;
 }
-.va-aud-opt.is-on { border-color: var(--cosmic-glow, #ff2ea8); background: rgba(255,255,255,.08); }
-.va-aud-opt input { margin-top: 4px; flex: none; }
-.va-aud-opt__body { display: grid; gap: 2px; }
-.va-aud-opt__body small { opacity: .8; line-height: 1.45; }
-.va-aud-tag { font-style: normal; font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 999px; background: rgba(255,255,255,.16); margin-inline-start: 4px; }
+.va-aud-opt.is-on { border-color: #0b6fa8; background: #e6f2fa; }
+.va-aud-opt input { margin-top: 4px; flex: none; accent-color: #0b6fa8; }
+.va-aud-opt__body { display: grid; gap: 2px; min-width: 0; }
+.va-aud-opt__body small { color: #5d7d99; line-height: 1.45; }
+.va-aud-tag { font-style: normal; font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 999px; background: #e6f2fa; color: #095e8f; margin-inline-start: 4px; }
 .va-aud-list textarea[hidden] { display: none; }
+
+/* ----- 10/11/2026: הדמות של מאיה נשענת על הכרטיס ומחליפה תנוחה בכל שלב -----
+   במחשב: מימין לכרטיס, בגובה התחתית. בטלפון: קטנה, מעל הפינה של הכרטיס. */
+#video-assistant-view .cosmic-card { position: relative; }
+.va-maya {
+  position: absolute;
+  bottom: 0;
+  right: -168px;
+  width: 190px;
+  height: 420px;
+  pointer-events: none;
+  z-index: 3;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-start;
+}
+.va-maya img {
+  height: 100%;
+  width: auto;
+  max-width: none;
+  filter: drop-shadow(0 18px 24px rgba(5,15,50,.35));
+  animation: va-maya-idle 4s ease-in-out infinite;
+  transform-origin: 50% 100%;
+}
+.va-maya.is-changing img { animation: va-maya-pop .45s cubic-bezier(.3,1.5,.6,1) both, va-maya-idle 4s ease-in-out .45s infinite; }
+.va-maya--celebrate img { animation: va-maya-jump .7s ease-out 2, va-maya-idle 4s ease-in-out 1.4s infinite; }
+@keyframes va-maya-idle { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+@keyframes va-maya-pop { 0% { transform: scale(.9) translateY(10px); opacity: .3; } 100% { transform: scale(1) translateY(0); opacity: 1; } }
+@keyframes va-maya-jump { 0%, 100% { transform: translateY(0); } 40% { transform: translateY(-22px); } }
+/* מסך צר מדי לדמות בצד: היא עוברת לפינה העליונה, קטנה, והכרטיס יורד קצת */
+@media (max-width: 960px) {
+  /* הכרטיס ממורכז ב-margin: auto (ראו 29/10), ולכן המקום לדמות נשמר כריפוד מעל */
+  #video-assistant-view.has-maya > #video-assistant-screen { padding-top: 108px; }
+  .va-maya { right: auto; left: 10px; bottom: auto; top: -104px; width: 70px; height: 104px; }
+  .va-maya img { filter: drop-shadow(0 8px 10px rgba(5,15,50,.3)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .va-maya img, .va-maya.is-changing img, .va-maya--celebrate img { animation: none; }
+}

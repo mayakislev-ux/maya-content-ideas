@@ -41,6 +41,7 @@ import {
 } from './reference-transcribe.js';
 import { getProfile, saveProfile } from './user-profile.js';
 import { audienceOptions, pickedAudience, audienceChipLabel } from './audience-pick.js';
+import { mountMaya, mayaVisibleFor } from './va-maya.js';
 /* 04/11/2026: צ'אט דיוק הרעיון חזר, כקפיצה לצ'אט עצמו ולא כעותק בתוך המסך */
 import { startIdeaChatFromAssistant } from './idea-chat.js';
 import { showView } from './view-router.js';
@@ -404,6 +405,7 @@ function cosmicCard(innerHtml, { showProgress = true } = {}) {
     ${innerHtml}
   </div>`;
   mountAudienceChip();
+  if (mayaVisibleFor(auth.currentUser && auth.currentUser.email)) mountMaya(document.getElementById('va-card'), state.screen);
   const backBtn = document.getElementById('va-back-btn');
   if (backBtn) backBtn.addEventListener('click', () => dispatch({ type: 'BACK' }));
   const startOverBtn = document.getElementById('va-start-over-btn');
