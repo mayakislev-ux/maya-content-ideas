@@ -414,3 +414,24 @@ function step(state, action) {
       throw new Error(`unknown action type: ${action.type}`);
   }
 }
+
+/* 10/11/2026 (מאיה: "הוא העתיק לפרומפט רק את המסר בלי הרעיון, חמור").
+   אצל מור אדרי הנושא והמסר היו אותו משפט בדיוק, והפרומפט יצא "X. המסר: X".
+   כשהם זהים, או שאחד מכיל את השני, נכנס משפט אחד ולא כפול. */
+export function ideaWithMessage(topic, punchline) {
+  const tp = String(topic || '').trim();
+  const p = String(punchline || '').trim();
+  const norm = (s) => s.replace(/[s.,!?"'״׳-]+/g, ' ').trim();
+  if (!tp) return p;
+  if (!p) return tp;
+  if (norm(tp) === norm(p) || norm(p).includes(norm(tp))) return p;
+  if (norm(tp).includes(norm(p))) return tp;
+  return `הרעיון: ${tp}. המסר: ${p}`;
+}
+
+/** אותו משפט בשתי התיבות: אין רעיון נפרד, רק מסר */
+export function sameIdeaAndMessage(topic, punchline) {
+  const norm = (s) => String(s || '').replace(/[s.,!?"'״׳-]+/g, ' ').trim();
+  return Boolean(norm(topic)) && norm(topic) === norm(punchline);
+}
+

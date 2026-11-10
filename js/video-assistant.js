@@ -14,7 +14,7 @@
 // לנשים וגברים, ומסך סיכום ברור בסוף שמראה בדיוק מה נעשה ומה נשאר.
 
 import { mountDrafts, clearScreenDrafts, draftKey, withDraft } from './video-assistant-drafts.js';
-import { INITIAL_STATE, isCarousel, isDynamicText, nextStep, migrateLegacyState } from './video-assistant-flow.js';
+import { INITIAL_STATE, isCarousel, isDynamicText, nextStep, migrateLegacyState, ideaWithMessage, sameIdeaAndMessage } from './video-assistant-flow.js';
 import { pickIdea, pickReference } from './video-assistant-picker.js';
 import { buildParts, hasContent, scriptDoc } from './video-assistant-build.js';
 import { confirmDialog } from './confirm-dialog.js';
@@ -2027,6 +2027,13 @@ function renderIdeaSharpen() {
       punchBox.focus();
       return;
     }
+    /* 10/11/2026: אותו משפט בשתי התיבות = אין רעיון, ואז כל הפרומפטים
+       מקבלים רק את המסר. */
+    if (punchBox && sameIdeaAndMessage(box.value, punchBox.value)) {
+      showToast('בשתי התיבות כתוב אותו משפט. בראשונה כותבים על מה הסרטון (הנושא או הסיפור), ובשנייה את המסר שהקהל צריך להבין');
+      box.focus();
+      return;
+    }
     const text = mainIdea();
     if (!text) {
       showToast(forFootage ? 'קודם לכתוב את המסר בתיבה' : 'קודם לכתוב את הרעיון בתיבה');
@@ -2133,7 +2140,7 @@ async function renderCreativePackaging() {
   const t = ++renderSeq;
   /* 06/11/2026: הזווית מהצ'אט נכנסת גם לפרומפט האריזה */
   const idea = state.ideaTopic && state.ideaPunchline
-    ? withAngle(`${state.ideaTopic}. המסר: ${state.ideaPunchline}`, state.ideaAngle)
+    ? withAngle(ideaWithMessage(state.ideaTopic, state.ideaPunchline), state.ideaAngle)
     : (state.ideaBeforePackaging || state.ideaDescription || '');
   const audience = await myAudience();
   const domain = await myDomain();
