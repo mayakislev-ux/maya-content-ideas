@@ -29,7 +29,8 @@ const CTA_TEXT = {
 /** ההנעה לפעולה שכבר נבחרה בעוזר, אם נבחרה. ריק כשלא. */
 export function ctaFromState(state) {
   const s = state || {};
-  if (!s.ctaType) return '';
+  /* 10/11/2026: "בלי" = נבחר במכוון שאין הנעה לפעולה בסרטון */
+  if (!s.ctaType || s.ctaType === 'בלי') return '';
   if (s.ctaType === 'משפך') return String(s.ctaFunnel || '').trim() || 'משפך';
   return CTA_TEXT[s.ctaType] || String(s.ctaType);
 }
