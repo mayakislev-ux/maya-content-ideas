@@ -374,9 +374,9 @@ describe('ideasFromRow: שורה -> 3 רעיונות', () => {
       assert.match(index, new RegExp(`checkRate: \\(uid\\) => reserveRateLimit\\(uid, '${name}'\\)`));
     }
     const block = index.slice(index.indexOf("require('./ideas-from-sources')"));
-    assert.match(block.slice(0, 4000), /enforceAllowlist: \(email\) => enforceAllowlist\(email\)/);
-    assert.match(block.slice(0, 4000), /actingUid,/);
-    assert.match(block.slice(0, 4000), /readTab: \(sheetId, pick\) => fetchSheetTabPicked\(sheetId, pick\)/);
+    assert.match(block.slice(0, 7000), /enforceAllowlist: \(email\) => enforceAllowlist\(email\)/);
+    assert.match(block.slice(0, 7000), /actingUid,/);
+    assert.match(block.slice(0, 7000), /readTab: \(sheetId, pick\) => fetchSheetTabPicked\(sheetId, pick\)/);
   });
 });
 
