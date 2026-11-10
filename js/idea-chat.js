@@ -508,11 +508,12 @@ async function sendIdeaMessage(text) {
     // final text after streaming already displayed the original.
     if (stale()) return;
     let reply = finalReply;
+    /* 10/11/2026 (מאיה: "לפני שאמרתי מה הזווית שאהבתי, הוא כבר עשה קונפטי
+       וכפתור לשמור רעיון"). רעיון מצוין עדיין צריך לבחור זווית, ולכן כאן רק
+       מסמנים את הבועה. הקונפטי והכפתורים מגיעים עם התוצאה הסופית. */
     if (reply.startsWith(RECOGNIZED_MARKER)) {
       reply = reply.slice(RECOGNIZED_MARKER.length).trimStart();
       thinkingBubble.classList.add('chat-bubble-excellent');
-      playSuccessSound();
-      burstConfetti();
     }
     const { visibleReply, summary, idea, angle, story, message } = extractIdeaSummary(reply);
     /* 10/11/2026 (מאיה): "ממיר" = גשם של שטרות והדמות רוקדת */
@@ -522,10 +523,14 @@ async function sendIdeaMessage(text) {
     if (summary) {
       lastIdeaSummary = { idea, angle, story, message };
       addPostIdeaButtons(thinkingBubble, summary, lastIdeaSummary);
+      playSuccessSound();
+      burstConfetti();
     } else {
-      /* השורה הטכנית חסרה, אבל הרעיון כתוב בסעיפים: עדיין אפשר לשמור ולחזור */
+      /* השורה הטכנית חסרה, אבל הרעיון כתוב בסעיפים: עדיין אפשר לשמור ולחזור.
+         10/11/2026: רק כשזו באמת התוצאה הסופית (יש בה זווית שנבחרה). הודעה
+         שמציגה את הרעיון והמסר ושואלת איזו זווית, היא לא סוף. */
       const labeled = labeledIdea(visibleReply);
-      if (labeled.idea && labeled.message) {
+      if (labeled.idea && labeled.message && labeled.angle) {
         lastIdeaSummary = { idea: labeled.idea, angle: labeled.angle, story: '', message: labeled.message };
         addPostIdeaButtons(thinkingBubble, labeled.idea, lastIdeaSummary);
       }
