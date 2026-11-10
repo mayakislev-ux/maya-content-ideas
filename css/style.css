@@ -9024,3 +9024,17 @@ body[data-plan="refs"] .hub-full-only { display: none !important; }
   #video-assistant-view .va-maya img, .va-bill, .va-money-maya { animation: none !important; }
   .va-money-show { display: none; }
 }
+
+/* 10/11/2026 (מאיה, צילום מסך: "במסך שהחלק של הכתיבה ארוך היא ממש למטה ולא רואים").
+   במחשב הדמות צמודה לחלון ולא לתחתית הכרטיס: תמיד בגובה העיניים, ליד הקצה של
+   הכרטיס (ממורכז, רוחב עד 540). */
+@media (min-width: 961px) {
+  #video-assistant-view .va-maya,
+  #video-assistant-view .va-maya:not(.va-maya--hug) {
+    position: fixed;
+    top: auto;
+    bottom: 24px;
+    left: calc(50% + 250px);
+  }
+  #video-assistant-view .va-maya:not(.va-maya--hug) { left: calc(50% + 282px); }
+}
