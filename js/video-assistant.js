@@ -1240,6 +1240,15 @@ function openFormatExamples(name) {
     /* 06/11/2026: יש סרטונים שהבעלים או אינסטגרם חוסמים להטמעה. החלון
        נטען "בהצלחה" אבל ריק, כך שהבדיקה של 4 השניות לא תופסת את זה.
        דוגמה כזאת מסומנת embed: false ומוצגת ישר ככרטיס עם קישור. */
+    /* עותק אצלנו: מתנגן כאן, בלי לצאת לאינסטגרם */
+    if (ex.file) {
+      stage.innerHTML = `
+        <div class="cosmic-examples-embed cosmic-examples-video" style="aspect-ratio:9/16;width:min(100%, calc(66vh * 9 / 16))">
+          <video src="${escapeHtml(ex.file)}" controls playsinline autoplay preload="metadata"></video>
+        </div>
+      `;
+      return;
+    }
     if (ex.embed === false) {
       stage.innerHTML = `
         <div class="cosmic-examples-linkcard">

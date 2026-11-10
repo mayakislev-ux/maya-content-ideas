@@ -8985,3 +8985,6 @@ body[data-plan="refs"] .hub-full-only { display: none !important; }
   #video-assistant-view .va-angle-tip__go { margin-inline-start: auto; }
 }
 #video-assistant-view .va-num__n[hidden], #video-assistant-view .va-num[hidden] { display: none; }
+
+/* 10/11/2026: דוגמאות פורמט שמתנגנות מעותק אצלנו */
+.cosmic-examples-video video { width: 100%; height: 100%; object-fit: contain; background: #000; border-radius: 14px; display: block; }

@@ -19,26 +19,30 @@
    - בטיקטוק הסרטונים עצמם תקינים, אבל הקישור "לצפייה בפלטפורמה המקורית"
      היה tiktok.com/video/מספר בלי שם המשתמש, וטיקטוק מפנה אותו לדף 404.
      עכשיו הקישור המלא עם @שם המשתמש. */
+/* 10/11/2026 (מאיה: "כשאני רוצה לראות את הפורמטים זה מעביר אותי למסך נפרד", ואחרי
+   הסבר: "כן, תשמרי עותק"). אינסטגרם לא מנגן סרטונים בתוך אתר אחר, ולחיצה על
+   play פתחה את אינסטגרם. לדוגמאות האלה יש עותק מכווץ אצלנו (file), שמתנגן
+   בחלון עצמו. טיקטוק מתנגן בחלון גם בלי עותק. */
 export const FORMAT_EXAMPLES = {
   "דיבור למצלמה": [
-    { "url": "https://www.instagram.com/reel/DPN__PXAttX/" },
-    { "url": "https://www.instagram.com/reel/DNjBwppIiAt/" }
+    { "url": "https://www.instagram.com/reel/DPN__PXAttX/", "file": "assets/format-examples/DPN__PXAttX.mp4" },
+    { "url": "https://www.instagram.com/reel/DNjBwppIiAt/", "file": "assets/format-examples/DNjBwppIiAt.mp4" }
   ],
   "וויס אובר": [
     { "url": "https://www.tiktok.com/@talia_clinic/video/7475764014123977992", "tiktokVideoId": "7475764014123977992" },
     { "url": "https://www.instagram.com/reel/DBmKqNsIvhR/", "embed": false }
   ],
   "ראיון / שיחה": [
-    { "url": "https://www.instagram.com/reel/DHnqDyrows5/" },
-    { "url": "https://www.instagram.com/reel/DI8lhRyIEUp/" }
+    { "url": "https://www.instagram.com/reel/DHnqDyrows5/", "file": "assets/format-examples/DHnqDyrows5.mp4" },
+    { "url": "https://www.instagram.com/reel/DI8lhRyIEUp/", "file": "assets/format-examples/DI8lhRyIEUp.mp4" }
   ],
   "תוכן ויזואלי יפה": [
-    { "url": "https://www.instagram.com/reel/DLPyRWPoESW/" },
-    { "url": "https://www.instagram.com/reel/DHgi4YiI833/" },
+    { "url": "https://www.instagram.com/reel/DLPyRWPoESW/", "file": "assets/format-examples/DLPyRWPoESW.mp4" },
+    { "url": "https://www.instagram.com/reel/DHgi4YiI833/", "file": "assets/format-examples/DHgi4YiI833.mp4" },
     { "url": "https://www.tiktok.com/@talia_clinic/video/7561414215119195410", "tiktokVideoId": "7561414215119195410" }
   ],
   "טקסט דינמי": [
-    { "url": "https://www.instagram.com/reel/DFiW2WholdZ/" }
+    { "url": "https://www.instagram.com/reel/DFiW2WholdZ/", "file": "assets/format-examples/DFiW2WholdZ.mp4" }
   ],
   "משחק תפקידים": [
     { "url": "https://www.tiktok.com/@barklaz/video/7500635865677401362", "tiktokVideoId": "7500635865677401362" }
@@ -47,7 +51,7 @@ export const FORMAT_EXAMPLES = {
     { "url": "https://www.instagram.com/p/DOGEHwMDXQN/" }
   ],
   "לוח / טאבלט": [
-    { "url": "https://www.instagram.com/reel/DHTm9eEIGie/" }
+    { "url": "https://www.instagram.com/reel/DHTm9eEIGie/", "file": "assets/format-examples/DHTm9eEIGie.mp4" }
   ],
   "סטיץ' (תגובה לסרטון ויראלי)": [
     { "url": "https://www.tiktok.com/@ellaofirr/video/7567422966271659282", "tiktokVideoId": "7567422966271659282" }
@@ -59,7 +63,7 @@ export const FORMAT_EXAMPLES = {
     { "url": "https://www.tiktok.com/@veredaddis/video/7482082670478953735", "tiktokVideoId": "7482082670478953735" }
   ],
   "מסך חצוי": [
-    { "url": "https://www.instagram.com/reel/DMS5oV9olzs/" }
+    { "url": "https://www.instagram.com/reel/DMS5oV9olzs/", "file": "assets/format-examples/DMS5oV9olzs.mp4" }
   ]
 };
 

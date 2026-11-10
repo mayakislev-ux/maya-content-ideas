@@ -1,5 +1,5 @@
 // שינוי כאן גורם לכל מי שפתוחה על גרסה ישנה לקבל את הודעת "גרסה חדשה מוכנה" (18/09: הכנסת update-check.js)
-const CACHE_NAME = 'moach-hashiveki-v187';
+const CACHE_NAME = 'moach-hashiveki-v188';
 const APP_SHELL = ['./', './index.html', './css/style.css', './js/app.js', './manifest.json', './assets/favicon.png'];
 
 self.addEventListener('install', (event) => {
@@ -76,6 +76,11 @@ self.addEventListener('fetch', (event) => {
   };
 
   if (/\/reset\.html(?:\?|$)/.test(event.request.url)) return;
+  /* 10/11/2026: סרטוני הדוגמה של הפורמטים מתנגנים בבקשות טווח (Range), ובאייפון
+     ספארי מנגן רק תשובה חלקית (206). הבקשה כאן נבנית מחדש בלי הכותרת, ולכן
+     סרטונים עוקפים את ה-service worker לגמרי. */
+  const hdrs = event.request.headers;
+  if ((hdrs && typeof hdrs.has === 'function' && hdrs.has('range')) || /\.mp4(?:\?|$)/.test(event.request.url)) return;
 
   if (isImmutableAsset(event.request.url)) {
     event.respondWith(
