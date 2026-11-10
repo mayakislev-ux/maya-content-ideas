@@ -153,13 +153,15 @@ describe('חזרה אחורה לא מוחקת מה שהודבק (jsdom)', { skip
   });
 
   test('מאפס: הוק שהודבק שורד חזרה מחיזוק ההוק, וגם החיזוק עצמו', async () => {
-    const start = walk({ ...INITIAL_STATE, history: [], branch: 'scratch', screen: 'idea-sharpen', ideaDescription: 'גבות' }, [
-      { type: 'IDEA_SHARPENED', idea: 'גבות דקות מזקינות' },
-      { type: 'BASICS_CONFIRMED', startingPoint: 'סיפור', contentType: 'אישי' },
+    /* 10/11/2026: סדר חדש. רעיון ומסר ← מגילה ← אריזה ← פורמט ← הוק */
+    const start = walk({ ...INITIAL_STATE, history: [], branch: 'idea', screen: 'idea-sharpen', ideaDescription: 'גבות' }, [
+      { type: 'IDEA_SHARPENED', idea: 'גבות דקות מזקינות', startingPoint: 'סיפור אישי' },
+      { type: 'SCRATCH_DUMP_READY', text: 'כל מה שיש לי להגיד על גבות' },
+      { type: 'PACKAGING_CHOSEN', packaging: 'לפני ואחרי' },
       { type: 'FORMAT_SELECTED', format: 'דיבור למצלמה' },
       { type: 'NEEDS_SCRIPT_YES' },
-      { type: 'SCRATCH_DUMP_READY', text: 'כל מה שיש לי להגיד על גבות' },
     ]);
+    assert.equal(start.screen, 'scratch-hook');
     await open(start, '#va-scratch-hook-input');
     type($('#va-scratch-hook-input'), 'ההוק מאפס');
     $('#va-scratch-hook-done-btn').click();
@@ -184,12 +186,12 @@ describe('חזרה אחורה לא מוחקת מה שהודבק (jsdom)', { skip
   });
 
   test('תיבה שנוקתה בכוונה לא מתמלאת מחדש מהסטייט', async () => {
-    const start = walk({ ...INITIAL_STATE, history: [], branch: 'scratch', screen: 'idea-sharpen', ideaDescription: 'גבות' }, [
-      { type: 'IDEA_SHARPENED', idea: 'גבות' },
-      { type: 'BASICS_CONFIRMED' },
+    const start = walk({ ...INITIAL_STATE, history: [], branch: 'idea', screen: 'idea-sharpen', ideaDescription: 'גבות' }, [
+      { type: 'IDEA_SHARPENED', idea: 'גבות', startingPoint: 'כללי' },
+      { type: 'SCRATCH_DUMP_READY', text: 'שפיכה' },
+      { type: 'PACKAGING_CHOSEN', packaging: 'אריזה' },
       { type: 'FORMAT_SELECTED', format: 'דיבור למצלמה' },
       { type: 'NEEDS_SCRIPT_YES' },
-      { type: 'SCRATCH_DUMP_READY', text: 'שפיכה' },
       { type: 'SCRATCH_HOOK_CHOSEN', hook: 'הוק ישן' },
       { type: 'BACK' },
     ]);
@@ -251,17 +253,20 @@ test('BACK אל מחוץ לשלב הכתיבה לא סוחב הוק ותסריט
   assert.equal(s.hook, null);
   assert.equal(s.finalScript, null);
 
-  let r = walk({ ...INITIAL_STATE, history: [], branch: 'scratch', screen: 'idea-sharpen', ideaDescription: 'x' }, [
-    { type: 'IDEA_SHARPENED', idea: 'x' }, { type: 'BASICS_CONFIRMED' }, { type: 'FORMAT_SELECTED', format: 'דיבור למצלמה' },
-    { type: 'NEEDS_SCRIPT_YES' }, { type: 'SCRATCH_DUMP_READY', text: 'שפיכה' }, { type: 'SCRATCH_HOOK_CHOSEN', hook: 'הוק' },
+  /* 10/11/2026: המגילה נכתבת עכשיו לפני הקריאייטיב, ולכן היא שייכת לשלב
+     שלפני "צריך תסריט?" ונשארת שם. ההוק נכתב אחריו, ולא נסחב אליו. */
+  let r = walk({ ...INITIAL_STATE, history: [], branch: 'idea', screen: 'idea-sharpen', ideaDescription: 'x' }, [
+    { type: 'IDEA_SHARPENED', idea: 'x', startingPoint: 'כללי' }, { type: 'SCRATCH_DUMP_READY', text: 'שפיכה' },
+    { type: 'PACKAGING_CHOSEN', packaging: 'אריזה' }, { type: 'FORMAT_SELECTED', format: 'דיבור למצלמה' },
+    { type: 'NEEDS_SCRIPT_YES' }, { type: 'SCRATCH_HOOK_CHOSEN', hook: 'הוק' },
   ]);
-  r = walk(r, [{ type: 'BACK' }, { type: 'BACK' }]);
-  assert.equal(r.screen, 'scratch-dump');
+  r = nextStep(r, { type: 'BACK' });
+  assert.equal(r.screen, 'scratch-hook');
   assert.equal(r.hook, 'הוק');
   assert.equal(r.rawDump, 'שפיכה');
   r = nextStep(r, { type: 'BACK' });
   assert.equal(r.screen, 'needs-script-check');
-  assert.equal(r.rawDump, null);
+  assert.equal(r.rawDump, 'שפיכה');
   assert.equal(r.hook, null);
 });
 

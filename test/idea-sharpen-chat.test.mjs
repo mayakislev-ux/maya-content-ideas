@@ -42,9 +42,12 @@ function renderSharpen(forFootage, { idea = 'נושא', punch = 'הפואנטה 
   assert.ok(TPL_FROM > 0 && TPL_TO > TPL_FROM, 'לא נמצאה תבנית המסך');
   assert.ok(TEMPLATE_SRC.includes('cosmicCard('), 'התבנית לא נשלחת ל-cosmicCard');
   let html = null;
+  /* 10/11/2026: הצעד השלישי (נקודת היציאה) מצייר צ'יפים מהרשימה */
+  const chips = (list, picked, attr) => list.map((v) => `<button type="button" class="cosmic-chip" ${attr}="${v}">${v}</button>`).join('');
   const build = new Function('forFootage', 'refsOnly', 'escapeHtml', 'idea', 'punch', 'fromIdea', 'state', 'showAngleChat', 'cosmicCard',
-    TEMPLATE_SRC);
-  build(forFootage, false, (s) => s, idea, punch, !forFootage, {}, !forFootage, (h) => { html = h; });
+    'chips', 'STARTING_POINTS', TEMPLATE_SRC);
+  build(forFootage, false, (s) => s, idea, punch, !forFootage, {}, !forFootage, (h) => { html = h; },
+    chips, ['סיפור אישי', 'סיפור לקוח', 'כללי']);
   assert.equal(typeof html, 'string', 'cosmicCard לא קיבל HTML');
   return html;
 }
@@ -138,7 +141,12 @@ describe('אותו מסך, שני מסלולים', () => {
     assert.match(html, /<h2>הרעיון שלך<\/h2>/);
     /* 10/11/2026 (מאיה, "שני צעדים ממוספרים"): כל שאלה בקופסה ממוספרת משלה */
     const steps = [...html.matchAll(/<span class="va-num__n"[^>]*>(\d)<\/span>/g)].map((m) => m[1]);
-    assert.deepEqual(steps, ['1', '2'], 'אין שני צעדים ממוספרים');
+    /* 10/11/2026 (מאיה): צעד שלישי, נקודת היציאה, עבר לכאן ממסך האריזה */
+    assert.deepEqual(steps, ['1', '2', '3'], 'אין שלושה צעדים ממוספרים');
+    const step3 = html.slice(html.indexOf('>3</span>'));
+    assert.ok(step3.includes('מה נקודת היציאה של הרעיון?'), 'הצעד השלישי לא שואל על נקודת היציאה');
+    for (const v of ['סיפור אישי', 'סיפור לקוח', 'כללי']) assert.ok(step3.includes(`data-start="${v}"`), `חסר צ'יפ ${v}`);
+    assert.ok(step3.includes('id="va-what-start-link"'), 'אין הסבר מה זה נקודת יציאה');
     assert.ok(html.includes('על מה הסרטון/הרעיון?'), 'הצעד הראשון לא בנוסח שלה');
     /* 10/11/2026: הנוסח החדש של מאיה */
     assert.ok(html.includes('מה שורה תחתונה אתם רוצים שהצופים יבינו, ירגישו או יחשבו אחרי שיצפו בסרטון הזה?'), 'השאלה על הפואנטה לא בנוסח שלה');
@@ -230,6 +238,12 @@ describe('הפואנטה: הסעיף הכי קריטי', () => {
 
 
 
+  /* 10/11/2026 (מאיה): נקודת היציאה חובה במסך הרעיון, ונשלחת עם הרעיון */
+  test('בלי נקודת יציאה לא ממשיכים, והיא נשלחת עם IDEA_SHARPENED', () => {
+    assert.ok(SHARPEN.includes('if (punchBox && !ideaStartingPoint)'), 'אפשר להמשיך בלי נקודת יציאה');
+    assert.match(SHARPEN, /type: 'IDEA_SHARPENED'[^}]*startingPoint: ideaStartingPoint/, 'נקודת היציאה לא נשלחת');
+  });
+
   test('לפואנטה יש עיצוב שמבליט אותה', () => {
     assert.match(CSS, /\.va-punch-box\s*\{/);
   });
@@ -254,6 +268,20 @@ describe('האריזה הקריאייטיבית במקום הצ׳אט', () => {
         "הכי חשוב שזה יהיה פורמטים כמה שיותר אותנטיים/ריאליסטיים - משהו שבאמת אנשים צורכים ומתחברים"].join(String.fromCharCode(10)));
   });
 
+  /* 10/11/2026 (מאיה): לפרומפט נכנסים גם נקודת היציאה, המגילה ורשימת
+     הפורמטים עם תיאור לכל אחד. הפסקה המקורית שלה נשארת מילה במילה. */
+  test('הפרומפט לג׳מיני מקבל נקודת יציאה, מגילה ורשימת פורמטים', async () => {
+    const { buildCreativePackagingPrompt } = await import('../js/video-assistant-prompts.js');
+    const { FORMATS } = await import('../js/video-assistant-content.js');
+    const p = buildCreativePackagingPrompt({ domain: 'החלקות', audience: 'נשים 30+', idea: 'החלקה',
+      startingPoint: 'סיפור לקוח', megillah: 'לקוחה שהגיעה עם שיער שרוף והלכה עם חיוך', formats: FORMATS });
+    assert.ok(p.includes('נקודת היציאה של הרעיון: סיפור לקוח'), 'נקודת היציאה לא בפרומפט');
+    assert.ok(p.includes('לקוחה שהגיעה עם שיער שרוף והלכה עם חיוך'), 'המגילה לא בפרומפט');
+    assert.ok(p.includes('6-10 שניות'), 'התיאור של תוכן ויזואלי לא בפרומפט');
+    assert.ok(p.includes('- דיבור למצלמה:'), 'רשימת הפורמטים לא בפרומפט');
+    assert.ok(p.includes('הכי חשוב שזה יהיה פורמטים כמה שיותר אותנטיים/ריאליסטיים - משהו שבאמת אנשים צורכים ומתחברים'), 'הפסקה שלה השתנתה');
+  });
+
   test('מסך האריזה: פרומפט להעתקה, תיבה לכיוון שנבחר, ובלי כיוון לא ממשיכים', () => {
     const PK = VA.slice(VA.indexOf('async function renderCreativePackaging'), VA.indexOf('function renderContentBasics'));
     assert.ok(PK.includes('buildCreativePackagingPrompt('));
@@ -271,6 +299,11 @@ describe('מסך האריזה בלי עומס', () => {
   test('אין יותר בחירת סוג תוכן במסך', () => {
     assert.ok(!PACK.includes('CONTENT_TYPES'), 'סוג התוכן חזר למסך');
     assert.ok(!PACK.includes('va-type-row'));
+  });
+  /* 10/11/2026: נשאלת כאן רק לסשן ישן שעוד אין לו נקודת יציאה */
+  test('נקודת היציאה במסך האריזה רק כשעוד לא נבחרה', () => {
+    assert.ok(PACK.includes("const withBasics = state.branch !== 'footage' && !state.startingPoint;"), 'נקודת היציאה נשאלת שוב באריזה');
+    assert.ok(PACK.includes("startingPoint: state.startingPoint || ''"), 'נקודת היציאה לא נכנסת לפרומפט');
   });
   test('נקודת היציאה בניסוח החדש, עם הסבר בפופאפ', () => {
     assert.ok(PACK.includes('מה נקודת היציאה של הרעיון?'));

@@ -121,6 +121,8 @@ const PASTED_ON = {
 const WRITING_ORDER = {
   reference: ['transcribe', 'prompt1', 'her-words', 'prompt2', 'read-aloud'],
   scratch: ['scratch-dump', 'scratch-hook', 'scratch-hook-reinforce', 'scratch-distill', 'scratch-scene'],
+  /* 10/11/2026: בסדר החדש המגילה נכתבת כשהמסלול עוד 'idea' (לפני האריזה) */
+  idea: ['scratch-dump', 'scratch-hook', 'scratch-hook-reinforce', 'scratch-distill', 'scratch-scene'],
 };
 
 /** השדות שחזרה ל-prev שומרת: מה שהודבק במסך הזה ובמסכים שאחריו באותו מסלול. */
@@ -325,7 +327,8 @@ function step(state, action) {
        למסך קריאה "כתיבה מאפס". שניהם ירדו: שכפול הפוך הוא עכשיו אפשרות
        בתוך מסך ההוק, ומבנה התסריט נפתח מתוך מסך המגילה למי שרוצה. */
     case 'NEEDS_SCRIPT_YES':
-      return { ...state, screen: 'scratch-dump', branch: 'scratch' };
+      /* 10/11/2026: המגילה כבר נכתבה לפני הקריאייטיב, ולכן ממשיכים להוק */
+      return { ...state, screen: state.rawDump ? 'scratch-hook' : 'scratch-dump', branch: 'scratch' };
 
     /* 06/11/2026 (מאיה): "שתעיפי לגמרי את שיטת השכפול ההפוך, סתם מבלבל".
        המסלול שלה (branch 'idea-search') ירד. סשנים ישנים שנשמרו בו עוברים
@@ -365,10 +368,16 @@ function step(state, action) {
       const sharpened = state.ideaAngle ? withAngle(raw, state.ideaAngle) : raw;
       /* הנושא והפואנטה נשמרים גם בנפרד, כדי שחזרה למסך תציג כל אחד
          בתיבה שלו ולא את המשפט המשולב בתיבת הנושא. */
+      /* 10/11/2026 (מאיה): סדר חדש במסלול מ-0: רעיון ומסר (עם נקודת היציאה)
+         ← מגילת אסתר ← קריאייטיב ← פורמט ← הוק וחיזוק ← זיקוק. המגילה לפני
+         הקריאייטיב, כי ג'מיני מקבל אותה ובוחר קריאייטיב שמתאים למה שיש לה
+         להגיד. בקטע שצולם: כמו קודם, ישר לאריזה. */
+      const nextScreen = state.branch === 'footage' ? 'creative-packaging' : 'scratch-dump';
       return {
-        ...state, screen: 'creative-packaging', ideaDescription: sharpened, ideaBeforePackaging: null,
+        ...state, screen: nextScreen, ideaDescription: sharpened, ideaBeforePackaging: null,
         ideaTopic: action.topic ?? state.ideaTopic ?? null,
         ideaPunchline: action.punchline ?? state.ideaPunchline ?? null,
+        startingPoint: action.startingPoint ?? state.startingPoint ?? null,
       };
     }
     /* הכיוון שבחרה מתוך ה-30 נשמר בנפרד, ונוסע עם הרעיון לכל הפרומפטים
@@ -403,7 +412,9 @@ function step(state, action) {
       if (!state.ideaDescription) throw new Error('SCRATCH_START_DUMP before an idea was set');
       return { ...state, screen: 'scratch-dump' };
     case 'SCRATCH_DUMP_READY':
-      return { ...state, screen: 'scratch-hook', rawDump: action.text };
+      /* 10/11/2026: אחרי המגילה הקריאייטיב (אם עוד לא נבחר). סשן ישן שכבר
+         בחר אריזה לפני המגילה ממשיך להוק, כמו קודם. */
+      return { ...state, screen: state.packaging ? 'scratch-hook' : 'creative-packaging', rawDump: action.text };
     // שלב 2: פרומפט מציאת הוק (בנק של כ-140 הוקים אמיתיים מוטמע)
     case 'SCRATCH_HOOK_CHOSEN':
       return { ...state, screen: 'scratch-hook-reinforce', hook: action.hook };

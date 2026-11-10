@@ -282,6 +282,7 @@ function addPostIdeaButtons(bubble, finalizedText, ideaSummary) {
     /* 06/11/2026 (מאיה): "הוא בוחר זווית אבל אחר כך כשאני מעבירה את הרעיון
        לביצוע הוא שוכח מהזווית". עד היום רק הרעיון והמסר חזרו לעוזר. */
     const angle = (ideaSummary && ideaSummary.angle) || '';
+    const startingPoint = (ideaSummary && ideaSummary.startingPoint) || '';
 
     const goBtn = document.createElement('button');
     goBtn.type = 'button';
@@ -294,7 +295,7 @@ function addPostIdeaButtons(bubble, finalizedText, ideaSummary) {
       saveIdeaQuietly(finalizedText, message).then((saved) => {
         showToast(saved ? '✓ הרעיון נשמר בבנק הרעיונות' : 'השמירה בבנק הרעיונות לא עברה, אבל הרעיון כבר בעוזר');
       });
-      returnFromChat({ idea, message, angle });
+      returnFromChat({ idea, message, angle, startingPoint });
     });
     bubble.appendChild(goBtn);
 
@@ -302,7 +303,7 @@ function addPostIdeaButtons(bubble, finalizedText, ideaSummary) {
     backBtn.type = 'button';
     backBtn.className = 'chat-cta-btn chat-save-btn';
     backBtn.textContent = '↩ להמשיך בלי לשמור בבנק';
-    backBtn.addEventListener('click', () => returnFromChat({ idea, message, angle }));
+    backBtn.addEventListener('click', () => returnFromChat({ idea, message, angle, startingPoint }));
     bubble.appendChild(backBtn);
     return;
   }
@@ -516,13 +517,13 @@ async function sendIdeaMessage(text) {
       reply = reply.slice(RECOGNIZED_MARKER.length).trimStart();
       thinkingBubble.classList.add('chat-bubble-excellent');
     }
-    const { visibleReply, summary, idea, angle, story, message } = extractIdeaSummary(reply);
+    const { visibleReply, summary, idea, angle, story, message, startingPoint } = extractIdeaSummary(reply);
     /* 10/11/2026 (מאיה): "ממיר" = גשם של שטרות והדמות רוקדת */
     if (saysConverting(reply) && mayaVisibleFor(auth.currentUser && auth.currentUser.email)) moneyDance();
     /* 04/11/2026 (מאיה): כפתור "למפת הדרכים" ירד מהתוצאה הסופית. */
     setBubbleText(thinkingBubble, visibleReply);
     if (summary) {
-      lastIdeaSummary = { idea, angle, story, message };
+      lastIdeaSummary = { idea, angle, story, message, startingPoint };
       addPostIdeaButtons(thinkingBubble, summary, lastIdeaSummary);
       playSuccessSound();
       burstConfetti();

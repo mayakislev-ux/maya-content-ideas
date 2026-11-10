@@ -453,7 +453,8 @@ describe('באייפון (jsdom)', { skip: hasJsdom ? false : 'jsdom לא מות
 
   test('הזווית שהצ\'אט בחר חוזרת לעוזר, מוצגת, ונכנסת לפרומפט האריזה ולמשפט הרעיון', async () => {
     await openIdeaScreen();
-    REPLY = 'הנה ניסוח חד יותר.\n[[IDEA_SUMMARY]]3 טעויות שמבריחות לקוחות מהעמוד||השוואה||||העמוד מוכר, לא המודעה';
+    /* 10/11/2026: השדה החמישי, נקודת היציאה, חוזר גם הוא ומסומן לבד */
+    REPLY = 'הנה ניסוח חד יותר.\n[[IDEA_SUMMARY]]3 טעויות שמבריחות לקוחות מהעמוד||השוואה||||העמוד מוכר, לא המודעה||סיפור לקוח';
     type($('#va-idea-sharp'), 'למה הממומן לא עובד');
     type($('#va-idea-punch'), 'העמוד מוכר');
     $('#va-angle-chat-btn').click();
@@ -466,9 +467,17 @@ describe('באייפון (jsdom)', { skip: hasJsdom ? false : 'jsdom לא מות
     assert.ok($('#va-angle-picked'), 'הזווית לא מוצגת במסך הרעיון');
     assert.equal($('#va-angle-picked-name').textContent, 'השוואה');
     await until(() => (store.get('videoAssistantSessions/u1') || {}).ideaAngle === 'השוואה', 'הזווית לא נשמרה בסשן');
+    const startChip = $('button[data-start="סיפור לקוח"]');
+    assert.ok(startChip && startChip.classList.contains('cosmic-chip-btn--on'), 'נקודת היציאה מהצ׳אט לא סומנה');
 
     $('#va-idea-next-btn').click();
+    /* 10/11/2026: אחרי הרעיון והמסר באה המגילה, ורק אחריה האריזה */
+    await until(() => $('#va-scratch-dump-input'), 'מסך המגילה');
+    assert.equal((store.get('videoAssistantSessions/u1') || {}).startingPoint, 'סיפור לקוח', 'נקודת היציאה לא נשמרה');
+    type($('#va-scratch-dump-input'), Array.from({ length: 125 }, (_, i) => `מילה${i}`).join(' '));
+    $('#va-scratch-dump-done-btn').click();
     await until(() => $('#va-packaging-input'), 'מסך האריזה');
+    assert.ok(!$('#va-start-row'), 'נקודת היציאה נשאלת שוב במסך האריזה');
     const promptText = document.querySelector('#video-assistant-view').textContent;
     assert.match(promptText, /זווית ההנגשה: השוואה/, 'הזווית לא נכנסה לפרומפט האריזה');
     await until(() => /זווית ההנגשה: השוואה/.test((store.get('videoAssistantSessions/u1') || {}).ideaDescription || ''),
@@ -478,6 +487,9 @@ describe('באייפון (jsdom)', { skip: hasJsdom ? false : 'jsdom לא מות
 
   test('"להוריד את הזווית" מוריד אותה מהרעיון', async () => {
     assert.ok($('#va-packaging-input'), 'הבדיקה הקודמת לא הגיעה למסך האריזה');
+    /* 10/11/2026: מהאריזה חוזרים קודם למגילה, ומשם למסך הרעיון */
+    $('#va-back-btn').click();
+    await until(() => $('#va-scratch-dump-input'), 'חזרה למגילה');
     $('#va-back-btn').click();
     await until(() => $('#va-idea-sharp'), 'חזרה למסך הרעיון');
     assert.ok($('#va-angle-remove'), 'אין דרך להוריד את הזווית');
@@ -486,8 +498,9 @@ describe('באייפון (jsdom)', { skip: hasJsdom ? false : 'jsdom לא מות
     await until(() => (store.get('videoAssistantSessions/u1') || {}).ideaAngle == null, 'הזווית לא ירדה מהסשן');
     if (!$('#va-idea-sharp').value) type($('#va-idea-sharp'), '3 טעויות שמבריחות לקוחות מהעמוד');
     if (!$('#va-idea-punch').value) type($('#va-idea-punch'), 'העמוד מוכר, לא המודעה');
+    if (!$('button[data-start].cosmic-chip-btn--on')) $('button[data-start="כללי"]').click();
     $('#va-idea-next-btn').click();
-    await until(() => $('#va-packaging-input'), 'מסך האריזה');
+    await until(() => $('#va-scratch-dump-input'), 'מסך המגילה');
     assert.doesNotMatch((store.get('videoAssistantSessions/u1') || {}).ideaDescription || '', /זווית ההנגשה/);
   });
 

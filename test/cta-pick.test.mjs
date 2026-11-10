@@ -38,5 +38,7 @@ test('מסך ההוק: אין יותר "סרטון שעבד" ואין פרומפ
 
 test('"כן, צריך תסריט" לא עובר יותר במסך "שכפול הפוך?"', () => {
   const FLOW = readFileSync(join(ROOT, 'js', 'video-assistant-flow.js'), 'utf8');
-  assert.match(FLOW, /case 'NEEDS_SCRIPT_YES':\s*return \{ \.\.\.state, screen: 'scratch-dump'/);
+  /* 10/11/2026: המגילה נכתבת עכשיו לפני הקריאייטיב, ולכן "כן" ממשיך להוק
+     כשהיא כבר קיימת, ולמגילה רק כשאין. בכל מקרה לא ל"שכפול הפוך?". */
+  assert.match(FLOW, /case 'NEEDS_SCRIPT_YES':[^]*?return \{ \.\.\.state, screen: state\.rawDump \? 'scratch-hook' : 'scratch-dump', branch: 'scratch' \}/);
 });

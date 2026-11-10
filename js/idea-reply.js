@@ -36,7 +36,9 @@ export function extractIdeaSummary(reply) {
   const rawTail = reply.slice(markerIndex + SUMMARY_MARKER.length).trim();
   /* 04/11/2026: שדה רביעי, המסר האחד. הוא נכנס לתיבת המסר בעוזר כשחוזרים
      אליו. שורה ישנה עם שלושה שדות עדיין נקראת כמו שהייתה. */
-  const [idea, rawAngle, story, rawMessage] = rawTail.split('||').map((part) => (part || '').trim());
+  /* 10/11/2026: שדה חמישי, נקודת היציאה (סיפור אישי / סיפור לקוח / כללי) */
+  const [idea, rawAngle, story, rawMessage, rawStart] = rawTail.split('||').map((part) => (part || '').trim());
+  const startingPoint = ['סיפור אישי', 'סיפור לקוח', 'כללי'].includes(rawStart) ? rawStart : '';
   const message = rawMessage || labeledIdea(visibleReply).message || '';
 
   if (!idea) return { visibleReply, summary: null };
@@ -51,7 +53,7 @@ export function extractIdeaSummary(reply) {
   if (angle) composedTitle += ` | זווית: ${angle}`;
   if (story) composedTitle += ` | סיפור: ${story}`;
 
-  return { visibleReply, summary: composedTitle, idea, angle, story, message };
+  return { visibleReply, summary: composedTitle, idea, angle, story, message, startingPoint };
 }
 
 /* 04/11/2026 (מאיה): התוצאה הסופית כתובה בסעיפים ("הרעיון:", "המסר האחד:",

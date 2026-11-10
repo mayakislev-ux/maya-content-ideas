@@ -81,13 +81,14 @@ const SCREEN_LABEL = {
   'idea-sharpen': 'הרעיון והמסר',
   'creative-packaging': 'האריזה הקריאייטיבית',
   'content-basics': 'נקודת יציאה וסוג תוכן',
+  'scratch-dump': 'מגילת אסתר',
 };
 const PHASE_BY_SCREEN = {
   opening: 0, 'reference-source-choice': 0, 'idea-source-choice': 0, 'type-idea': 0, 'pulled-idea': 0, 'pulled-reference': 0,
   'relevance-check': 1,
   'content-basics': 2, 'footage-type-choice': 2, 'format-choice': 2, 'needs-script-check': 2,
   transcribe: 3, prompt1: 3, 'her-words': 3, prompt2: 3, 'read-aloud': 3,
-  'idea-sharpen': 1, 'creative-packaging': 1, 'scratch-intro': 3, 'scratch-dump': 3, 'scratch-hook': 3, 'scratch-hook-reinforce': 3, 'scratch-distill': 3, 'scratch-scene': 3,
+  'idea-sharpen': 1, 'creative-packaging': 2, 'scratch-intro': 3, 'scratch-dump': 2, 'scratch-hook': 3, 'scratch-hook-reinforce': 3, 'scratch-distill': 3, 'scratch-scene': 3,
   'footage-speech-find': 3, 'footage-speech-shorten': 3, 'footage-speech-sharpen': 3, 'footage-speech-done': 3,
   'footage-visual-scan': 3, 'footage-visual-extract': 3, 'footage-visual-reframe': 3,
   'footage-visual-message': 3, 'footage-visual-story': 3,
@@ -2233,6 +2234,14 @@ function renderIdeaSharpen() {
         <textarea class="cosmic-textarea va-punch-box" id="va-idea-punch" style="min-height:80px">${escapeHtml(punch)}</textarea>
       </div>
     </div>
+    <div class="va-num">
+      <span class="va-num__n" aria-hidden="true">3</span>
+      <div class="va-num__in">
+        <span class="cosmic-field-label">מה נקודת היציאה של הרעיון?</span>
+        <div class="cosmic-chip-row" id="va-start-row">${chips(STARTING_POINTS, state.startingPoint, 'data-start')}</div>
+        <button type="button" class="va-text-link" id="va-what-start-link">מה זה אומר?</button>
+      </div>
+    </div>
     ${angleBlock}
     ${showAngleChat ? `<button type="button" class="va-angle-tip" id="va-angle-chat-btn">
       <span aria-hidden="true">🎯</span>
@@ -2243,6 +2252,7 @@ function renderIdeaSharpen() {
   `);
 
   const box = document.getElementById('va-idea-sharp');
+  let ideaStartingPoint = state.startingPoint || null;
   attachMic('va-idea-sharp');
   /* 28/10/2026 (מאיה): "חייב עוד סעיף שהוא הכי קריטי - מה הפואנטה של
      הסרטון? מה המסר? ואז הפואנטה הופכת להיות הרעיון, ורק אז הצ'אט".
@@ -2274,12 +2284,30 @@ function renderIdeaSharpen() {
       box.focus();
       return;
     }
+    /* 10/11/2026 (מאיה): נקודת היציאה עברה לשלב הרעיון והמסר */
+    if (punchBox && !ideaStartingPoint) {
+      showToast('לבחור מה נקודת היציאה של הרעיון');
+      const row = document.getElementById('va-start-row');
+      if (row) row.scrollIntoView({ block: 'center' });
+      return;
+    }
     dispatch(punchBox
-      ? { type: 'IDEA_SHARPENED', idea: text, topic: box.value.trim(), punchline: punchBox.value.trim() }
+      ? { type: 'IDEA_SHARPENED', idea: text, topic: box.value.trim(), punchline: punchBox.value.trim(), startingPoint: ideaStartingPoint }
       : { type: 'IDEA_SHARPENED', idea: text });
   });
   const angleBtn = document.getElementById('va-angle-chat-btn');
   if (angleBtn) angleBtn.addEventListener('click', () => openAngleChat({ box, punchBox, angleBtn }));
+  wireChips('[data-start]', 'data-start', (v) => {
+    ideaStartingPoint = v;
+    state.startingPoint = v;
+    saveAll().catch((err) => console.error('saveSession failed:', err));
+  });
+  const startLink = document.getElementById('va-what-start-link');
+  if (startLink) startLink.addEventListener('click', () => openModal(`
+    <h2 style="margin-top:0">מה זה נקודת יציאה?</h2>
+    <p>כל רעיון אפשר לספר דרך סיפור אישי, דרך סיפור של לקוח, או בצורה כללית.</p>
+    <p>הכי חזק זה סיפור לקוח או סיפור אישי, כי זה מוחשי יותר. אם אין סיפור כזה, הולכים על כללי.</p>
+  `));
   const removeAngle = document.getElementById('va-angle-remove');
   if (removeAngle) removeAngle.addEventListener('click', () => {
     state.ideaAngle = null;
@@ -2342,7 +2370,10 @@ function returnFromAngleChat(result) {
   const message = String(r.message || '').trim();
   /* 06/11/2026: הזווית שהצ'אט בחר חוזרת גם היא, ונשמרת בשדה משלה */
   const angle = String(r.angle || '').trim();
+  /* 10/11/2026 (מאיה): "אם הצ'אט דיוק רעיון זיהה, שיסמן אוטומטית" */
+  const startingPoint = STARTING_POINTS.includes(String(r.startingPoint || '').trim()) ? String(r.startingPoint).trim() : '';
   const here = state.screen === 'idea-sharpen';
+  if (here && startingPoint) state.startingPoint = startingPoint;
   if (here && (idea || message || angle)) {
     let drafts = state.drafts || {};
     if (idea) drafts = withDraft(drafts, 'idea-sharpen', 'va-idea-sharp', idea);
@@ -2370,19 +2401,20 @@ async function renderCreativePackaging() {
   const audience = await myAudience();
   const domain = await myDomain();
   if (t !== renderSeq) return;
-  const prompt = buildCreativePackagingPrompt({ domain, audience, idea });
+  const prompt = buildCreativePackagingPrompt({ domain, audience, idea, startingPoint: state.startingPoint || '', megillah: state.rawDump || '', formats: FORMATS });
   if (state.screen === 'creative-packaging') seedDraft('va-packaging-input', state.packaging);
   /* 28/10/2026 (מאיה: "תעשי מה שחכם ונוח יותר"). נקודת היציאה הייתה
      מסך נפרד בין האריזה לפורמט, ועכשיו היא יושבת כאן. 29/10/2026 (מאיה):
      "באיזה סוג תוכן זה נראה לי נוותר, סתם מיוחד ומסבך", ולכן סוג התוכן
      ירד מהמסך. בקטע שצולם נקודת היציאה לא נשאלת, כי נקבעה בצילום. */
-  const withBasics = state.branch !== 'footage';
+  /* 10/11/2026: נקודת היציאה נבחרת עכשיו במסך הרעיון. כאן רק לסשן ישן שעוד אין לו */
+  const withBasics = state.branch !== 'footage' && !state.startingPoint;
   cosmicCard(`
     <h2>האריזה הקריאייטיבית</h2>
     <p>איך מגישים את המסר בצורה מעניינת ולא בנאלית. להעתיק לג'מיני, לבחור מתוך ה-20 את הכיוון שהכי מדליק, ולהדביק אותו כאן.</p>
     <p class="cosmic-hint">הכיוון שבוחרים כאן ייכנס לבד להוק ולתסריט שנכתבים אחר כך.</p>
     <button type="button" class="va-text-link" id="va-what-creative-link">מה זה בעצם קריאייטיב?</button>
-    ${promptPeek(highlightPlaceholders(prompt, [domain, audience, idea]))}
+    ${promptPeek(highlightPlaceholders(prompt, [domain, audience, idea, state.startingPoint || '']))}
     ${copyBtn(prompt, "להעתיק פרומפט לג'מיני")}
     <textarea class="cosmic-textarea" id="va-packaging-input" placeholder="להדביק כאן את הכיוון שבחרת..." style="margin-top:14px"></textarea>
     ${withBasics ? `
@@ -2435,7 +2467,7 @@ async function renderCreativePackaging() {
       showToast('לבחור מה נקודת היציאה של הרעיון');
       return;
     }
-    dispatch(withBasics
+    dispatch(withBasics || startingPoint
       ? { type: 'PACKAGING_CHOSEN', packaging, startingPoint }
       : { type: 'PACKAGING_CHOSEN', packaging });
   });

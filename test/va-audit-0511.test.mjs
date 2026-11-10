@@ -281,17 +281,21 @@ describe('ביקורת 05/11 בעוזר (jsdom)', { skip: hasJsdom ? false : 'js
     assert.equal($('#va-transcript-input').value, 'תמלול שתוקן', 'התיקון בתמלול נעלם ברענון');
     assert.equal($('#va-reference-link').value, 'https://www.tiktok.com/@a/video/2', 'הלינק שתוקן נעלם ברענון');
 
+    /* 10/11/2026: סדר חדש. רעיון ומסר ← מגילה ← אריזה ← פורמט */
     const scratch = walk({ ...INITIAL_STATE, history: [], branch: 'idea', screen: 'idea-sharpen', ideaDescription: 'גבות' }, [
-      { type: 'IDEA_SHARPENED', idea: 'גבות' },
-      { type: 'PACKAGING_CHOSEN', packaging: 'כיוון ישן', startingPoint: 'כללי' },
+      { type: 'IDEA_SHARPENED', idea: 'גבות', startingPoint: 'כללי' },
+      { type: 'SCRATCH_DUMP_READY', text: 'מגילה ישנה' },
+      { type: 'PACKAGING_CHOSEN', packaging: 'כיוון ישן' },
       { type: 'FORMAT_SELECTED', format: 'דיבור למצלמה' },
-      { type: 'NEEDS_SCRIPT_YES' },
     ]);
-    const packagingScreen = { ...walk(scratch, [{ type: 'BACK' }, { type: 'BACK' }, { type: 'BACK' }]), packaging: 'כיוון ישן' };
+    assert.equal(scratch.screen, 'needs-script-check');
+    const packagingScreen = { ...walk(scratch, [{ type: 'BACK' }, { type: 'BACK' }]), packaging: 'כיוון ישן' };
     assert.equal(packagingScreen.screen, 'creative-packaging');
+    const dumpScreen = { ...walk(scratch, [{ type: 'BACK' }, { type: 'BACK' }, { type: 'BACK' }]), rawDump: 'מגילה ישנה' };
+    assert.equal(dumpScreen.screen, 'scratch-dump');
     const cases = [
       [packagingScreen, '#va-packaging-input', 'כיוון ישן', 'כיוון חדש'],
-      [{ ...scratch, rawDump: 'מגילה ישנה' }, '#va-scratch-dump-input', 'מגילה ישנה', 'מגילה חדשה'],
+      [dumpScreen, '#va-scratch-dump-input', 'מגילה ישנה', 'מגילה חדשה'],
     ];
     for (const [s, sel, before, after] of cases) {
       await open(s, () => $(sel) && $(sel).value === before, `התיבה ${sel}`);

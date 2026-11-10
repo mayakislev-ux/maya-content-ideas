@@ -9073,3 +9073,15 @@ body[data-plan="refs"] .hub-full-only { display: none !important; }
 @media (prefers-reduced-motion: reduce) {
   #video-assistant-view .va-maya.is-entering img { animation: none; }
 }
+
+/* 10/11/2026 שלב 2: בועת דיבור מעל הראש של הדמות */
+.va-maya-bubble {
+  position: absolute; bottom: calc(100% - 18px); left: 50%; transform: translate(-50%, 6px) scale(.9);
+  background: #fff; color: #0f2340; border-radius: 16px; padding: 8px 12px;
+  font-size: 14px; font-weight: 700; line-height: 1.35; white-space: nowrap;
+  box-shadow: 0 10px 24px rgba(5,15,50,.3); opacity: 0; pointer-events: none;
+  transition: opacity .2s, transform .2s;
+}
+.va-maya-bubble::after { content: ""; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border: 8px solid transparent; border-top-color: #fff; }
+.va-maya-bubble.is-on { opacity: 1; transform: translate(-50%, 0) scale(1); }
+@media (max-width: 960px) { .va-maya-bubble { font-size: 12px; padding: 6px 9px; left: 0; transform: none; } .va-maya-bubble.is-on { transform: none; } }

@@ -3,7 +3,7 @@
 import { test, describe, before } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
-import { poseFor, poseForFormat, nodSeconds, saysConverting, POSES, mayaVisibleFor, mountMaya, setMayaPose } from '../js/va-maya.js';
+import { poseFor, poseForFormat, nodSeconds, saysConverting, POSES, mayaVisibleFor, mountMaya, setMayaPose, vagueCount, numberCount, wordCount } from '../js/va-maya.js';
 import { hasJsdom, setupAssistant, until } from './helpers/va-dom.mjs';
 
 describe('תנוחה לכל מסך ולכל רגע', () => {
@@ -36,6 +36,12 @@ describe('תנוחה לכל מסך ולכל רגע', () => {
   test('עד האישור רק מאיה רואה את הדמות', () => {
     assert.equal(mayaVisibleFor('mayakislev@gmail.com'), true);
     assert.equal(mayaVisibleFor('client@example.com'), false);
+  });
+  test('שלב 2: מזהה מילה כללית, מספר וכמות מילים', () => {
+    assert.equal(vagueCount('יש לי הרבה לקוחות וכולם אוהבים'), 2);
+    assert.equal(vagueCount('הרבהההה'), 0);
+    assert.equal(numberCount('הרווחתי 11,000 שקל בגיל 32'), 3);
+    assert.equal(wordCount('  שלוש מילים פה '), 3);
   });
   test('כל התמונות קיימות', () => {
     for (const p of POSES) assert.ok(existsSync(new URL(`../assets/maya/maya-${p}.webp`, import.meta.url)), p);

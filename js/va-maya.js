@@ -183,6 +183,7 @@ export function mountMaya(card, screen) {
   fig.hidden = mayaHidden();
   ensureToggle();
   wireIdle();
+  wireReactions();
   armIdle();
   /* בטלפון נשמר מקום לדמות מעל הכרטיס, רק כשהיא באמת מוצגת */
   const view = card.closest('#video-assistant-view');
@@ -234,4 +235,86 @@ export function moneyDance() {
   show.innerHTML = `${bills}<img class="va-money-maya" src="assets/maya/maya-dance.webp" alt="">`;
   document.body.appendChild(show);
   setTimeout(() => show.remove(), 4200);
+}
+
+/* ===== שלב 2 מתוך 6: מגיבה למה שכותבים (10/11/2026) =====
+   מספר חדש: מצביעה "זה! הפרט הזה מוכר". מילה כללית (הרבה, תמיד, כולם):
+   מרימה גבה "כמה בדיוק?". הדבקה ארוכה: מנגבת זיעה. מחיקה של הכל: מכסה
+   עיניים. סיום תיבה עם 8 מילים ומעלה: מוחאת כפיים. 20 שניות בלי הקלדה
+   בתיבה ריקה: "נו, מה עובר לך בראש?". הפסקה של 6 שניות בין תגובות, כדי
+   שלא תקפוץ על כל אות. */
+POSES.push('cover', 'sweat', 'brow', 'clap', 'point');
+Object.assign(ALT, { cover: 'מאיה מכסה עיניים', sweat: 'מאיה מנגבת זיעה', brow: 'מאיה מרימה גבה', clap: 'מאיה מוחאת כפיים', point: 'מאיה מצביעה' });
+
+const VAGUE = /(?:^|[\s,.!?])ו?(הרבה|תמיד|כולם|אף פעם|מלא|כל הזמן)(?=$|[\s,.!?])/g;
+export function vagueCount(text) { return (String(text || '').match(VAGUE) || []).length; }
+export function numberCount(text) { return (String(text || '').match(/\d+/g) || []).length; }
+export function wordCount(text) { return String(text || '').trim().split(/\s+/).filter(Boolean).length; }
+const COOLDOWN_MS = 6000;
+let lastReactAt = 0;
+let quietTimer = null;
+const prevOf = new WeakMap();
+const clappedFor = new WeakSet();
+
+function showBubble(text, ms = 2600) {
+  const fig = figEl();
+  if (!fig) return;
+  let b = fig.querySelector('.va-maya-bubble');
+  if (!b) { b = document.createElement('div'); b.className = 'va-maya-bubble'; fig.appendChild(b); }
+  b.textContent = text;
+  b.classList.remove('is-on'); void b.offsetWidth; b.classList.add('is-on');
+  clearTimeout(b._t);
+  b._t = setTimeout(() => b.classList.remove('is-on'), ms);
+}
+
+/** תגובה רגעית: תנוחה + בועה, ואז חוזרת לתנוחה של המסך */
+export function react(pose, text, { force = false } = {}) {
+  const now = Date.now();
+  if (!force && now - lastReactAt < COOLDOWN_MS) return false;
+  const fig = figEl();
+  if (!fig || fig.hidden) return false;
+  lastReactAt = now;
+  const keep = basePose;
+  if (pose) setMayaPose(pose);
+  basePose = keep;
+  if (text) showBubble(text);
+  setTimeout(() => { const f = figEl(); if (f && pose) setMayaPose(keep); }, 2400);
+  return true;
+}
+
+function armQuiet(el) {
+  clearTimeout(quietTimer);
+  quietTimer = setTimeout(() => {
+    if (el.isConnected && wordCount(el.value) < 3) react(null, 'נו, מה עובר לך בראש? 💭');
+  }, 20000);
+  if (quietTimer && typeof quietTimer.unref === 'function') quietTimer.unref();
+}
+
+let reactionsWired = false;
+export function wireReactions() {
+  if (reactionsWired || typeof document === 'undefined') return;
+  reactionsWired = true;
+  const inView = (el) => el && el.closest && el.closest('#video-assistant-view') && /^(TEXTAREA|INPUT)$/.test(el.tagName) && el.type !== 'radio';
+  document.addEventListener('focusin', (e) => { if (inView(e.target)) { prevOf.set(e.target, e.target.value); armQuiet(e.target); } });
+  document.addEventListener('paste', (e) => {
+    if (!inView(e.target)) return;
+    const t = (e.clipboardData && e.clipboardData.getData('text')) || '';
+    if (t.length > 400) react('sweat', 'וואו, איזו מגילה 😅', { force: true });
+  });
+  document.addEventListener('input', (e) => {
+    const el = e.target;
+    if (!inView(el)) return;
+    armQuiet(el);
+    const before = prevOf.has(el) ? prevOf.get(el) : '';
+    const now = el.value;
+    prevOf.set(el, now);
+    if (before.trim().length > 20 && !now.trim()) { react('cover', 'אני לא מסתכלת 🙈', { force: true }); return; }
+    if (numberCount(now) > numberCount(before)) { react('point', 'זה! הפרט הזה מוכר 👆'); return; }
+    if (vagueCount(now) > vagueCount(before)) react('brow', 'כמה בדיוק? 🤨');
+  });
+  document.addEventListener('focusout', (e) => {
+    const el = e.target;
+    if (!inView(el) || clappedFor.has(el)) return;
+    if (wordCount(el.value) >= 8) { clappedFor.add(el); react('clap', 'יפה! 👏'); }
+  });
 }

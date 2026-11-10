@@ -232,11 +232,11 @@ describe('בדפדפן (jsdom)', { skip: hasJsdom ? false : 'jsdom לא מותק
     const text = tip.textContent.replace(/\s+/g, ' ').trim();
     assert.match(text, /לא בטוחים שהרעיון חזק\? הצ'אט מחדד אותו, ומה שכתבתם נשמר/);
     assert.match(text, /לבדוק בצ'אט ←/);
-    /* הפס יושב אחרי שני הצעדים, לא בתוכם */
+    /* הפס יושב אחרי הצעדים, לא בתוכם. 10/11/2026: צעד שלישי, נקודת היציאה */
     const steps = document.querySelectorAll('.va-num');
-    assert.equal(steps.length, 2, 'אין שני צעדים ממוספרים');
+    assert.equal(steps.length, 3, 'אין שלושה צעדים ממוספרים');
     assert.ok(!tip.closest('.va-num'), 'הטיפ נכנס לתוך צעד');
-    assert.ok(steps[1].compareDocumentPosition(tip) & window.Node.DOCUMENT_POSITION_FOLLOWING, 'הטיפ לא אחרי הצעד השני');
+    assert.ok(steps[2].compareDocumentPosition(tip) & window.Node.DOCUMENT_POSITION_FOLLOWING, 'הטיפ לא אחרי הצעד האחרון');
   });
 
   test('לחיצה: נשמר לפני שעוזבים, הצ׳אט נפתח עם מה שנכתב, וחוזרים עם הרעיון המדויק', async () => {

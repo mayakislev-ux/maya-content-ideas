@@ -221,6 +221,20 @@ test('השורה הטכנית: מסר אחד בשדה הרביעי, ושורה �
   assert.equal(fromLabels.message, 'ב');
 });
 
+/* 10/11/2026 (מאיה): שדה חמישי, נקודת היציאה. הצ'אט מעביר אותה לעוזר,
+   שמסמן אותה לבד במסך הרעיון. ערך שלא מהרשימה לא נכנס. */
+test('השורה הטכנית: נקודת היציאה בשדה החמישי, ורק אחת משלוש', async () => {
+  const { extractIdeaSummary } = await import('../js/idea-reply.js');
+  const r = extractIdeaSummary('טקסט\n[[IDEA_SUMMARY]]רעיון||טעות נפוצה||||המסר האחד||סיפור לקוח');
+  assert.equal(r.startingPoint, 'סיפור לקוח');
+  assert.equal(r.message, 'המסר האחד');
+  assert.equal(r.summary, 'רעיון | זווית: טעות נפוצה');
+  assert.equal(extractIdeaSummary('טקסט\n[[IDEA_SUMMARY]]רעיון||טעות נפוצה||||מסר||סיפור כלשהו').startingPoint, '');
+  assert.equal(extractIdeaSummary('טקסט\n[[IDEA_SUMMARY]]רעיון||טעות נפוצה||||מסר').startingPoint, '');
+  const p = buildSystemPrompt({ name: 'נועה', pronoun: 'את', business: 'ריסים', primaryAudience: 'נשים' });
+  assert.ok(p.includes('||<נקודת היציאה של הרעיון, בדיוק אחת מהשלוש: סיפור אישי / סיפור לקוח / כללי'), 'הפרומפט לא מבקש את השדה החמישי');
+});
+
 test('הסעיפים נקראים גם עם הדגשה, תבליט ואימוג׳י', async () => {
   const { labeledIdea } = await import('../js/idea-reply.js');
   assert.deepEqual(labeledIdea('**הרעיון:** א ב\n- **המסר האחד:** ג\n🎯 הזווית: השוואה - כך\n**לקהל:** נשים'), {

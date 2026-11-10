@@ -106,13 +106,18 @@ test('reference path, already has one: sub-choice skips the pick screen entirely
 /* 28/10/2026 (מאיה: "עומס מנטלי... צריך יותר סדר"). מ"יש לי רעיון"
    נכנסים ישר למסך הרעיון (ההגרלה ובדיקת הרלוונטיות בתוכו), ו"כן, צריך
    תסריט" נכנס ישר למגילה, בלי "שכפול הפוך?" ובלי מסך ההסבר. */
-test('idea path: opening -> idea+message -> creative packaging -> basics -> format -> needs script yes -> megillah', () => {
+/* 10/11/2026 (מאיה): סדר חדש. נקודת היציאה במסך הרעיון, המגילה לפני
+   הקריאייטיב, ו"כן, צריך תסריט" ממשיך ישר להוק כי המגילה כבר כתובה. */
+test('idea path: opening -> idea+message+start -> megillah -> creative packaging -> format -> needs script yes -> hook', () => {
   let s = nextStep(INITIAL_STATE, { type: 'CHOOSE_IDEA' });
   assert.equal(s.screen, 'idea-sharpen');
   assert.equal(s.branch, 'idea');
-  s = nextStep(s, { type: 'IDEA_SHARPENED', idea: 'טעות נפוצה בהסרת שיער' });
+  s = nextStep(s, { type: 'IDEA_SHARPENED', idea: 'טעות נפוצה בהסרת שיער', startingPoint: 'כללי' });
+  assert.equal(s.screen, 'scratch-dump');
+  assert.equal(s.startingPoint, 'כללי');
+  s = nextStep(s, { type: 'SCRATCH_DUMP_READY', text: 'כל מה שיש לי להגיד' });
   assert.equal(s.screen, 'creative-packaging');
-  /* 28/10/2026: נקודת היציאה וסוג התוכן נבחרים במסך האריזה עצמו */
+  assert.equal(s.rawDump, 'כל מה שיש לי להגיד');
   s = nextStep(s, { type: 'PACKAGING_CHOSEN', packaging: 'סרטון של "לפני ואחרי" בשניות', startingPoint: 'כללי', contentType: 'בעל ערך' });
   assert.equal(s.screen, 'format-choice');
   assert.equal(s.ideaDescription, 'טעות נפוצה בהסרת שיער. האריזה הקריאייטיבית: סרטון של "לפני ואחרי" בשניות');
@@ -122,8 +127,42 @@ test('idea path: opening -> idea+message -> creative packaging -> basics -> form
   s = nextStep(s, { type: 'FORMAT_SELECTED', format: 'דיבור למצלמה' });
   assert.equal(s.screen, 'needs-script-check');
   s = nextStep(s, { type: 'NEEDS_SCRIPT_YES' });
+  assert.equal(s.screen, 'scratch-hook', 'המגילה כבר נכתבה, ולא אמורים לכתוב אותה שוב');
+  assert.equal(s.branch, 'scratch');
+  assert.equal(s.rawDump, 'כל מה שיש לי להגיד');
+});
+
+test('"כן, צריך תסריט" בלי מגילה (סשן ישן) עדיין נכנס למגילה', () => {
+  const s = nextStep({ ...INITIAL_STATE, screen: 'needs-script-check', branch: 'idea', ideaDescription: 'x', history: [] },
+    { type: 'NEEDS_SCRIPT_YES' });
   assert.equal(s.screen, 'scratch-dump');
   assert.equal(s.branch, 'scratch');
+});
+
+test('IDEA_SHARPENED: מ-0 עוברים למגילה ונקודת היציאה נשמרת; בקטע שצולם ישר לאריזה', () => {
+  const s = nextStep({ ...INITIAL_STATE, screen: 'idea-sharpen', branch: 'idea', history: [] },
+    { type: 'IDEA_SHARPENED', idea: 'רעיון', topic: 'נושא', punchline: 'מסר', startingPoint: 'סיפור לקוח' });
+  assert.equal(s.screen, 'scratch-dump');
+  assert.equal(s.startingPoint, 'סיפור לקוח');
+  assert.equal(s.ideaTopic, 'נושא');
+  assert.equal(s.ideaPunchline, 'מסר');
+  const kept = nextStep({ ...INITIAL_STATE, screen: 'idea-sharpen', branch: 'idea', startingPoint: 'כללי', history: [] },
+    { type: 'IDEA_SHARPENED', idea: 'רעיון' });
+  assert.equal(kept.startingPoint, 'כללי', 'נקודת יציאה שכבר נבחרה נמחקה');
+  const footage = nextStep({ ...INITIAL_STATE, screen: 'idea-sharpen', branch: 'footage', history: [] },
+    { type: 'IDEA_SHARPENED', idea: 'מסר הקטע' });
+  assert.equal(footage.screen, 'creative-packaging');
+});
+
+test('SCRATCH_DUMP_READY: בלי אריזה עוברים לקריאייטיב, עם אריזה (סשן ישן) להוק', () => {
+  const fresh = nextStep({ ...INITIAL_STATE, screen: 'scratch-dump', branch: 'idea', ideaDescription: 'x', history: [] },
+    { type: 'SCRATCH_DUMP_READY', text: 'המגילה' });
+  assert.equal(fresh.screen, 'creative-packaging');
+  assert.equal(fresh.rawDump, 'המגילה');
+  const old = nextStep({ ...INITIAL_STATE, screen: 'scratch-dump', branch: 'scratch', ideaDescription: 'x', packaging: 'אריזה', history: [] },
+    { type: 'SCRATCH_DUMP_READY', text: 'המגילה' });
+  assert.equal(old.screen, 'scratch-hook');
+  assert.equal(old.rawDump, 'המגילה');
 });
 
 test('idea path -> needs script NO ends at the summary without forcing a script', () => {
@@ -164,7 +203,8 @@ test('חידוד רעיון: בלי רעיון אין דרך להגיע לשפי
 test('חידוד רעיון: הרעיון המחודד מחליף את הישן וממשיך לשני השלבים', () => {
   const s = nextStep({ ...INITIAL_STATE, screen: 'idea-sharpen', ideaDescription: 'גבות' },
     { type: 'IDEA_SHARPENED', idea: 'למה גבות דקות מזקינות את הפנים' });
-  assert.equal(s.screen, 'creative-packaging');
+  /* 10/11/2026: אחרי הרעיון והמסר באה המגילה, ורק אחריה האריזה */
+  assert.equal(s.screen, 'scratch-dump');
   assert.equal(s.ideaDescription, 'למה גבות דקות מזקינות את הפנים');
 });
 
@@ -223,8 +263,13 @@ test('from-scratch: full 4-prompt chain (dump -> hook -> reinforcement -> distil
   let s = nextStep(base, { type: 'SCRATCH_START_DUMP' });
   assert.equal(s.screen, 'scratch-dump');
   s = nextStep(s, { type: 'SCRATCH_DUMP_READY', text: 'כל מה שיש לי להגיד' });
-  assert.equal(s.screen, 'scratch-hook');
+  /* 10/11/2026: אחרי המגילה באה האריזה (אם עוד לא נבחרה), ומשם דרך הפורמט להוק */
+  assert.equal(s.screen, 'creative-packaging');
   assert.equal(s.rawDump, 'כל מה שיש לי להגיד');
+  s = nextStep(s, { type: 'PACKAGING_CHOSEN', packaging: 'אריזה' });
+  s = nextStep(s, { type: 'FORMAT_SELECTED', format: 'דיבור למצלמה' });
+  s = nextStep(s, { type: 'NEEDS_SCRIPT_YES' });
+  assert.equal(s.screen, 'scratch-hook');
   s = nextStep(s, { type: 'SCRATCH_HOOK_CHOSEN', hook: 'ההוק שבחרתי' });
   assert.equal(s.screen, 'scratch-hook-reinforce');
   assert.equal(s.hook, 'ההוק שבחרתי');
@@ -318,8 +363,11 @@ test('חידוד הרעיון יושב בין הרעיון לפורמט, ולא 
   s = nextStep(s, { type: 'CHOOSE_TYPE_IDEA' });
   s = nextStep(s, { type: 'IDEA_TYPED', text: 'רעיון' });
   assert.equal(s.screen, 'idea-sharpen', 'אחרי הרעיון לא מגיעים לחידוד');
-  s = nextStep(s, { type: 'IDEA_SHARPENED', idea: 'ביקורת על קורסים זולים' });
-  assert.equal(s.screen, 'creative-packaging', 'אחרי המסר לא מגיעים לאריזה הקריאייטיבית');
+  s = nextStep(s, { type: 'IDEA_SHARPENED', idea: 'ביקורת על קורסים זולים', startingPoint: 'כללי' });
+  /* 10/11/2026: המגילה באה לפני האריזה */
+  assert.equal(s.screen, 'scratch-dump', 'אחרי המסר לא מגיעים למגילה');
+  s = nextStep(s, { type: 'SCRATCH_DUMP_READY', text: 'מה שיש לי להגיד' });
+  assert.equal(s.screen, 'creative-packaging', 'אחרי המגילה לא מגיעים לאריזה הקריאייטיבית');
   s = nextStep(s, { type: 'PACKAGING_CHOSEN', packaging: 'מכתב לעצמי של לפני 5 שנים', startingPoint: 'כללי', contentType: 'בעל ערך' });
   assert.equal(s.screen, 'format-choice', 'הפורמט לא בא אחרי האריזה');
 });
@@ -402,4 +450,16 @@ test('אריזה אחרי שינוי רעיון נבנית על הרעיון ה�
   s = nextStep({ ...s, screen: 'idea-sharpen' }, { type: 'IDEA_SHARPENED', idea: 'חדש' });
   s = nextStep(s, { type: 'PACKAGING_CHOSEN', packaging: 'ב' });
   assert.equal(s.ideaDescription, 'חדש. האריזה הקריאייטיבית: ב');
+});
+
+/* 10/11/2026 (סוכן בדיקות): בסדר החדש המגילה נכתבת כשהמסלול עוד 'idea',
+   וחזרה מהאריזה למגילה מחקה אותה מהמצב */
+test('חזרה מהאריזה למגילה שומרת את המגילה', () => {
+  let s = { ...INITIAL_STATE, history: [], branch: 'idea', screen: 'idea-sharpen', ideaDescription: 'x' };
+  s = nextStep(s, { type: 'IDEA_SHARPENED', idea: 'x', topic: 'x', punchline: 'y', startingPoint: 'כללי' });
+  s = nextStep(s, { type: 'SCRATCH_DUMP_READY', text: 'מגילה ארוכה' });
+  assert.equal(s.screen, 'creative-packaging');
+  s = nextStep(s, { type: 'BACK' });
+  assert.equal(s.screen, 'scratch-dump');
+  assert.equal(s.rawDump, 'מגילה ארוכה');
 });
