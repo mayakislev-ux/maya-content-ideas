@@ -10,6 +10,7 @@ import { subscribeToIdeas } from './ideas-store.js';
 import { renderArchive, wireArchiveControls, getCurrentIdeas, getAllIdeas, wirePullToRefresh, wireGoalEditModal, setIdeasRedesign } from './archive-view.js';
 import { ideasRedesignFor } from './ideas-shelves.js';
 import { wireHomeMic, setHomeMicVisible, setHomeMicIdleText } from './home-mic.js';
+import { mountHomeMaya, mayaVisibleFor } from './va-maya.js';
 import { wireNoIdea, setNoIdeaHome, hasSheet } from './no-idea.js';
 import { wireMyDetails, openMyDetails } from './my-details.js';
 import { setRecorderRatings } from './idea-recorder.js';
@@ -834,6 +835,10 @@ onAuthChange(async (user) => {
   setRecorderRatings(!ideasRedesign);
   /* 07/11/2026 (מאיה): למי שאין טבלאות (משתתפות המרתון הזמניות) הכרטיס
      לא מבטיח "מהקהל, מהפרסונה", כי הדלתות האלה לא מוצגות אצלן */
+  /* 10/11/2026 שלב 6 של הדמות: מציצה מעל כרטיס הרעיון בדף הבית (רק מאיה עד האישור) */
+  if (mayaVisibleFor(user.email)) {
+    getProfile().then((profile) => mountHomeMaya(document.querySelector('#home-view .home-capture-card'), profile)).catch(() => {});
+  }
   if (ideasRedesign) {
     getProfile().then((profile) => {
       if (!hasSheet(profile)) setHomeMicIdleText('מספרים מה קרה היום, או משכפלים רפרנס מהתחום שלך');

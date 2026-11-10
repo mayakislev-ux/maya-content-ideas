@@ -49,10 +49,10 @@ describe('שלב 3 בעוזר (jsdom)', { skip: hasJsdom ? false : 'jsdom לא �
     m.mountMaya($('#va-card'), 'scratch-dump');
     await until(() => $('.va-maya img'), 'אין דמות');
     await until(() => /maya-coffee\.webp$/.test($('.va-maya img').getAttribute('src')), 'לא נעמדה עם קפה', 1800);
+    /* 11/11/2026: מגילה ארוכה לא מחליפה תנוחה, רק בועה */
     m.setMayaNod(LONG_MEGILLAH_WORDS + 5);
-    assert.match($('.va-maya img').getAttribute('src'), /maya-coffee2\.webp$/);
-    m.setMayaNod(10);
     assert.match($('.va-maya img').getAttribute('src'), /maya-coffee\.webp$/);
+    assert.match($('.va-maya .va-maya-bubble').textContent, /קפה/);
     m.setSignText('הפסקתי לעבוד 14 שעות ביום');
     m.setMayaPose('sign');
     assert.equal($('.va-maya .va-maya-sign').textContent, 'הפסקתי לעבוד 14 שעות ביום');

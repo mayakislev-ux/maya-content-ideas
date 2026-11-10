@@ -17,7 +17,8 @@ test('מסלול רעיון: הרעיון והמסר נשארים מול העי�
   let s = nextStep(INITIAL_STATE, { type: 'CHOOSE_IDEA' });
   s = nextStep(s, { type: 'IDEA_SHARPENED', idea: 'ממומן רק מביא חשיפה. נושא הסרטון: ממומן', topic: 'ממומן', punchline: 'ממומן רק מביא חשיפה' });
   const parts = buildParts(s);
-  assert.deepEqual(pick(parts), ['הרעיון:done', 'המסר:done', 'האריזה:now', 'הפורמט:wait', 'התסריט:wait']);
+  /* 11/11/2026: אחרי הרעיון באה המגילה, ורק אחריה הקריאייטיב */
+  assert.deepEqual(pick(parts), ['הרעיון:done', 'המסר:done', 'מגילת אסתר:now', 'האריזה:wait', 'הפורמט:wait', 'התסריט:wait']);
   assert.equal(parts[0].value, 'ממומן', 'הנושא לא נלקח מהשדה שלו');
   assert.equal(parts[1].value, 'ממומן רק מביא חשיפה');
 });
@@ -25,15 +26,14 @@ test('מסלול רעיון: הרעיון והמסר נשארים מול העי�
 test('מסלול כתיבה: כל חלק שנכתב נשאר, ההוק מודגש', () => {
   let s = nextStep(INITIAL_STATE, { type: 'CHOOSE_IDEA' });
   s = nextStep(s, { type: 'IDEA_SHARPENED', idea: 'מ', topic: 'נושא', punchline: 'מסר' });
+  s = nextStep(s, { type: 'SCRATCH_DUMP_READY', text: 'כל מה שיש לי להגיד' });
   s = nextStep(s, { type: 'PACKAGING_CHOSEN', packaging: 'מכתב לעצמי', startingPoint: 'סיפור לקוח' });
   s = nextStep(s, { type: 'FORMAT_SELECTED', format: 'דיבור למצלמה' });
-  s = nextStep(s, { type: 'NEEDS_SCRIPT_YES' });
-  s = nextStep(s, { type: 'SCRATCH_DUMP_READY', text: 'כל מה שיש לי להגיד' });
   s = nextStep(s, { type: 'SCRATCH_HOOK_CHOSEN', hook: 'שרפת 5,000 ש"ח?' });
   const parts = buildParts(s);
-  assert.deepEqual(pick(parts), ['הרעיון:done', 'המסר:done', 'האריזה:done', 'הפורמט:done',
-    'מה יש לך להגיד:done', 'ההוק:done', 'חיזוק ההוק:now', 'התסריט:wait']);
-  assert.equal(parts[2].value, 'מכתב לעצמי · סיפור לקוח');
+  assert.deepEqual(pick(parts), ['הרעיון:done', 'המסר:done', 'מגילת אסתר:done', 'האריזה:done', 'הפורמט:done',
+    'ההוק:done', 'חיזוק ההוק:now', 'התסריט:wait']);
+  assert.equal(parts[3].value, 'מכתב לעצמי · סיפור לקוח');
   assert.ok(parts.find((p) => p.label === 'ההוק').big);
 });
 

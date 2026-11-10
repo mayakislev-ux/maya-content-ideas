@@ -258,16 +258,23 @@ test('BACK אל מחוץ לשלב הכתיבה לא סוחב הוק ותסריט
   let r = walk({ ...INITIAL_STATE, history: [], branch: 'idea', screen: 'idea-sharpen', ideaDescription: 'x' }, [
     { type: 'IDEA_SHARPENED', idea: 'x', startingPoint: 'כללי' }, { type: 'SCRATCH_DUMP_READY', text: 'שפיכה' },
     { type: 'PACKAGING_CHOSEN', packaging: 'אריזה' }, { type: 'FORMAT_SELECTED', format: 'דיבור למצלמה' },
-    { type: 'NEEDS_SCRIPT_YES' }, { type: 'SCRATCH_HOOK_CHOSEN', hook: 'הוק' },
+    { type: 'SCRATCH_HOOK_CHOSEN', hook: 'הוק' },
   ]);
   r = nextStep(r, { type: 'BACK' });
   assert.equal(r.screen, 'scratch-hook');
   assert.equal(r.hook, 'הוק');
   assert.equal(r.rawDump, 'שפיכה');
+  /* 11/11/2026: הפורמט, הקריאייטיב והמגילה הם עכשיו חלק משלב הכתיבה, ולכן
+     חזרה עד מסך הרעיון שומרת את כל מה שנכתב (סוכני הבדיקה מצאו שזה נמחק) */
   r = nextStep(r, { type: 'BACK' });
-  assert.equal(r.screen, 'needs-script-check');
-  assert.equal(r.rawDump, 'שפיכה');
-  assert.equal(r.hook, null);
+  assert.equal(r.screen, 'format-choice');
+  assert.equal(r.hook, 'הוק');
+  r = nextStep(r, { type: 'BACK' });
+  assert.equal(r.screen, 'creative-packaging');
+  assert.equal(r.packaging, 'אריזה', 'הקריאייטיב שהודבק נמחק בחזרה מהפורמט');
+  r = nextStep(nextStep(r, { type: 'BACK' }), { type: 'BACK' });
+  assert.equal(r.screen, 'idea-sharpen');
+  assert.equal(r.rawDump, 'שפיכה', 'המגילה נמחקה בחזרה עד מסך הרעיון');
 });
 
 test('BACK: בשכפול, ריק שנשלח בכוונה נשאר ריק', () => {

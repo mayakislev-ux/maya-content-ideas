@@ -53,7 +53,7 @@ const PARTS = {
     screens: ['format-choice'],
   },
   dump: {
-    label: 'מה יש לך להגיד',
+    label: 'מגילת אסתר',
     get: (s) => clip(s.rawDump),
     full: (s) => s.rawDump,
     screens: ['scratch-dump'],
@@ -84,8 +84,9 @@ const PARTS = {
 };
 
 const BY_BRANCH = {
-  idea: ['idea', 'message', 'angle', 'packaging', 'format', 'script'],
-  scratch: ['idea', 'message', 'angle', 'packaging', 'format', 'dump', 'hook', 'reinforce', 'script'],
+  /* 11/11/2026: הסדר החדש, המגילה לפני הקריאייטיב */
+  idea: ['idea', 'message', 'angle', 'dump', 'packaging', 'format', 'script'],
+  scratch: ['idea', 'message', 'angle', 'dump', 'packaging', 'format', 'hook', 'reinforce', 'script'],
   footage: ['message', 'packaging', 'format', 'script'],
   reference: ['reference', 'hook', 'herWords', 'script'],
   'idea-search': ['idea', 'message', 'angle', 'packaging', 'format', 'reference', 'herWords', 'hook', 'script'],

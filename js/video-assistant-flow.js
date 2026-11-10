@@ -116,13 +116,15 @@ function withoutHistory(state) {
    חזרה אחורה לא מוחקת אותם (ראה BACK). */
 const PASTED_ON = {
   prompt1: 'hook', 'her-words': 'herWords', prompt2: 'finalScript',
-  'scratch-dump': 'rawDump', 'scratch-hook': 'hook', 'scratch-hook-reinforce': 'hookReinforcement', 'scratch-distill': 'draftScript',
+  'scratch-dump': 'rawDump', 'creative-packaging': 'packaging', 'scratch-hook': 'hook', 'scratch-hook-reinforce': 'hookReinforcement', 'scratch-distill': 'draftScript',
 };
 const WRITING_ORDER = {
   reference: ['transcribe', 'prompt1', 'her-words', 'prompt2', 'read-aloud'],
   scratch: ['scratch-dump', 'scratch-hook', 'scratch-hook-reinforce', 'scratch-distill', 'scratch-scene'],
   /* 10/11/2026: בסדר החדש המגילה נכתבת כשהמסלול עוד 'idea' (לפני האריזה) */
-  idea: ['scratch-dump', 'scratch-hook', 'scratch-hook-reinforce', 'scratch-distill', 'scratch-scene'],
+  /* 11/11/2026 (סוכני בדיקה): חזרה עד מסך הרעיון מחקה את המגילה, וחזרה
+     מהפורמט מחקה את הקריאייטיב שהודבק. עכשיו כל השלבים של הסדר החדש כאן. */
+  idea: ['idea-sharpen', 'scratch-dump', 'creative-packaging', 'format-choice', 'needs-script-check', 'scratch-hook', 'scratch-hook-reinforce', 'scratch-distill', 'scratch-scene'],
 };
 
 /** השדות שחזרה ל-prev שומרת: מה שהודבק במסך הזה ובמסכים שאחריו באותו מסלול. */
@@ -318,6 +320,11 @@ function step(state, action) {
     // ===== בחירת פורמט הנגשה - פופאפ אמיתי, בחירה אמיתית (16/10) - מסלול
     // "רעיון מ-0" בלבד; קטע מצולם עבר למסלול הייעודי שלו למעלה =====
     case 'FORMAT_SELECTED':
+      /* 11/11/2026: בסדר החדש (מגילה לפני הקריאייטיב) השאלה "צריך תסריט?"
+         ירדה: אחרי הפורמט ממשיכים ישר להוק. סשן ישן בלי מגילה נשאר כמו קודם. */
+      if (state.formatFor === 'idea' && state.rawDump) {
+        return { ...state, selectedFormat: action.format, screen: 'scratch-hook', branch: 'scratch' };
+      }
       return { ...state, selectedFormat: action.format, screen: 'needs-script-check' };
 
     // ===== "צריך תסריט או לא?" - לא כל תוכן צריך תסריט =====
@@ -414,7 +421,8 @@ function step(state, action) {
     case 'SCRATCH_DUMP_READY':
       /* 10/11/2026: אחרי המגילה הקריאייטיב (אם עוד לא נבחר). סשן ישן שכבר
          בחר אריזה לפני המגילה ממשיך להוק, כמו קודם. */
-      return { ...state, screen: state.packaging ? 'scratch-hook' : 'creative-packaging', rawDump: action.text };
+      /* בסדר החדש (המסלול עוד 'idea') תמיד לקריאייטיב, גם אם הוא נשמר מחזרה אחורה */
+      return { ...state, screen: state.branch === 'idea' || !state.packaging ? 'creative-packaging' : 'scratch-hook', rawDump: action.text };
     // שלב 2: פרומפט מציאת הוק (בנק של כ-140 הוקים אמיתיים מוטמע)
     case 'SCRATCH_HOOK_CHOSEN':
       return { ...state, screen: 'scratch-hook-reinforce', hook: action.hook };

@@ -129,7 +129,7 @@ test('כל תהליך היצירה מופיע לפי הסדר, כולל מגיל
   const t = setup();
   await t.openItem('s1');
   const labels = [...document.querySelectorAll('.va-lib-step__label')].map((el) => el.textContent);
-  assert.deepEqual(labels, ['הרעיון', 'המסר', 'האריזה', 'הפורמט', 'מגילת אסתר', 'ההוק', 'חיזוק ההוק', 'התסריט הסופי']);
+  assert.deepEqual(labels, ['הרעיון', 'המסר', 'מגילת אסתר', 'האריזה', 'הפורמט', 'ההוק', 'חיזוק ההוק', 'התסריט הסופי']);
   const megillah = t.$('[data-step="megillah"]');
   assert.ok(megillah.textContent.includes(MEGILLAH), 'המגילה לא מוצגת');
   assert.match(t.$('[data-step="packaging"]').textContent, /נקודת היציאה: סיפור לקוח/);

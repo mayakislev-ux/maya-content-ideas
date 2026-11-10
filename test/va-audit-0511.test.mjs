@@ -288,7 +288,8 @@ describe('ביקורת 05/11 בעוזר (jsdom)', { skip: hasJsdom ? false : 'js
       { type: 'PACKAGING_CHOSEN', packaging: 'כיוון ישן' },
       { type: 'FORMAT_SELECTED', format: 'דיבור למצלמה' },
     ]);
-    assert.equal(scratch.screen, 'needs-script-check');
+    /* 11/11/2026: השאלה "צריך תסריט?" ירדה מהסדר החדש, מהפורמט ישר להוק */
+    assert.equal(scratch.screen, 'scratch-hook');
     const packagingScreen = { ...walk(scratch, [{ type: 'BACK' }, { type: 'BACK' }]), packaging: 'כיוון ישן' };
     assert.equal(packagingScreen.screen, 'creative-packaging');
     const dumpScreen = { ...walk(scratch, [{ type: 'BACK' }, { type: 'BACK' }, { type: 'BACK' }]), rawDump: 'מגילה ישנה' };

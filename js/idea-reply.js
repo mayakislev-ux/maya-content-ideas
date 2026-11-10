@@ -38,7 +38,9 @@ export function extractIdeaSummary(reply) {
      אליו. שורה ישנה עם שלושה שדות עדיין נקראת כמו שהייתה. */
   /* 10/11/2026: שדה חמישי, נקודת היציאה (סיפור אישי / סיפור לקוח / כללי) */
   const [idea, rawAngle, story, rawMessage, rawStart] = rawTail.split('||').map((part) => (part || '').trim());
-  const startingPoint = ['סיפור אישי', 'סיפור לקוח', 'כללי'].includes(rawStart) ? rawStart : '';
+  /* 11/11/2026: בלי נקודה, גרשיים או כוכביות מסביב ("כללי." נחשב) */
+  const cleanStart = String(rawStart || '').replace(/^[\s"'“”״*]+|[\s"'“”״*.,!]+$/g, '');
+  const startingPoint = ['סיפור אישי', 'סיפור לקוח', 'כללי'].includes(cleanStart) ? cleanStart : '';
   const message = rawMessage || labeledIdea(visibleReply).message || '';
 
   if (!idea) return { visibleReply, summary: null };

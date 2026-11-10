@@ -8883,10 +8883,11 @@ body[data-plan="refs"] .hub-full-only { display: none !important; }
   animation: va-maya-idle 4s ease-in-out infinite;
   transform-origin: 50% 100%;
 }
-.va-maya.is-changing img { animation: va-maya-pop .45s cubic-bezier(.3,1.5,.6,1) both, va-maya-idle 4s ease-in-out .45s infinite; }
+.va-maya.is-changing img { animation: va-maya-pop .4s ease-out both, va-maya-idle 4s ease-in-out .4s infinite; }
 .va-maya--celebrate img { animation: va-maya-jump .7s ease-out 2, va-maya-idle 4s ease-in-out 1.4s infinite; }
 @keyframes va-maya-idle { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
-@keyframes va-maya-pop { 0% { transform: scale(.9) translateY(10px); opacity: .3; } 100% { transform: scale(1) translateY(0); opacity: 1; } }
+/* 10/11/2026 (מאיה: "לא חלק ומוזר"): בלי קפיצה וכיווץ, רק דהייה רכה */
+@keyframes va-maya-pop { 0% { opacity: 0; } 100% { opacity: 1; } }
 @keyframes va-maya-jump { 0%, 100% { transform: translateY(0); } 40% { transform: translateY(-22px); } }
 /* מסך צר מדי לדמות בצד: היא עוברת לפינה העליונה, קטנה, והכרטיס יורד קצת */
 @media (max-width: 960px) {
@@ -9078,7 +9079,7 @@ body[data-plan="refs"] .hub-full-only { display: none !important; }
 .va-maya-bubble {
   position: absolute; bottom: calc(100% - 18px); left: 50%; transform: translate(-50%, 6px) scale(.9);
   background: #fff; color: #0f2340; border-radius: 16px; padding: 8px 12px;
-  font-size: 14px; font-weight: 700; line-height: 1.35; white-space: nowrap;
+  font-size: 14px; font-weight: 700; line-height: 1.35; white-space: normal; width: max-content; max-width: min(260px, calc(100vw - 32px)); text-align: center;
   box-shadow: 0 10px 24px rgba(5,15,50,.3); opacity: 0; pointer-events: none;
   transition: opacity .2s, transform .2s;
 }
@@ -9129,3 +9130,73 @@ body[data-plan="refs"] .hub-full-only { display: none !important; }
   .va-stage-fig, .va-stage-fig img, .va-stage-bubble, #video-assistant-view .va-maya .va-maya-sign,
   #video-assistant-view .va-maya--dumbbell img, #video-assistant-view .va-maya--coffee2 img, #video-assistant-view .va-maya--gift img { animation: none !important; }
 }
+
+/* ----- 10/11/2026 שלב 6: הדמות בדף הבית, מציצה מעל כרטיס הרעיון (סטטית) ----- */
+.home-capture-card.has-home-maya { position: relative; }
+.home-maya[hidden] { display: none; }
+.home-maya { position: absolute; top: -84px; left: 22px; height: 176px; pointer-events: none; z-index: 2; }
+.home-maya img { height: 100%; width: auto; display: block; filter: drop-shadow(0 8px 12px rgba(5,15,50,.22)); animation: va-maya-pop .4s ease-out both; }
+.home-maya-bubble {
+  position: absolute; top: 18px; left: calc(100% + 6px); width: max-content; max-width: 240px;
+  background: #fff; color: #0f2340; border-radius: 14px; padding: 7px 11px; font-size: 13px; font-weight: 700; line-height: 1.35;
+  box-shadow: 0 8px 20px rgba(5,15,50,.18); transition: opacity .4s;
+}
+.home-maya-bubble.is-off { opacity: 0; }
+@media (max-width: 600px) {
+  .home-maya { top: -56px; left: 10px; height: 118px; }
+  .home-maya-bubble { font-size: 12px; max-width: 170px; top: 8px; }
+}
+@media (prefers-reduced-motion: reduce) { .home-maya img { animation: none; } }
+
+/* 10/11/2026 (בדיקת סוכן): ה-scale בכניסת הכרטיס הופך אותו לרגע לבסיס של
+   הדמות הצמודה, והיא קפצה. כשהדמות מוצגת במחשב: כניסה בדהייה בלבד. */
+@keyframes va-card-fade-only { from { opacity: 0; } to { opacity: 1; } }
+@media (min-width: 961px) {
+  #video-assistant-view.has-maya .cosmic-card { animation-name: va-card-fade-only; }
+}
+
+/* ----- 11/11/2026 סבב סוכני בדיקה ----- */
+/* דהייה רכה בכל החלפת תנוחה, גם כשלתנוחה יש אנימציה משלה (נמחק אחרי 450ms) */
+#video-assistant-view .va-maya.is-changing img { animation: va-maya-pop .4s ease-out both !important; }
+/* בזמן רגע שיא על כל המסך, הדמות שליד הכרטיס נעלמת (לא שתי מאיות) */
+body.va-stage-on #video-assistant-view .va-maya { opacity: 0; transition: opacity .25s; }
+#video-assistant-view .va-maya { transition: opacity .25s; }
+/* הצצה: האמות על הקצה העליון, לא על סרגל ההתקדמות */
+@media (min-width: 961px) {
+  #video-assistant-view .va-maya.va-maya--peek { top: -162px; }
+}
+/* מחשב קטן / אייפד לרוחב (961-1240): הגובה נגזר מהמקום שנשאר ליד הכרטיס,
+   כדי שאף תנוחה לא תיחתך בקצה (התנוחות הרגילות ברוחב עד 0.74 מהגובה,
+   מסך ירוק והתגעגעתי עד 0.95) */
+@media (min-width: 961px) and (max-width: 1240px) {
+  #video-assistant-view .va-maya:not(.va-maya--peek):not(.va-maya--swing) { height: min(420px, calc((50vw - 290px) / .76)); }
+  #video-assistant-view .va-maya.va-maya--greenscreen,
+  #video-assistant-view .va-maya.va-maya--missyou { height: min(340px, calc((50vw - 290px) / .97)); }
+}
+/* במחשב הבועה נפתחת מהקצה הימני של הדמות פנימה (לכיוון הכרטיס), לא נחתכת בקצה המסך */
+@media (min-width: 961px) {
+  #video-assistant-view .va-maya:not(.va-maya--peek):not(.va-maya--swing) .va-maya-bubble { left: auto; right: 0; transform: translateY(6px) scale(.9); max-width: 260px; }
+  #video-assistant-view .va-maya:not(.va-maya--peek):not(.va-maya--swing) .va-maya-bubble.is-on { transform: none; }
+  /* הסרגל העליון (חזרה, התסריטים שלי) תמיד מעל הדמות ונלחץ */
+  #video-assistant-view.has-maya .va-topbar { z-index: 5; }
+}
+/* בטלפון: בהצצה (דמות ממורכזת) הבועה ממורכזת, ובפינה היא נפתחת ימינה ועוטפת שורות */
+@media (max-width: 960px) {
+  #video-assistant-view .va-maya.va-maya--peek .va-maya-bubble { left: 50%; transform: translateX(-50%); }
+  #video-assistant-view .va-maya.va-maya--peek .va-maya-bubble.is-on { transform: translateX(-50%); }
+  .va-maya-bubble { max-width: calc(100vw - 48px); }
+}
+/* הראש בהצצה ובישיבה לא נחתך בחלק העליון של המסך (hidden חותך גם למעלה) */
+@supports (overflow-x: clip) {
+  #video-assistant-view.has-maya.cosmic-theme { overflow-x: clip; }
+}
+/* אייפון: לחיצה כפולה לא מגדילה את הדף, לחיצה ארוכה לא פותחת "שמירת תמונה" */
+#video-assistant-view .va-maya img { touch-action: manipulation; -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; }
+.va-maya-toggle { min-height: 40px; }
+#video-assistant-view .va-maya .va-maya-sign { overflow-wrap: anywhere; }
+/* דף הבית: מקום לדמות מעל הכרטיס, כדי שלא תיכנס מתחת לפס העליון */
+.home-capture-card.has-home-maya { margin-top: 96px; }
+@media (max-width: 600px) { .home-capture-card.has-home-maya { margin-top: 64px; } }
+/* רגע שיא קטן יותר, שלא יכסה את התשובה בצ'אט */
+.va-stage-fig img { height: min(40vh, 330px); }
+.va-maya-bubble { pointer-events: none; }

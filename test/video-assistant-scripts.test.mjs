@@ -36,7 +36,7 @@ test('השם ברשימה הוא הרעיון', () => {
 
 test('כל חלק לעריכה, במלואו, עם השדה שלו בסטייט', () => {
   const f = scriptFields(built);
-  assert.deepEqual(f.map((x) => x.field), ['ideaTopic', 'ideaPunchline', 'packaging', 'selectedFormat', 'rawDump', 'hook', 'hookReinforcement']);
+  assert.deepEqual(f.map((x) => x.field), ['ideaTopic', 'ideaPunchline', 'rawDump', 'packaging', 'selectedFormat', 'hook', 'hookReinforcement']);
   assert.equal(f.find((x) => x.key === 'packaging').value, 'מכתב מהעמוד', 'נקודת היציאה לא נכנסת לשדה האריזה');
   const long = 'א'.repeat(400);
   assert.equal(scriptFields({ ...built, draftScript: long }).find((x) => x.key === 'script').value, long, 'התסריט קוצר');

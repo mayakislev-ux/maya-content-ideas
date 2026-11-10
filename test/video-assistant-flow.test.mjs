@@ -124,9 +124,8 @@ test('idea path: opening -> idea+message+start -> megillah -> creative packaging
   assert.equal(s.startingPoint, 'כללי');
   assert.equal(s.contentType, 'בעל ערך');
   assert.equal(s.formatFor, 'idea');
+  /* 11/11/2026: "צריך תסריט?" ירדה. מהפורמט ישר להוק, המגילה כבר כתובה */
   s = nextStep(s, { type: 'FORMAT_SELECTED', format: 'דיבור למצלמה' });
-  assert.equal(s.screen, 'needs-script-check');
-  s = nextStep(s, { type: 'NEEDS_SCRIPT_YES' });
   assert.equal(s.screen, 'scratch-hook', 'המגילה כבר נכתבה, ולא אמורים לכתוב אותה שוב');
   assert.equal(s.branch, 'scratch');
   assert.equal(s.rawDump, 'כל מה שיש לי להגיד');

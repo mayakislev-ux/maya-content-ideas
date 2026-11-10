@@ -65,8 +65,8 @@ const STEPS = {
 };
 
 const ORDER = {
-  idea: ['idea', 'message', 'angle', 'packaging', 'format', 'script'],
-  scratch: ['idea', 'message', 'angle', 'packaging', 'format', 'megillah', 'refLink', 'transcript', 'hook', 'reinforce', 'script'],
+  idea: ['idea', 'message', 'angle', 'megillah', 'packaging', 'format', 'script'],
+  scratch: ['idea', 'message', 'angle', 'megillah', 'packaging', 'format', 'refLink', 'transcript', 'hook', 'reinforce', 'script'],
   footage: ['message', 'packaging', 'format', 'script'],
   reference: ['refLink', 'transcript', 'megillah', 'hook', 'script'],
   'idea-search': ['idea', 'message', 'angle', 'packaging', 'format', 'refLink', 'transcript', 'megillah', 'hook', 'script'],

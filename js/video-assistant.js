@@ -41,7 +41,7 @@ import {
 } from './reference-transcribe.js';
 import { getProfile, saveProfile } from './user-profile.js';
 import { audienceOptions, pickedAudience, audienceChipLabel, audienceEditUpdate, audienceAddUpdate, audienceDeleteUpdate } from './audience-pick.js';
-import { mountMaya, mayaVisibleFor, setMayaPose, flashMaya, setMayaNod, poseForFormat, setSignText, stageShow, bigFishHook } from './va-maya.js';
+import { mountMaya, mayaVisibleFor, setMayaPose, flashMaya, setMayaNod, poseForFormat, setSignText, stageShow, bigFishHook, setMayaPerson } from './va-maya.js';
 const mayaOn = () => mayaVisibleFor(auth.currentUser && auth.currentUser.email);
 const BRAND_CONFETTI = ['#263ea8', '#8b98d9', '#ff2ea8', '#ff7ac8', '#ffd23f', '#ffffff'];
 /* 04/11/2026: צ'אט דיוק הרעיון חזר, כקפיצה לצ'אט עצמו ולא כעותק בתוך המסך */
@@ -75,7 +75,9 @@ export const SUBCATEGORIES_BY_DOMAIN = {
   'צילום ותדמית': [],
 };
 
-const PHASES = ['התחלה', 'בדיקת התאמה', 'פורמט ושיטה', 'בניית התוכן', 'סיום'];
+/* 11/11/2026: חמשת השלבים של מאיה בסדר החדש: רעיון ומסר, מגילה, קריאייטיב,
+   פורמט והוק, זיקוק. מסך הפתיחה לא נספר כשלב (הסרגל מוסתר בו). */
+const PHASES = ['רעיון ומסר', 'מגילת אסתר', 'קריאייטיב', 'פורמט והוק', 'תסריט וסיום'];
 /* 26/10/2026 (מאיה, צילום מסך): הכותרת אמרה "שלב 2 מתוך 5: בדיקת התאמה"
    בזמן שעל המסך היה כתוב "בוא נדייק את הרעיון". שם הפאזה מתאים לכמה
    מסכים, ולכן מסך שצריך שם משלו מקבל אותו כאן. */
@@ -84,13 +86,28 @@ const SCREEN_LABEL = {
   'creative-packaging': 'האריזה הקריאייטיבית',
   'content-basics': 'נקודת יציאה וסוג תוכן',
   'scratch-dump': 'מגילת אסתר',
+  'format-choice': 'פורמט הנגשה',
+  'needs-script-check': 'צריך תסריט?',
+  'scratch-hook': 'ההוק',
+  'scratch-hook-reinforce': 'חיזוק ההוק',
+  'scratch-distill': 'זיקוק לתסריט',
+  'scratch-scene': 'שפה של רשתות',
+  transcribe: 'תמלול הרפרנס',
+  prompt1: 'ההוק',
+  'her-words': 'המילים שלך',
+  prompt2: 'התסריט',
+  'read-aloud': 'הקראה בקול',
+  'type-idea': 'הרעיון',
+  'content-basics': 'נקודת יציאה וסוג תוכן',
 };
 const PHASE_BY_SCREEN = {
   opening: 0, 'reference-source-choice': 0, 'idea-source-choice': 0, 'type-idea': 0, 'pulled-idea': 0, 'pulled-reference': 0,
-  'relevance-check': 1,
-  'content-basics': 2, 'footage-type-choice': 2, 'format-choice': 2, 'needs-script-check': 2,
-  transcribe: 3, prompt1: 3, 'her-words': 3, prompt2: 3, 'read-aloud': 3,
-  'idea-sharpen': 1, 'creative-packaging': 2, 'scratch-intro': 3, 'scratch-dump': 2, 'scratch-hook': 3, 'scratch-hook-reinforce': 3, 'scratch-distill': 3, 'scratch-scene': 3,
+  'relevance-check': 0, 'idea-sharpen': 0,
+  'scratch-dump': 1, 'scratch-intro': 1,
+  'creative-packaging': 2, 'content-basics': 2,
+  'footage-type-choice': 3, 'format-choice': 3, 'needs-script-check': 3, 'scratch-hook': 3, 'scratch-hook-reinforce': 3,
+  transcribe: 1, prompt1: 3, 'her-words': 2, prompt2: 4, 'read-aloud': 4,
+  'scratch-distill': 4, 'scratch-scene': 4,
   'footage-speech-find': 3, 'footage-speech-shorten': 3, 'footage-speech-sharpen': 3, 'footage-speech-done': 3,
   'footage-visual-scan': 3, 'footage-visual-extract': 3, 'footage-visual-reframe': 3,
   'footage-visual-message': 3, 'footage-visual-story': 3,
@@ -140,8 +157,10 @@ function dispatch(action) {
   if (!fresh && audiencePick !== undefined && state.screen !== 'opening') state = { ...state, audiencePick };
   /* מה שהוקלד במסך שעזבנו כבר הפך לסטייט אמיתי, ולכן הטיוטה שלו מיותרת.
      אם היא תישאר, היא עלולה למלא מחדש תיבה שנוקתה בכוונה. */
+  /* 11/11/2026 (סוכני בדיקה): בחזרה אחורה הטיוטה של המסך שעוזבים נשארת,
+     אחרת מגילה שנכתבה ועוד לא נשלחה נמחקה כשחזרו לתקן את הרעיון. */
   state.drafts = action.type === 'START_FROM_BANK' ? {}
-    : (state.screen === leaving ? drafts : clearScreenDrafts(drafts, leaving));
+    : (state.screen === leaving || action.type === 'BACK' ? drafts : clearScreenDrafts(drafts, leaving));
   saveAll().catch((err) => console.error('saveSession failed:', err));
   // 17/10/2026 (מאיה: "המעבר בין המסכים עושה סחרחורת"): מעבר הפורטל (#32)
   // הוסר - render ישיר, בלי אנימציית scale/blur בין מסכים.
@@ -206,6 +225,8 @@ function highlightPlaceholders(text, values = []) {
 /* 29/10/2026 (מאיה בחרה "תכלת וקטעים"): חמישה קטעים קצרים, ולידם רק
    מספר השלב ושמו. במקום הפס הנוזלי והשורה "שלב X מתוך Y: ...". */
 function progressHtml() {
+  /* בפתיחה ובמסלול הקטע המצולם (יש לו "שלב 1/2/3" בכותרות) אין סרגל */
+  if (state.screen === 'opening' || /^footage-/.test(state.screen)) return '';
   const current = PHASE_BY_SCREEN[state.screen] ?? 0;
   const segs = PHASES.map((_, i) => `<i class="${i < current ? 'is-done' : i === current ? 'is-now' : ''}"></i>`).join('');
   return `<div class="va-steps" role="img" aria-label="שלב ${current + 1} מתוך ${PHASES.length}">${segs}</div>
@@ -480,6 +501,7 @@ function openAudiencePicker(profile, { selected } = {}) {
   });
 }
 
+let mayaPersonLoaded = false;
 function cosmicCard(innerHtml, { showProgress = true } = {}) {
   const back = backButtonHtml();
   screenEl().innerHTML = `<div class="cosmic-card" id="va-card">
@@ -491,7 +513,13 @@ function cosmicCard(innerHtml, { showProgress = true } = {}) {
     ${innerHtml}
   </div>`;
   mountAudienceChip();
-  if (mayaVisibleFor(auth.currentUser && auth.currentUser.email)) mountMaya(document.getElementById('va-card'), state.screen);
+  if (mayaOn()) {
+    /* שלב 4: השם והלשון לברכה ולביטויים (נקרא פעם אחת) */
+    if (state.screen === 'opening') mayaPersonLoaded = false;
+    if (!mayaPersonLoaded) { mayaPersonLoaded = true; getProfile().then(setMayaPerson).catch(() => {}); }
+    /* תקלה בדמות לא שוברת את המסך (הכפתורים מחוברים אחרי השורה הזו) */
+    try { mountMaya(document.getElementById('va-card'), state.screen); } catch (err) { console.error('mountMaya failed:', err); }
+  }
   const backBtn = document.getElementById('va-back-btn');
   if (backBtn) backBtn.addEventListener('click', () => dispatch({ type: 'BACK' }));
   const startOverBtn = document.getElementById('va-start-over-btn');
@@ -1212,8 +1240,8 @@ function renderFormatChoice() {
   setSignText(state.hook || state.ideaDescription || '');
   screenEl().querySelectorAll('.cosmic-accordion-item[data-format]').forEach((item) => {
     const pose = () => setMayaPose(poseForFormat(item.dataset.format));
-    item.addEventListener('mouseenter', pose);
-    item.addEventListener('toggle', () => { if (item.open) pose(); });
+    /* 11/11/2026: לא במעבר עכבר (קפיצה על כל שורה), רק כשפותחים פורמט */
+    item.addEventListener('toggle', () => { if (item.open) pose(); else if (!screenEl().querySelector('.cosmic-accordion-item[data-format][open]')) setMayaPose('hug'); });
   });
   screenEl().querySelectorAll('[data-format-examples]').forEach((btn) => {
     btn.addEventListener('click', (e) => {
@@ -2503,7 +2531,7 @@ function renderContentBasics() {
   `).join('');
   cosmicCard(`
     <h2>שני דברים על הסרטון הזה</h2>
-    <p class="cosmic-lede">בחירה אחת לכל שורה. שתיהן נכנסות אחר כך לפרומפטים לבד, בלי שתקלידי אותן שוב.</p>
+    <p class="cosmic-lede">בחירה אחת לכל שורה. שתיהן נכנסות אחר כך לפרומפטים לבד, בלי להקליד אותן שוב.</p>
     <p class="cosmic-field-label">מאיפה הסרטון יוצא?</p>
     <div class="cosmic-chip-row" id="va-start-row">${opts(STARTING_POINTS, state.startingPoint, 'data-start')}</div>
     <p class="cosmic-field-label" style="margin-top:14px">איזה סוג תוכן זה?</p>
@@ -2953,7 +2981,9 @@ function buildSummarySteps() {
     if (state.sceneRewritten) steps.push('שכתבת אותו לשפה של רשתות חברתיות, כדי שלא יישמע כמו הרצאה.');
     steps.push(isCarousel(state) ? 'עכשיו: לעצב את השקופיות לפי הטקסט למטה.' : (isDynamicText(state) ? 'עכשיו: לבחור קטע וידאו לכל פריים, לשים עליו את המשפט שלו, ולהוסיף מוזיקה.' : 'עכשיו: ללכת לצלם לפי התסריט למטה, ואז לערוך.'));
   } else if (state.branch === 'idea') {
-    steps.push(`הרעיון שלך: "${state.ideaBeforePackaging || state.ideaDescription || state.hook || ''}", ווידאת שהוא רלוונטי.`);
+    steps.push(`הרעיון שלך: "${state.ideaBeforePackaging || state.ideaDescription || state.hook || ''}".`);
+    if (state.startingPoint) steps.push(`נקודת היציאה: ${state.startingPoint}.`);
+    if (state.rawDump) steps.push('כתבת את מגילת אסתר (היא מופיעה למטה).');
     if (state.packaging) steps.push(`האריזה הקריאייטיבית: "${state.packaging}".`);
     if (state.selectedFormat) steps.push(`בחרת פורמט הנגשה: "${state.selectedFormat}".`);
     steps.push('קבעת שהתוכן הזה לא צריך תסריט כתוב.');
@@ -2969,6 +2999,8 @@ function finalScriptText() {
   if (state.branch === 'footage') return state.herWords || null;
   if (state.branch === 'reference') return state.finalScript || null;
   if (state.branch === 'scratch') return state.draftScript || null;
+  /* בלי תסריט: לפחות המגילה שנכתבה */
+  if (state.branch === 'idea') return state.rawDump || null;
   return null;
 }
 
