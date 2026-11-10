@@ -8988,3 +8988,39 @@ body[data-plan="refs"] .hub-full-only { display: none !important; }
 
 /* 10/11/2026: דוגמאות פורמט שמתנגנות מעותק אצלנו */
 .cosmic-examples-video video { width: 100%; height: 100%; object-fit: contain; background: #000; border-radius: 14px; display: block; }
+
+/* ----- 10/11/2026 סבב 2: הדמות מחבקת את הכרטיס מהצד, בסגנון המאויר -----
+   במחשב היא עומדת מימין לכרטיס, והיד שלה (בצד שמאל של התמונה) מונחת על
+   הקצה שלו. שאר התנוחות עומדות צמוד לאותו צד. */
+#video-assistant-view .va-maya {
+  right: auto;
+  left: calc(100% - 26px);
+  bottom: 10px;
+  width: auto;
+  height: 420px;
+  z-index: 4;
+}
+#video-assistant-view .va-maya:not(.va-maya--hug) { left: calc(100% + 6px); }
+#video-assistant-view .va-maya--coffee img { animation: va-maya-nod var(--va-nod, 2.2s) ease-in-out infinite; transform-origin: 50% 85%; }
+@keyframes va-maya-nod { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(-3deg) translateY(3px); } }
+#video-assistant-view .va-maya.is-cast img { animation: va-maya-cast 1.2s ease-out; transform-origin: 40% 90%; }
+@keyframes va-maya-cast { 0% { transform: rotate(0); } 30% { transform: rotate(10deg); } 60% { transform: rotate(-8deg); } 100% { transform: rotate(0); } }
+#video-assistant-view .va-maya.is-reel img { animation: va-maya-reel 1.4s ease-in-out; transform-origin: 40% 90%; }
+@keyframes va-maya-reel { 0%, 100% { transform: translateY(0); } 25% { transform: translateY(-14px) rotate(-6deg); } 50% { transform: translateY(0) rotate(4deg); } 75% { transform: translateY(-8px); } }
+#video-assistant-view .va-maya--clapper img { animation: va-maya-jump .8s ease-out 3, va-maya-idle 4s ease-in-out 2.4s infinite; }
+@media (max-width: 960px) {
+  #video-assistant-view .va-maya,
+  #video-assistant-view .va-maya:not(.va-maya--hug) { left: 10px; right: auto; bottom: auto; top: -104px; width: 70px; height: 104px; }
+}
+
+/* "ממיר": גשם של שטרות והדמות רוקדת, מעל כל מסך */
+.va-money-show { position: fixed; inset: 0; z-index: 9999; pointer-events: none; overflow: hidden; }
+.va-bill { position: absolute; top: -60px; font-size: 34px; animation-name: va-bill-fall; animation-timing-function: linear; animation-fill-mode: forwards; }
+@keyframes va-bill-fall { 0% { transform: translateY(0) rotate(0deg); opacity: 1; } 100% { transform: translateY(110vh) rotate(540deg); opacity: .9; } }
+.va-money-maya { position: absolute; bottom: 0; left: 50%; height: min(52vh, 420px); transform: translateX(-50%); animation: va-money-dance .5s ease-in-out infinite alternate, va-money-in .4s ease-out; filter: drop-shadow(0 18px 24px rgba(5,15,50,.45)); }
+@keyframes va-money-dance { from { transform: translateX(-50%) rotate(-4deg); } to { transform: translateX(-50%) rotate(4deg) translateY(-8px); } }
+@keyframes va-money-in { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  #video-assistant-view .va-maya img, .va-bill, .va-money-maya { animation: none !important; }
+  .va-money-show { display: none; }
+}

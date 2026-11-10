@@ -41,7 +41,7 @@ import {
 } from './reference-transcribe.js';
 import { getProfile, saveProfile } from './user-profile.js';
 import { audienceOptions, pickedAudience, audienceChipLabel, audienceEditUpdate, audienceAddUpdate, audienceDeleteUpdate } from './audience-pick.js';
-import { mountMaya, mayaVisibleFor } from './va-maya.js';
+import { mountMaya, mayaVisibleFor, setMayaPose, flashMaya, setMayaNod, poseForFormat } from './va-maya.js';
 /* 04/11/2026: צ'אט דיוק הרעיון חזר, כקפיצה לצ'אט עצמו ולא כעותק בתוך המסך */
 import { startIdeaChatFromAssistant } from './idea-chat.js';
 import { showView } from './view-router.js';
@@ -1202,6 +1202,12 @@ function renderFormatChoice() {
     ${state.selectedFormat ? `<div class="cosmic-selected-chip">✓ נבחר: ${escapeHtml(state.selectedFormat)}</div>` : ''}
     <div class="cosmic-accordion">${itemsHtml}</div>
   `);
+  /* 10/11/2026 (מאיה): הדמות מחליפה אביזר לפי הפורמט: מצלמה, מיקרופון, שני כיסאות */
+  screenEl().querySelectorAll('.cosmic-accordion-item[data-format]').forEach((item) => {
+    const pose = () => setMayaPose(poseForFormat(item.dataset.format));
+    item.addEventListener('mouseenter', pose);
+    item.addEventListener('toggle', () => { if (item.open) pose(); });
+  });
   screenEl().querySelectorAll('[data-format-examples]').forEach((btn) => {
     btn.addEventListener('click', (e) => {
       e.preventDefault();
@@ -1508,9 +1514,23 @@ function copyBtn(text, label) {
   return `<button type="button" class="cosmic-btn va-copy-btn" data-copy-text="${encodeURIComponent(text)}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"></rect><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"></path></svg><span>${label}</span></button>`;
 }
 
+/* 10/11/2026: במסך ההוק הדמות "שולפת" את ההוק כשהוא מודבק */
+function reelOnPaste(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  let was = el.value.trim().length > 0;
+  el.addEventListener('input', () => {
+    const now = el.value.trim().length > 0;
+    if (now && !was) flashMaya('is-reel', 1500);
+    was = now;
+  });
+}
+
 function wireCopyButtons(root) {
   root.querySelectorAll('[data-copy-text]').forEach((btn) => {
     btn.addEventListener('click', async () => {
+      /* 10/11/2026: במסך ההוק הדמות זורקת את החכה כשמעתיקים */
+      flashMaya('is-cast', 1300);
       const text = decodeURIComponent(btn.getAttribute('data-copy-text'));
       try {
         await navigator.clipboard.writeText(text);
@@ -1896,6 +1916,7 @@ async function renderPrompt1() {
   `);
   wireCopyButtons(screenEl());
   mountSmartPaste(document.getElementById('va-hook-input'));
+  reelOnPaste('va-hook-input');
   const bankEdit = document.getElementById('va-bank-edit-link');
   if (bankEdit) bankEdit.addEventListener('click', () => dispatch({ type: 'BACK' }));
   document.getElementById('va-hook-chosen-btn').addEventListener('click', () => {
@@ -2003,6 +2024,8 @@ function wireMegillahGate({ prefix, inputId, doneId, onGo }) {
       : `${n} מתוך ${MEGILLAH_MIN_WORDS} מילים לפחות. עוד ${MEGILLAH_MIN_WORDS - n} כדי להמשיך`;
   };
   input.addEventListener('input', paint);
+  input.addEventListener('input', () => setMayaNod(countWords(input.value)));
+  setMayaNod(countWords(input.value));
   paint();
   document.getElementById(doneId).addEventListener('click', () => {
     const text = input.value.trim();
@@ -2641,6 +2664,7 @@ async function renderScratchHook() {
   `);
   wireCopyButtons(screenEl());
   mountSmartPaste(document.getElementById('va-scratch-hook-input'));
+  reelOnPaste('va-scratch-hook-input');
   if (detected) {
     const input = document.getElementById('va-scratch-hook-input');
     const mark = () => input.classList.toggle('va-auto-hook', input.value.trim() === detected);

@@ -17,6 +17,7 @@ import { updateIdea, addIdea } from './ideas-store.js';
 import { showToast } from './toast.js';
 import { serverErrorText } from './server-error.js';
 import { actsAsOwner, viewedClient } from './client-view.js';
+import { saysConverting, moneyDance, mayaVisibleFor } from './va-maya.js';
 
 // checkIdea used to be a plain httpsCallable - converted to a raw streaming
 // HTTP endpoint so the reply appears progressively instead of behind a single
@@ -514,6 +515,8 @@ async function sendIdeaMessage(text) {
       burstConfetti();
     }
     const { visibleReply, summary, idea, angle, story, message } = extractIdeaSummary(reply);
+    /* 10/11/2026 (מאיה): "ממיר" = גשם של שטרות והדמות רוקדת */
+    if (saysConverting(reply) && mayaVisibleFor(auth.currentUser && auth.currentUser.email)) moneyDance();
     /* 04/11/2026 (מאיה): כפתור "למפת הדרכים" ירד מהתוצאה הסופית. */
     setBubbleText(thinkingBubble, visibleReply);
     if (summary) {

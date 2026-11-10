@@ -1,23 +1,41 @@
-/* 10/11/2026 (מאיה): הדמות שלה נשענת על המסך בעוזר ומחליפה פרצוף בכל שלב */
+/* 10/11/2026 (מאיה): הדמות שלה מחבקת את הכרטיס מהצד בעוזר, ובחמישה רגעים
+   היא עושה משהו: שטרות ב"ממיר", אביזר לפי פורמט, קפה במגילה, חכה בהוק, קלאפר בסיכום. */
 import { test, describe, before } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
-import { poseFor, POSES, mayaVisibleFor, mountMaya } from '../js/va-maya.js';
+import { poseFor, poseForFormat, nodSeconds, saysConverting, POSES, mayaVisibleFor, mountMaya, setMayaPose } from '../js/va-maya.js';
 import { hasJsdom, setupAssistant, until } from './helpers/va-dom.mjs';
 
-describe('תנוחה לכל מסך', () => {
-  test('פתיחה מצביעה, כתיבה חושבת, סיכום חוגגת, הגרלה קורצת, השאר נשענת', () => {
-    assert.equal(poseFor('opening'), 'point');
-    assert.equal(poseFor('scratch-hook'), 'think');
-    assert.equal(poseFor('summary'), 'celebrate');
-    assert.equal(poseFor('pulled-idea'), 'wink');
-    assert.equal(poseFor('relevance-check'), 'lean');
+describe('תנוחה לכל מסך ולכל רגע', () => {
+  test('ברירת מחדל חיבוק, מגילה קפה, הוק חכה, סיכום קלאפר', () => {
+    assert.equal(poseFor('opening'), 'hug');
+    assert.equal(poseFor('idea-sharpen'), 'hug');
+    assert.equal(poseFor('scratch-dump'), 'coffee');
+    assert.equal(poseFor('her-words'), 'coffee');
+    assert.equal(poseFor('scratch-hook'), 'fishing');
+    assert.equal(poseFor('prompt1'), 'fishing');
+    assert.equal(poseFor('summary'), 'clapper');
+  });
+  test('אביזר לפי פורמט', () => {
+    assert.equal(poseForFormat('דיבור למצלמה'), 'camera');
+    assert.equal(poseForFormat('וויס אובר'), 'mic');
+    assert.equal(poseForFormat('ראיון / שיחה'), 'chairs');
+    assert.equal(poseForFormat('טקסט דינמי'), 'hug');
+  });
+  test('ככל שיש יותר מילים במגילה, ההנהון מהיר יותר', () => {
+    assert.ok(nodSeconds(0) > nodSeconds(60));
+    assert.ok(nodSeconds(60) > nodSeconds(120));
+    assert.equal(nodSeconds(5000), 0.35);
+  });
+  test('"ממיר" בתוצאה הסופית מפעיל את השטרות, "חשיפה" לא', () => {
+    assert.ok(saysConverting('**כמה קרוב לכסף:** ממיר, כי...'));
+    assert.ok(!saysConverting('**כמה קרוב לכסף:** חשיפה'));
   });
   test('עד האישור רק מאיה רואה את הדמות', () => {
     assert.equal(mayaVisibleFor('mayakislev@gmail.com'), true);
     assert.equal(mayaVisibleFor('client@example.com'), false);
   });
-  test('כל חמש התמונות קיימות', () => {
+  test('כל התמונות קיימות', () => {
     for (const p of POSES) assert.ok(existsSync(new URL(`../assets/maya/maya-${p}.webp`, import.meta.url)), p);
   });
 });
@@ -25,19 +43,16 @@ describe('תנוחה לכל מסך', () => {
 describe('הדמות בעוזר (jsdom)', { skip: hasJsdom ? false : 'jsdom לא מותקן במחשב הזה' }, () => {
   let ui;
   before(async () => { ui = await setupAssistant(); });
-  test('בכל מסך יש דמות אחת, והתנוחה מתחלפת עם המסך', async () => {
+  test('לקוחה לא רואה, ומאיה: דמות אחת שמחליפה תנוחה', async () => {
     const { $, $$, open } = ui;
     await open({ branch: 'scratch', screen: 'scratch-hook', ideaDescription: 'רעיון', rawDump: 'מגילה' }, '#va-scratch-hook-input');
     assert.equal($('.va-maya'), null, 'לקוחה רואה את הדמות לפני האישור');
-    /* כמו אצל מאיה: הדמות מתווספת לכרטיס */
     mountMaya($('#va-card'), 'scratch-hook');
     await until(() => $('.va-maya img'), 'אין דמות');
     assert.equal($$('.va-maya').length, 1);
-    assert.match($('.va-maya img').getAttribute('src'), /maya-think\.webp$/);
-    await open({ screen: 'opening' }, '#va-card');
-    await until(() => !$('#va-scratch-hook-input'), 'המסך הקודם עדיין');
-    mountMaya($('#va-card'), 'opening');
-    await until(() => $('.va-maya img') && /maya-point/.test($('.va-maya img').getAttribute('src')), 'לא התחלפה לתנוחת הצבעה');
+    assert.match($('.va-maya img').getAttribute('src'), /maya-fishing\.webp$/);
+    setMayaPose('camera');
+    assert.match($('.va-maya img').getAttribute('src'), /maya-camera\.webp$/);
     assert.ok($('.va-maya').classList.contains('is-changing'));
   });
 });
