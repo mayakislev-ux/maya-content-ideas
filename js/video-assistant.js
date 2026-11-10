@@ -41,7 +41,9 @@ import {
 } from './reference-transcribe.js';
 import { getProfile, saveProfile } from './user-profile.js';
 import { audienceOptions, pickedAudience, audienceChipLabel, audienceEditUpdate, audienceAddUpdate, audienceDeleteUpdate } from './audience-pick.js';
-import { mountMaya, mayaVisibleFor, setMayaPose, flashMaya, setMayaNod, poseForFormat } from './va-maya.js';
+import { mountMaya, mayaVisibleFor, setMayaPose, flashMaya, setMayaNod, poseForFormat, setSignText, stageShow, bigFishHook } from './va-maya.js';
+const mayaOn = () => mayaVisibleFor(auth.currentUser && auth.currentUser.email);
+const BRAND_CONFETTI = ['#263ea8', '#8b98d9', '#ff2ea8', '#ff7ac8', '#ffd23f', '#ffffff'];
 /* 04/11/2026: צ'אט דיוק הרעיון חזר, כקפיצה לצ'אט עצמו ולא כעותק בתוך המסך */
 import { startIdeaChatFromAssistant } from './idea-chat.js';
 import { showView } from './view-router.js';
@@ -755,6 +757,8 @@ function renderIdeaSourceChoice() {
       return;
     }
     rememberPick('pickedIdeaId', picked.id);
+    /* שלב 3: כובע קוסמים בהגרלה */
+    if (mayaOn()) stageShow('magic');
     dispatch({ type: 'CHOOSE_PULL_IDEA' });
   });
 }
@@ -1204,6 +1208,8 @@ function renderFormatChoice() {
     <div class="cosmic-accordion">${itemsHtml}</div>
   `);
   /* 10/11/2026 (מאיה): הדמות מחליפה אביזר לפי הפורמט: מצלמה, מיקרופון, שני כיסאות */
+  /* שלב 3: על הלוח של "טקסט דינמי" כתובה השורה הראשונה של הרעיון */
+  setSignText(state.hook || state.ideaDescription || '');
   screenEl().querySelectorAll('.cosmic-accordion-item[data-format]').forEach((item) => {
     const pose = () => setMayaPose(poseForFormat(item.dataset.format));
     item.addEventListener('mouseenter', pose);
@@ -2715,6 +2721,8 @@ async function renderScratchHook() {
       showToast('צריך להדביק את ההוק שבחרת קודם');
       return;
     }
+    /* שלב 3: הדג הענק, וההוק כתוב עליו */
+    if (mayaOn()) bigFishHook(hook);
     dispatch({ type: 'SCRATCH_HOOK_CHOSEN', hook });
   });
 }
@@ -2998,7 +3006,8 @@ function renderSummary() {
     </div>
   `, { showProgress: false });
   // 17/10/2026 (רעיון #2): קונפטי אמיתי בסיום.
-  burstConfetti(card);
+  /* שלב 3: קונפטי בצבעי המותג (בינתיים רק כשהדמות מוצגת) */
+  burstConfetti(card, mayaOn() ? BRAND_CONFETTI : undefined);
   if (script) wireCopyButtons(screenEl());
   wireSummaryTools(screenEl(), {
     getState: () => state,

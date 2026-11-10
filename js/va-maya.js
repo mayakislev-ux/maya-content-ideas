@@ -17,7 +17,7 @@ export const POSES = ['hug', 'dance', 'camera', 'mic', 'chairs', 'coffee', 'fish
    ומנדנדת רגליים, נשענת בגב, נכנסת בהליכה, ועוברת מצד לצד בין המסכים.
    בלי פעילות: שעון אחרי דקה, פיהוק אחרי שתיים. לחיצה עליה: קריצה, צחוק
    או ריקוד. וכפתור להסתיר אותה. */
-const WRITING_SCREENS = new Set(['idea-sharpen', 'type-idea', 'transcribe', 'content-basics', 'creative-packaging', 'footage-speech-sharpen', 'scratch-distill', 'prompt2']);
+const WRITING_SCREENS = new Set(['idea-sharpen', 'type-idea', 'transcribe', 'content-basics', 'footage-speech-sharpen', 'scratch-distill', 'prompt2']);
 const SIDE_ROTATION = ['swing', 'backlean', 'hug'];
 export const IDLE_FIRST_MS = 60 * 1000;
 export const IDLE_SECOND_MS = 120 * 1000;
@@ -37,6 +37,9 @@ const HOOK_SCREENS = new Set(['prompt1', 'scratch-hook']);
 /** איזו תנוחה לכל מסך */
 export function poseFor(screen) {
   if (screen === 'summary') return 'clapper';
+  /* שלב 3: פפיון על האריזה, משקולת בחיזוק ההוק */
+  if (screen === 'creative-packaging') return 'gift';
+  if (screen === 'scratch-hook-reinforce') return 'dumbbell';
   if (MEGILLAH_SCREENS.has(screen)) return 'coffee';
   if (HOOK_SCREENS.has(screen)) return 'fishing';
   if (screen === 'format-choice') return 'hug';
@@ -102,7 +105,7 @@ function tempPose(pose) {
 
 /** האביזר לפי הפורמט שפותחים או מרחפים עליו */
 export function poseForFormat(name) {
-  return { 'דיבור למצלמה': 'camera', 'וויס אובר': 'mic', 'ראיון / שיחה': 'chairs' }[name] || 'hug';
+  return { 'דיבור למצלמה': 'camera', 'וויס אובר': 'mic', 'ראיון / שיחה': 'chairs', 'טקסט דינמי': 'sign', 'מסך ירוק': 'greenscreen' }[name] || 'hug';
 }
 
 /** מהירות ההנהון במגילה: ככל שיש יותר מילים, מהנהנת מהר יותר (שניות למחזור) */
@@ -185,10 +188,50 @@ export function mountMaya(card, screen) {
   wireIdle();
   wireReactions();
   armIdle();
+  wireStick();
+  stickToCard();
   /* בטלפון נשמר מקום לדמות מעל הכרטיס, רק כשהיא באמת מוצגת */
   const view = card.closest('#video-assistant-view');
   if (view) view.classList.add('has-maya');
   lastPose = pose;
+  /* שלב 3: בסיכום קלאפר "אקשן!", ואז מחזיקה את התסריט המודפס */
+  if (screen === 'summary') {
+    const t = setTimeout(() => { if (fig.isConnected && basePose === 'clapper') setMayaPose('script'); }, 2600);
+    if (t && typeof t.unref === 'function') t.unref();
+  }
+}
+
+/* 10/11/2026 (מאיה, צילום מסך: "כל פעם שיורדת קצת למטה במסך המאיה לא נשארת
+   צמודה לתיבה, היא זזה"). במחשב היא הייתה צמודה לתחתית החלון, אז בכרטיס קצר
+   היא נשארה למטה ליד הפוטר. עכשיו התחתית שלה = התחתית של הכרטיס, ורק אם
+   הכרטיס ארוך מהחלון היא נעצרת בתחתית החלון (כדי שתמיד יראו אותה). */
+export function stickBottom(cardBottom, viewH, margin = 24) {
+  return Math.round(viewH - Math.min(cardBottom, viewH - margin));
+}
+function stickToCard() {
+  const fig = figEl();
+  if (!fig || typeof window === 'undefined') return;
+  const desktop = window.matchMedia && window.matchMedia('(min-width: 961px)').matches;
+  const pose = basePose;
+  if (!desktop || pose === 'peek' || pose === 'swing') { fig.style.bottom = ''; return; }
+  const card = fig.closest('#va-card');
+  if (!card) return;
+  fig.style.bottom = `${stickBottom(card.getBoundingClientRect().bottom, window.innerHeight)}px`;
+}
+let stickWired = false;
+let stickRaf = 0;
+function wireStick() {
+  if (stickWired || typeof window === 'undefined') return;
+  stickWired = true;
+  const on = () => {
+    if (stickRaf) return;
+    const raf = window.requestAnimationFrame || ((f) => setTimeout(f, 16));
+    stickRaf = raf(() => { stickRaf = 0; stickToCard(); });
+  };
+  window.addEventListener('scroll', on, { passive: true });
+  window.addEventListener('resize', on, { passive: true });
+  /* פתיחת פורמט או טקסט ארוך משנים את גובה הכרטיס בלי גלילה */
+  if (typeof ResizeObserver !== 'undefined') new ResizeObserver(on).observe(document.body);
 }
 
 /** מחליף תנוחה בלי לצייר את המסך מחדש (פורמט, חכה) */
@@ -201,6 +244,27 @@ export function setMayaPose(pose) {
   img.alt = ALT[pose];
   lastPose = pose;
   basePose = pose;
+  syncSign(fig, pose);
+  stickToCard();
+}
+
+/* שלב 3: בטקסט דינמי היא מחזיקה לוח, ועליו השורה הראשונה של הרעיון */
+let signText = '';
+export function signLine(text) {
+  const line = String(text || '').split('\n').map((s) => s.trim()).find(Boolean) || '';
+  if (!line) return 'השורה הראשונה שלך כאן';
+  return line.length > 46 ? `${line.slice(0, 44).trim()}…` : line;
+}
+export function setSignText(text) {
+  signText = signLine(text);
+  const fig = figEl();
+  if (fig) syncSign(fig, basePose);
+}
+function syncSign(fig, pose) {
+  let s = fig.querySelector('.va-maya-sign');
+  if (pose !== 'sign') { if (s) s.remove(); return; }
+  if (!s) { s = document.createElement('span'); s.className = 'va-maya-sign'; fig.appendChild(s); }
+  s.textContent = signText || signLine('');
 }
 
 /** מצב רגעי על הדמות: 'is-cast' (זורקת חכה), 'is-reel' (שולפת הוק) */
@@ -216,8 +280,13 @@ export function flashMaya(cls, ms = 1200) {
 /** הנהון במגילה לפי כמות המילים */
 export function setMayaNod(words) {
   const fig = figEl();
-  if (fig) fig.style.setProperty('--va-nod', `${nodSeconds(words)}s`);
+  if (!fig) return;
+  fig.style.setProperty('--va-nod', `${nodSeconds(words)}s`);
+  /* שלב 3: מגילה ארוכה = כוס קפה שנייה */
+  const want = (Number(words) || 0) >= LONG_MEGILLAH_WORDS ? 'coffee2' : 'coffee';
+  if ((basePose === 'coffee' || basePose === 'coffee2') && basePose !== want) setMayaPose(want);
 }
+export const LONG_MEGILLAH_WORDS = 250;
 
 /** "ממיר": גשם של שטרות והיא רוקדת, מעל כל מסך (גם בצ'אט). נעלם לבד. */
 export function moneyDance() {
@@ -235,6 +304,73 @@ export function moneyDance() {
   show.innerHTML = `${bills}<img class="va-money-maya" src="assets/maya/maya-dance.webp" alt="">`;
   document.body.appendChild(show);
   setTimeout(() => show.remove(), 4200);
+}
+
+/* ===== שלב 3 מתוך 6: רגעי שיא (10/11/2026) =====
+   בצ'אט: "חשיפה" = מגפון, "חלש" = יד על המצח (בעדינות). הגרלה מהבנק =
+   כובע קוסמים. בחירת הוק = דג ענק וההוק כתוב בבועה. אלה קורים בזמן שהמסך
+   מתחלף, ולכן הם על כל המסך ולא על הכרטיס (כמו גשם השטרות). */
+POSES.push('megaphone', 'facepalm', 'magic', 'gift', 'sign', 'greenscreen', 'coffee2', 'bigfish', 'dumbbell', 'script');
+Object.assign(ALT, {
+  megaphone: 'מאיה עם מגפון', facepalm: 'מאיה עם יד על המצח', magic: 'מאיה שולפת פתק מכובע קוסמים',
+  gift: 'מאיה מגישה מתנה עם פפיון', sign: 'מאיה מחזיקה לוח', greenscreen: 'מאיה ליד מסך ירוק',
+  coffee2: 'מאיה עם שתי כוסות קפה', bigfish: 'מאיה מחזיקה דג ענק', dumbbell: 'מאיה מרימה משקולת',
+  script: 'מאיה מחזיקה תסריט מודפס',
+});
+
+/** מה הצ'אט כתב בשורה "כמה קרוב לכסף" */
+export function closenessOf(reply) {
+  const m = String(reply || '').match(/כמה קרוב לכסף:\**\s*(ממיר|חשיפה|חלש)/);
+  return m ? m[1] : null;
+}
+
+export const STAGE_TEXT = {
+  megaphone: 'חשיפה! כולם ישמעו את זה 📣',
+  facepalm: 'אוקיי, את זה עוד נחזק 💪',
+  magic: 'אברה קדברה... הנה רעיון! 🎩',
+};
+
+/** רגע שיא על כל המסך: תנוחה גדולה + בועה, נעלם לבד */
+export function stageShow(pose, text, ms = 3200) {
+  if (typeof document === 'undefined' || !POSES.includes(pose) || mayaHidden()) return false;
+  document.querySelectorAll('.va-stage-show').forEach((el) => el.remove());
+  const show = document.createElement('div');
+  show.className = `va-stage-show va-stage--${pose}`;
+  show.setAttribute('aria-hidden', 'true');
+  const wrap = document.createElement('div');
+  wrap.className = 'va-stage-fig';
+  const img = document.createElement('img');
+  img.src = `assets/maya/maya-${pose}.webp`;
+  img.alt = '';
+  wrap.appendChild(img);
+  const say = text || STAGE_TEXT[pose];
+  if (say) {
+    const b = document.createElement('div');
+    b.className = 'va-stage-bubble';
+    b.textContent = say;
+    wrap.appendChild(b);
+  }
+  show.appendChild(wrap);
+  document.body.appendChild(show);
+  const t = setTimeout(() => show.remove(), ms);
+  if (t && typeof t.unref === 'function') t.unref();
+  return true;
+}
+
+/** בחירת הוק: הדג הענק, וההוק עצמו כתוב בבועה */
+export function bigFishHook(hook) {
+  const h = String(hook || '').trim().split('\n')[0];
+  const line = h.length > 70 ? `${h.slice(0, 68).trim()}…` : h;
+  return stageShow('bigfish', line ? `🎣 ${line}` : 'איזה דג! 🎣', 3600);
+}
+
+/** תוצאה סופית בצ'אט: ממיר = שטרות, חשיפה = מגפון, חלש = יד על המצח */
+export function closenessShow(reply) {
+  const c = closenessOf(reply);
+  if (c === 'ממיר') { moneyDance(); return c; }
+  if (c === 'חשיפה') { stageShow('megaphone'); return c; }
+  if (c === 'חלש') { stageShow('facepalm'); return c; }
+  return null;
 }
 
 /* ===== שלב 2 מתוך 6: מגיבה למה שכותבים (10/11/2026) =====

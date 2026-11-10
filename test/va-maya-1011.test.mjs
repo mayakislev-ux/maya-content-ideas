@@ -22,7 +22,8 @@ describe('תנוחה לכל מסך ולכל רגע', () => {
     assert.equal(poseForFormat('דיבור למצלמה'), 'camera');
     assert.equal(poseForFormat('וויס אובר'), 'mic');
     assert.equal(poseForFormat('ראיון / שיחה'), 'chairs');
-    assert.equal(poseForFormat('טקסט דינמי'), 'hug');
+    assert.equal(poseForFormat('טקסט דינמי'), 'sign');
+    assert.equal(poseForFormat('סיפור אישי'), 'hug');
   });
   test('ככל שיש יותר מילים במגילה, ההנהון מהיר יותר', () => {
     assert.ok(nodSeconds(0) > nodSeconds(60));

@@ -9085,3 +9085,47 @@ body[data-plan="refs"] .hub-full-only { display: none !important; }
 .va-maya-bubble::after { content: ""; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border: 8px solid transparent; border-top-color: #fff; }
 .va-maya-bubble.is-on { opacity: 1; transform: translate(-50%, 0) scale(1); }
 @media (max-width: 960px) { .va-maya-bubble { font-size: 12px; padding: 6px 9px; left: 0; transform: none; } .va-maya-bubble.is-on { transform: none; } }
+
+/* ----- 10/11/2026 שלב 3 מתוך 6: רגעי שיא -----
+   לוח הגיר של "טקסט דינמי": השורה הראשונה כתובה על הלוח עצמו (המיקום נמדד
+   מהתמונה: הלוח מתחיל ב-29% משמאל, 5% מימין, 24% מלמעלה, גובה 24%). */
+#video-assistant-view .va-maya .va-maya-sign {
+  position: absolute; left: 30.5%; right: 6.5%; top: 25.5%; height: 21.5%;
+  display: flex; align-items: center; justify-content: center; text-align: center;
+  color: #f7f3e8; font-size: 13px; font-weight: 700; line-height: 1.3; padding: 4px 6px;
+  overflow: hidden; pointer-events: none; text-shadow: 0 0 1px rgba(255,255,255,.5);
+  animation: va-sign-write .6s ease-out;
+}
+@keyframes va-sign-write { from { clip-path: inset(0 0 0 100%); } to { clip-path: inset(0 0 0 0); } }
+#video-assistant-view .va-maya.va-maya--greenscreen { height: 340px; }
+@media (max-width: 960px) {
+  #video-assistant-view .va-maya .va-maya-sign { display: none; }
+  #video-assistant-view .va-maya.va-maya--greenscreen { height: 104px; width: auto; }
+}
+#video-assistant-view .va-maya--dumbbell img { animation: va-maya-lift 1.6s ease-in-out infinite; transform-origin: 50% 100%; }
+@keyframes va-maya-lift { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px) scaleY(1.01); } }
+#video-assistant-view .va-maya--coffee2 img { animation: va-maya-nod calc(var(--va-nod, 2.2s) * .8) ease-in-out infinite; transform-origin: 50% 85%; }
+#video-assistant-view .va-maya--gift img { animation: va-maya-offer 2.8s ease-in-out infinite; transform-origin: 50% 100%; }
+@keyframes va-maya-offer { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(-2deg) translateY(-3px); } }
+
+/* רגע שיא על כל המסך: מגפון, יד על המצח, כובע קוסמים, דג ענק */
+.va-stage-show { position: fixed; inset: 0; z-index: 9999; pointer-events: none; overflow: hidden; }
+.va-stage-fig { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); animation: va-stage-in .45s cubic-bezier(.2,1.4,.4,1) both; }
+.va-stage-fig img { display: block; height: min(50vh, 400px); width: auto; filter: drop-shadow(0 18px 24px rgba(5,15,50,.45)); }
+.va-stage-bubble {
+  position: absolute; bottom: calc(100% - 6px); left: 50%; transform: translateX(-50%);
+  background: #fff; color: #0f2340; border-radius: 18px; padding: 10px 16px;
+  font-size: 17px; font-weight: 800; line-height: 1.35; width: max-content; max-width: min(86vw, 420px);
+  text-align: center; box-shadow: 0 12px 28px rgba(5,15,50,.35); animation: va-stage-pop .35s .25s ease-out both;
+}
+.va-stage-bubble::after { content: ""; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border: 9px solid transparent; border-top-color: #fff; }
+@keyframes va-stage-in { from { transform: translateX(-50%) translateY(60%); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
+@keyframes va-stage-pop { from { opacity: 0; transform: translateX(-50%) scale(.8); } to { opacity: 1; transform: translateX(-50%) scale(1); } }
+.va-stage--megaphone .va-stage-fig img { animation: va-stage-shout .25s ease-in-out .5s 6 alternate; }
+@keyframes va-stage-shout { from { transform: rotate(-2deg); } to { transform: rotate(2deg) scale(1.02); } }
+.va-stage--bigfish .va-stage-fig img { animation: va-stage-lift .6s ease-out .45s 2 alternate; }
+@keyframes va-stage-lift { from { transform: translateY(0); } to { transform: translateY(-14px); } }
+@media (prefers-reduced-motion: reduce) {
+  .va-stage-fig, .va-stage-fig img, .va-stage-bubble, #video-assistant-view .va-maya .va-maya-sign,
+  #video-assistant-view .va-maya--dumbbell img, #video-assistant-view .va-maya--coffee2 img, #video-assistant-view .va-maya--gift img { animation: none !important; }
+}

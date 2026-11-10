@@ -105,7 +105,7 @@ const hasDom = typeof document !== 'undefined';
 
 // ----- #2: קונפטי בסיום -----
 const CONFETTI_COLORS = ['#ff2ea8', '#ffd23f', '#7fff9f', '#7fd8c9', '#b79bff', '#ffffff'];
-export function burstConfetti(container) {
+export function burstConfetti(container, colors = CONFETTI_COLORS) {
   if (!hasDom || !container) return;
   const n = 36;
   for (let i = 0; i < n; i++) {
@@ -114,7 +114,7 @@ export function burstConfetti(container) {
     const x = 50 + (Math.random() - 0.5) * 70;
     const rot = Math.random() * 360;
     const dur = 1.1 + Math.random() * 0.9;
-    const color = CONFETTI_COLORS[i % CONFETTI_COLORS.length];
+    const color = colors[i % colors.length];
     piece.style.left = `${x}%`;
     piece.style.background = color;
     piece.style.animationDuration = `${dur}s`;
