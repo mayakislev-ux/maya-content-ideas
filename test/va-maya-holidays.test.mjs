@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { holidayFor, hanukkiahSvg } from '../js/va-holidays.js';
-import { openingMoment, quietToday, noteDue, NOTE_MIN_WORDS, POSES } from '../js/va-maya.js';
+import { openingMoment, quietToday, noteDue, NOTE_MIN_WORDS, POSES, holidayDay } from '../js/va-maya.js';
 import { premiereTitle, wrapLines, premiereHtml } from '../js/va-premiere.js';
 
 const require = createRequire(import.meta.url);
@@ -79,7 +79,7 @@ test('ערב הבכורה: שם הסרטון, לוחית, וכפתור סטור�
   const lines = wrapLines((t) => t.length, 'אחת שתיים שלוש ארבע חמש', 10, 2);
   assert.equal(lines.length, 2);
   assert.ok(lines[1].endsWith('…'));
-  assert.ok(VA.includes('premiereHtml(premiere)') && VA.includes('mayaOn() ? premiereTitle'), 'הבכורה לא במסך הסיכום או לא רק כשהדמות מוצגת');
+  assert.ok(VA.includes('premiereHtml(premiere)') && VA.includes('!quietToday() ? premiereTitle'), 'הבכורה לא במסך הסיכום או לא רק כשהדמות מוצגת');
   assert.ok(M.includes("card.querySelector('.va-premiere')"), 'דמות כפולה בבכורה');
 });
 
@@ -94,4 +94,22 @@ test('"היא את": הערה בקול של מאיה, בזמן הנכון', () =
   assert.match(buildMayaNotePrompt({ text: 't', pronoun: 'את' }), /לשון נקבה/);
   assert.equal(cleanMayaNote('"רגע — זה ההוק שלך!"'), 'רגע, זה ההוק שלך!');
   assert.ok(IDX.includes("exports.mayaNote = onCall") && IDX.includes('mayaNote: 60,'), 'הפונקציה או התקרה היומית חסרות');
+});
+
+test('יום עברי מתחיל בערב: הנר הראשון כבר בערב, ערב יום הזיכרון כבר שקט', () => {
+  /* 4/12/2026 בשעה 19:00 בישראל = 17:00 UTC: הערב של הנר הראשון */
+  assert.equal(holidayDay(new Date('2026-12-04T17:00:00Z')), '2026-12-05');
+  assert.equal(holidayFor(holidayDay(new Date('2026-12-04T17:00:00Z'))).candles, 1);
+  assert.equal(holidayDay(new Date('2026-12-04T10:00:00Z')), '2026-12-04');
+  /* ערב יום הזיכרון 2027 (10/5 בערב) שקט, ובערב יום העצמאות (11/5 בערב) כבר לא */
+  assert.equal(quietToday(new Date('2027-05-10T17:30:00Z')), true);
+  assert.equal(quietToday(new Date('2027-05-11T17:30:00Z')), false);
+});
+
+test('בכורה וקונפטי: לא ביום שקט, לא כשהסתירו את הדמות', () => {
+  assert.ok(VA.includes('mayaOn() && !mayaHidden() && !quietToday() ? premiereTitle'));
+  assert.ok(VA.includes('if (!quietToday()) burstConfetti(card'));
+  const P = readFileSync(new URL('../js/va-premiere.js', import.meta.url), 'utf8');
+  assert.ok(P.includes("if (!e || e.name !== 'AbortError') download(blob);"), 'שיתוף שנכשל לא מוריד במקום');
+  assert.ok(!P.includes("x.fillText('🎬"), 'אימוגי על הקנבס');
 });

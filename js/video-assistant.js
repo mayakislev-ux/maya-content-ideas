@@ -41,7 +41,7 @@ import {
 } from './reference-transcribe.js';
 import { getProfile, saveProfile } from './user-profile.js';
 import { audienceOptions, pickedAudience, audienceChipLabel, audienceEditUpdate, audienceAddUpdate, audienceDeleteUpdate } from './audience-pick.js';
-import { mountMaya, mayaVisibleFor, setMayaPose, setMayaNod, poseForFormat, setSignText, stageShow, setMayaPerson, videosDone, setMayaNoteSource } from './va-maya.js';
+import { mountMaya, mayaVisibleFor, setMayaPose, setMayaNod, poseForFormat, setSignText, stageShow, setMayaPerson, videosDone, setMayaNoteSource, quietToday, mayaHidden } from './va-maya.js';
 import { premiereHtml, premiereTitle, wirePremiere } from './va-premiere.js';
 const mayaOn = () => mayaVisibleFor(auth.currentUser && auth.currentUser.email);
 const BRAND_CONFETTI = ['#263ea8', '#8b98d9', '#ff2ea8', '#ff7ac8', '#ffd23f', '#ffffff'];
@@ -3111,7 +3111,8 @@ function renderSummary() {
   const script = finalScriptText();
   const elapsed = elapsedSinceStart();
   /* 11/11/2026: ערב הבכורה על השטיח האדום (רק כשהדמות מוצגת) */
-  const premiere = mayaOn() ? premiereTitle(state, script) : null;
+  /* לא ביום זיכרון או צום, ולא כשהסתירו את הדמות */
+  const premiere = mayaOn() && !mayaHidden() && !quietToday() ? premiereTitle(state, script) : null;
   const card = cosmicCard(`
     ${premiere !== null ? premiereHtml(premiere) : ''}
     <h2>🎬 מוכן! הנה בדיוק מה קרה</h2>
@@ -3136,7 +3137,8 @@ function renderSummary() {
   `, { showProgress: false });
   // 17/10/2026 (רעיון #2): קונפטי אמיתי בסיום.
   /* שלב 3: קונפטי בצבעי המותג (בינתיים רק כשהדמות מוצגת) */
-  burstConfetti(card, mayaOn() ? BRAND_CONFETTI : undefined);
+  /* 11/11/2026: ביום זיכרון או צום בלי קונפטי, לכולם */
+  if (!quietToday()) burstConfetti(card, mayaOn() ? BRAND_CONFETTI : undefined);
   if (script) wireCopyButtons(screenEl());
   if (premiere !== null) wirePremiere(screenEl(), premiere, { getCount: videosDone, toast: showToast });
   wireSummaryTools(screenEl(), {

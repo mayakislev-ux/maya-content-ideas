@@ -17,7 +17,7 @@ export const POSES = ['hug', 'dance', 'camera', 'mic', 'chairs', 'coffee', 'fish
    ומנדנדת רגליים, נשענת בגב, נכנסת בהליכה, ועוברת מצד לצד בין המסכים.
    בלי פעילות: שעון אחרי דקה, פיהוק אחרי שתיים. לחיצה עליה: בועה בלבד
    (בלי החלפת תנוחה). וכפתור להסתיר אותה. */
-import { holidayFor, hanukkiahSvg } from './va-holidays.js';
+import { holidayFor, hanukkiahSvg, addDays } from './va-holidays.js';
 const WRITING_SCREENS = new Set(['idea-sharpen', 'type-idea', 'transcribe', 'content-basics', 'footage-speech-sharpen', 'scratch-distill', 'prompt2']);
 const SIDE_ROTATION = ['swing', 'backlean', 'hug'];
 export const IDLE_FIRST_MS = 60 * 1000;
@@ -246,12 +246,18 @@ export function mountMaya(card, screen) {
     const now = new Date();
     greetR = registerVisit(readVisits(), israelDay(now));
     writeVisits(greetR.v);
-    pose = openingMoment({ ...greetR, hour: israelHour(now), day: israelDay(now), first: '' }).pose;
+    pose = openingMoment({ ...greetR, hour: israelHour(now), day: holidayDay(now), first: '' }).pose;
   }
   /* תנוחת הברכה היא התנוחה של המסך הזה, כדי ששינוי גודל חלון לא יחליף אותה */
   intendedPose = pose;
   /* 11/11/2026: בערב הבכורה היא כבר על השטיח האדום, בלי דמות שנייה */
-  if (card.querySelector('.va-premiere')) { onScreenMoment(screen); return; }
+  if (card.querySelector('.va-premiere')) {
+    onScreenMoment(screen);
+    /* ציור חוזר של הסיכום: המספר נשאר על הלוחית */
+    const prem = card.querySelector('.va-premiere-count');
+    if (prem && !prem.textContent && summaryVideos > 1) prem.textContent = `סרטון מספר ${summaryVideos} 🏆`;
+    return;
+  }
   mountFigure(card, pose);
   onScreenMoment(screen);
   preloadPoses();
@@ -269,7 +275,7 @@ function mountFigure(card, pose) {
   img.draggable = false;
   fig.appendChild(img);
   /* 11/11/2026 (מאיה: "חנוכה... הדלקת נרות"): כל ערב נר נוסף בחנוכייה שלידה */
-  const hol = typeof document !== 'undefined' ? holidayFor(israelDay()) : null;
+  const hol = typeof document !== 'undefined' ? holidayFor(holidayDay()) : null;
   if (hol && hol.key === 'hanukkah') {
     const hk = document.createElement('div');
     hk.className = 'va-hanukkiah';
@@ -584,7 +590,9 @@ let noteSource = null;
 export function setMayaNoteSource(fn) { noteSource = typeof fn === 'function' ? fn : null; }
 const NOTE_SCREENS = new Set([...WRITING_SCREENS, ...MEGILLAH_SCREENS]);
 export const NOTE_MIN_WORDS = 25;
-const notedFor = new WeakMap();
+/* לפי מסך ולא לפי תיבה: ציור מחדש של המסך יוצר תיבה חדשה, ובלי זה כל
+   חזרה למסך פתחה שתי קריאות חדשות בתשלום על אותו טקסט */
+const notedFor = new Map();
 let noteTimer = null;
 let noteBusy = false;
 /** האם מגיעה הערה עכשיו: מספיק מילים, לא יותר משתיים לתיבה, ומספיק חדש */
@@ -601,13 +609,17 @@ function armNote(el) {
 async function askNote(el) {
   if (noteBusy || !el.isConnected || !figEl() || mayaHidden() || quietToday()) return;
   const words = wordCount(el.value);
-  const rec = notedFor.get(el);
+  const screen = prevScreen;
+  const key = `${screen}|${el.id || el.name || ''}`;
+  const rec = notedFor.get(key);
   if (!noteDue(words, rec)) return;
   noteBusy = true;
-  notedFor.set(el, { words, count: ((rec && rec.count) || 0) + 1 });
-  const screen = prevScreen;
+  notedFor.set(key, { words, count: ((rec && rec.count) || 0) + 1 });
   try {
-    const note = await noteSource({ screen, text: el.value.slice(0, 4000) });
+    const note = await Promise.race([
+      noteSource({ screen, text: el.value.slice(0, 4000) }),
+      new Promise((resolve) => { const t = setTimeout(() => resolve(''), 35000); if (t && t.unref) t.unref(); }),
+    ]);
     if (note && el.isConnected && prevScreen === screen) {
       clappedFor.add(el);
       react(null, note, { force: true, ms: 9000 });
@@ -700,10 +712,17 @@ export function seasonPose(day) {
   return null;
 }
 
+/* 11/11/2026 (ביקורת): יום עברי מתחיל בשקיעה. מ-18:00 בישראל החג הוא של
+   מחר: הנר הראשון של חנוכה כבר בערב, וערב יום הזיכרון כבר שקט. */
+export function holidayDay(now = new Date()) {
+  const day = israelDay(now);
+  return israelHour(now) >= 18 ? addDays(day, 1) : day;
+}
+
 let quietCache = { day: '', on: false };
 /** יום זיכרון או צום בישראל (נבדק פעם אחת ביום) */
 export function quietToday(now = new Date()) {
-  const day = israelDay(now);
+  const day = holidayDay(now);
   if (quietCache.day !== day) { const h = holidayFor(day); quietCache = { day, on: Boolean(h && h.quiet) }; }
   return quietCache.on;
 }
@@ -775,6 +794,7 @@ export const TROPHY_AT = [1, 3, 5, 10, 20, 30, 50, 75, 100];
 
 let greeted = false;
 let summaryCounted = false;
+let summaryVideos = 0;
 let screensSeen = 0;
 let newScreens = 0;
 const visitedScreens = new Set();
@@ -797,13 +817,13 @@ function onScreenMoment(screen) {
     visitedScreens.add(screen);
     /* ההודעה נבנית רק כשהיא מוצגת, אחרי שהשם כבר נטען מהפרופיל */
     const t = setTimeout(() => {
-      const m = openingMoment({ ...r, hour: israelHour(now), day: israelDay(now), first: person.first });
+      const m = openingMoment({ ...r, hour: israelHour(now), day: holidayDay(now), first: person.first });
       react(null, m.text, { force: true, ms: 4200, solemn: true });
     }, 900);
     if (t && t.unref) t.unref();
     return;
   }
-  if (screen === 'opening') { summaryCounted = false; visitedScreens.clear(); newScreens = 0; }
+  if (screen === 'opening') { summaryCounted = false; visitedScreens.clear(); newScreens = 0; notedFor.clear(); }
   if (screen === 'summary') {
     if (summaryCounted) return;
     summaryCounted = true;
@@ -811,6 +831,7 @@ function onScreenMoment(screen) {
     v.videos = (v.videos || 0) + 1;
     writeVisits(v);
     /* 11/11/2026: בערב הבכורה הפסלון כבר על המסך. רק המספר נכנס ללוחית */
+    summaryVideos = v.videos;
     const prem = document.querySelector('.va-premiere-count');
     if (prem) {
       if (v.videos > 1) prem.textContent = `סרטון מספר ${v.videos} 🏆`;

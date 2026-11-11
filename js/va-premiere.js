@@ -97,14 +97,14 @@ export async function premiereStory(title, { count = 0 } = {}) {
   x.textAlign = 'center';
   x.fillStyle = '#ffffff';
   x.font = font(84);
-  x.fillText('🎬 ערב הבכורה', W / 2, 190);
+  x.fillText('ערב הבכורה', W / 2, 190);
   x.font = font(52);
   x.fillStyle = 'rgba(255,255,255,.85)';
   x.fillText(count > 1 ? `הסרטון ה-${count} שלי מוכן!` : 'הסרטון שלי מוכן!', W / 2, 280);
 
   if (title) {
     x.font = font(60);
-    const lines = wrapLines((t) => x.measureText(t).width, `"${title}"`, 860, 4);
+    const lines = wrapLines((t) => x.measureText(t).width, title, 860, 4);
     const top = 360;
     const lh = 78;
     const boxH = lines.length * lh + 60;
@@ -121,6 +121,8 @@ export async function premiereStory(title, { count = 0 } = {}) {
     lines.forEach((l, i) => x.fillText(l, W / 2, top + 30 + lh * (i + 0.78)));
   }
 
+  /* בלי אימוג'י ובלי מירכאות על הקנבס: לא בכל מכשיר יש גופן אימוג'י,
+     והמירכאות קופצות לצד הלא נכון בשבירת שורה מימין לשמאל */
   x.font = font(38);
   x.fillStyle = 'rgba(255,255,255,.9)';
   x.fillText('נבנה עם המוח השיווקי · מאיה קיסלב', W / 2, H - 40);
@@ -134,24 +136,40 @@ export function wirePremiere(root, title, opts = {}) {
   const toast = opts.toast || (() => {});
   const btn = root && root.querySelector('.va-premiere-share');
   if (!btn) return;
+  /* 11/11/2026 (ביקורת): באייפון שיתוף שמגיע הרבה אחרי הלחיצה נדחה. התמונה
+     מוכנה מראש כשהסיכום נפתח, והלחיצה רק משתפת. */
+  let ready = null;
+  const prepare = () => {
+    if (!ready) ready = premiereStory(title, { count: getCount() }).catch((e) => { ready = null; throw e; });
+    return ready;
+  };
+  setTimeout(() => { prepare().catch(() => {}); }, 1200);
+  const download = (blob) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'הבכורה-שלי.png';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    toast('התמונה ירדה למכשיר. מעלים אותה לסטורי 🎬');
+  };
   btn.addEventListener('click', async () => {
     if (btn.disabled) return;
     btn.disabled = true;
     const label = btn.textContent;
     btn.textContent = 'מכינה את התמונה…';
     try {
-      const blob = await premiereStory(title, { count: getCount() });
+      const blob = await prepare();
       if (!blob) throw new Error('no image');
       const file = new File([blob], 'הבכורה-שלי.png', { type: 'image/png' });
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        try { await navigator.share({ files: [file], title: 'הסרטון שלי מוכן!' }); } catch (e) { if (e && e.name !== 'AbortError') throw e; }
+        try {
+          await navigator.share({ files: [file], title: 'הסרטון שלי מוכן!' });
+        } catch (e) {
+          /* ביטול זה בסדר. כל שגיאה אחרת: מורידים במקום */
+          if (!e || e.name !== 'AbortError') download(blob);
+        }
       } else {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url; a.download = 'הבכורה-שלי.png';
-        document.body.appendChild(a); a.click(); a.remove();
-        setTimeout(() => URL.revokeObjectURL(url), 4000);
-        toast('התמונה ירדה למכשיר. מעלים אותה לסטורי 🎬');
+        download(blob);
       }
     } catch (err) {
       console.error('premiere story failed:', err);

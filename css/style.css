@@ -9368,3 +9368,11 @@ body.va-stage-on #video-assistant-view .va-maya { opacity: 0; transition: opacit
   .va-premiere-plaque { font-size: 14px; }
 }
 @media (prefers-reduced-motion: reduce) { .va-premiere-beam, .va-premiere-maya { animation: none; } }
+
+
+/* 11/11/2026 (ביקורת): בטלפון החנוכייה לא מכסה בועה פתוחה */
+@media (max-width: 720px) {
+  #video-assistant-view .va-maya--head .va-hanukkiah { transition: opacity .25s ease; }
+  #video-assistant-view .va-maya--head:has(.va-maya-bubble.is-on) .va-hanukkiah { opacity: 0; }
+  #video-assistant-view .va-maya.va-maya--head .va-maya-bubble { z-index: 3; }
+}
