@@ -104,10 +104,15 @@ describe('הכלים החדשים בעוזר (jsdom)', { skip: hasJsdom ? false 
     assert.ok($('#va-idea-sharp-mic') && !$('#va-idea-sharp-mic').hidden, 'אין מיקרופון ב"על מה הסרטון?"');
   });
 
-  test('21 + 24. שכפול: מד אורך באדום כשהתסריט ארוך מהמקור, ודף צילום מהסיכום ששומר סימונים', async () => {
-    const { $, $$, open, check } = ui;
-    const transcript = `${words(46, 'מקור')}\n\nטקסט על המסך:\n• ${words(20, 'כתוב')}`;
-    const finalScript = `שורת ההוק של התסריט\n${words(60, 'תסריט')}`;
+  test('21. שכפול: מד אורך באדום כשהתסריט ארוך מהמקור, ובסיכום אין דף צילום', async () => {
+    /* 11/11/2026 (מאיה): "יש שם בסוף דף צילום, תמחקי אותו לגמרי, הוא מבלבל" */
+    const { $, open } = ui;
+    const transcript = `${words(46, 'מקור')}
+
+טקסט על המסך:
+• ${words(20, 'כתוב')}`;
+    const finalScript = `שורת ההוק של התסריט
+${words(60, 'תסריט')}`;
     await open({ branch: 'reference', screen: 'read-aloud', transcript, hook: 'שורת ההוק של התסריט', finalScript }, '#va-read-done-btn');
     const meter = $('.va-length');
     assert.ok(meter, 'אין מד אורך במסך להקריא בקול');
@@ -117,72 +122,19 @@ describe('הכלים החדשים בעוזר (jsdom)', { skip: hasJsdom ? false 
     assert.match($('.va-length__warn').textContent, /ארוך ב-39%/);
 
     $('#va-read-done-btn').click();
-    await until(() => $('#va-filming-btn'), 'מסך הסיכום');
+    await until(() => $('#va-desc-btn'), 'מסך הסיכום');
     assert.ok($('.va-length.is-long'), 'אין מד אורך בסיכום');
-    assert.doesNotMatch($('.cosmic-summary-list').textContent, /צ'קליסט לריל מנצח/, 'הסיכום עדיין מפנה לצ\'קליסט שלא קיים');
-    assert.match($('.cosmic-summary-list').textContent, /דף צילום/);
-
-    $('#va-filming-btn').click();
-    await until(() => $('#va-filming [data-check]'), 'דף הצילום לא נפתח');
-    const boxes = $$('#va-filming [data-check]');
-    assert.equal(boxes.length, 7);
-    assert.match($('#va-filming').textContent, /אור/);
-    assert.match($('#va-filming').textContent, /כתוביות/);
-    const shots = $$('.va-filming__shots li');
-    assert.ok(shots.length >= 2, 'אין רשימת שוטים');
-    assert.match(shots[0].textContent, /ההוק \(2 השניות הראשונות\)/);
-    assert.match(shots[0].textContent, /שורת ההוק של התסריט/);
-    assert.match($('.va-filming__format').textContent, /דיבור למצלמה \(ברירת מחדל\)/);
-
-    check($('#va-filming [data-check="light"]'));
-    check($('#va-filming [data-check="captions"]'));
-    assert.equal($('#va-filming-count').textContent, '2 מתוך 7 ✓');
+    assert.equal($('#va-filming-btn'), null, 'דף הצילום עדיין בסיכום');
+    assert.doesNotMatch($('.cosmic-summary-list').textContent, /דף צילום/, 'הסיכום עדיין מפנה לדף צילום');
     const id = store.get(SESSION).scriptId;
     assert.ok(id, 'לא נוצר פריט');
-    await until(() => {
-      const c = item(id) && item(id).state.filmingChecks;
-      return c && c.light && c.captions;
-    }, 'הסימונים לא נשמרו בפריט ב"התסריטים שלי"');
 
-    /* אותו סרטון מ"התסריטים שלי": הסימונים שם, וסימון נוסף נשמר */
-    $('#va-modal-close').click();
+    /* וגם לא בסרטון שנשמר ב"התסריטים שלי" */
     $('#video-assistant-scripts-btn').click();
     await until(() => $(`.va-lib-item[data-id="${id}"]`), 'הרשימה');
     $(`.va-lib-item[data-id="${id}"]`).click();
-    await until(() => $('#va-lib-filming'), 'כפתור דף צילום בפריט');
-    $('#va-lib-filming').click();
-    await until(() => $('#va-lib [data-check]'), 'דף הצילום בתוך "התסריטים שלי"');
-    assert.equal($('#va-lib [data-check="light"]').checked, true);
-    assert.equal($('#va-lib [data-check="sound"]').checked, false);
-    check($('#va-lib [data-check="sound"]'));
-    await until(() => item(id).state.filmingChecks.sound === true, 'הסימון מ"התסריטים שלי" לא נשמר');
-    assert.equal(item(id).state.filmingChecks.light, true, 'סימון קודם נמחק');
-    $('#va-filming-back').click();
-    await until(() => $('#va-lib-resume'), 'חזרה לסרטון');
-    $('#va-modal-close').click();
-  });
-
-  test('24. דף צילום של סרטון ישן ב"התסריטים שלי": שוטים לפי הפורמט, וסימון נשמר רק בו', async () => {
-    const { $, $$, check } = ui;
-    store.set('videoAssistantScripts/u1/items/old1', {
-      title: 'סרטון ישן', done: true, createdAt: 1, updatedAt: 2,
-      state: { branch: 'scratch', screen: 'summary', selectedFormat: 'וויס אובר', ideaDescription: 'סרטון ישן', draftScript: 'ההוק של הישן\nהמשפט השני\nהמשפט השלישי' },
-    });
-    $('#video-assistant-scripts-btn').click();
-    await until(() => $('.va-lib-item[data-id="old1"]'), 'הסרטון הישן ברשימה');
-    $('.va-lib-item[data-id="old1"]').click();
-    await until(() => $('#va-lib-filming'), 'פריט');
-    $('#va-lib-filming').click();
-    await until(() => $('#va-lib [data-check]'), 'דף צילום');
-    const shots = $$('.va-filming__shots li');
-    assert.equal(shots.length, 3);
-    assert.match(shots[0].textContent, /סצנה 1 · ההוק/);
-    assert.match($('.va-filming__format').textContent, /וויס אובר:/);
-    check($('#va-lib [data-check="lens"]'));
-    await until(() => item('old1').state.filmingChecks && item('old1').state.filmingChecks.lens === true, 'לא נשמר בפריט הישן');
-    assert.equal(item('old1').title, 'סרטון ישן');
-    assert.equal(item('old1').createdAt, 1);
-    assert.ok(!store.get(SESSION).filmingChecks || !store.get(SESSION).filmingChecks.lens, 'הסימון דלף לסרטון הפתוח');
+    await until(() => $('#va-lib-resume'), 'פריט');
+    assert.equal($('#va-lib-filming'), null, 'דף הצילום עדיין בפריט');
     $('#va-modal-close').click();
   });
 

@@ -33,7 +33,6 @@ const FILES = [
   'va-smart-paste.js',
   'va-mic.js',
   'va-length.js',
-  'va-filming.js',
   'va-description.js',
   'va-summary-tools.js',
 ];

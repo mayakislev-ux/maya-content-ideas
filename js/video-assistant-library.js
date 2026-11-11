@@ -17,7 +17,6 @@
    herWords ו-rawDump, ולכן גם סרטונים ישנים מציגים את המגילה שלהם. */
 
 import { scriptDoc, scriptTitle, syncIdea } from './video-assistant-build.js';
-import { mountFilming } from './va-filming.js';
 
 const isFootage = (s) => s.branch === 'footage' || !!s.footageKind;
 const filled = (s, f) => !!(f && typeof s[f] === 'string' && s[f].trim());
@@ -298,7 +297,6 @@ export function createScriptsLibrary(deps) {
         </div>`
         : `${steps.length ? '<button type="button" class="va-lib-edit" id="va-lib-edit">✏️ לערוך</button>' : ''}
         ${script ? deps.copyBtn(script.value, 'להעתיק את התסריט') : ''}
-        <button type="button" class="cosmic-btn va-tool-btn va-lib-filming" id="va-lib-filming">🎬 דף צילום</button>
         <div class="cosmic-btn-row" style="margin-top:12px">
           <button type="button" class="cosmic-btn cosmic-btn--primary" id="va-lib-resume">${live ? 'חזרה לעוזר ←' : (item.done ? 'לפתוח בעוזר' : 'להמשיך לבנות ←')}</button>
           <button type="button" class="va-text-link va-lib-delete" id="va-lib-delete">למחוק את הסרטון הזה</button>
@@ -380,32 +378,6 @@ export function createScriptsLibrary(deps) {
 
     if (steps.length) box.querySelector('#va-lib-edit').addEventListener('click', () => renderItem(overlay, items, item, { editing: true }));
     deps.wireCopyButtons(box);
-
-    /* 05/11/2026: דף הצילום של הסרטון הזה, באותו חלון. הסימונים נשמרים
-       בפריט עצמו (filmingChecks), כל סרטון בנפרד. */
-    box.querySelector('#va-lib-filming').addEventListener('click', () => {
-      mountFilming(box, {
-        state: live ? deps.getState() : (item.state || {}),
-        backLabel: '→ חזרה לסרטון',
-        onBack: () => renderItem(overlay, items, item),
-        onChange: async (checks) => {
-          if (deps.getState().scriptId === item.id) {
-            deps.patchLive({ filmingChecks: checks });
-            item.state = { ...(item.state || {}), filmingChecks: checks };
-            return;
-          }
-          const now = Date.now();
-          const data = { ...scriptDoc({ ...(item.state || {}), filmingChecks: checks }, now), createdAt: item.createdAt || now };
-          try {
-            await store.saveScript(item.id, data);
-            Object.assign(item, { updatedAt: now, state: data.state });
-          } catch (err) {
-            console.error('saveScript (filming) failed:', err);
-            deps.showToast('הסימון לא נשמר. כדאי לבדוק שיש אינטרנט');
-          }
-        },
-      });
-    });
 
     box.querySelector('#va-lib-resume').addEventListener('click', () => {
       if (live) { deps.closeModal(); return; }
