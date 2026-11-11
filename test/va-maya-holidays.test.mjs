@@ -182,3 +182,15 @@ test('תיקוני ביקורת: יום הולדת בתאריך האזרחי, מ
   assert.ok(VA.includes("if (!card || mayaBirthday() || isClientView()) return;"), 'שאלת יום הולדת בתצוגת לקוחה');
   assert.ok(VA.includes('real.getUTCMonth() !== Number(m) - 1'), '31 בפברואר נשמר');
 });
+
+test('תלבושת גם לפי מה שהלקוחה כתבה על העסק', async () => {
+  const { outfitFor } = await import('../js/va-maya.js');
+  assert.equal(outfitFor('מורה רוחנית- מוכרת קורס תקשור יהודי'), 'therapy');
+  assert.equal(outfitFor('מאפרת כלות'), 'beauty');
+  assert.equal(outfitFor('מאמנת כושר אונליין'), 'fitness');
+  assert.equal(outfitFor('מעצבת פנים'), 'design');
+  assert.equal(outfitFor('יועצת עסקית'), 'business');
+  assert.equal(outfitFor(''), '');
+  assert.equal(outfitFor('עורכת דין לדיני משפחה'), 'business', 'עורכת דין היא לא קוסמטיקה');
+  assert.ok(M.includes('outfitFor(p.videoAssistantDomain) || outfitFor(p.business)'));
+});

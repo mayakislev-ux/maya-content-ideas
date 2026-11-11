@@ -255,6 +255,8 @@ export function mountMaya(card, screen) {
     greetR = registerVisit(readVisits(), israelDay(now));
     writeVisits(greetR.v);
     pose = openingMoment({ ...greetR, hour: israelHour(now), day: holidayDay(now), today: israelDay(now), first: '', birthday: myBirthday, session: sessionNow(israelDay(now)) }).pose;
+    /* מי שיש לה תלבושת: מופיעה בתלבושת ולא בנפנוף הרגיל (חג, מדליה וכו' כן) */
+    if (pose === 'wave' && currentOutfit) pose = 'hug';
     greetPose = pose;
   }
   /* תנוחת הברכה היא התנוחה של המסך הזה, כדי ששינוי גודל חלון לא יחליף אותה */
@@ -719,10 +721,19 @@ export function setMayaPerson(profile) {
   /* 11/11/2026 (ביקורת): לפי הפרופיל שנטען עכשיו, כולל איפוס כשאין */
   myBirthday = /^\d{2}-\d{2}$/.test(String(p.birthday || '')) ? p.birthday : '';
   try { if (myBirthday) localStorage.setItem(BIRTHDAY_KEY, myBirthday); else localStorage.removeItem(BIRTHDAY_KEY); } catch { /* בלי אחסון */ }
-  const o = outfitFor(p.videoAssistantDomain);
+  const o = outfitFor(p.videoAssistantDomain) || outfitFor(p.business);
   if (o !== currentOutfit) {
     currentOutfit = o;
     try { localStorage.setItem(OUTFIT_KEY, o); } catch { /* בלי אחסון */ }
+    /* הפרופיל נטען אחרי שהיא כבר הופיעה: מחליפים מיד את התמונה העומדת */
+    const fig = figEl();
+    if (fig && !fig.classList.contains('va-maya--head')) {
+      const img = fig.querySelector('img');
+      if (img && (basePose === 'hug' || basePose === 'backlean')) img.src = mayaSrc(outfitPose(basePose));
+    }
+    if (fig && fig.classList.contains('va-maya--head')) {
+      if (o) fig.dataset.outfit = OUTFITS[o]; else delete fig.dataset.outfit;
+    }
   }
 }
 
@@ -753,14 +764,20 @@ function sessionNow(day) {
    מהפרופיל. במחשב כל התלבושת, בטלפון מדבקה קטנה ליד הראש. */
 const OUTFIT_KEY = 'moach.mayaOutfit';
 export const OUTFITS = { beauty: '💄', fitness: '🏋️', therapy: '📓', business: '💼', design: '📐' };
+/* 11/11/2026 (מאיה: "אני על אופק שהיא מתקשרת והיא לא לבושה מותאם"): גם
+   לפי מה שהלקוחה כתבה על העסק במילים שלה, לא רק לפי אחד מששת התחומים */
+const OUTFIT_WORDS = [
+  ['beauty', /יופי|קוסמטי|איפור|מאפר|ציפורנ|גבות|ריסים|שיער|מספרה|ספרית|לק ג'ל|הסרת שיער|אסתטיק|עור הפנים|טיפולי עור|טיפוח|בוטוקס|מניקור|פדיקור/],
+  ['fitness', /כושר|מאמנ|אימונ|פילאטיס|יוגה|ריצה|תזונ|דיאט|ספורט|חדר כושר|קרוספיט|הרזיה/],
+  ['therapy', /נפשית|טיפול|מטפל|פסיכו|רגשי|רוחני|תקשור|אסטרולוג|נומרולוג|קלפ|טארוט|מדיטצי|ריפוי|הילינג|רייקי|דיקור|נטורופת|רפלקסולוג|NLP|דולה|הדרכת הורים|(^|[\s,])ורוח/i],
+  ['design', /עיצוב|מעצב|אדריכל|נדל|תיווך|מתווכ|הום סטיילינג|שיפוצ|אדריכלות/],
+  ['business', /עסקים|יזמות|יזמ|שיווק|ייעוץ|יועצ|משפט|עורכ.? דין|עו"ד|רואה חשבון|פיננס|ביטוח|מכירות|קואצ'|ליווי עסקי|מנהל/],
+];
 export function outfitFor(domain) {
   const d = String(domain || '');
-  if (d.includes('יופי') || d.includes('קוסמטיקה')) return 'beauty';
-  if (d.includes('כושר') || d.includes('תזונה')) return 'fitness';
-  if (d.includes('נפשית') || d.includes('טיפול') || /(^|[\s,])ורוח|רוחני/.test(d)) return 'therapy';
-  if (d.includes('עסקים') || d.includes('יזמות')) return 'business';
-  if (d.includes('עיצוב') || d.includes('נדל') || d.includes('אדריכל')) return 'design';
-  return '';
+  if (!d.trim()) return '';
+  const hit = OUTFIT_WORDS.find(([, re]) => re.test(d));
+  return hit ? hit[0] : '';
 }
 let currentOutfit = (() => { try { return (typeof localStorage !== 'undefined' && localStorage.getItem(OUTFIT_KEY)) || ''; } catch { return ''; } })();
 if (!OUTFITS[currentOutfit]) currentOutfit = '';
@@ -925,6 +942,7 @@ function onScreenMoment(screen) {
       const m = openingMoment({ ...r, hour: israelHour(now), day: holidayDay(now), today: israelDay(now), first: person.first, lastVideo: (r.v && r.v.lastVideo) || readVisits().lastVideo || null, birthday: myBirthday, session: sessionNow(israelDay(now)) });
       /* התנוחה נקבעה ברגע ההופעה, לפני שהפרופיל נטען. אם הברכה שונה (יום
          הולדת, קורי עכביש), התמונה מתאימה את עצמה לטקסט */
+      if (m.pose === 'wave' && currentOutfit) m.pose = 'hug';
       if (greetPose && m.pose && m.pose !== greetPose && lastPose === greetPose && POSES.includes(m.pose)) setMayaPose(m.pose);
       greetPose = null;
       react(null, m.text, { force: true, ms: 4200, solemn: true });
