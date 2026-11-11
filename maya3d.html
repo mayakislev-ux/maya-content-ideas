@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>מאיה בתלת־ממד · ניסיון</title>
+<meta name="robots" content="noindex">
+<style>
+  /* 11/11/2026: עמוד ניסיון לדמות התלת־ממדית של מאיה. לא מקושר מהאפליקציה. */
+  :root { --bg1: #0d1a52; --bg2: #1a0d36; --ink: #fff; }
+  html, body { margin: 0; height: 100%; background: radial-gradient(ellipse at 50% 20%, #24307a 0%, var(--bg1) 45%, var(--bg2) 100%); color: var(--ink);
+    font-family: 'Heebo', 'Segoe UI', Arial, sans-serif; overflow: hidden; touch-action: none; }
+  #stage { position: fixed; inset: 0; }
+  .hint { position: fixed; left: 0; right: 0; bottom: max(18px, env(safe-area-inset-bottom)); text-align: center; font-size: 15px; opacity: .85; pointer-events: none; padding: 0 16px; }
+  .bubble { position: fixed; top: max(18px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); background: #fff; color: #1a0d36;
+    padding: 10px 16px; border-radius: 16px; font-weight: 700; font-size: 16px; box-shadow: 0 8px 24px rgba(0,0,0,.35); max-width: calc(100vw - 48px);
+    text-align: center; transition: opacity .3s; }
+  .bubble.off { opacity: 0; }
+  .loading { position: fixed; inset: 0; display: grid; place-items: center; font-size: 17px; }
+  .loading[hidden] { display: none; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="stage"></div>
+<div class="loading" id="loading">טוענת את מאיה…</div>
+<div class="bubble off" id="bubble"></div>
+<div class="hint">תזיזי את האצבע על המסך, ותגעי בה 👆</div>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+const stage = document.getElementById('stage');
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+stage.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(28, 1, 0.1, 50);
+
+/* "שלד" בקוד: משקל לכל נקודה לפי הגובה. הראש והשיער שלו מסתובבים סביב הצוואר,
+   החזה מתרחב בנשימה. אותה מתמטיקה נבדקה על המודל לפני שעלתה. */
+const U = { uYaw: { value: 0 }, uPitch: { value: 0 }, uRoll: { value: 0 }, uBreath: { value: 0 } };
+const NECK = '1.33';
+function rig(material) {
+  material.onBeforeCompile = (shader) => {
+    Object.assign(shader.uniforms, U);
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', `#include <common>
+        uniform float uYaw; uniform float uPitch; uniform float uRoll; uniform float uBreath;
+        mat3 rotY(float a){ float c=cos(a), s=sin(a); return mat3(c,0.,-s, 0.,1.,0., s,0.,c); }
+        mat3 rotX(float a){ float c=cos(a), s=sin(a); return mat3(1.,0.,0., 0.,c,s, 0.,-s,c); }
+        mat3 rotZ(float a){ float c=cos(a), s=sin(a); return mat3(c,s,0., -s,c,0., 0.,0.,1.); }`)
+      .replace('#include <begin_vertex>', `
+        vec3 transformed = vec3(position);
+        float y = transformed.y;
+        float ch = smoothstep(0.98, 1.10, y) * (1.0 - smoothstep(1.22, 1.30, y)) * (1.0 - smoothstep(0.13, 0.17, abs(transformed.x)));
+        transformed.x *= 1.0 + 0.012 * uBreath * ch;
+        transformed.z *= 1.0 + 0.022 * uBreath * ch;
+        float hw = smoothstep(${NECK} - 0.05, ${NECK} + 0.05, y);
+        vec3 piv = vec3(0.0, ${NECK}, 0.0);
+        vec3 r = rotY(uYaw) * (rotX(uPitch) * (rotZ(uRoll) * (transformed - piv))) + piv;
+        transformed = mix(transformed, r, hw);`);
+  };
+  return material;
+}
+
+let model = null;
+new GLTFLoader().load('assets/maya/maya3d.glb?v=1', (gltf) => {
+  model = new THREE.Group();
+  gltf.scene.traverse((o) => {
+    if (o.isMesh) {
+      /* הצבעים כבר כוללים את התאורה של התמונה: חומר בלי תאורה נוספת */
+      o.material = rig(new THREE.MeshBasicMaterial({ map: o.material.map }));
+    }
+  });
+  model.add(gltf.scene);
+  scene.add(model);
+  document.getElementById('loading').hidden = true;
+  say('היי! אני מאיה, בתלת־ממד 🤩', 3200);
+}, undefined, (err) => {
+  document.getElementById('loading').textContent = 'לא הצלחתי לטעון את הדמות';
+  console.error(err);
+});
+
+/* צל רך מתחת לרגליים */
+const shadow = new THREE.Mesh(new THREE.CircleGeometry(0.34, 48), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.28 }));
+shadow.rotation.x = -Math.PI / 2; shadow.scale.set(1, 0.45, 1); shadow.position.y = 0.002;
+scene.add(shadow);
+
+function resize() {
+  const w = window.innerWidth, h = window.innerHeight;
+  renderer.setSize(w, h, false);
+  renderer.domElement.style.width = `${w}px`; renderer.domElement.style.height = `${h}px`;
+  camera.aspect = w / h;
+  /* כל הגוף נכנס גם בטלפון לאורך וגם במחשב */
+  const fitH = 1.95, fitW = 1.1;
+  const vfov = THREE.MathUtils.degToRad(camera.fov);
+  const dH = (fitH / 2) / Math.tan(vfov / 2);
+  const dW = (fitW / 2) / (Math.tan(vfov / 2) * camera.aspect);
+  camera.position.set(0, 0.9, Math.max(dH, dW));
+  camera.lookAt(0, 0.86, 0);
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resize); resize();
+
+/* לאן היא מסתכלת: האצבע או העכבר. בלי תזוזה כמה שניות: מסתכלת סביב לבד */
+const target = { yaw: 0, pitch: 0 };
+let lastMove = -1e9;
+function aim(cx, cy) {
+  const nx = (cx / window.innerWidth) * 2 - 1;
+  const ny = (cy / window.innerHeight) * 2 - 1;
+  /* היא עומדת מולך: האצבע מימין למסך = שמאל שלה */
+  target.yaw = THREE.MathUtils.clamp(nx * 0.55, -0.5, 0.5);
+  target.pitch = THREE.MathUtils.clamp(ny * 0.3 - 0.05, -0.25, 0.28);
+  lastMove = performance.now();
+}
+window.addEventListener('pointermove', (e) => aim(e.clientX, e.clientY));
+window.addEventListener('pointerdown', (e) => {
+  aim(e.clientX, e.clientY);
+  if (!model) return;
+  const ndc = new THREE.Vector2((e.clientX / window.innerWidth) * 2 - 1, -(e.clientY / window.innerHeight) * 2 + 1);
+  const ray = new THREE.Raycaster(); ray.setFromCamera(ndc, camera);
+  if (ray.intersectObject(model, true).length) poke();
+});
+
+let hopT = -1;
+const LINES = ['יאללה, בונים סרטון! 🚀', 'וואווו, זה הולך לעוף ✨', 'אל תדגדגי אותי 😂', 'זה עף לי על הראש 🤯', 'תני בראש 🔥'];
+let li = 0;
+function poke() { hopT = performance.now(); say(LINES[li++ % LINES.length], 2200); }
+
+const bubble = document.getElementById('bubble');
+let bubbleT = null;
+function say(text, ms) {
+  bubble.textContent = text; bubble.classList.remove('off');
+  clearTimeout(bubbleT); bubbleT = setTimeout(() => bubble.classList.add('off'), ms);
+}
+
+const cur = { yaw: 0, pitch: 0, body: 0 };
+const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+function tick(now) {
+  const t = now / 1000;
+  if (model) {
+    let ty = target.yaw, tp = target.pitch;
+    if (now - lastMove > 3500) {
+      /* מסתכלת סביב לאט כשאף אחד לא מזיז */
+      ty = Math.sin(t * 0.37) * 0.32 + Math.sin(t * 0.13) * 0.12;
+      tp = Math.sin(t * 0.29 + 1.3) * 0.08;
+    }
+    const k = reduce ? 1 : 0.07;
+    cur.yaw += (ty - cur.yaw) * k;
+    cur.pitch += (tp - cur.pitch) * k;
+    U.uYaw.value = cur.yaw;
+    U.uPitch.value = cur.pitch;
+    U.uRoll.value = reduce ? 0 : Math.sin(t * 0.5) * 0.035 - cur.yaw * 0.08;
+    U.uBreath.value = reduce ? 0 : Math.sin(t * 1.7) * 0.5 + 0.5;
+    /* הגוף מסתובב קצת אחרי הראש, ומעביר משקל מרגל לרגל */
+    cur.body += (cur.yaw * 0.3 - cur.body) * 0.04;
+    model.rotation.y = cur.body;
+    model.rotation.z = reduce ? 0 : Math.sin(t * 0.8) * 0.012;
+    /* קפיצה קטנה כשנוגעים בה */
+    let hop = 0;
+    if (hopT > 0) {
+      const p = (now - hopT) / 520;
+      if (p >= 1) hopT = -1; else hop = Math.sin(p * Math.PI) * 0.09;
+    }
+    model.position.y = hop;
+    const sq = hopT > 0 ? 1 + Math.sin(((now - hopT) / 520) * Math.PI * 2) * 0.03 : 1;
+    model.scale.set(1 / Math.sqrt(sq), sq, 1 / Math.sqrt(sq));
+    shadow.scale.set(1 - hop * 2, 0.45 * (1 - hop * 2), 1);
+  }
+  renderer.render(scene, camera);
+  requestAnimationFrame(tick);
+}
+requestAnimationFrame(tick);
+</script>
+</body>
+</html>
