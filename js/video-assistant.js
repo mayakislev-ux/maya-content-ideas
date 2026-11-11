@@ -41,7 +41,7 @@ import {
 } from './reference-transcribe.js';
 import { getProfile, saveProfile } from './user-profile.js';
 import { audienceOptions, pickedAudience, audienceChipLabel, audienceEditUpdate, audienceAddUpdate, audienceDeleteUpdate } from './audience-pick.js';
-import { mountMaya, mayaVisibleFor, setMayaPose, setMayaNod, poseForFormat, setSignText, stageShow, setMayaPerson, videosDone, setMayaNoteSource, quietToday, mayaHidden } from './va-maya.js';
+import { mountMaya, mayaVisibleFor, setMayaPose, setMayaNod, poseForFormat, setSignText, stageShow, setMayaPerson, videosDone, setMayaNoteSource, quietToday, mayaHidden, setMaya3dAllowed } from './va-maya.js';
 import { premiereHtml, premiereTitle, wirePremiere } from './va-premiere.js';
 const mayaOn = () => mayaVisibleFor(auth.currentUser && auth.currentUser.email);
 const BRAND_CONFETTI = ['#263ea8', '#8b98d9', '#ff2ea8', '#ff7ac8', '#ffd23f', '#ffffff'];
@@ -547,6 +547,8 @@ function cosmicCard(innerHtml, { showProgress = true } = {}) {
         return mayaNote({ screen, text, domain, pronoun: profile.pronoun || '' });
       });
     }
+    /* 11/11/2026: הדמות התלת־ממדית בטלפון, קודם רק אצל מאיה */
+    setMaya3dAllowed(String((auth.currentUser && auth.currentUser.email) || '').toLowerCase() === 'mayakislev@gmail.com');
     /* תקלה בדמות לא שוברת את המסך (הכפתורים מחוברים אחרי השורה הזו) */
     try { mountMaya(document.getElementById('va-card'), state.screen); } catch (err) { console.error('mountMaya failed:', err); }
   }

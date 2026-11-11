@@ -9376,3 +9376,21 @@ body.va-stage-on #video-assistant-view .va-maya { opacity: 0; transition: opacit
   #video-assistant-view .va-maya--head:has(.va-maya-bubble.is-on) .va-hanukkiah { opacity: 0; }
   #video-assistant-view .va-maya.va-maya--head .va-maya-bubble { z-index: 3; }
 }
+
+
+/* ===== 11/11/2026: הדמות התלת־ממדית בטלפון, חצי גוף מעל התיבה ===== */
+@media (max-width: 720px) {
+  #video-assistant-view.has-maya.has-maya3d > #video-assistant-screen { padding-top: 112px; }
+  #video-assistant-view .va-maya.va-maya--head.is-3d img { display: none; }
+  #video-assistant-view .va-maya.va-maya--head .va-maya3d {
+    position: absolute; top: -112px; left: -4px; display: block; pointer-events: auto; cursor: pointer;
+    filter: drop-shadow(0 6px 10px rgba(5,15,50,.35));
+  }
+  #video-assistant-view .va-maya.va-maya--head.is-3d .va-maya-bubble { top: -104px; left: 86px; max-width: calc(100vw - 140px); }
+  #video-assistant-view .va-maya.va-maya--head.is-3d .va-hanukkiah { top: -44px; right: 4px; }
+}
+
+/* 11/11/2026 (ביקורת): בגלילה הראש נכנס מתחת לסרגל העליון. נעצרת נמוך יותר */
+@media (max-width: 720px) {
+  #video-assistant-view .va-maya.va-maya--head.is-3d { top: calc(var(--va-dock-top, 60px) + 118px); }
+}

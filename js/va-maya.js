@@ -18,6 +18,11 @@ export const POSES = ['hug', 'dance', 'camera', 'mic', 'chairs', 'coffee', 'fish
    בלי פעילות: שעון אחרי דקה, פיהוק אחרי שתיים. לחיצה עליה: בועה בלבד
    (בלי החלפת תנוחה). וכפתור להסתיר אותה. */
 import { holidayFor, hanukkiahSvg, addDays } from './va-holidays.js';
+import { mountMaya3d, wireMaya3dLook, maya3dHop, maya3dFailed } from './va-maya3d.js';
+
+/* 11/11/2026: הדמות התלת־ממדית בטלפון. בינתיים רק אצל מאיה (העוזר מדליק). */
+let maya3dAllowed = false;
+export function setMaya3dAllowed(on) { maya3dAllowed = Boolean(on); }
 const WRITING_SCREENS = new Set(['idea-sharpen', 'type-idea', 'transcribe', 'content-basics', 'footage-speech-sharpen', 'scratch-distill', 'prompt2']);
 const SIDE_ROTATION = ['swing', 'backlean', 'hug'];
 export const IDLE_FIRST_MS = 60 * 1000;
@@ -284,6 +289,17 @@ function mountFigure(card, pose) {
   }
   if (head) card.prepend(fig); else card.appendChild(fig);
   fadeInWhenReady(fig, img, head ? lastPose !== 'head' : lastPose !== pose);
+  /* 11/11/2026 (ביקורת): המקום לחצי הגוף נשמר מראש (בלי קפיצה כשהיא נטענת),
+     ויורד אם הטעינה נכשלה או אם מי שמחוברת עכשיו לא מאיה */
+  const view3d = card.closest('#video-assistant-view');
+  const want3d = head && maya3dAllowed && !mayaHidden() && !maya3dFailed();
+  if (view3d) view3d.classList.toggle('has-maya3d', want3d);
+  if (want3d) {
+    if (view3d) wireMaya3dLook(view3d);
+    mountMaya3d(fig, { onTap: () => img.click() }).then((ok) => {
+      if (!ok && view3d) { view3d.classList.remove('has-maya3d'); fig.classList.remove('is-3d'); }
+    }).catch(() => { if (view3d) view3d.classList.remove('has-maya3d'); });
+  }
   /* 10/11/2026 (מאיה: "כשלוחצים על הדמות לא אהבתי שהיא פתאום משתנה, זה
      מוזר"): לחיצה לא מחליפה תנוחה. רק בועה: ביטוי שלך, ובלחיצה כפולה בדיחה. */
   /* לחיצה כפולה מזוהה בעצמנו (באייפון dblclick לא אמין): שתי לחיצות ב-320ms */
@@ -556,6 +572,7 @@ function showBubble(text, ms = 2600) {
   if (!b) { b = document.createElement('div'); b.className = 'va-maya-bubble'; fig.appendChild(b); }
   b.textContent = text;
   b.classList.remove('is-on'); void b.offsetWidth; b.classList.add('is-on');
+  if (fig.classList.contains('is-3d')) maya3dHop();
   clearTimeout(b._t);
   b._t = setTimeout(() => b.classList.remove('is-on'), ms);
 }
