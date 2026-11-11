@@ -259,14 +259,14 @@ describe('האריזה הקריאייטיבית במקום הצ׳אט', () => {
   });
 
   test('הפרומפט לג׳מיני הוא הנוסח שלה, מילה במילה, ועוד שורת ההוק הויזואלי', async () => {
-    const { buildCreativePackagingPrompt, CREATIVE_VISUAL_LINE } = await import('../js/video-assistant-prompts.js');
+    const { buildCreativePackagingPrompt, CREATIVE_VISUAL_LINE, CREATIVE_LAST_LINE } = await import('../js/video-assistant-prompts.js');
     assert.equal(
       buildCreativePackagingPrompt({ domain: 'החלקות', audience: 'נשים 30+', idea: 'החלקה. המסר: אפשר בלי לשרוף' }),
       ['התחום שלי זה: החלקות', '', 'קהל היעד שלי זה: נשים 30+', '',
         'זה הרעיון שלי לתוכן והמסר: החלקה. המסר: אפשר בלי לשרוף', '',
         "אני רוצה שתמצא לי 20 פורמטי הנגשה מעניינים ולא בנאליים, לסרטון הזה לרילסים לאינסטגרם ולטיקטוק לפי מה שעובד היום חזק, מאוד מיוחדים/מושכים תשומת לב/מקוריים/חכמים וממירים אבל הכי חשוב? מתאימים לרעיון ולמסר",
         "הכי חשוב שזה יהיה פורמטים כמה שיותר אותנטיים/ריאליסטיים - משהו שבאמת אנשים צורכים ומתחברים", '',
-        CREATIVE_VISUAL_LINE].join(String.fromCharCode(10)));
+        CREATIVE_VISUAL_LINE, '', CREATIVE_LAST_LINE].join(String.fromCharCode(10)));
     assert.ok(CREATIVE_VISUAL_LINE.includes('הוק ויזואלי עוצר גלילה'));
   });
 
