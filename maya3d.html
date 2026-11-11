@@ -117,7 +117,7 @@ function aim(cx, cy) {
   /* היא עומדת מולך: האצבע מימין למסך = שמאל שלה */
   /* 11/11/2026 (מאיה: "כשהיא זזה מצד לצד הפרצוף מעוות"): סיבוב קטן וטבעי, בערך 12 מעלות */
   target.yaw = THREE.MathUtils.clamp(nx * 0.26, -0.22, 0.22);
-  target.pitch = THREE.MathUtils.clamp(ny * 0.16 - 0.02, -0.12, 0.14);
+  target.pitch = THREE.MathUtils.clamp(ny * 0.09, -0.06, 0.08);
   lastMove = performance.now();
 }
 window.addEventListener('pointermove', (e) => aim(e.clientX, e.clientY));
@@ -150,19 +150,23 @@ function tick(now) {
     if (now - lastMove > 3500) {
       /* מסתכלת סביב לאט כשאף אחד לא מזיז */
       ty = Math.sin(t * 0.37) * 0.14 + Math.sin(t * 0.13) * 0.05;
-      tp = Math.sin(t * 0.29 + 1.3) * 0.05;
+      tp = Math.sin(t * 0.29 + 1.3) * 0.03;
     }
     const k = reduce ? 1 : 0.07;
     cur.yaw += (ty - cur.yaw) * k;
     cur.pitch += (tp - cur.pitch) * k;
-    U.uYaw.value = cur.yaw;
+    /* 11/11/2026 (מאיה: "כל פעם שהיא מזיזה את הראש לצדדים הכל מתעוות"): הצבעים
+       באים מתמונה אחת מלפנים, וכל סיבוב לצד חושף צד שאין לו תמונה. לכן היא לא
+       מסתובבת לצדדים: מטה את הראש לכיוון האצבע (כמו שמקשיבים), מהנהנת קצת,
+       ונוטה עם כל הגוף. תנועות במישור המסך, בלי לחשוף צדדים. */
+    U.uYaw.value = 0;
     U.uPitch.value = cur.pitch;
-    U.uRoll.value = reduce ? 0 : Math.sin(t * 0.5) * 0.035 - cur.yaw * 0.08;
+    U.uRoll.value = reduce ? 0 : -cur.yaw * 0.6 + Math.sin(t * 0.5) * 0.02;
     U.uBreath.value = reduce ? 0 : Math.sin(t * 1.7) * 0.5 + 0.5;
     /* הגוף מסתובב קצת אחרי הראש, ומעביר משקל מרגל לרגל */
     cur.body += (cur.yaw * 0.45 - cur.body) * 0.04;
-    model.rotation.y = cur.body;
-    model.rotation.z = reduce ? 0 : Math.sin(t * 0.8) * 0.012;
+    model.rotation.y = 0;
+    model.rotation.z = reduce ? 0 : -cur.body * 0.12 + Math.sin(t * 0.8) * 0.012;
     /* קפיצה קטנה כשנוגעים בה */
     let hop = 0;
     if (hopT > 0) {
