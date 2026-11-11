@@ -1120,7 +1120,32 @@ function buildDistillationText({ idea, hook, hookReinforcement, rawScript, ctaTy
    יצא קצת מסביר/פחות סיפורי... שגם יעשה את ההשלמה אוטומטי אבל ל-ChatGPT").
    הנוסח שלה מילה במילה. הכאב ומילת הקוד לא נשמרים בשום מקום בעוזר, ולכן
    ChatGPT לוקח אותם מהתסריט עצמו, ולא נשאר מקום ריק למלא. */
-export function buildSceneRewritePrompt({ script, audience, domain, creative }) {
+/* 11/11/2026 (מאיה: "בפרומפט ההרצאה ממש תלוי מה סימנו"). ההנעה לפעולה
+   בפרומפט הזה לפי מה שנבחר במסך הזיקוק: "בלי" = מסיימים במסר חזק בלי
+   הנעה, סוג שנבחר = ההנעה מהסוג הזה, ובלי בחירה = הנוסח המקורי שלה. */
+const SCENE_CTA_LINE = `הנעה לפעולה חלקה: משפט סגירה קצר שלא נשמע כמו קמפיין, אלא כהזמנה ישירה למי שמאס באותה בעיה.
+
+אם יש בתסריט הנעה לפעולה, תוודא שהיא מתחברת לתסריט עצמו באופן טבעי ונשמעת טוב, כמו המשך טבעי של מה שנאמר לפניה ולא כמו חלק מנותק שהודבק בסוף.`;
+const SCENE_CODE_LINE = `
+
+מילת הקוד להנעה לפעולה (אם יש): [תיקח מההנעה לפעולה שכבר בתסריט. אם יש בה מילת קוד, היא נשארת בדיוק אותו דבר]`;
+
+export function buildSceneRewritePrompt({ script, audience, domain, creative, ctaType }) {
+  const out = buildSceneRewriteText({ script, audience, domain, creative });
+  const cta = String(ctaType || '').trim();
+  if (cta === NO_CTA) {
+    return out.replace(SCENE_CTA_LINE, 'בלי הנעה לפעולה: בסרטון הזה בחרו במכוון שלא תהיה הנעה לפעולה. אל תוסיף הנעה לפעולה בשום צורה (לא "תגיבו", לא "תעקבו", לא "שלחו הודעה"), ואם יש כזאת בתסריט, תוריד אותה. הסרטון נגמר במסר חזק, חד ובלתי נשכח, שסוגר את הסיפור.')
+      .replace(SCENE_CODE_LINE, '');
+  }
+  if (cta) {
+    return out.replace(SCENE_CTA_LINE, `${SCENE_CTA_LINE}
+
+סוג ההנעה לפעולה שנבחר לסרטון הזה: ${cta}. ההנעה לפעולה בסוף היא מהסוג הזה.`);
+  }
+  return out;
+}
+
+function buildSceneRewriteText({ script, audience, domain, creative }) {
   const who = String(audience || '').trim();
   return `${contextHeader({ domain })}${creativeBlock(creative, CREATIVE_FOCUS.scene)}תפקיד:
 
@@ -1144,9 +1169,7 @@ export function buildSceneRewritePrompt({ script, audience, domain, creative }) 
 
 מעבר חד מסבל לסטטוס: המעבר לפתרון לא מוסבר כ"שלבים טכניים", אלא כהחלטה חותכת שמשדרת מעמד גבוה ("שם הבנתי ש...", "מאז אני לא...").
 
-הנעה לפעולה חלקה: משפט סגירה קצר שלא נשמע כמו קמפיין, אלא כהזמנה ישירה למי שמאס באותה בעיה.
-
-אם יש בתסריט הנעה לפעולה, תוודא שהיא מתחברת לתסריט עצמו באופן טבעי ונשמעת טוב, כמו המשך טבעי של מה שנאמר לפניה ולא כמו חלק מנותק שהודבק בסוף.
+${SCENE_CTA_LINE}
 
 אורך יעד:
 
@@ -1156,7 +1179,5 @@ export function buildSceneRewritePrompt({ script, audience, domain, creative }) 
 
 קהל היעד והכאב המרכזי: [${who ? `${who}. את הכאב המרכזי תזהה לבד מתוך התסריט` : 'תזהה לבד מתוך התסריט'}]
 
-התסריט / הרעיון הגולמי שלי: [${fillBracket(script, 'כאן מדביקים את התסריט')}]
-
-מילת הקוד להנעה לפעולה (אם יש): [תיקח מההנעה לפעולה שכבר בתסריט. אם יש בה מילת קוד, היא נשארת בדיוק אותו דבר]`;
+התסריט / הרעיון הגולמי שלי: [${fillBracket(script, 'כאן מדביקים את התסריט')}]${SCENE_CODE_LINE}`;
 }

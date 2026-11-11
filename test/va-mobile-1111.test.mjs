@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { fitPose } from '../js/va-maya.js';
+import { buildSceneRewritePrompt } from '../js/video-assistant-content.js';
 
 const VA = readFileSync(new URL('../js/video-assistant.js', import.meta.url), 'utf8');
 const CSS = readFileSync(new URL('../css/style.css', import.meta.url), 'utf8');
@@ -42,4 +43,18 @@ test('11/11: מובייל: לחיצה כפולה לא מגדילה, מקלדת �
   assert.ok(VA.includes('setTimeout(() => syncTypingNow(), 0);'), 'הסרגלים נשארו מוסתרים אחרי ממשיכים');
   assert.doesNotMatch(CSS, /html\.va-typing \.app-header/);
   assert.ok(VA.includes('showToast(pickEncouragement(), { duration: 1500 })'));
+});
+
+test('11/11: פרומפט ההרצאה לפי מה שסומן בהנעה לפעולה', () => {
+  const base = { script: 'תסריט', audience: 'קהל', domain: 'שיווק' };
+  const none = buildSceneRewritePrompt({ ...base, ctaType: 'בלי' });
+  assert.ok(none.includes('בחרו במכוון שלא תהיה הנעה לפעולה'));
+  assert.ok(!none.includes('הנעה לפעולה חלקה'));
+  assert.ok(!none.includes('מילת הקוד'));
+  const typed = buildSceneRewritePrompt({ ...base, ctaType: 'משפך' });
+  assert.ok(typed.includes('סוג ההנעה לפעולה שנבחר לסרטון הזה: משפך'));
+  assert.ok(typed.includes('כמו המשך טבעי'));
+  const plain = buildSceneRewritePrompt(base);
+  assert.ok(plain.includes('הנעה לפעולה חלקה') && plain.includes('מילת הקוד'));
+  assert.ok(!plain.includes('${'));
 });

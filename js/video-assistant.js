@@ -2992,7 +2992,7 @@ async function renderScratchScene() {
   const [audience, domain] = await Promise.all([myAudience().catch(() => ''), myDomain().catch(() => '')]);
   if (t !== renderSeq || state.screen !== 'scratch-scene') return;
   const creative = creativeNow();
-  const prompt = buildSceneRewritePrompt({ script, audience, domain, creative });
+  const prompt = buildSceneRewritePrompt({ script, audience, domain, ctaType: state.ctaType, creative });
   seedDraft('va-scratch-scene-input', state.sceneRewrite);
   cosmicCard(`
     <h2>התסריט נשמע כמו הרצאה?</h2>
