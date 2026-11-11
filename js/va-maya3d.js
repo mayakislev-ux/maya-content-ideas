@@ -99,10 +99,10 @@ async function load() {
 function frame(r, w, h) {
   r.renderer.setSize(w, h, false);
   r.camera.aspect = w / h;
-  const fitH = 0.95;
+  const fitH = 0.86;
   const d = (fitH / 2) / Math.tan(r.THREE.MathUtils.degToRad(r.camera.fov) / 2);
-  r.camera.position.set(0, 1.36, d);
-  r.camera.lookAt(0, 1.33, 0);
+  r.camera.position.set(0, 1.42, d);
+  r.camera.lookAt(0, 1.4, 0);
   r.camera.updateProjectionMatrix();
 }
 
@@ -168,8 +168,9 @@ export async function mountMaya3d(fig, { onTap } = {}) {
   if (!r || failed || !fig.isConnected) return false;
   const canvas = r.renderer.domElement;
   if (canvas.parentNode !== fig) fig.prepend(canvas);
-  const w = 92;
-  const h = 118;
+  /* 11/11/2026 (מאיה: "קטנה מדי, וחתוכה מעל הריבוע"): גדולה יותר, ויוצאת מתוך הכרטיס */
+  const w = 130;
+  const h = 160;
   frame(r, w, h);
   canvas.style.width = `${w}px`;
   canvas.style.height = `${h}px`;

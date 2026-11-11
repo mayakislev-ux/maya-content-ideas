@@ -9403,3 +9403,15 @@ body.va-stage-on #video-assistant-view .va-maya { opacity: 0; transition: opacit
     background: #fff; display: grid; place-items: center; font-size: 13px; line-height: 1; box-shadow: 0 3px 8px rgba(5,15,50,.3); pointer-events: none;
   }
 }
+
+
+/* 11/11/2026 (מאיה, אייפון: "הדמות לא יוצאת מתוך הריבוע הלבן אלא חתוכה מעל,
+   וקטנה מדי"): גדולה יותר, ויושבת על הקצה העליון של הכרטיס כך שהחיתוך של
+   המותניים נופל בדיוק על הקצה, כאילו היא יוצאת מתוכו. זזה עם הכרטיס. */
+@media (max-width: 720px) {
+  #video-assistant-view.has-maya.has-maya3d > #video-assistant-screen { padding-top: 160px; }
+  #video-assistant-view .va-maya.va-maya--head.is-3d { position: absolute; top: 0; left: 16px; right: auto; width: 0; height: 0; }
+  #video-assistant-view .va-maya.va-maya--head.is-3d .va-maya3d { top: -160px; left: 0; filter: none; }
+  #video-assistant-view .va-maya.va-maya--head.is-3d .va-maya-bubble { top: -150px; left: 134px; max-width: calc(100vw - 180px); }
+  #video-assistant-view .va-maya.va-maya--head.is-3d .va-hanukkiah { top: -44px; left: 140px; right: auto; }
+}
