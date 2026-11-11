@@ -271,10 +271,13 @@ export function mountMaya(card, screen) {
 function mountFigure(card, pose) {
   const head = isHeadMode();
   const fig = document.createElement('div');
-  fig.className = head ? 'va-maya va-maya--head' : `va-maya va-maya--${pose}`;
+  const shown = outfitPose(pose);
+  const cls = shown === pose ? pose : 'hug';
+  fig.className = head ? 'va-maya va-maya--head' : `va-maya va-maya--${cls}`;
   fig.setAttribute('aria-hidden', 'true');
+  if (head && currentOutfit) fig.dataset.outfit = OUTFITS[currentOutfit];
   const img = document.createElement('img');
-  img.src = mayaSrc(head ? 'head' : pose);
+  img.src = mayaSrc(head ? 'head' : shown);
   img.alt = head ? 'מאיה' : (ALT[pose] || 'מאיה');
   img.decoding = 'async';
   img.draggable = false;
@@ -402,8 +405,9 @@ export function setMayaPose(pose) {
   if (fig.classList.contains(`va-maya--${pose}`)) return;
   const img = fig.querySelector('img');
   const waiting = fig.classList.contains('is-wait');
-  fig.className = `va-maya va-maya--${pose}`;
-  img.src = mayaSrc(pose);
+  const shown = outfitPose(pose);
+  fig.className = `va-maya va-maya--${shown === pose ? pose : 'hug'}`;
+  img.src = mayaSrc(shown);
   img.alt = ALT[pose] || 'מאיה';
   /* גם אם הקודמת עוד לא הופיעה: מחכים מחדש, לתמונה החדשה */
   void waiting;
@@ -706,6 +710,31 @@ let person = { first: '', pronoun: '' };
 export function setMayaPerson(profile) {
   const p = profile || {};
   person = { first: String(p.name || '').trim().split(/\s+/)[0] || '', pronoun: p.pronoun || '' };
+  const o = outfitFor(p.videoAssistantDomain);
+  if (o !== currentOutfit) {
+    currentOutfit = o;
+    try { localStorage.setItem(OUTFIT_KEY, o); } catch { /* בלי אחסון */ }
+  }
+}
+
+/* 11/11/2026 (מאיה: "היא מתלבשת לפי התחום של הלקוחה. וואו"): לפי התחום
+   מהפרופיל. במחשב כל התלבושת, בטלפון מדבקה קטנה ליד הראש. */
+const OUTFIT_KEY = 'moach.mayaOutfit';
+export const OUTFITS = { beauty: '💄', fitness: '🏋️', therapy: '📓', business: '💼', design: '📐' };
+export function outfitFor(domain) {
+  const d = String(domain || '');
+  if (d.includes('יופי') || d.includes('קוסמטיקה')) return 'beauty';
+  if (d.includes('כושר') || d.includes('תזונה')) return 'fitness';
+  if (d.includes('נפשית') || d.includes('טיפול') || d.includes('רוח')) return 'therapy';
+  if (d.includes('עסקים') || d.includes('יזמות')) return 'business';
+  if (d.includes('עיצוב') || d.includes('נדל') || d.includes('אדריכל')) return 'design';
+  return '';
+}
+let currentOutfit = (() => { try { return (typeof localStorage !== 'undefined' && localStorage.getItem(OUTFIT_KEY)) || ''; } catch { return ''; } })();
+if (!OUTFITS[currentOutfit]) currentOutfit = '';
+/** התמונה שמוצגת לתנוחה: בעמידה הרגילה, התלבושת של התחום */
+export function outfitPose(pose, outfit = currentOutfit) {
+  return outfit && OUTFITS[outfit] && (pose === 'hug' || pose === 'backlean') ? `hug-${outfit}` : pose;
 }
 
 /** השעה בישראל (0-23), לא לפי השעון של המחשב */
@@ -790,7 +819,7 @@ export function registerVisit(prev, today) {
 }
 
 /** מה היא אומרת כשהעוזר נפתח: התגעגעתי > מדליה > חג/עונה > נפנוף */
-export function openingMoment({ gap, streak, isNewDay, hour, day, first }) {
+export function openingMoment({ gap, streak, isNewDay, hour, day, first, lastVideo = null }) {
   /* 11/11/2026: יום זיכרון או צום קודם לכל: נר, בלי חגיגה */
   const hol = holidayFor(day);
   if (hol && hol.quiet) return { pose: hol.pose || 'hug', text: hol.line, quiet: true };
@@ -799,9 +828,30 @@ export function openingMoment({ gap, streak, isNewDay, hour, day, first }) {
   if (isNewDay && gap != null && gap >= 7) return { pose: 'cobweb', text: `חיכיתי לך${first ? `, ${first}` : ''}... 🕸️ יאללה, מנערים את האבק` };
   if (isNewDay && streak >= 3) return { pose: 'medal', text: `${streak} ימים ברצף! מגיעה לך מדליה 🏅` };
   if (hol && hol.pose) return { pose: hol.pose, text: `${greetingText(hour, first)} · ${hol.line}` };
+  const ask = isNewDay ? lastVideoQuestion(lastVideo, day) : '';
+  if (ask) return { pose: 'wave', text: `${(greetingText(hour, first).match(/^[^!?]*[!?]\s*\S+/) || [''])[0]} ${ask}` };
   const season = seasonPose(day);
   if (season) return { pose: season, text: `${greetingText(hour, first)} · ${SEASON_LINE[season]}` };
   return { pose: 'wave', text: greetingText(hour, first) };
+}
+
+/* 11/11/2026 (מאיה: "שהיא מכירה את הלקוחה... זוכרת מה כתבו"): הסרטון
+   האחרון שנבנה נשמר, ובכניסה ביום אחר היא שואלת עליו. */
+export function rememberVideo(title, now = new Date()) {
+  const t = String(title || '').replace(/\s+/g, ' ').trim();
+  if (!t) return;
+  const v = readVisits();
+  v.lastVideo = { title: t.slice(0, 80), day: israelDay(now) };
+  writeVisits(v);
+}
+/** שאלה על הסרטון האחרון, אם נבנה ביום אחר ולפני פחות משבועיים */
+export function lastVideoQuestion(lastVideo, day) {
+  if (!lastVideo || !lastVideo.title || !lastVideo.day || lastVideo.day === day) return '';
+  const gap = daysBetween(lastVideo.day, day);
+  if (!(gap >= 1 && gap <= 14)) return '';
+  const words = lastVideo.title.split(' ');
+  const short = words.length > 6 ? `${words.slice(0, 6).join(' ')}…` : lastVideo.title;
+  return `איך יצא הסרטון "${short}"? כבר צילמת? 🎬`;
 }
 
 /** כמה סרטונים הסתיימו במכשיר הזה */
@@ -834,7 +884,7 @@ function onScreenMoment(screen) {
     visitedScreens.add(screen);
     /* ההודעה נבנית רק כשהיא מוצגת, אחרי שהשם כבר נטען מהפרופיל */
     const t = setTimeout(() => {
-      const m = openingMoment({ ...r, hour: israelHour(now), day: holidayDay(now), first: person.first });
+      const m = openingMoment({ ...r, hour: israelHour(now), day: holidayDay(now), first: person.first, lastVideo: (r.v && r.v.lastVideo) || readVisits().lastVideo || null });
       react(null, m.text, { force: true, ms: 4200, solemn: true });
     }, 900);
     if (t && t.unref) t.unref();

@@ -41,7 +41,7 @@ import {
 } from './reference-transcribe.js';
 import { getProfile, saveProfile } from './user-profile.js';
 import { audienceOptions, pickedAudience, audienceChipLabel, audienceEditUpdate, audienceAddUpdate, audienceDeleteUpdate } from './audience-pick.js';
-import { mountMaya, mayaVisibleFor, setMayaPose, setMayaNod, poseForFormat, setSignText, stageShow, setMayaPerson, videosDone, setMayaNoteSource, quietToday, mayaHidden, setMaya3dAllowed } from './va-maya.js';
+import { mountMaya, mayaVisibleFor, setMayaPose, setMayaNod, poseForFormat, setSignText, stageShow, setMayaPerson, videosDone, setMayaNoteSource, quietToday, mayaHidden, setMaya3dAllowed, rememberVideo } from './va-maya.js';
 import { premiereHtml, premiereTitle, wirePremiere } from './va-premiere.js';
 const mayaOn = () => mayaVisibleFor(auth.currentUser && auth.currentUser.email);
 const BRAND_CONFETTI = ['#263ea8', '#8b98d9', '#ff2ea8', '#ff7ac8', '#ffd23f', '#ffffff'];
@@ -3142,6 +3142,8 @@ function renderSummary() {
   if (!quietToday()) burstConfetti(card, mayaOn() ? BRAND_CONFETTI : undefined);
   if (script) wireCopyButtons(screenEl());
   if (premiere !== null) wirePremiere(screenEl(), premiere, { getCount: videosDone, toast: showToast });
+  /* 11/11/2026: היא זוכרת את הסרטון ושואלת עליו בפעם הבאה */
+  if (mayaOn()) rememberVideo(premiereTitle(state, script));
   wireSummaryTools(screenEl(), {
     getState: () => state,
     patch: (changes) => { state = { ...state, ...changes }; saveAll().catch((err) => console.error('saveSession failed:', err)); },

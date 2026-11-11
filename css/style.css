@@ -9394,3 +9394,12 @@ body.va-stage-on #video-assistant-view .va-maya { opacity: 0; transition: opacit
 @media (max-width: 720px) {
   #video-assistant-view .va-maya.va-maya--head.is-3d { top: calc(var(--va-dock-top, 60px) + 118px); }
 }
+
+
+/* ===== 11/11/2026: תלבושת לפי התחום. בטלפון: מדבקה קטנה ליד הראש ===== */
+@media (max-width: 720px) {
+  #video-assistant-view .va-maya.va-maya--head[data-outfit]:not(.is-3d)::after {
+    content: attr(data-outfit); position: absolute; top: -18px; left: 22px; width: 24px; height: 24px; border-radius: 50%;
+    background: #fff; display: grid; place-items: center; font-size: 13px; line-height: 1; box-shadow: 0 3px 8px rgba(5,15,50,.3); pointer-events: none;
+  }
+}

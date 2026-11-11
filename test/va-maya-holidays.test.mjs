@@ -122,3 +122,22 @@ test('הדמות התלת־ממדית בטלפון: רק אצל מאיה, עם �
   assert.ok(M3.includes('failed = true'), 'בלי גיבוי כשהטעינה נכשלת');
   assert.ok(existsSync(new URL('../assets/maya/maya3d.glb', import.meta.url)));
 });
+
+test('תלבושת לפי התחום, ושאלה על הסרטון הקודם', async () => {
+  const { outfitFor, outfitPose, lastVideoQuestion, openingMoment: om } = await import('../js/va-maya.js');
+  assert.equal(outfitFor('יופי וקוסמטיקה'), 'beauty');
+  assert.equal(outfitFor('בריאות נפשית, טיפול ורוח'), 'therapy');
+  assert.equal(outfitFor('עיצוב, נדל"ן ואדריכלות'), 'design');
+  assert.equal(outfitFor('תוכן אישי וחיבור'), '');
+  assert.equal(outfitPose('hug', 'fitness'), 'hug-fitness');
+  assert.equal(outfitPose('backlean', 'business'), 'hug-business');
+  assert.equal(outfitPose('camera', 'business'), 'camera', 'אביזר של מסך נשאר');
+  for (const k of ['beauty', 'fitness', 'therapy', 'business', 'design']) assert.ok(existsSync(new URL(`../assets/maya/maya-hug-${k}.webp`, import.meta.url)), k);
+  const lv = { title: 'למה אף אחד לא קונה ממך גם כשאת הכי טובה בתחום', day: '2026-11-09' };
+  assert.match(lastVideoQuestion(lv, '2026-11-11'), /^איך יצא הסרטון "למה אף אחד לא קונה ממך…"/);
+  assert.equal(lastVideoQuestion(lv, '2026-11-09'), '', 'באותו יום לא שואלים');
+  assert.equal(lastVideoQuestion(lv, '2026-12-11'), '', 'אחרי חודש כבר לא');
+  const m = om({ gap: 2, streak: 1, isNewDay: true, hour: 19, day: '2026-11-11', first: 'נועה', lastVideo: lv });
+  assert.match(m.text, /^ערב טוב, נועה! 🌆 איך יצא הסרטון/);
+  assert.ok(VA.includes('if (mayaOn()) rememberVideo(premiereTitle(state, script));'));
+});
