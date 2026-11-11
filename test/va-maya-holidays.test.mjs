@@ -126,7 +126,7 @@ test('הדמות התלת־ממדית בטלפון: לכולן, עם ראש עג
 
 test('תלבושת לפי התחום, ושאלה על הסרטון הקודם', async () => {
   const { outfitFor, outfitPose, lastVideoQuestion, openingMoment: om } = await import('../js/va-maya.js');
-  assert.equal(outfitFor('יופי וקוסמטיקה'), 'beauty');
+  assert.equal(outfitFor('יופי וקוסמטיקה'), 'cosmetician');
   assert.equal(outfitFor('בריאות נפשית, טיפול ורוח'), 'therapy');
   assert.equal(outfitFor('עיצוב, נדל"ן ואדריכלות'), 'design');
   assert.equal(outfitFor('תוכן אישי וחיבור'), '');
@@ -192,5 +192,18 @@ test('תלבושת גם לפי מה שהלקוחה כתבה על העסק', asyn
   assert.equal(outfitFor('יועצת עסקית'), 'business');
   assert.equal(outfitFor(''), '');
   assert.equal(outfitFor('עורכת דין לדיני משפחה'), 'business', 'עורכת דין היא לא קוסמטיקה');
-  assert.ok(M.includes('outfitFor(p.videoAssistantDomain) || outfitFor(p.business)'));
+  assert.ok(M.includes('outfitFor(p.business) || outfitFor(p.videoAssistantSubCategory) || outfitFor(p.videoAssistantDomain)'));
+});
+
+test('תלבושת לפי המקצוע המדויק (הלקוחות האמיתיות)', async () => {
+  const { outfitFor, OUTFITS } = await import('../js/va-maya.js');
+  const cases = {
+    'תזונאית': 'nutrition', 'קורס הלחמת ריסים': 'lashes', 'מדריכת ציפורניים': 'nails', 'עיצוב גבות והרמת ריסים וגבות': 'brows',
+    'אקדמיה להרמת ריסים': 'lashes', 'קורס פיגמנט שפתיים': 'pmu', 'העסק שלי הוא בתחום האיפור הקבוע': 'pmu', 'אבחון ושיקום שיער אפרו תלתלים': 'afro',
+    'החלקות שיער': 'hairstraight', 'קוסמטיקאית שעושה טיפולי פנים מומחית לאקנה': 'cosmetician', 'צלמת תדמית': 'photographer',
+    'סטודיו לפילאטיס': 'pilates', 'ציוד טניס': 'tennis', 'נטורטפתיה, עיסוי לימפטי': 'naturopath', 'עיצוב פנים': 'design',
+    'מורה רוחנית- מוכרת קורס תקשור יהודי': 'therapy', 'ייעוץ שיווקי': 'business', 'מיקרובליידינג': 'brows',
+  };
+  for (const [t, k] of Object.entries(cases)) assert.equal(outfitFor(t), k, t);
+  for (const k of Object.keys(OUTFITS)) assert.ok(existsSync(new URL(`../assets/maya/maya-hug-${k}.webp`, import.meta.url)), k);
 });

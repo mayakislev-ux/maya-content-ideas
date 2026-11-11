@@ -721,7 +721,8 @@ export function setMayaPerson(profile) {
   /* 11/11/2026 (ביקורת): לפי הפרופיל שנטען עכשיו, כולל איפוס כשאין */
   myBirthday = /^\d{2}-\d{2}$/.test(String(p.birthday || '')) ? p.birthday : '';
   try { if (myBirthday) localStorage.setItem(BIRTHDAY_KEY, myBirthday); else localStorage.removeItem(BIRTHDAY_KEY); } catch { /* בלי אחסון */ }
-  const o = outfitFor(p.videoAssistantDomain) || outfitFor(p.business);
+  /* מה שהיא כתבה על העסק קודם (הכי מדויק), אחר כך תת־הקטגוריה והתחום */
+  const o = outfitFor(p.business) || outfitFor(p.videoAssistantSubCategory) || outfitFor(p.videoAssistantDomain);
   if (o !== currentOutfit) {
     currentOutfit = o;
     try { localStorage.setItem(OUTFIT_KEY, o); } catch { /* בלי אחסון */ }
@@ -763,21 +764,51 @@ function sessionNow(day) {
 /* 11/11/2026 (מאיה: "היא מתלבשת לפי התחום של הלקוחה. וואו"): לפי התחום
    מהפרופיל. במחשב כל התלבושת, בטלפון מדבקה קטנה ליד הראש. */
 const OUTFIT_KEY = 'moach.mayaOutfit';
-export const OUTFITS = { beauty: '💄', fitness: '🏋️', therapy: '📓', business: '💼', design: '📐' };
+/* 11/11/2026 (מאיה: "שהלבוש באמת מתאים לכל תחום... הלנה תזונאית קיבלה לבוש של
+   מאמנת כושר ולא תזונאית עם צלחת, ומור חי מדריכת ריסים קיבלה מברשת איפור"):
+   תלבושת לכל מקצוע שקיים אצל הלקוחות, עם הכלי שלו ביד. */
+export const OUTFITS = {
+  nails: '💅', brows: '✏️', lashes: '👁️', pmu: '💋', cosmetician: '🧴', hairstraight: '💇‍♀️', afro: '🌀',
+  photographer: '📸', pilates: '🧘‍♀️', tennis: '🎾', nutrition: '🥗', naturopath: '🌿',
+  beauty: '💄', fitness: '🏋️', therapy: '📓', business: '💼', design: '📐',
+};
 /* 11/11/2026 (מאיה: "אני על אופק שהיא מתקשרת והיא לא לבושה מותאם"): גם
-   לפי מה שהלקוחה כתבה על העסק במילים שלה, לא רק לפי אחד מששת התחומים */
+   לפי מה שהלקוחה כתבה על העסק במילים שלה. המקצוע שמופיע ראשון בטקסט קובע
+   ("עיצוב גבות והרמת ריסים" = גבות, "אקדמיה להרמת ריסים" = ריסים). */
 const OUTFIT_WORDS = [
-  ['beauty', /יופי|קוסמטי|איפור|מאפר|ציפורנ|גבות|ריסים|שיער|מספרה|ספרית|לק ג'ל|הסרת שיער|אסתטיק|עור הפנים|טיפולי עור|טיפוח|בוטוקס|מניקור|פדיקור/],
-  ['fitness', /כושר|מאמנ|אימונ|פילאטיס|יוגה|ריצה|תזונ|דיאט|ספורט|חדר כושר|קרוספיט|הרזיה/],
-  ['therapy', /נפשית|טיפול|מטפל|פסיכו|רגשי|רוחני|תקשור|אסטרולוג|נומרולוג|קלפ|טארוט|מדיטצי|ריפוי|הילינג|רייקי|דיקור|נטורופת|רפלקסולוג|NLP|דולה|הדרכת הורים|(^|[\s,])ורוח/i],
-  ['design', /עיצוב|מעצב|אדריכל|נדל|תיווך|מתווכ|הום סטיילינג|שיפוצ|אדריכלות/],
+  ['pmu', /ה?איפור ה?קבוע|פיגמנט|טאטו גבות|הצללת שפתיים/],
+  ['brows', /גבות|מיקרובליידינג|מיקרו בליידינג/],
+  ['lashes', /ריסים/],
+  ['nails', /ציפורנ|מניקור|פדיקור|לק ג'ל|בניית ציפורניים/],
+  ['hairstraight', /החלק/],
+  ['afro', /אפרו|תלתל/],
+  ['cosmetician', /קוסמטיק|טיפולי פנים|טיפול פנים|אקנה|עור הפנים|טיפולי עור|אסתטיק|פילינג/],
+  ['photographer', /צלמת|צלם|צילום/],
+  ['pilates', /פילאטיס|יוגה/],
+  ['tennis', /טניס/],
+  ['nutrition', /תזונ|דיאט|הרזיה/],
+  ['naturopath', /נטורו|נטורט|צמחי מרפא|רפואה משלימה|עיסוי|הומאופת|רפלקסולוג|דיקור/],
+  ['fitness', /כושר|מאמנ|אימונ|ריצה|קרוספיט|ספורט/],
+  ['beauty', /יופי|איפור|מאפר|שיער|מספרה|ספרית|הסרת שיער|טיפוח|בוטוקס/],
+  ['therapy', /נפשית|טיפול|מטפל|פסיכו|רגשי|רוחני|תודעת|תקשור|אסטרולוג|נומרולוג|קלפ|טארוט|מדיטצי|ריפוי|הילינג|רייקי|NLP|דולה|הדרכת הורים|(^|[\s,])ורוח/i],
+  ['design', /עיצוב פנים|מעצבת פנים|מעצב פנים|אדריכל|נדל|תיווך|מתווכ|הום סטיילינג|שיפוצ/],
   ['business', /עסקים|יזמות|יזמ|שיווק|ייעוץ|יועצ|משפט|עורכ.? דין|עו"ד|רואה חשבון|פיננס|ביטוח|מכירות|קואצ'|ליווי עסקי|מנהל/],
 ];
-export function outfitFor(domain) {
-  const d = String(domain || '');
+const GENERAL_OUTFITS = new Set(['beauty', 'fitness', 'therapy', 'business']);
+export function outfitFor(text) {
+  const d = String(text || '');
   if (!d.trim()) return '';
-  const hit = OUTFIT_WORDS.find(([, re]) => re.test(d));
-  return hit ? hit[0] : '';
+  /* מקצוע ספציפי (ריסים, אפרו) תמיד לפני כללי (יופי, כושר, טיפול, עסקים) */
+  const pick = (list) => {
+    let best = '';
+    let at = Infinity;
+    for (const [key, re] of list) {
+      const m = d.match(re);
+      if (m && m.index < at) { at = m.index; best = key; }
+    }
+    return best;
+  };
+  return pick(OUTFIT_WORDS.filter(([k]) => !GENERAL_OUTFITS.has(k))) || pick(OUTFIT_WORDS.filter(([k]) => GENERAL_OUTFITS.has(k)));
 }
 let currentOutfit = (() => { try { return (typeof localStorage !== 'undefined' && localStorage.getItem(OUTFIT_KEY)) || ''; } catch { return ''; } })();
 if (!OUTFITS[currentOutfit]) currentOutfit = '';
