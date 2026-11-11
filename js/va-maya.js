@@ -63,7 +63,14 @@ function setHidden(on) {
   const view = document.getElementById('video-assistant-view');
   if (view && document.querySelector('#va-card .va-maya')) view.classList.toggle('has-maya', !on);
   const btn = document.getElementById('va-maya-toggle');
-  if (btn) { btn.textContent = on ? '👩 להחזיר את מאיה' : '🙈 להסתיר את מאיה'; btn.setAttribute('aria-pressed', String(on)); }
+  /* 11/11/2026: בטלפון רואים רק את האייקון (המילים בתוך span), כדי שכל
+     הכפתורים העליונים ייכנסו בשורה אחת */
+  if (btn) {
+    const label = on ? 'להחזיר את מאיה' : 'להסתיר את מאיה';
+    btn.innerHTML = `${on ? '👩' : '🙈'}<span class="va-maya-toggle-txt"> ${label}</span>`;
+    btn.setAttribute('aria-label', label);
+    btn.setAttribute('aria-pressed', String(on));
+  }
 }
 function ensureToggle() {
   const bar = document.querySelector('#video-assistant-view .va-topbar-end');
@@ -155,11 +162,21 @@ function figEl() {
   return typeof document === 'undefined' ? null : document.querySelector('#va-card .va-maya');
 }
 
+/* 11/11/2026 (מאיה, סרטון מהאייפון): בטלפון ההצצה הגדולה והנדנדה כיסו את
+   הכותרת ואת סרגל ההתקדמות של הכרטיס. בטלפון הן מוחלפות בדמות הקטנה
+   שעומדת מעל הפינה, ולא נוגעת בתוכן. */
+export function fitPose(pose, phone = isPhone()) {
+  return phone && (pose === 'peek' || pose === 'swing') ? 'hug' : pose;
+}
+function isPhone() {
+  try { return Boolean(window.matchMedia && window.matchMedia('(max-width: 960px)').matches); } catch { return false; }
+}
+
 /** מוסיף את הדמות לכרטיס שצויר עכשיו */
 export function mountMaya(card, screen) {
   if (!card || card.querySelector('.va-maya')) return;
   preload();
-  const pose = poseFor(screen);
+  const pose = fitPose(poseFor(screen));
   const fig = document.createElement('div');
   fig.className = `va-maya va-maya--${pose}${lastPose && lastPose !== pose ? ' is-changing' : ''}`;
   fig.setAttribute('aria-hidden', 'true');
@@ -246,6 +263,7 @@ function wireStick() {
 
 /** מחליף תנוחה בלי לצייר את המסך מחדש (פורמט, חכה) */
 export function setMayaPose(pose) {
+  pose = fitPose(pose);
   const fig = figEl();
   if (!fig || !POSES.includes(pose) || fig.classList.contains(`va-maya--${pose}`)) return;
   const img = fig.querySelector('img');

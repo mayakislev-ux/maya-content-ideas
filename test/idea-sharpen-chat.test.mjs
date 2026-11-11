@@ -258,28 +258,27 @@ describe('האריזה הקריאייטיבית במקום הצ׳אט', () => {
     assert.ok(!SHARPEN.includes('va-chat-wrap'), 'תיבת הצ׳אט חזרה למסך');
   });
 
-  test('הפרומפט לג׳מיני הוא הנוסח שלה, מילה במילה', async () => {
-    const { buildCreativePackagingPrompt } = await import('../js/video-assistant-prompts.js');
+  test('הפרומפט לג׳מיני הוא הנוסח שלה, מילה במילה, ועוד שורת ההוק הויזואלי', async () => {
+    const { buildCreativePackagingPrompt, CREATIVE_VISUAL_LINE } = await import('../js/video-assistant-prompts.js');
     assert.equal(
       buildCreativePackagingPrompt({ domain: 'החלקות', audience: 'נשים 30+', idea: 'החלקה. המסר: אפשר בלי לשרוף' }),
       ['התחום שלי זה: החלקות', '', 'קהל היעד שלי זה: נשים 30+', '',
         'זה הרעיון שלי לתוכן והמסר: החלקה. המסר: אפשר בלי לשרוף', '',
         "אני רוצה שתמצא לי 20 פורמטי הנגשה מעניינים ולא בנאליים, לסרטון הזה לרילסים לאינסטגרם ולטיקטוק לפי מה שעובד היום חזק, מאוד מיוחדים/מושכים תשומת לב/מקוריים/חכמים וממירים אבל הכי חשוב? מתאימים לרעיון ולמסר",
-        "הכי חשוב שזה יהיה פורמטים כמה שיותר אותנטיים/ריאליסטיים - משהו שבאמת אנשים צורכים ומתחברים"].join(String.fromCharCode(10)));
+        "הכי חשוב שזה יהיה פורמטים כמה שיותר אותנטיים/ריאליסטיים - משהו שבאמת אנשים צורכים ומתחברים", '',
+        CREATIVE_VISUAL_LINE].join(String.fromCharCode(10)));
+    assert.ok(CREATIVE_VISUAL_LINE.includes('הוק ויזואלי עוצר גלילה'));
   });
 
-  /* 10/11/2026 (מאיה): לפרומפט נכנסים גם נקודת היציאה, המגילה ורשימת
-     הפורמטים עם תיאור לכל אחד. הפסקה המקורית שלה נשארת מילה במילה. */
-  test('הפרומפט לג׳מיני מקבל נקודת יציאה, מגילה ורשימת פורמטים', async () => {
+  /* 11/11/2026 (מאיה): רק המגילה נוספת. בלי רשימת פורמטים ובלי נקודת יציאה. */
+  test('הפרומפט לג׳מיני מקבל את המגילה, ובלי ההסבר על הפורמטים', async () => {
     const { buildCreativePackagingPrompt } = await import('../js/video-assistant-prompts.js');
-    const { FORMATS } = await import('../js/video-assistant-content.js');
     const p = buildCreativePackagingPrompt({ domain: 'החלקות', audience: 'נשים 30+', idea: 'החלקה',
-      startingPoint: 'סיפור לקוח', megillah: 'לקוחה שהגיעה עם שיער שרוף והלכה עם חיוך', formats: FORMATS });
-    assert.ok(p.includes('נקודת היציאה של הרעיון: סיפור לקוח'), 'נקודת היציאה לא בפרומפט');
+      megillah: 'לקוחה שהגיעה עם שיער שרוף והלכה עם חיוך' });
     assert.ok(p.includes('לקוחה שהגיעה עם שיער שרוף והלכה עם חיוך'), 'המגילה לא בפרומפט');
-    assert.ok(p.includes('6-10 שניות'), 'התיאור של תוכן ויזואלי לא בפרומפט');
-    assert.ok(p.includes('- דיבור למצלמה:'), 'רשימת הפורמטים לא בפרומפט');
-    assert.ok(p.includes('הכי חשוב שזה יהיה פורמטים כמה שיותר אותנטיים/ריאליסטיים - משהו שבאמת אנשים צורכים ומתחברים'), 'הפסקה שלה השתנתה');
+    assert.ok(!p.includes('6-10 שניות'), 'ההסבר על הפורמטים חזר');
+    assert.ok(!p.includes('- דיבור למצלמה:'), 'רשימת הפורמטים חזרה');
+    assert.ok(!p.includes('נקודת היציאה'), 'נקודת היציאה חזרה');
   });
 
   test('מסך האריזה: פרומפט להעתקה, תיבה לכיוון שנבחר, ובלי כיוון לא ממשיכים', () => {
@@ -303,7 +302,8 @@ describe('מסך האריזה בלי עומס', () => {
   /* 10/11/2026: נשאלת כאן רק לסשן ישן שעוד אין לו נקודת יציאה */
   test('נקודת היציאה במסך האריזה רק כשעוד לא נבחרה', () => {
     assert.ok(PACK.includes("const withBasics = state.branch !== 'footage' && !state.startingPoint;"), 'נקודת היציאה נשאלת שוב באריזה');
-    assert.ok(PACK.includes("startingPoint: state.startingPoint || ''"), 'נקודת היציאה לא נכנסת לפרומפט');
+    /* 11/11/2026 (מאיה): הפרומפט חזר לנוסח הקודם + מגילה, בלי נקודת היציאה */
+    assert.ok(PACK.includes("megillah: state.rawDump || ''"), 'המגילה לא נכנסת לפרומפט');
   });
   test('נקודת היציאה בניסוח החדש, עם הסבר בפופאפ', () => {
     assert.ok(PACK.includes('מה נקודת היציאה של הרעיון?'));

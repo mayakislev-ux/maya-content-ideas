@@ -92,7 +92,7 @@ window.addEventListener('scroll', () => {
   if (headerScrollTicking) return;
   headerScrollTicking = true;
   requestAnimationFrame(() => {
-    appHeaderEl.classList.toggle('scrolled', window.scrollY > 24);
+    appHeaderEl.classList.toggle('scrolled', window.scrollY > 24 || document.body.dataset.view === 'video-assistant');
     headerScrollTicking = false;
   });
 }, { passive: true });

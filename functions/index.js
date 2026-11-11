@@ -1422,7 +1422,7 @@ exports.recommendFormatsForIdea = onCall({ secrets: [anthropicApiKey], region: '
   const pick = (k, max) => { const v = String(d[k] || '').trim(); assertMaxLength(v, max, k); return v; };
   const packaging = pick('packaging', 3000);
   if (!packaging) throw new HttpsError('invalid-argument', 'חסרה האריזה');
-  const input = { packaging, idea: pick('idea', 2000), message: pick('message', 2000), angle: pick('angle', 200), startingPoint: pick('startingPoint', 200) };
+  const input = { packaging, idea: pick('idea', 2000), message: pick('message', 2000), angle: pick('angle', 200), startingPoint: pick('startingPoint', 200), domain: pick('domain', 200) };
   await enforceRateLimit(request.auth.uid, 'recommendFormatsForIdea');
   const data = await callAnthropic(
     anthropicApiKey.value(),

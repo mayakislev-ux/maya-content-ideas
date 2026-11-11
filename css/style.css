@@ -9203,3 +9203,40 @@ body.va-stage-on #video-assistant-view .va-maya { opacity: 0; transition: opacit
 /* רגע שיא קטן יותר, שלא יכסה את התשובה בצ'אט */
 .va-stage-fig img { height: min(40vh, 330px); }
 .va-maya-bubble { pointer-events: none; }
+
+
+/* ===== 11/11/2026: מובייל, לפי הסרטון של מאיה מהאייפון ===== */
+/* לחיצה כפולה (על הדמות או בכל מקום בעוזר) לא מגדילה את המסך */
+#video-assistant-view, .va-stage-show { touch-action: manipulation; }
+@media (max-width: 720px) {
+  /* הכפתורים העליונים בשורה אחת, במקום שלוש שורות */
+  #video-assistant-view .va-topbar { flex-wrap: nowrap; gap: 6px; }
+  #video-assistant-view .va-topbar .hub-back-btn { flex: 0 0 auto; white-space: nowrap; font-size: 14px; padding-inline: 4px; }
+  #video-assistant-view .va-back-tail { display: none; }
+  #video-assistant-view .va-topbar-end { flex-direction: row; align-items: center; flex-wrap: nowrap; gap: 6px; min-width: 0; flex: 1 1 auto; justify-content: flex-end; }
+  #video-assistant-view .va-topbar-end > button { flex: 0 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-height: 36px; padding: 0 10px; font-size: 13px; }
+  #video-assistant-view .va-topbar .va-aud-chip { max-width: 34vw; }
+  #va-aud-chip-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #video-assistant-view .va-maya-toggle { flex: 0 0 auto !important; padding: 0 9px !important; }
+  #video-assistant-view .va-maya-toggle-txt { display: none; }
+  #video-assistant-view .va-topbar .cosmic-mute-btn { width: 36px; height: 36px; }
+  /* הכרטיס מתחיל למעלה, ולא באמצע המסך עם שטח ריק מעליו */
+  #video-assistant-view > #video-assistant-screen > .cosmic-card { margin: 0 auto auto; }
+  #video-assistant-view.has-maya > #video-assistant-screen { padding-top: 92px; }
+  #video-assistant-view .va-maya,
+  #video-assistant-view .va-maya:not(.va-maya--hug) { top: -90px; height: 90px; width: auto; }
+  #video-assistant-view .va-maya.va-maya--greenscreen,
+  #video-assistant-view .va-maya.va-maya--missyou { height: 90px; width: auto; }
+  /* בזמן כתיבה: הסרגל התחתון יוצא מהמסך. הכותרת נשארת קטנה וקבועה
+     (הסתרה שלה השאירה פס ריק למעלה, לפי סוכן הבדיקה). */
+  html.va-typing .bottom-nav { display: none !important; }
+  /* מגילה: ה-SOS קומפקטי, כדי שתיבת הכתיבה תיראה בלי לגלול */
+  #video-assistant-view .va-sos-big { padding: 10px 12px; gap: 10px; margin: 2px 0 10px; }
+  #video-assistant-view .va-sos-big__text span { display: none; }
+  /* רפרנס: התמונה לא ענקית, ו"ממשיכים" נשאר קרוב */
+  #video-assistant-view .va-ref-thumb { max-height: min(44vh, 360px); object-fit: cover; object-position: top; }
+  /* "התסריט שלך נבנה כאן": בטלפון רק מה שכבר נבנה והשלב של עכשיו */
+  #video-assistant-view .va-build__row.is-wait { display: none; }
+  /* תיבת הרעיון גבוהה יותר */
+  #video-assistant-view #va-idea-sharp { min-height: 120px; }
+}

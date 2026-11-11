@@ -33,6 +33,12 @@ export function showView(name) {
   document.getElementById('add-idea-fab').hidden = !['home', 'archive'].includes(name);
   document.getElementById('embed-back-btn').hidden = !EMBED_VIEWS.includes(name);
   sessionStorage.setItem(LAST_VIEW_KEY, name);
+  /* 11/11/2026 (מאיה, סרטון מהאייפון): בעוזר הכותרת העליונה גדלה וקטנה כל
+     הזמן וכל המסך זז איתה. שם היא נשארת קטנה וקבועה. */
+  document.body.dataset.view = name;
+  if (name !== 'video-assistant') document.documentElement.classList.remove('va-typing');
+  const header = document.querySelector('.app-header');
+  if (header) header.classList.toggle('scrolled', name === 'video-assistant' || window.scrollY > 24);
   // 19/10/2026 (מאיה: לחיצה על "מעקב לקוחות" מתחתית מסך הבית - עמוד ארוך -
   // זרקה אותה לתחתית המסך הבא, לא למעלה). showView מחליפה תוכן בלי לאפס
   // גלילה; כשהמסך הקודם היה ארוך והבא קצר יותר, הדפדפן פשוט הצמיד את

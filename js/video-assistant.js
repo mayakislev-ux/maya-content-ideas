@@ -41,7 +41,7 @@ import {
 } from './reference-transcribe.js';
 import { getProfile, saveProfile } from './user-profile.js';
 import { audienceOptions, pickedAudience, audienceChipLabel, audienceEditUpdate, audienceAddUpdate, audienceDeleteUpdate } from './audience-pick.js';
-import { mountMaya, mayaVisibleFor, setMayaPose, flashMaya, setMayaNod, poseForFormat, setSignText, stageShow, bigFishHook, setMayaPerson } from './va-maya.js';
+import { mountMaya, mayaVisibleFor, setMayaPose, flashMaya, setMayaNod, poseForFormat, setSignText, stageShow, setMayaPerson } from './va-maya.js';
 const mayaOn = () => mayaVisibleFor(auth.currentUser && auth.currentUser.email);
 const BRAND_CONFETTI = ['#263ea8', '#8b98d9', '#ff2ea8', '#ff7ac8', '#ffd23f', '#ffffff'];
 /* 04/11/2026: צ'אט דיוק הרעיון חזר, כקפיצה לצ'אט עצמו ולא כעותק בתוך המסך */
@@ -144,7 +144,7 @@ function dispatch(action) {
   resumedNotice = false;
   const leaving = state.screen;
   const drafts = state.drafts || {};
-  const { scriptId, scriptCreatedAt, audiencePick } = state;
+  const { scriptId, scriptCreatedAt, audiencePick, transcribedPickId } = state;
   state = nextStep(state, action);
   /* חזרה אחורה משחזרת סטייט מלפני שהפריט ב"התסריטים שלי" נוצר. בלי זה
      אותו סרטון היה נשמר שוב כפריט חדש. רק "להתחיל מחדש" פותח פריט חדש. */
@@ -156,6 +156,10 @@ function dispatch(action) {
   /* הקהל שנבחר בכפתור הקהל נשאר גם בחזרה אחורה. רק סרטון חדש חוזר לעיקרי. */
   /* חזרה עד מסך הפתיחה היא התחלה של סרטון אחר, ולכן גם שם חוזרים לעיקרי. */
   if (!fresh && audiencePick !== undefined && state.screen !== 'opening') state = { ...state, audiencePick };
+  /* 11/11/2026 (סוכן בדיקה): חזרה אחורה משחזרת צילום מלפני האישור, ובו עוד
+     אין את הרפרנס שהתמלול שייך אליו. בלי זה חזרה וקדימה על אותו רפרנס
+     מחקה את התמלול ושלחה תמלול שני בתשלום. */
+  if (!fresh && transcribedPickId && state.screen !== 'opening') state = { ...state, transcribedPickId };
   /* מה שהוקלד במסך שעזבנו כבר הפך לסטייט אמיתי, ולכן הטיוטה שלו מיותרת.
      אם היא תישאר, היא עלולה למלא מחדש תיבה שנוקתה בכוונה. */
   /* 11/11/2026 (סוכני בדיקה): בחזרה אחורה הטיוטה של המסך שעוזבים נשארת,
@@ -165,10 +169,22 @@ function dispatch(action) {
   const newVideo = fresh || state.screen === 'opening';
   state.drafts = newVideo ? {}
     : (state.screen === leaving || action.type === 'BACK' ? drafts : clearScreenDrafts(drafts, leaving));
+  /* 11/11/2026: רפרנס שהוגרל ואושר. אם הוא לא הרפרנס שהתמלול במסך הבא שייך
+     אליו (הגרלה חוזרת), הלינק, התמלול והטיוטות של הקודם יורדים, ריצה שעוד
+     בדרך לא תיכנס לתיבה, והתמלול האוטומטי מחכה לרפרנס החדש. */
+  if (action.type === 'ACCEPT_PICK' && leaving === 'pulled-reference' && state.branch === 'reference'
+      && state.pickedReferenceId && state.pickedReferenceId !== state.transcribedPickId) {
+    resetAccurateRuns();
+    state = { ...state, transcript: null, referenceLink: null, openingHook: null,
+      transcribedPickId: state.pickedReferenceId, autoTranscribePending: state.pickedReferenceId,
+      referenceBankId: state.pickedReferenceId };
+    state.drafts = clearScreenDrafts(state.drafts || {}, 'transcribe');
+  }
   saveAll().catch((err) => console.error('saveSession failed:', err));
   // 17/10/2026 (מאיה: "המעבר בין המסכים עושה סחרחורת"): מעבר הפורטל (#32)
   // הוסר - render ישיר, בלי אנימציית scale/blur בין מסכים.
   render();
+  setTimeout(() => syncTypingNow(), 0);
 }
 
 /* שמירה של הסשן, ושל הסרטון כפריט ב"התסריטים שלי". הפריט נוצר ברגע
@@ -555,9 +571,37 @@ function restart() {
 }
 
 // ===== #9: צליל הצלחה + משפט עידוד שלא חוזר על עצמו פעמיים ברצף =====
+let syncTypingNow = () => {};
+/* 11/11/2026 (מאיה, סרטון מהאייפון): כשהמקלדת פתוחה, הכותרת העליונה והסרגל
+   התחתון (בית / רעיונות / עוד) השאירו חלון קטן לכתיבה. בזמן כתיבה בעוזר
+   בטלפון שניהם יוצאים מהמסך, וחוזרים כשהמקלדת נסגרת. */
+if (typeof document !== 'undefined') {
+  const typingField = (el) => el && el.closest && el.closest('#video-assistant-view')
+    && (el.tagName === 'TEXTAREA' || (el.tagName === 'INPUT' && !['button', 'checkbox', 'radio', 'file', 'submit'].includes(el.type)));
+  const phone = () => { try { return window.matchMedia('(max-width: 720px)').matches; } catch { return false; } };
+  document.addEventListener('focusin', (e) => {
+    if (typingField(e.target) && phone()) document.documentElement.classList.add('va-typing');
+  });
+  /* באייפון לחיצה על כפתור לא מוציאה פוקוס, ותיבה שנמחקה ברינדור לא שולחת
+     focusout. לכן בודקים גם אחרי כל מעבר מסך וכשהמקלדת נסגרת. */
+  const sync = () => {
+    const el = document.activeElement;
+    if (!typingField(el) || !el.isConnected || !phone()) document.documentElement.classList.remove('va-typing');
+  };
+  syncTypingNow = sync;
+  document.addEventListener('focusout', () => setTimeout(sync, 60));
+  /* באנדרואיד כפתור החזרה סוגר את המקלדת בלי להוציא פוקוס */
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', () => setTimeout(() => {
+    if (window.visualViewport.height > window.innerHeight * 0.85) document.documentElement.classList.remove('va-typing');
+    else sync();
+  }, 60));
+}
+
 function celebrate() {
   playSuccess();
-  showToast(pickEncouragement());
+  /* 11/11/2026 (מאיה, סרטון מהאייפון): העידוד ישב 5 שניות על הכפתורים של
+     המסך הבא. עכשיו הוא קצר. */
+  showToast(pickEncouragement(), { duration: 1500 });
 }
 
 // ===== #28: זוהר הכרטיס לפי התחום, מופעל ברגע שהתחום ידוע =====
@@ -1154,6 +1198,8 @@ function formatRecInput(packaging = state.packaging, startingPoint = state.start
     message: String(state.ideaPunchline || ''),
     angle: String(state.ideaAngle || ''),
     startingPoint: String(startingPoint || ''),
+    /* 11/11/2026: התחום קובע אם טקסט דינמי מתאים (ביוטי כן, ערך מקצועי כבד לא) */
+    domain: String((domainInfo && domainInfo.domain) || myBusiness || '').slice(0, 200),
   };
 }
 
@@ -1459,7 +1505,7 @@ async function renderPulledReference() {
     <h2>🎲 הרפרנס הזה</h2>
     ${video.thumbnailUrl
       ? `<button type="button" id="va-ref-preview-btn" style="all:unset;cursor:pointer;display:block">
-          <img src="${escapeHtml(video.thumbnailUrl)}" alt="תצוגה מקדימה" style="width:100%;border-radius:14px;margin-bottom:14px">
+          <img class="va-ref-thumb" src="${escapeHtml(video.thumbnailUrl)}" alt="תצוגה מקדימה" style="width:100%;border-radius:14px;margin-bottom:14px">
         </button>`
       : `<button type="button" class="cosmic-btn" id="va-ref-preview-btn" style="margin-bottom:14px">לפתוח תצוגה מקדימה</button>`}
     <div class="cosmic-btn-row">
@@ -1653,6 +1699,37 @@ function renderTranscribe() {
     dispatch({ type: 'CONFIRM_DONE' });
   });
   wireAccurateTranscribe();
+  autoTranscribePicked();
+}
+
+/* 11/11/2026 (מאיה: "ברגע שאני מבקשת ממנו שיגריל, במסך הבא הוא אמור כבר
+   לשים את הלינק לסרטון ולתמלל"). רפרנס שהוגרל: הלינק נכנס לבד והתמלול
+   האוטומטי רץ לבד, פעם אחת לכל רפרנס, ורק כשהתיבה עוד ריקה. */
+async function autoTranscribePicked() {
+  const id = state.pickedReferenceId;
+  if (state.branch !== 'reference' || !id || state.autoTranscribePending !== id) return;
+  /* נצרך מיד (לפני כל await): רינדור כפול, רענון או חזרה למסך לא שולחים
+     קריאה שנייה בתשלום. נשמר עם הסשן. */
+  state.autoTranscribePending = null;
+  saveAll().catch((err) => console.error('saveSession failed:', err));
+  if (bankDescribeMode() || accurateBusy) return;
+  if (!videosCache) {
+    try { videosCache = await fetchInspirationBank(); } catch (e) { return; }
+  }
+  if (state.screen !== 'transcribe' || state.pickedReferenceId !== id || accurateBusy) return;
+  const video = videosCache.find((v) => v.id === id);
+  if (!video || !video.url || !linkPlatform(video.url)) return;
+  const linkEl = document.getElementById('va-reference-link');
+  const box = document.getElementById('va-transcript-input');
+  if (!linkEl || !box || box.value.trim()) return;
+  const typed = linkEl.value.trim();
+  if (typed && typed !== video.url) return;
+  if (!typed) {
+    linkEl.value = video.url;
+    linkEl.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+  state.referenceLink = video.url;
+  runAccurate({ link: video.url });
 }
 
 /* 04/11/2026 (מאיה): "✨ תמלול מדויק". ג'מיני צופה בסרטון עצמו, מהלינק או
@@ -1907,10 +1984,12 @@ async function ensureOpeningHook() {
    אצלי שיווק, זה לא מילא"). domainInfo נטען רק במסלולי הרפרנס, ולכן
    במסלול "יש לי רעיון" הוא היה ריק והפרומפט יצא עם [התחום שלי]. התחום
    שכל אחת כתבה בפרופיל (חובה לפני שנכנסים לעוזר) הוא הגיבוי. */
+let myBusiness = '';
 async function myDomain() {
   if (domainInfo && domainInfo.domain) return domainInfo.domain;
   const profile = await getProfile();
-  return profile && profile.business ? profile.business : '';
+  myBusiness = profile && profile.business ? profile.business : '';
+  return myBusiness;
 }
 
 /* קהל היעד יושב בפרופיל, וכל בונה פרומפט צריך אותו. פעם אחת כאן,
@@ -2439,7 +2518,7 @@ async function renderCreativePackaging() {
   const audience = await myAudience();
   const domain = await myDomain();
   if (t !== renderSeq) return;
-  const prompt = buildCreativePackagingPrompt({ domain, audience, idea, startingPoint: state.startingPoint || '', megillah: state.rawDump || '', formats: FORMATS });
+  const prompt = buildCreativePackagingPrompt({ domain, audience, idea, megillah: state.rawDump || '' });
   if (state.screen === 'creative-packaging') seedDraft('va-packaging-input', state.packaging);
   /* 28/10/2026 (מאיה: "תעשי מה שחכם ונוח יותר"). נקודת היציאה הייתה
      מסך נפרד בין האריזה לפורמט, ועכשיו היא יושבת כאן. 29/10/2026 (מאיה):
@@ -2753,8 +2832,7 @@ async function renderScratchHook() {
       showToast('צריך להדביק את ההוק שבחרת קודם');
       return;
     }
-    /* שלב 3: הדג הענק, וההוק כתוב עליו */
-    if (mayaOn()) bigFishHook(hook);
+    /* 11/11/2026 (מאיה): הדמות עם הדג על כל המסך נראתה מוזר, ירדה */
     dispatch({ type: 'SCRATCH_HOOK_CHOSEN', hook });
   });
 }

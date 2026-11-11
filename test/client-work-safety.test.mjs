@@ -354,5 +354,5 @@ test('8. סיור ההיכרות של מנוי רפרנסים לא מצביע ע
 test('8. אין יותר הפניה לכרטיס הכלי שהוסר ב-26/10', () => {
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.doesNotMatch(html, /כרטיס נפרד ב"כלי עבודה"/);
-  assert.match(html, /class="va-back-refs">חזרה למאגר ההשראה</);
+  assert.match(html, /class="va-back-refs">חזרה<span class="va-back-tail"> למאגר ההשראה</);
 });
