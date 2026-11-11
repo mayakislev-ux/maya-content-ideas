@@ -19,6 +19,7 @@ export const POSES = ['hug', 'dance', 'camera', 'mic', 'chairs', 'coffee', 'fish
    (בלי החלפת תנוחה). וכפתור להסתיר אותה. */
 import { holidayFor, hanukkiahSvg, addDays } from './va-holidays.js';
 import { mountMaya3d, wireMaya3dLook, maya3dHop, maya3dFailed } from './va-maya3d.js';
+import { loadSessions, sessionMoment, sessionLine, cachedSessions } from './va-sessions.js';
 
 /* 11/11/2026: הדמות התלת־ממדית בטלפון. בינתיים רק אצל מאיה (העוזר מדליק). */
 let maya3dAllowed = false;
@@ -160,7 +161,7 @@ const ALT = {
   laugh: 'מאיה צוחקת',
 };
 /* 11/11/2026: חגים, קורי עכביש ושטיח אדום */
-const HOLIDAY_POSES = ['cobweb', 'oscar', 'candle', 'yomkippur', 'roshhashana', 'sukkot', 'simchattorah', 'tubishvat',
+const HOLIDAY_POSES = ['birthday', 'cobweb', 'oscar', 'candle', 'yomkippur', 'roshhashana', 'sukkot', 'simchattorah', 'tubishvat',
   'purim', 'pesach', 'atzmaut', 'lagbaomer', 'shavuot', 'tubeav', 'christmas', 'newyear'];
 
 let lastPose = null;
@@ -238,6 +239,8 @@ function preloadPoses() {
 
 let intendedPose = 'hug';
 let greetR = null;
+/* התנוחה שבה היא הופיעה בברכה (רק אז מותר להתאים אותה לטקסט) */
+let greetPose = null;
 
 /** מוסיף את הדמות לכרטיס שצויר עכשיו */
 export function mountMaya(card, screen) {
@@ -251,12 +254,15 @@ export function mountMaya(card, screen) {
     const now = new Date();
     greetR = registerVisit(readVisits(), israelDay(now));
     writeVisits(greetR.v);
-    pose = openingMoment({ ...greetR, hour: israelHour(now), day: holidayDay(now), first: '' }).pose;
+    pose = openingMoment({ ...greetR, hour: israelHour(now), day: holidayDay(now), today: israelDay(now), first: '', birthday: myBirthday, session: sessionNow(israelDay(now)) }).pose;
+    greetPose = pose;
   }
   /* תנוחת הברכה היא התנוחה של המסך הזה, כדי ששינוי גודל חלון לא יחליף אותה */
   intendedPose = pose;
   /* 11/11/2026: בערב הבכורה היא כבר על השטיח האדום, בלי דמות שנייה */
   if (card.querySelector('.va-premiere')) {
+    const v = card.closest('#video-assistant-view');
+    if (v) v.classList.remove('has-maya3d');
     onScreenMoment(screen);
     /* ציור חוזר של הסיכום: המספר נשאר על הלוחית */
     const prem = card.querySelector('.va-premiere-count');
@@ -709,12 +715,38 @@ let person = { first: '', pronoun: '' };
 /** הפרופיל של מי שמשתמשת (נקרא מהעוזר) */
 export function setMayaPerson(profile) {
   const p = profile || {};
-  person = { first: String(p.name || '').trim().split(/\s+/)[0] || '', pronoun: p.pronoun || '' };
+  person = { first: String(p.name || '').trim().split(/\s+/)[0] || '', pronoun: p.pronoun || '', cohort: person.cohort || '' };
+  /* 11/11/2026 (ביקורת): לפי הפרופיל שנטען עכשיו, כולל איפוס כשאין */
+  myBirthday = /^\d{2}-\d{2}$/.test(String(p.birthday || '')) ? p.birthday : '';
+  try { if (myBirthday) localStorage.setItem(BIRTHDAY_KEY, myBirthday); else localStorage.removeItem(BIRTHDAY_KEY); } catch { /* בלי אחסון */ }
   const o = outfitFor(p.videoAssistantDomain);
   if (o !== currentOutfit) {
     currentOutfit = o;
     try { localStorage.setItem(OUTFIT_KEY, o); } catch { /* בלי אחסון */ }
   }
+}
+
+/* 11/11/2026: יום ההולדת (MM-DD) והמחזור, כדי שהיא תחגוג ותדע מתי נפגשים */
+const BIRTHDAY_KEY = 'moach.mayaBirthday';
+let myBirthday = (() => { try { return (typeof localStorage !== 'undefined' && localStorage.getItem(BIRTHDAY_KEY)) || ''; } catch { return ''; } })();
+export function mayaBirthday() { return myBirthday; }
+export function setMayaBirthday(mmdd) {
+  if (!/^\d{2}-\d{2}$/.test(String(mmdd || ''))) return;
+  myBirthday = mmdd;
+  try { localStorage.setItem(BIRTHDAY_KEY, mmdd); } catch { /* בלי אחסון */ }
+}
+/* הלוח והמחזור מהמכשיר מיד, ורענון ברקע (הברכה נבנית אחרי פחות משנייה) */
+const COHORT_KEY = 'moach.mayaCohort';
+let sessionsList = typeof localStorage !== 'undefined' ? cachedSessions() : null;
+person.cohort = (() => { try { return (typeof localStorage !== 'undefined' && localStorage.getItem(COHORT_KEY)) || ''; } catch { return ''; } })();
+export function setMayaCohort(cohort) {
+  person.cohort = String(cohort || '');
+  try { if (person.cohort) localStorage.setItem(COHORT_KEY, person.cohort); else localStorage.removeItem(COHORT_KEY); } catch { /* בלי אחסון */ }
+  if (!person.cohort || typeof fetch === 'undefined') return;
+  loadSessions(israelDay()).then((l) => { sessionsList = l; }).catch(() => {});
+}
+function sessionNow(day) {
+  return sessionsList && person.cohort ? sessionMoment(sessionsList, person.cohort, day, addDays) : null;
 }
 
 /* 11/11/2026 (מאיה: "היא מתלבשת לפי התחום של הלקוחה. וואו"): לפי התחום
@@ -725,7 +757,7 @@ export function outfitFor(domain) {
   const d = String(domain || '');
   if (d.includes('יופי') || d.includes('קוסמטיקה')) return 'beauty';
   if (d.includes('כושר') || d.includes('תזונה')) return 'fitness';
-  if (d.includes('נפשית') || d.includes('טיפול') || d.includes('רוח')) return 'therapy';
+  if (d.includes('נפשית') || d.includes('טיפול') || /(^|[\s,])ורוח|רוחני/.test(d)) return 'therapy';
   if (d.includes('עסקים') || d.includes('יזמות')) return 'business';
   if (d.includes('עיצוב') || d.includes('נדל') || d.includes('אדריכל')) return 'design';
   return '';
@@ -819,14 +851,20 @@ export function registerVisit(prev, today) {
 }
 
 /** מה היא אומרת כשהעוזר נפתח: התגעגעתי > מדליה > חג/עונה > נפנוף */
-export function openingMoment({ gap, streak, isNewDay, hour, day, first, lastVideo = null }) {
+export function openingMoment({ gap, streak, isNewDay, hour, day, first, lastVideo = null, birthday = '', session = null, today = '' }) {
   /* 11/11/2026: יום זיכרון או צום קודם לכל: נר, בלי חגיגה */
   const hol = holidayFor(day);
   if (hol && hol.quiet) return { pose: hol.pose || 'hug', text: hol.line, quiet: true };
+  const name = first ? `, ${first}` : '';
+  /* 11/11/2026: יום הולדת, ואז מפגש היום */
+  /* יום ההולדת לפי התאריך האזרחי של היום, לא לפי היום העברי שמתחיל בערב */
+  if (birthday && String(today || day).slice(5) === birthday) return { pose: 'birthday', text: `יום הולדת שמח${name}! 🎂 שנה של סרטונים שעפים` };
+  if (session && session.when === 'today') return { pose: 'wave', text: `${greetingText(hour, first).match(/^[^!?]*[!?]/)[0]} ${sessionLine(session, hour)}` };
   /* 11/11/2026 (מאיה: "קורי עכביש. חזק"): מי שנעלמה לשבוע מוצאת אותה
      יושבת מכוסה בקורים */
   if (isNewDay && gap != null && gap >= 7) return { pose: 'cobweb', text: `חיכיתי לך${first ? `, ${first}` : ''}... 🕸️ יאללה, מנערים את האבק` };
   if (isNewDay && streak >= 3) return { pose: 'medal', text: `${streak} ימים ברצף! מגיעה לך מדליה 🏅` };
+  if (session) return { pose: 'wave', text: `${greetingText(hour, first).match(/^[^!?]*[!?]/)[0]} ${sessionLine(session)}` };
   if (hol && hol.pose) return { pose: hol.pose, text: `${greetingText(hour, first)} · ${hol.line}` };
   const ask = isNewDay ? lastVideoQuestion(lastVideo, day) : '';
   if (ask) return { pose: 'wave', text: `${(greetingText(hour, first).match(/^[^!?]*[!?]\s*\S+/) || [''])[0]} ${ask}` };
@@ -884,7 +922,11 @@ function onScreenMoment(screen) {
     visitedScreens.add(screen);
     /* ההודעה נבנית רק כשהיא מוצגת, אחרי שהשם כבר נטען מהפרופיל */
     const t = setTimeout(() => {
-      const m = openingMoment({ ...r, hour: israelHour(now), day: holidayDay(now), first: person.first, lastVideo: (r.v && r.v.lastVideo) || readVisits().lastVideo || null });
+      const m = openingMoment({ ...r, hour: israelHour(now), day: holidayDay(now), today: israelDay(now), first: person.first, lastVideo: (r.v && r.v.lastVideo) || readVisits().lastVideo || null, birthday: myBirthday, session: sessionNow(israelDay(now)) });
+      /* התנוחה נקבעה ברגע ההופעה, לפני שהפרופיל נטען. אם הברכה שונה (יום
+         הולדת, קורי עכביש), התמונה מתאימה את עצמה לטקסט */
+      if (greetPose && m.pose && m.pose !== greetPose && lastPose === greetPose && POSES.includes(m.pose)) setMayaPose(m.pose);
+      greetPose = null;
       react(null, m.text, { force: true, ms: 4200, solemn: true });
     }, 900);
     if (t && t.unref) t.unref();

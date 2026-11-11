@@ -39,9 +39,9 @@ import { uploadForTranscription, discardUpload } from './transcribe-upload.js';
 import {
   linkPlatform, uploadProblem, composeTranscript, accurateNotice, accurateNoticeText, transcribeErrorInfo,
 } from './reference-transcribe.js';
-import { getProfile, saveProfile } from './user-profile.js';
+import { getProfile, getMyCohort, saveProfile } from './user-profile.js';
 import { audienceOptions, pickedAudience, audienceChipLabel, audienceEditUpdate, audienceAddUpdate, audienceDeleteUpdate } from './audience-pick.js';
-import { mountMaya, mayaVisibleFor, setMayaPose, setMayaNod, poseForFormat, setSignText, stageShow, setMayaPerson, videosDone, setMayaNoteSource, quietToday, mayaHidden, setMaya3dAllowed, rememberVideo } from './va-maya.js';
+import { mountMaya, mayaVisibleFor, setMayaPose, setMayaNod, poseForFormat, setSignText, stageShow, setMayaPerson, videosDone, setMayaNoteSource, quietToday, mayaHidden, setMaya3dAllowed, rememberVideo, setMayaCohort, mayaBirthday, setMayaBirthday } from './va-maya.js';
 import { premiereHtml, premiereTitle, wirePremiere } from './va-premiere.js';
 const mayaOn = () => mayaVisibleFor(auth.currentUser && auth.currentUser.email);
 const BRAND_CONFETTI = ['#263ea8', '#8b98d9', '#ff2ea8', '#ff7ac8', '#ffd23f', '#ffffff'];
@@ -49,7 +49,7 @@ const BRAND_CONFETTI = ['#263ea8', '#8b98d9', '#ff2ea8', '#ff7ac8', '#ffd23f', '
 import { startIdeaChatFromAssistant } from './idea-chat.js';
 import { showView } from './view-router.js';
 import { auth } from './firebase-init.js';
-import { actsAsOwner } from './client-view.js';
+import { actsAsOwner, isClientView } from './client-view.js';
 import { duplicationText, duplicationNotice, readyForHook } from './reference-duplication.js';
 import { showToast } from './toast.js';
 import { serverErrorText } from './server-error.js';
@@ -539,7 +539,10 @@ function cosmicCard(innerHtml, { showProgress = true } = {}) {
     if (state.screen === 'opening') mayaPersonLoaded = false;
     if (!mayaPersonLoaded) {
       mayaPersonLoaded = true;
-      getProfile().then(setMayaPerson).catch(() => {});
+      /* בתצוגת לקוחה: בלי יום ההולדת שלה (שלא יישאר במכשיר של מאיה) */
+      getProfile().then((p) => setMayaPerson(isClientView() ? { ...(p || {}), birthday: '' } : p)).catch(() => {});
+      /* 11/11/2026: המחזור, כדי שהיא תדע מתי נפגשים */
+      getMyCohort().then(setMayaCohort).catch(() => {});
       /* 11/11/2026: ההערה בקול של מאיה (השרת mayaNote) */
       setMayaNoteSource(async ({ screen, text }) => {
         const profile = (await getProfile()) || {};
@@ -3107,6 +3110,49 @@ function elapsedSinceStart() {
   return formatElapsed(Date.now() - sessionStartTs);
 }
 
+/* 11/11/2026 (מאיה: "שהיא מכירה את הלקוחה... יום הולדת"): בסוף סרטון, פעם
+   אחת, היא שואלת מתי יום ההולדת. נשמר בפרופיל, וביום עצמו היא מחכה עם עוגה. */
+const BIRTHDAY_ASKED = 'moach.birthdayAsked';
+function wireBirthdayAsk(card) {
+  /* לא בתצוגת לקוחה של מאיה: השמירה הייתה נכנסת לפרופיל של הלקוחה */
+  if (!card || mayaBirthday() || isClientView()) return;
+  try { if (localStorage.getItem(BIRTHDAY_ASKED)) return; } catch { return; }
+  const days = Array.from({ length: 31 }, (_, i) => `<option value="${String(i + 1).padStart(2, '0')}">${i + 1}</option>`).join('');
+  const months = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר']
+    .map((m, i) => `<option value="${String(i + 1).padStart(2, '0')}">${m}</option>`).join('');
+  const box = document.createElement('div');
+  box.className = 'va-bday-ask';
+  box.innerHTML = `<div class="va-bday-q">🎂 רוצה שאחגוג איתך ביום ההולדת? מתי הוא?</div>
+    <div class="va-bday-row">
+      <select aria-label="יום" class="va-bday-d"><option value="">יום</option>${days}</select>
+      <select aria-label="חודש" class="va-bday-m"><option value="">חודש</option>${months}</select>
+      <button type="button" class="cosmic-btn cosmic-btn--primary va-bday-save">שמירה</button>
+      <button type="button" class="cosmic-btn va-bday-no">לא תודה</button>
+    </div>`;
+  const prem = card.querySelector('.va-premiere');
+  if (prem) prem.after(box); else card.appendChild(box);
+  const done = () => { try { localStorage.setItem(BIRTHDAY_ASKED, '1'); } catch { /* בלי אחסון */ } box.remove(); };
+  box.querySelector('.va-bday-no').addEventListener('click', done);
+  box.querySelector('.va-bday-save').addEventListener('click', async () => {
+    const d = box.querySelector('.va-bday-d').value;
+    const m = box.querySelector('.va-bday-m').value;
+    if (!d || !m) { showToast('בוחרים יום וחודש 🙂'); return; }
+    const mmdd = `${m}-${d}`;
+    /* 31 בפברואר וכו': תאריך שלא קיים (29 בפברואר כן) */
+    const real = new Date(Date.UTC(2024, Number(m) - 1, Number(d)));
+    if (real.getUTCMonth() !== Number(m) - 1) { showToast('התאריך הזה לא קיים 🙂'); return; }
+    try {
+      await saveProfile({ birthday: mmdd });
+      setMayaBirthday(mmdd);
+      done();
+      showToast('נשמר! ביום ההולדת אני מחכה עם עוגה 🎂');
+    } catch (err) {
+      console.error('birthday save failed:', err);
+      showToast('לא הצלחתי לשמור. אפשר לנסות שוב');
+    }
+  });
+}
+
 function renderSummary() {
   const steps = buildSummarySteps();
   const stepsHtml = steps.map((s, i) => `<li><span class="cosmic-summary-num">${i + 1}</span><div>${escapeHtml(s)}</div></li>`).join('');
@@ -3145,6 +3191,7 @@ function renderSummary() {
   if (premiere !== null) wirePremiere(screenEl(), premiere, { getCount: videosDone, toast: showToast });
   /* 11/11/2026: היא זוכרת את הסרטון ושואלת עליו בפעם הבאה */
   if (mayaOn()) rememberVideo(premiereTitle(state, script));
+  if (premiere !== null) wireBirthdayAsk(card);
   wireSummaryTools(screenEl(), {
     getState: () => state,
     patch: (changes) => { state = { ...state, ...changes }; saveAll().catch((err) => console.error('saveSession failed:', err)); },

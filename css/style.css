@@ -9415,3 +9415,11 @@ body.va-stage-on #video-assistant-view .va-maya { opacity: 0; transition: opacit
   #video-assistant-view .va-maya.va-maya--head.is-3d .va-maya-bubble { top: -150px; left: 134px; max-width: calc(100vw - 180px); }
   #video-assistant-view .va-maya.va-maya--head.is-3d .va-hanukkiah { top: -44px; left: 140px; right: auto; }
 }
+
+
+/* ===== 11/11/2026: שאלת יום ההולדת בסוף סרטון ===== */
+.va-bday-ask { margin: -6px 0 16px; padding: 12px 14px; border-radius: 14px; background: rgba(255,255,255,.08); border: 1px dashed rgba(255,255,255,.35); }
+.va-bday-q { font-weight: 700; margin-bottom: 8px; }
+.va-bday-row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.va-bday-row select { min-height: 40px; border-radius: 10px; padding: 0 8px; font: inherit; }
+.va-bday-row .cosmic-btn { min-height: 40px; padding: 6px 14px; }

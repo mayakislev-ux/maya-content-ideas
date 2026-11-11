@@ -142,3 +142,43 @@ test('תלבושת לפי התחום, ושאלה על הסרטון הקודם', 
   assert.match(m.text, /^ערב טוב, נועה! 🌆 איך יצא הסרטון/);
   assert.ok(VA.includes('if (mayaOn()) rememberVideo(premiereTitle(state, script));'));
 });
+
+test('ימי מפגש ויום הולדת', async () => {
+  const { parseSessions, sessionMoment, sessionLine, cohortLabel } = await import('../js/va-sessions.js');
+  const { addDays } = await import('../js/va-holidays.js');
+  const { openingMoment: om } = await import('../js/va-maya.js');
+  const csv = 'מחזור,קבוצת_ווטסאפ,chatId_ווטסאפ,תאריך_מפגש,שעה,סוג_מפגש,לינק_זום,מדיה_מצורפת,הערות\n'
+    + 'מחזור 7,"קבוצה, עם פסיק",1@g.us,2027-01-05,10:00,פרונטלי-1,,x.jpg,בני ברק | 10:00-15:00\n'
+    + 'מחזור 7,ק,1@g.us,2027-01-19,10:00,זום-שבועי,https://zoom,x.jpg,זום | 10:00-14:00\n';
+  const list = parseSessions(csv);
+  assert.equal(list.length, 2);
+  assert.equal(list[0].place, 'בני ברק');
+  assert.ok(!('chatId' in list[0]) && !JSON.stringify(list).includes('zoom'), 'קישורים וקבוצות לא נשמרים');
+  assert.equal(cohortLabel('7'), 'מחזור 7');
+  assert.equal(sessionLine(sessionMoment(list, '7', '2027-01-05', addDays)), 'היום נפגשים! ב-10:00 בבני ברק, נתראה 💛');
+  assert.match(sessionLine(sessionMoment(list, 'מחזור 7', '2027-01-18', addDays)), /^מחר נפגשים ב-10:00 בזום/);
+  assert.match(sessionLine(sessionMoment(list, '7', '2027-01-06', addDays)), /^איך היה המפגש אתמול/);
+  assert.equal(sessionMoment(list, '6', '2027-01-05', addDays), null);
+  const s = sessionMoment(list, '7', '2027-01-05', addDays);
+  assert.match(om({ gap: 1, streak: 1, isNewDay: true, hour: 8, day: '2027-01-05', first: 'נועה', session: s }).text, /^בוקר טוב, נועה! היום נפגשים/);
+  const b = om({ gap: 1, streak: 1, isNewDay: true, hour: 8, day: '2027-03-14', first: 'נועה', birthday: '03-14' });
+  assert.equal(b.pose, 'birthday');
+  assert.match(b.text, /יום הולדת שמח, נועה/);
+  assert.ok(existsSync(new URL('../assets/maya/maya-birthday.webp', import.meta.url)));
+  assert.ok(VA.includes('wireBirthdayAsk(card)') && VA.includes("await saveProfile({ birthday: mmdd })"));
+});
+
+test('תיקוני ביקורת: יום הולדת בתאריך האזרחי, מפגש שנגמר, ארוחות', async () => {
+  const { sessionLine } = await import('../js/va-sessions.js');
+  const { openingMoment: om, outfitFor } = await import('../js/va-maya.js');
+  const m = { when: 'today', session: { time: '10:00', kind: 'פרונטלי-1', place: 'בני ברק' } };
+  assert.match(sessionLine(m, 9), /^היום נפגשים/);
+  assert.equal(sessionLine(m, 16), 'איך היה היום במפגש? 🤩');
+  /* 13/3 בערב: היום העברי כבר 14, אבל יום ההולדת (14/3) עוד לא הגיע */
+  assert.notEqual(om({ isNewDay: true, hour: 20, day: '2027-03-14', today: '2027-03-13', first: '', birthday: '03-14' }).pose, 'birthday');
+  assert.equal(om({ isNewDay: true, hour: 20, day: '2027-03-15', today: '2027-03-14', first: '', birthday: '03-14' }).pose, 'birthday');
+  assert.equal(outfitFor('ארוחות בריאות'), '');
+  assert.equal(outfitFor('בריאות נפשית, טיפול ורוח'), 'therapy');
+  assert.ok(VA.includes("if (!card || mayaBirthday() || isClientView()) return;"), 'שאלת יום הולדת בתצוגת לקוחה');
+  assert.ok(VA.includes('real.getUTCMonth() !== Number(m) - 1'), '31 בפברואר נשמר');
+});
