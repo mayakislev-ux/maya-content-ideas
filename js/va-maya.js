@@ -30,9 +30,9 @@ const HIDE_KEY = 'moach.mayaHidden';
 export const MAYA_V = '3';
 export function mayaSrc(pose) { return `assets/maya/maya-${pose}.webp?v=${MAYA_V}`; }
 
-/* עד שמאיה מאשרת את הדמות במסך האמיתי, רק היא רואה אותה. לפתוח לכולן:
-   FOR_ALL = true. */
-export const FOR_ALL = false;
+/* 11/11/2026 (מאיה: "פתיחת הדמות ללקוחות תעלי כבר"): פתוחה לכולן.
+   כל לקוחה יכולה להסתיר אותה בכפתור. */
+export const FOR_ALL = true;
 export function mayaVisibleFor(email) {
   return FOR_ALL || String(email || '').toLowerCase() === 'mayakislev@gmail.com';
 }

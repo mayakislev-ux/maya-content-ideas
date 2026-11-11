@@ -36,9 +36,9 @@ describe('תנוחה לכל מסך ולכל רגע', () => {
     assert.ok(saysConverting('**כמה קרוב לכסף:** ממיר, כי...'));
     assert.ok(!saysConverting('**כמה קרוב לכסף:** חשיפה'));
   });
-  test('עד האישור רק מאיה רואה את הדמות', () => {
+  test('11/11/2026: הדמות פתוחה לכל הלקוחות', () => {
     assert.equal(mayaVisibleFor('mayakislev@gmail.com'), true);
-    assert.equal(mayaVisibleFor('client@example.com'), false);
+    assert.equal(mayaVisibleFor('client@example.com'), true);
   });
   test('שלב 2: מזהה מילה כללית, מספר וכמות מילים', () => {
     assert.equal(vagueCount('יש לי הרבה לקוחות וכולם אוהבים'), 2);
@@ -54,10 +54,9 @@ describe('תנוחה לכל מסך ולכל רגע', () => {
 describe('הדמות בעוזר (jsdom)', { skip: hasJsdom ? false : 'jsdom לא מותקן במחשב הזה' }, () => {
   let ui;
   before(async () => { ui = await setupAssistant(); });
-  test('לקוחה לא רואה, ומאיה: דמות אחת שמחליפה תנוחה', async () => {
+  test('דמות אחת שמחליפה תנוחה', async () => {
     const { $, $$, open } = ui;
     await open({ branch: 'scratch', screen: 'scratch-hook', ideaDescription: 'רעיון', rawDump: 'מגילה' }, '#va-scratch-hook-input');
-    assert.equal($('.va-maya'), null, 'לקוחה רואה את הדמות לפני האישור');
     mountMaya($('#va-card'), 'scratch-hook');
     await until(() => $('.va-maya img'), 'אין דמות');
     assert.equal($$('.va-maya').length, 1);
