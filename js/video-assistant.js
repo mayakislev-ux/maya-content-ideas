@@ -547,8 +547,9 @@ function cosmicCard(innerHtml, { showProgress = true } = {}) {
         return mayaNote({ screen, text, domain, pronoun: profile.pronoun || '' });
       });
     }
-    /* 11/11/2026: הדמות התלת־ממדית בטלפון, קודם רק אצל מאיה */
-    setMaya3dAllowed(String((auth.currentUser && auth.currentUser.email) || '').toLowerCase() === 'mayakislev@gmail.com');
+    /* 11/11/2026 (מאיה: "אני רוצה שכולם יראו את הדמות כבר"): הדמות התלת־ממדית
+       בטלפון לכולן. אם הטעינה נכשלת, נשאר הראש העגול. */
+    setMaya3dAllowed(true);
     /* תקלה בדמות לא שוברת את המסך (הכפתורים מחוברים אחרי השורה הזו) */
     try { mountMaya(document.getElementById('va-card'), state.screen); } catch (err) { console.error('mountMaya failed:', err); }
   }

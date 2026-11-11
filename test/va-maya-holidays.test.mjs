@@ -114,9 +114,10 @@ test('בכורה וקונפטי: לא ביום שקט, לא כשהסתירו א�
   assert.ok(!P.includes("x.fillText('🎬"), 'אימוגי על הקנבס');
 });
 
-test('הדמות התלת־ממדית בטלפון: רק אצל מאיה, עם ראש עגול כגיבוי', () => {
+test('הדמות התלת־ממדית בטלפון: לכולן, עם ראש עגול כגיבוי', () => {
   const M3 = readFileSync(new URL('../js/va-maya3d.js', import.meta.url), 'utf8');
-  assert.ok(VA.includes("setMaya3dAllowed(String((auth.currentUser && auth.currentUser.email) || '').toLowerCase() === 'mayakislev@gmail.com')"), 'נפתח ללקוחות בלי אישור');
+  /* 11/11/2026: מאיה אישרה לפתוח לכולן */
+  assert.ok(VA.includes('setMaya3dAllowed(true);'));
   assert.ok(M.includes('const want3d = head && maya3dAllowed'), 'רק בטלפון');
   assert.ok(!/uYaw/.test(M3), 'סיבוב לצדדים מעוות את הפנים');
   assert.ok(M3.includes('failed = true'), 'בלי גיבוי כשהטעינה נכשלת');
