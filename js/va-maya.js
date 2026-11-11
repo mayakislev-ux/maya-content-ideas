@@ -24,6 +24,11 @@ export const IDLE_SECOND_MS = 120 * 1000;
 
 const HIDE_KEY = 'moach.mayaHidden';
 
+/* 11/11/2026: התמונות נשמרות במכשיר (sw.js), והגרסה בכתובת מחליפה אותן
+   כשתמונה מתעדכנת. */
+export const MAYA_V = '3';
+export function mayaSrc(pose) { return `assets/maya/maya-${pose}.webp?v=${MAYA_V}`; }
+
 /* עד שמאיה מאשרת את הדמות במסך האמיתי, רק היא רואה אותה. לפתוח לכולן:
    FOR_ALL = true. */
 export const FOR_ALL = false;
@@ -45,12 +50,14 @@ export function poseFor(screen) {
   if (MEGILLAH_SCREENS.has(screen)) return 'coffee';
   if (HOOK_SCREENS.has(screen)) return 'fishing';
   if (screen === 'format-choice') return 'hug';
-  if (WRITING_SCREENS.has(screen)) return 'peek';
-  /* "עוברת מצד לצד": בכל מסך אחר תנוחה אחרת, קבועה לאותו מסך */
-  let h = 0;
-  for (const ch of String(screen || '')) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
-  return SIDE_ROTATION[h % SIDE_ROTATION.length];
+  /* 11/11/2026 (ניתוח הדמות): ההצצה והנדנדה כיסו את החץ ואת סרגל
+     ההתקדמות, והתנוחה בשאר המסכים נבחרה באקראי לפי שם המסך. עכשיו כל מסך
+     מקבל תנוחה בכוונה: בכתיבה היא נשענת ומחכה, בבחירות היא עומדת לידך. */
+  if (WRITING_SCREENS.has(screen)) return 'backlean';
+  return CHOICE_SCREENS.has(screen) ? 'backlean' : 'hug';
 }
+const CHOICE_SCREENS = new Set(['reference-source-choice', 'pulled-reference', 'idea-source-choice', 'pulled-idea']);
+void SIDE_ROTATION;
 
 /** האם הדמות מוסתרת (כפתור "להסתיר את מאיה") */
 export function mayaHidden() {
@@ -155,7 +162,7 @@ function preload() {
   preloaded = true;
   /* 11/11/2026: לא טוענים מראש את כל 40 התמונות (חשוב כשזה ייפתח ללקוחות
      בסלולר). רק הריקוד של "ממיר", שמופיע בבת אחת על כל המסך. */
-  const im = new Image(); im.src = 'assets/maya/maya-dance.webp';
+  const im = new Image(); im.src = mayaSrc('dance');
 }
 
 function figEl() {
@@ -172,27 +179,91 @@ function isPhone() {
   try { return Boolean(window.matchMedia && window.matchMedia('(max-width: 960px)').matches); } catch { return false; }
 }
 
+/* 11/11/2026 (מאיה: "לגבי הראש סבבה"): בטלפון, במקום דמות קטנה מעל הכרטיס
+   שנעלמת כשגוללים, ראש עגול שלה שנשאר צמוד מתחת לכותרת, גם בזמן כתיבה,
+   והבועות יוצאות ממנו. */
+export function isHeadMode() {
+  try { return Boolean(window.matchMedia && window.matchMedia('(max-width: 720px)').matches); } catch { return false; }
+}
+
+/* התמונה נכנסת בדהייה רק אחרי שנטענה, כדי שלא תקפוץ בבת אחת בסלולר.
+   הדהייה רק כשהתנוחה באמת מתחלפת (או בפעם הראשונה). */
+function fadeInWhenReady(fig, img, fade) {
+  /* המתנה קודמת (תמונה אחרת) מתבטלת, כדי שהטיימר שלה לא יחשוף את החדשה
+     לפני שנטענה */
+  clearTimeout(fig._waitT);
+  if (fig._waitGo) {
+    img.removeEventListener('load', fig._waitGo);
+    img.removeEventListener('error', fig._waitGo);
+  }
+  const go = () => {
+    clearTimeout(fig._waitT);
+    fig._waitGo = null;
+    if (!fig.classList.contains('is-wait')) return;
+    fig.classList.remove('is-wait');
+    if (!fade) return;
+    fig.classList.add('is-changing');
+    clearTimeout(fig._fadeT);
+    fig._fadeT = setTimeout(() => fig.classList.remove('is-changing'), 450);
+    if (fig._fadeT && fig._fadeT.unref) fig._fadeT.unref();
+  };
+  fig.classList.add('is-wait');
+  if (img.complete && img.naturalWidth) { go(); return; }
+  fig._waitGo = go;
+  img.addEventListener('load', go, { once: true });
+  img.addEventListener('error', go, { once: true });
+  /* רשת איטית מאוד: לא מחכים לנצח */
+  fig._waitT = setTimeout(go, 2500);
+  if (fig._waitT && fig._waitT.unref) fig._waitT.unref();
+}
+
+let preloadedPoses = false;
+function preloadPoses() {
+  if (preloadedPoses || typeof Image === 'undefined' || isHeadMode()) return;
+  preloadedPoses = true;
+  const list = ['hug', 'backlean', 'coffee', 'fishing', 'gift', 'dumbbell', 'clapper', 'camera', 'mic', 'chairs', 'sign', 'greenscreen'];
+  const run = () => list.forEach((p) => { const im = new Image(); im.src = mayaSrc(p); });
+  if (typeof window !== 'undefined' && window.requestIdleCallback) window.requestIdleCallback(run, { timeout: 4000 });
+  else setTimeout(run, 1500);
+}
+
+let intendedPose = 'hug';
+let greetR = null;
+
 /** מוסיף את הדמות לכרטיס שצויר עכשיו */
 export function mountMaya(card, screen) {
   if (!card || card.querySelector('.va-maya')) return;
   preload();
-  const pose = fitPose(poseFor(screen));
+  let pose = fitPose(poseFor(screen));
+  intendedPose = poseFor(screen);
+  /* הברכה: התנוחה של הרגע (נפנוף, חורף, מדליה...) היא התנוחה שבה היא
+     מופיעה לראשונה, בלי החלפה אחרי שהופיעה. */
+  if (!greeted && prevScreen !== screen && typeof document !== 'undefined' && ['hug', 'backlean'].includes(pose)) {
+    const now = new Date();
+    greetR = registerVisit(readVisits(), israelDay(now));
+    writeVisits(greetR.v);
+    pose = openingMoment({ ...greetR, hour: israelHour(now), day: israelDay(now), first: '' }).pose;
+  }
+  /* תנוחת הברכה היא התנוחה של המסך הזה, כדי ששינוי גודל חלון לא יחליף אותה */
+  intendedPose = pose;
+  mountFigure(card, pose);
+  onScreenMoment(screen);
+  preloadPoses();
+}
+
+function mountFigure(card, pose) {
+  const head = isHeadMode();
   const fig = document.createElement('div');
-  fig.className = `va-maya va-maya--${pose}${lastPose && lastPose !== pose ? ' is-changing' : ''}`;
+  fig.className = head ? 'va-maya va-maya--head' : `va-maya va-maya--${pose}`;
   fig.setAttribute('aria-hidden', 'true');
   const img = document.createElement('img');
-  img.src = `assets/maya/maya-${pose}.webp`;
-  img.alt = ALT[pose];
+  img.src = mayaSrc(head ? 'head' : pose);
+  img.alt = head ? 'מאיה' : ALT[pose];
   img.decoding = 'async';
   img.draggable = false;
   fig.appendChild(img);
-  card.appendChild(fig);
-  /* הדהייה נמחקת אחרי 450ms, ואז האנימציה של התנוחה (הנהון, חכה, נדנוד) חוזרת */
-  fig._fadeT = setTimeout(() => fig.classList.remove('is-changing'), 450);
-  if (fig._fadeT && fig._fadeT.unref) fig._fadeT.unref();
-  /* 10/11/2026 (מאיה: "אפקט כניסה, זה נראה לא חלק ומוזר"): הכניסה בהליכה
-     ירדה. היא פשוט מופיעה ברכות (is-changing = דהייה עדינה). */
-  fig.classList.add('is-changing');
+  if (head) card.prepend(fig); else card.appendChild(fig);
+  fadeInWhenReady(fig, img, head ? lastPose !== 'head' : lastPose !== pose);
   /* 10/11/2026 (מאיה: "כשלוחצים על הדמות לא אהבתי שהיא פתאום משתנה, זה
      מוזר"): לחיצה לא מחליפה תנוחה. רק בועה: ביטוי שלך, ובלחיצה כפולה בדיחה. */
   /* לחיצה כפולה מזוהה בעצמנו (באייפון dblclick לא אמין): שתי לחיצות ב-320ms */
@@ -220,12 +291,33 @@ export function mountMaya(card, screen) {
   armIdle();
   wireStick();
   stickToCard();
-  onScreenMoment(screen);
-  /* בטלפון נשמר מקום לדמות מעל הכרטיס, רק כשהיא באמת מוצגת */
+  syncSign(fig, head ? 'head' : pose);
+  /* מקום לדמות מעל הכרטיס, רק כשהיא באמת מוצגת */
   const view = card.closest('#video-assistant-view');
   if (view) view.classList.toggle('has-maya', !mayaHidden());
-  lastPose = pose;
+  lastPose = head ? 'head' : pose;
   /* בסיכום רק הקלאפר (בלי מעבר לתסריט המודפס: מאיה לא רוצה שינוי בתוך מסך) */
+}
+
+/* סיבוב מסך או שינוי גודל חלון: מחשב לטלפון ולהפך, ראש מול דמות מלאה */
+function refit() {
+  const fig = figEl();
+  if (!fig) return;
+  const isHead = fig.classList.contains('va-maya--head');
+  /* רק כשעוברים בין טלפון למחשב. בתוך אותו מצב לא נוגעים בתנוחה (בספארי
+     resize קורה גם כשסרגל הכתובת מתכווץ בגלילה) */
+  if (isHead === isHeadMode()) return;
+  const card = fig.closest('#va-card');
+  fig.remove();
+  if (card) mountFigure(card, fitPose(intendedPose));
+}
+
+/* מתחת לכותרת העליונה (שנשארת קבועה בעוזר): שם הראש נעצר כשגוללים */
+function syncDockTop() {
+  if (typeof document === 'undefined') return;
+  const h = document.querySelector('.app-header');
+  const bottom = h ? Math.max(0, Math.round(h.getBoundingClientRect().bottom)) : 0;
+  document.documentElement.style.setProperty('--va-dock-top', `${bottom}px`);
 }
 
 /* 10/11/2026 (מאיה, צילום מסך: "כל פעם שיורדת קצת למטה במסך המאיה לא נשארת
@@ -239,7 +331,7 @@ function stickToCard() {
   const fig = figEl();
   if (!fig || typeof window === 'undefined') return;
   const desktop = window.matchMedia && window.matchMedia('(min-width: 961px)').matches;
-  const onCard = fig.classList.contains('va-maya--peek') || fig.classList.contains('va-maya--swing');
+  const onCard = fig.classList.contains('va-maya--peek') || fig.classList.contains('va-maya--swing') || fig.classList.contains('va-maya--head');
   if (!desktop || onCard) { fig.style.bottom = ''; return; }
   const card = fig.closest('#va-card');
   if (!card) return;
@@ -253,28 +345,33 @@ function wireStick() {
   const on = () => {
     if (stickRaf) return;
     const raf = window.requestAnimationFrame || ((f) => setTimeout(f, 16));
-    stickRaf = raf(() => { stickRaf = 0; stickToCard(); });
+    stickRaf = raf(() => { stickRaf = 0; stickToCard(); syncDockTop(); });
   };
+  const onResize = () => { on(); refit(); };
   window.addEventListener('scroll', on, { passive: true });
-  window.addEventListener('resize', on, { passive: true });
+  window.addEventListener('resize', onResize, { passive: true });
+  syncDockTop();
   /* פתיחת פורמט או טקסט ארוך משנים את גובה הכרטיס בלי גלילה */
   if (typeof ResizeObserver !== 'undefined') new ResizeObserver(on).observe(document.body);
 }
 
-/** מחליף תנוחה בלי לצייר את המסך מחדש (פורמט, חכה) */
+/** מחליף תנוחה בלי לצייר את המסך מחדש (פורמט) */
 export function setMayaPose(pose) {
+  intendedPose = pose;
   pose = fitPose(pose);
   const fig = figEl();
-  if (!fig || !POSES.includes(pose) || fig.classList.contains(`va-maya--${pose}`)) return;
+  if (!fig || !POSES.includes(pose)) return;
+  /* בטלפון יש רק את הראש: אין החלפת תנוחה */
+  if (fig.classList.contains('va-maya--head')) { basePose = pose; return; }
+  if (fig.classList.contains(`va-maya--${pose}`)) return;
   const img = fig.querySelector('img');
-  /* דהייה רכה שבאמת מתחילה מחדש בכל החלפה, ואז האנימציה של התנוחה ממשיכה */
+  const waiting = fig.classList.contains('is-wait');
   fig.className = `va-maya va-maya--${pose}`;
-  void fig.offsetWidth;
-  fig.classList.add('is-changing');
-  clearTimeout(fig._fadeT);
-  fig._fadeT = setTimeout(() => fig.classList.remove('is-changing'), 450);
-  img.src = `assets/maya/maya-${pose}.webp`;
+  img.src = mayaSrc(pose);
   img.alt = ALT[pose];
+  /* גם אם הקודמת עוד לא הופיעה: מחכים מחדש, לתמונה החדשה */
+  void waiting;
+  fadeInWhenReady(fig, img, true);
   lastPose = pose;
   basePose = pose;
   syncSign(fig, pose);
@@ -301,25 +398,22 @@ function syncSign(fig, pose) {
 }
 
 /** מצב רגעי על הדמות: 'is-cast' (זורקת חכה), 'is-reel' (שולפת הוק) */
+/* 11/11/2026 (ניתוח הדמות): היא התנדנדה בכל לחיצה על "להעתיק", באמצע
+   מסך. מאיה לא רוצה שינוי בתוך מסך, ולכן זה כבר לא עושה כלום. */
 export function flashMaya(cls, ms = 1200) {
-  const fig = figEl();
-  if (!fig) return;
-  fig.classList.remove(cls);
-  void fig.offsetWidth;
-  fig.classList.add(cls);
-  setTimeout(() => fig.classList.remove(cls), ms);
+  void cls; void ms;
 }
 
 /** הנהון במגילה לפי כמות המילים */
 export function setMayaNod(words) {
   const fig = figEl();
   if (!fig) return;
-  fig.style.setProperty('--va-nod', `${nodSeconds(words)}s`);
-  /* מגילה ארוכה = כוס קפה שנייה. 11/11/2026: לא מחליפים תנוחה תוך כדי
-     כתיבה (מאיה לא אוהבת שינוי פתאומי). רק בועה, פעם אחת. */
+  /* 11/11/2026 (ניתוח הדמות): קצב ההנהון השתנה בכל מילה, והראש שלה נראה
+     מתעוות בזמן שכותבים. עכשיו הקצב קבוע ורגוע (CSS). מגילה ארוכה: בועה
+     אחת, בלי לתאר פעולה שהיא לא עושה. */
   if ((Number(words) || 0) >= LONG_MEGILLAH_WORDS && !fig._coffee2) {
     fig._coffee2 = true;
-    react(null, 'מגילה רצינית! הולכת להביא עוד קפה ☕☕', { force: true });
+    react(null, 'מגילה רצינית! ככה בדיוק צריך ☕', { force: true });
   }
 }
 export const LONG_MEGILLAH_WORDS = 250;
@@ -331,16 +425,17 @@ export function moneyDance() {
   const show = document.createElement('div');
   show.className = 'va-money-show';
   show.setAttribute('aria-hidden', 'true');
-  const bills = Array.from({ length: 22 }, (_, i) => {
+  const bills = Array.from({ length: 12 }, (_, i) => {
     const left = Math.round((i * 47) % 100);
     const delay = ((i * 0.13) % 1.4).toFixed(2);
     const dur = (2.2 + ((i * 0.37) % 1.4)).toFixed(2);
     return `<span class="va-bill" style="left:${left}%;animation-delay:${delay}s;animation-duration:${dur}s">💸</span>`;
   }).join('');
-  show.innerHTML = `${bills}<img class="va-money-maya" src="assets/maya/maya-dance.webp" alt="">`;
+  show.innerHTML = `${bills}<img class="va-money-maya" src="${mayaSrc('dance')}" alt="">`;
   document.body.appendChild(show);
   document.body.classList.add('va-stage-on');
-  setTimeout(() => { show.remove(); if (!document.querySelector('.va-stage-show, .va-money-show')) document.body.classList.remove('va-stage-on'); }, 4200);
+  setTimeout(() => show.classList.add('is-out'), 3000);
+  setTimeout(() => { show.remove(); if (!document.querySelector('.va-stage-show, .va-money-show')) document.body.classList.remove('va-stage-on'); }, 3500);
 }
 
 /* ===== שלב 3 מתוך 6: רגעי שיא (10/11/2026) =====
@@ -377,7 +472,7 @@ export function stageShow(pose, text, ms = 3200) {
   const wrap = document.createElement('div');
   wrap.className = 'va-stage-fig';
   const img = document.createElement('img');
-  img.src = `assets/maya/maya-${pose}.webp`;
+  img.src = mayaSrc(pose);
   img.alt = '';
   wrap.appendChild(img);
   const say = text || STAGE_TEXT[pose];
@@ -391,8 +486,11 @@ export function stageShow(pose, text, ms = 3200) {
   document.body.appendChild(show);
   /* בזמן רגע השיא הדמות שליד הכרטיס נעלמת, כדי שלא יהיו שתי מאיות */
   document.body.classList.add('va-stage-on');
+  /* 11/11/2026 (ניתוח הדמות): במקום חלון על כל המסך, דמות קטנה בפינה
+     שנכנסת ויוצאת בדהייה רכה ולא מסתירה את התוכן. */
+  const o = setTimeout(() => show.classList.add('is-out'), Math.max(600, ms - 450));
   const t = setTimeout(() => { show.remove(); if (!document.querySelector('.va-stage-show, .va-money-show')) document.body.classList.remove('va-stage-on'); }, ms);
-  if (t && typeof t.unref === 'function') t.unref();
+  if (t && typeof t.unref === 'function') { t.unref(); o.unref(); }
   return true;
 }
 
@@ -421,7 +519,7 @@ export function closenessShow(reply) {
 POSES.push('cover', 'sweat', 'brow', 'clap', 'point');
 Object.assign(ALT, { cover: 'מאיה מכסה עיניים', sweat: 'מאיה מנגבת זיעה', brow: 'מאיה מרימה גבה', clap: 'מאיה מוחאת כפיים', point: 'מאיה מצביעה' });
 
-const VAGUE = /(?:^|[\s,.!?])ו?(הרבה|תמיד|כולם|אף פעם|מלא|כל הזמן)(?=$|[\s,.!?])/g;
+const VAGUE = /(?:^|[\s,.!?])ו?(הרבה|תמיד|כולם|אף פעם|כל הזמן)(?=$|[\s,.!?])/g;
 export function vagueCount(text) { return (String(text || '').match(VAGUE) || []).length; }
 export function numberCount(text) { return (String(text || '').match(/\d+/g) || []).length; }
 export function wordCount(text) { return String(text || '').trim().split(/\s+/).filter(Boolean).length; }
@@ -456,12 +554,11 @@ export function react(pose, text, { force = false, ms = 2600 } = {}) {
   return true;
 }
 
+/* 11/11/2026 (ניתוח הדמות): "מה עובר לך בראש?" אחרי 20 שניות קפץ בדיוק
+   כשהלקוחה ב-ChatGPT או חושבת, ונשמע נוזף. ירד, כמו השעון והפיהוק. */
 function armQuiet(el) {
+  void el;
   clearTimeout(quietTimer);
-  quietTimer = setTimeout(() => {
-    if (el.isConnected && wordCount(el.value) < 3) react(null, 'מה עובר לך בראש? אפשר להתחיל ממילה אחת 💭');
-  }, 20000);
-  if (quietTimer && typeof quietTimer.unref === 'function') quietTimer.unref();
 }
 
 let reactionsWired = false;
@@ -473,7 +570,7 @@ export function wireReactions() {
   document.addEventListener('paste', (e) => {
     if (!inView(e.target)) return;
     const t = (e.clipboardData && e.clipboardData.getData('text')) || '';
-    if (t.length > 400) react('sweat', 'איזה חומר! ☕', { force: true });
+    if (t.length > 400) react('sweat', 'איזה חומר! 🔥', { force: true });
   });
   document.addEventListener('input', (e) => {
     const el = e.target;
@@ -482,8 +579,8 @@ export function wireReactions() {
     const before = prevOf.has(el) ? prevOf.get(el) : '';
     const now = el.value;
     prevOf.set(el, now);
-    if (before.trim().length > 20 && !now.trim()) { react('cover', 'אני לא מסתכלת 🙈', { force: true }); return; }
-    if (numberCount(now) > numberCount(before) && /\d{2,}|\d\s*(?:שקל|₪|%|שנ|חודש|ימים|לקוח|שעות|אלף|K)/.test(now)) { react('point', 'פרט מדויק, ככה מוכרים 👆'); return; }
+    if (before.trim().length > 20 && !now.trim()) { react('cover', 'מתחילים מחדש? לגמרי בסדר ✨', { force: true }); return; }
+    if (numberCount(now) > numberCount(before) && /\d{2,}|\d\s*(?:שקל|₪|%|שנ|חודש|ימים|לקוח|שעות|אלף|K)/.test(now)) { react('point', 'פרט מדויק, ככה מוכרים 🎯'); return; }
     if (vagueCount(now) > vagueCount(before)) react('brow', 'כמה בדיוק? 🧐');
   });
   document.addEventListener('focusout', (e) => {
@@ -491,7 +588,11 @@ export function wireReactions() {
     if (!inView(el) || clappedFor.has(el)) return;
     /* לחיצה על "ממשיכים": המסך מתחלף מיד, אין טעם בבועה שתיעלם */
     if (e.relatedTarget && e.relatedTarget.tagName === 'BUTTON') return;
-    if (wordCount(el.value) >= 8) { clappedFor.add(el); react('clap', 'יפה! 👏'); }
+    if (wordCount(el.value) < 8) return;
+    /* באייפון לחיצה על "ממשיכים" לא מעבירה פוקוס לכפתור. מחכים רגע: אם
+       המסך התחלף, אין בועה על כרטיס שכבר לא קיים. */
+    const t = setTimeout(() => { if (el.isConnected && !clappedFor.has(el)) { clappedFor.add(el); react('clap', 'יפה! 👏'); } }, 350);
+    if (t && t.unref) t.unref();
   });
 }
 
@@ -534,7 +635,7 @@ const HANUKKAH = [['2026-12-04', '2026-12-12'], ['2027-12-24', '2028-01-01'], ['
 export function seasonPose(day) {
   if (HANUKKAH.some(([a, b]) => day >= a && day <= b)) return 'hanukkah';
   const md = day.slice(5);
-  if (md >= '11-15' || md <= '02-28') return 'winter';
+  if (md >= '12-01' || md <= '02-28') return 'winter';
   if (md >= '06-01' && md <= '09-15') return 'summer';
   return null;
 }
@@ -598,6 +699,8 @@ export const TROPHY_AT = [1, 3, 5, 10, 20, 30, 50, 75, 100];
 let greeted = false;
 let summaryCounted = false;
 let screensSeen = 0;
+let newScreens = 0;
+const visitedScreens = new Set();
 let prevScreen = null;
 function onScreenMoment(screen) {
   if (typeof document === 'undefined') { prevScreen = screen; return; }
@@ -608,13 +711,13 @@ function onScreenMoment(screen) {
   if (!greeted) {
     greeted = true;
     const now = new Date();
-    const r = registerVisit(readVisits(), israelDay(now));
-    writeVisits(r.v);
-    /* התנוחה של הרגע (נפנוף, חורף, מדליה...) היא התנוחה שבה היא מופיעה
-       לראשונה, בלי החלפה. אם המסך דורש הצצה מעל הכרטיס, רק הבועה. */
-    const first = openingMoment({ ...r, hour: israelHour(now), day: israelDay(now), first: '' });
-    const fig0 = figEl();
-    if (fig0 && ['hug', 'backlean'].includes(poseFor(screen))) setMayaPose(first.pose);
+    let r = greetR;
+    if (!r) {
+      r = registerVisit(readVisits(), israelDay(now));
+      writeVisits(r.v);
+    }
+    greetR = null;
+    visitedScreens.add(screen);
     /* ההודעה נבנית רק כשהיא מוצגת, אחרי שהשם כבר נטען מהפרופיל */
     const t = setTimeout(() => {
       const m = openingMoment({ ...r, hour: israelHour(now), day: israelDay(now), first: person.first });
@@ -623,7 +726,7 @@ function onScreenMoment(screen) {
     if (t && t.unref) t.unref();
     return;
   }
-  if (screen === 'opening') summaryCounted = false;
+  if (screen === 'opening') { summaryCounted = false; visitedScreens.clear(); newScreens = 0; }
   if (screen === 'summary') {
     if (summaryCounted) return;
     summaryCounted = true;
@@ -636,10 +739,14 @@ function onScreenMoment(screen) {
     }
     return;
   }
-  /* כל מסך שלישי: ביטוי שלך בבועה, בלי לשנות תנוחה */
-  if (screensSeen % 3 === 0) {
+  /* כל מסך חדש שלישי: ביטוי שלך בבועה. 11/11/2026: רק על התקדמות אמיתית,
+     לא על חזרה למסך שכבר היו בו. */
+  if (visitedScreens.has(screen)) return;
+  visitedScreens.add(screen);
+  newScreens += 1;
+  if (newScreens % 3 === 0) {
     const list = phrasesFor(person.pronoun);
-    const t = setTimeout(() => react(null, list[screensSeen % list.length]), 600);
+    const t = setTimeout(() => react(null, list[newScreens % list.length]), 600);
     if (t && t.unref) t.unref();
   }
 }
@@ -653,7 +760,8 @@ if (typeof document !== 'undefined' && typeof window !== 'undefined') {
     const now = Date.now();
     backs = backs.filter((t) => now - t < 3000);
     backs.push(now);
-    if (backs.length >= 15) { backs = []; react('pencil', 'מתקנים? אני עם המחק ✏️'); }
+    /* 11/11/2026: המחק ירד. באייפון החזקה של מקש המחיקה הפעילה אותו בעריכה רגילה. */
+    if (backs.length >= 15) backs = [];
   }, true);
   /* סולם חבלים ירד (10/11/2026): מאיה לא אוהבת שהדמות משתנה פתאום. */
 }
@@ -668,7 +776,7 @@ export function mountHomeMaya(card, profile) {
   fig.className = 'home-maya';
   fig.setAttribute('aria-hidden', 'true');
   const img = document.createElement('img');
-  img.src = 'assets/maya/maya-peek.webp';
+  img.src = mayaSrc('peek');
   img.alt = '';
   img.decoding = 'async';
   img.draggable = false;

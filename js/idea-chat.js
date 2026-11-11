@@ -520,7 +520,12 @@ async function sendIdeaMessage(text) {
     const { visibleReply, summary, idea, angle, story, message, startingPoint } = extractIdeaSummary(reply);
     /* 10/11/2026 (מאיה): "ממיר" = גשם של שטרות והדמות רוקדת */
     /* שלב 3: "חשיפה" = מגפון, "חלש" = יד על המצח, בעדינות */
-    if (mayaVisibleFor(auth.currentUser && auth.currentUser.email)) closenessShow(reply);
+    /* 11/11/2026 (ניתוח הדמות): הרגע מגיע אחרי שהתשובה כבר על המסך, ולא
+       מסתיר אותה בדיוק כשמתחילים לקרוא. */
+    if (mayaVisibleFor(auth.currentUser && auth.currentUser.email)) {
+      const t = setTimeout(() => { if (!stale() && thinkingBubble.isConnected) closenessShow(reply); }, 1400);
+      if (t && t.unref) t.unref();
+    }
     /* 04/11/2026 (מאיה): כפתור "למפת הדרכים" ירד מהתוצאה הסופית. */
     setBubbleText(thinkingBubble, visibleReply);
     if (summary) {

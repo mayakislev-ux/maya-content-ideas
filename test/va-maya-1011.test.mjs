@@ -8,9 +8,11 @@ import { hasJsdom, setupAssistant, until } from './helpers/va-dom.mjs';
 
 describe('תנוחה לכל מסך ולכל רגע', () => {
   test('כתיבה מציצה, פורמט חיבוק, מגילה קפה, הוק חכה, סיכום קלאפר, והשאר מתחלף', () => {
-    assert.equal(poseFor('idea-sharpen'), 'peek');
+    /* 11/11/2026: בכתיבה נשענת (ההצצה כיסתה את החץ ואת סרגל ההתקדמות) */
+    assert.equal(poseFor('idea-sharpen'), 'backlean');
     assert.equal(poseFor('format-choice'), 'hug');
-    assert.ok(['swing', 'backlean', 'hug'].includes(poseFor('opening')));
+    assert.equal(poseFor('opening'), 'hug');
+    assert.equal(poseFor('pulled-reference'), 'backlean');
     assert.equal(poseFor('opening'), poseFor('opening'), 'אותו מסך, אותה תנוחה');
     assert.equal(poseFor('scratch-dump'), 'coffee');
     assert.equal(poseFor('her-words'), 'coffee');
@@ -60,9 +62,10 @@ describe('הדמות בעוזר (jsdom)', { skip: hasJsdom ? false : 'jsdom לא
     await until(() => $('.va-maya img'), 'אין דמות');
     assert.equal($$('.va-maya').length, 1);
     /* בכניסה הראשונה היא נכנסת בהליכה, ואז נעמדת עם החכה */
-    await until(() => /maya-fishing\.webp$/.test($('.va-maya img').getAttribute('src')), 'החכה לא הופיעה אחרי הכניסה', 600);
+    await until(() => /maya-fishing\.webp(\?|$)/.test($('.va-maya img').getAttribute('src')), 'החכה לא הופיעה אחרי הכניסה', 600);
     setMayaPose('camera');
-    assert.match($('.va-maya img').getAttribute('src'), /maya-camera\.webp$/);
-    assert.ok($('.va-maya').classList.contains('is-changing'));
+    assert.match($('.va-maya img').getAttribute('src'), /maya-camera\.webp(\?|$)/);
+    /* 11/11/2026: התמונה מופיעה בדהייה רק כשנטענה (is-wait עד אז) */
+    assert.ok($('.va-maya').classList.contains('is-changing') || $('.va-maya').classList.contains('is-wait'));
   });
 });

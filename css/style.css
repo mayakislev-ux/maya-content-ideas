@@ -9240,3 +9240,89 @@ body.va-stage-on #video-assistant-view .va-maya { opacity: 0; transition: opacit
   /* תיבת הרעיון גבוהה יותר */
   #video-assistant-view #va-idea-sharp { min-height: 120px; }
 }
+
+
+/* ===== 11/11/2026: ניתוח הדמות, תיקונים ===== */
+/* התמונה מופיעה רק כשנטענה (בלי קפיצה בסלולר) */
+#video-assistant-view .va-maya.is-wait img { opacity: 0; animation: none !important; }
+/* הנהון קבוע ורגוע במגילה */
+#video-assistant-view .va-maya--coffee img { animation-duration: 2.6s !important; }
+/* צל רך מתחת לרגליים במחשב, כדי שהיא תעמוד על משהו */
+@media (min-width: 961px) {
+  #video-assistant-view .va-maya:not(.va-maya--head)::before {
+    content: ""; position: absolute; bottom: -6px; left: 50%; width: 62%; height: 16px; transform: translateX(-50%);
+    background: radial-gradient(ellipse at center, rgba(5,15,50,.38), rgba(5,15,50,0) 70%); pointer-events: none; z-index: -1;
+  }
+  #video-assistant-view .va-maya { justify-content: center; }
+  /* הבועה נפתחת הצידה, הרחק מהכרטיס, ולא על הטקסט שלו */
+  #video-assistant-view .va-maya:not(.va-maya--peek):not(.va-maya--swing) .va-maya-bubble {
+    left: 0; right: auto; max-width: min(260px, calc(50vw - 300px));
+  }
+}
+/* רגעי שיא: דמות קטנה בפינה, נכנסת ויוצאת בדהייה, בלי להסתיר את התוכן */
+.va-stage-show { inset: auto auto 24px 16px; width: auto; height: auto; overflow: visible; transition: opacity .4s ease; }
+.va-stage-show.is-out, .va-money-show.is-out { opacity: 0; transition: opacity .45s ease; }
+.va-stage-fig { position: relative; left: 0; bottom: 0; transform: none; animation: va-corner-in .45s ease-out both; }
+.va-stage-fig img { height: 190px; }
+.va-stage-bubble { left: 0; transform: none; bottom: calc(100% + 4px); font-size: 15px; max-width: min(70vw, 300px); animation: va-corner-in .35s .2s ease-out both; }
+.va-stage-bubble::after { left: 40px; transform: none; }
+@keyframes va-corner-in { from { opacity: 0; } to { opacity: 1; } }
+.va-stage--megaphone .va-stage-fig img { animation: none; }
+.va-money-show { transition: opacity .45s ease; }
+.va-money-maya { left: 16px; height: 200px; transform: none; animation: va-corner-in .4s ease-out both; }
+@media (max-width: 720px) {
+  .va-stage-show { bottom: calc(var(--bottom-nav-h, 75px) + 14px); left: 10px; }
+  .va-stage-fig img, .va-money-maya { height: 130px; }
+  .va-money-maya { bottom: calc(var(--bottom-nav-h, 75px) + 10px); }
+}
+
+/* ראש עגול בטלפון: נשאר צמוד מתחת לכותרת גם בגלילה ובכתיבה */
+@media (max-width: 720px) {
+  #video-assistant-view.has-maya > #video-assistant-screen { padding-top: 40px; }
+  #video-assistant-view .va-maya.va-maya--head {
+    position: sticky; top: calc(var(--va-dock-top, 60px) + 54px);
+    left: auto; right: auto; bottom: auto; width: 100%; height: 0; margin: 0;
+    display: block; z-index: 6; pointer-events: none;
+  }
+  #video-assistant-view .va-maya.va-maya--head img {
+    position: absolute; top: -48px; left: -10px; width: 50px; height: 50px; max-width: none;
+    border-radius: 50%; object-fit: cover; border: 2.5px solid #fff; background: #fff;
+    box-shadow: 0 6px 16px rgba(5,15,50,.3); pointer-events: auto; cursor: pointer;
+    animation: va-head-breathe 5s ease-in-out infinite; filter: none;
+  }
+  #video-assistant-view .va-maya.va-maya--head.is-changing img { animation: va-maya-pop .4s ease-out both, va-head-breathe 5s ease-in-out .4s infinite !important; }
+  @keyframes va-head-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.035); } }
+  #video-assistant-view .va-maya.va-maya--head .va-maya-bubble {
+    position: absolute; top: -46px; bottom: auto; left: 46px; right: auto; transform: none;
+    max-width: calc(100vw - 110px); font-size: 13px;
+  }
+  #video-assistant-view .va-maya.va-maya--head .va-maya-bubble.is-on { transform: none; }
+  #video-assistant-view .va-maya.va-maya--head .va-maya-bubble::after {
+    top: 14px; left: -14px; transform: none; border: 7px solid transparent; border-right-color: #fff; border-top-color: transparent;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  #video-assistant-view .va-maya.va-maya--head img { animation: none !important; }
+  .va-stage-fig, .va-stage-bubble { animation: none !important; }
+}
+
+/* "להסתיר את מאיה" מסתיר גם את הראש בטלפון */
+#video-assistant-view .va-maya.va-maya--head[hidden] { display: none !important; }
+/* 11/11/2026 (סוכן עיצוב): התנוחה העומדת החדשה כבר לא נשענת על הכרטיס,
+   אז היא עומדת באותו מרחק כמו כל השאר; זנב הבועה מצביע על הראש שלה;
+   יותר מקום לראש בטלפון; צל רק לדמות עומדת שנטענה; הריקוד זז שוב. */
+@media (min-width: 961px) {
+  #video-assistant-view .va-maya.va-maya--hug { left: calc(50% + 282px); }
+  #video-assistant-view .va-maya:not(.va-maya--peek):not(.va-maya--swing) .va-maya-bubble::after { left: 70px; }
+  #video-assistant-view .va-maya.is-wait::before,
+  #video-assistant-view .va-maya.va-maya--peek::before,
+  #video-assistant-view .va-maya.va-maya--swing::before { opacity: 0; }
+}
+@media (max-width: 720px) {
+  #video-assistant-view.has-maya > #video-assistant-screen { padding-top: 48px; }
+  #video-assistant-view .va-maya.va-maya--head img { transform-origin: 50% 50%; }
+  #video-assistant-view .va-maya.va-maya--head .va-maya-bubble { top: -52px; }
+}
+.va-money-maya { animation: va-corner-in .4s ease-out both, va-corner-dance .5s ease-in-out .4s infinite alternate; transform-origin: 50% 100%; }
+@keyframes va-corner-dance { from { transform: rotate(-4deg); } to { transform: rotate(4deg) translateY(-6px); } }
+@media (prefers-reduced-motion: reduce) { .va-money-maya { animation: none !important; } }

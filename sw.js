@@ -1,5 +1,5 @@
 // שינוי כאן גורם לכל מי שפתוחה על גרסה ישנה לקבל את הודעת "גרסה חדשה מוכנה" (18/09: הכנסת update-check.js)
-const CACHE_NAME = 'moach-hashiveki-v199';
+const CACHE_NAME = 'moach-hashiveki-v200';
 const APP_SHELL = ['./', './index.html', './css/style.css', './js/app.js', './manifest.json', './assets/favicon.png'];
 
 self.addEventListener('install', (event) => {
@@ -30,6 +30,8 @@ function isImmutableAsset(url) {
     // session - קובץ חדש לתמונת thumbnail תמיד מקבל שם/נתיב חדש (לא דורסים
     // קובץ קיים), אז cache-first פה בטוח בדיוק כמו שהוא בטוח עבור הפונטים.
     /\/assets\/inspiration-thumbnails\//.test(url) ||
+    /* 11/11/2026: תמונות הדמות של מאיה. כשתמונה מתעדכנת, MAYA_V בכתובת עולה */
+    /\/assets\/maya\/[^?]+\?v=/.test(url) ||
     /\/assets\/(app|header)-background\.jpg(?:\?|$)/.test(url) ||
     url.includes('gstatic.com/firebasejs/')
   );

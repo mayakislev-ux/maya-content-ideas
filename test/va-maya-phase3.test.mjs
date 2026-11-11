@@ -35,7 +35,7 @@ describe('שלב 3: איזו תנוחה מתי', () => {
   });
   test('הצ\'אט מפעיל את רגע השיא רק לבעלת החשבון', () => {
     const src = readFileSync(new URL('../js/idea-chat.js', import.meta.url), 'utf8');
-    assert.match(src, /if \(mayaVisibleFor\([^)]*\)\) closenessShow\(reply\)/);
+    assert.match(src, /if \(mayaVisibleFor\([^)]*\)\) \{\s*const t = setTimeout\(\(\) => \{ if \(!stale\(\) && thinkingBubble\.isConnected\) closenessShow\(reply\); \}, 1400\)/);
   });
 });
 
@@ -48,13 +48,13 @@ describe('שלב 3 בעוזר (jsdom)', { skip: hasJsdom ? false : 'jsdom לא �
     await open({ branch: 'scratch', screen: 'scratch-dump', ideaDescription: 'הפסקתי לעבוד 14 שעות ביום' }, 'textarea');
     m.mountMaya($('#va-card'), 'scratch-dump');
     await until(() => $('.va-maya img'), 'אין דמות');
-    await until(() => /maya-coffee\.webp$/.test($('.va-maya img').getAttribute('src')), 'לא נעמדה עם קפה', 1800);
+    await until(() => /maya-coffee\.webp(\?|$)/.test($('.va-maya img').getAttribute('src')), 'לא נעמדה עם קפה', 1800);
     /* 11/11/2026 (סוכן בדיקה): הדהייה נמחקת, אחרת ההנהון והחכה קפואים */
-    await until(() => !$('.va-maya').classList.contains('is-changing'), 'הדהייה לא נמחקה, האנימציות קפואות', 200);
+    await until(() => !$('.va-maya').classList.contains('is-changing') && !$('.va-maya').classList.contains('is-wait'), 'הדהייה לא נמחקה, האנימציות קפואות', 3600);
     /* 11/11/2026: מגילה ארוכה לא מחליפה תנוחה, רק בועה */
     m.setMayaNod(LONG_MEGILLAH_WORDS + 5);
-    assert.match($('.va-maya img').getAttribute('src'), /maya-coffee\.webp$/);
-    assert.match($('.va-maya .va-maya-bubble').textContent, /קפה/);
+    assert.match($('.va-maya img').getAttribute('src'), /maya-coffee\.webp(\?|$)/);
+    assert.match($('.va-maya .va-maya-bubble').textContent, /מגילה רצינית/);
     m.setSignText('הפסקתי לעבוד 14 שעות ביום');
     m.setMayaPose('sign');
     assert.equal($('.va-maya .va-maya-sign').textContent, 'הפסקתי לעבוד 14 שעות ביום');

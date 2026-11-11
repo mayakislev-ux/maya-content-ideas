@@ -41,7 +41,7 @@ import {
 } from './reference-transcribe.js';
 import { getProfile, saveProfile } from './user-profile.js';
 import { audienceOptions, pickedAudience, audienceChipLabel, audienceEditUpdate, audienceAddUpdate, audienceDeleteUpdate } from './audience-pick.js';
-import { mountMaya, mayaVisibleFor, setMayaPose, flashMaya, setMayaNod, poseForFormat, setSignText, stageShow, setMayaPerson } from './va-maya.js';
+import { mountMaya, mayaVisibleFor, setMayaPose, setMayaNod, poseForFormat, setSignText, stageShow, setMayaPerson } from './va-maya.js';
 const mayaOn = () => mayaVisibleFor(auth.currentUser && auth.currentUser.email);
 const BRAND_CONFETTI = ['#263ea8', '#8b98d9', '#ff2ea8', '#ff7ac8', '#ffd23f', '#ffffff'];
 /* 04/11/2026: צ'אט דיוק הרעיון חזר, כקפיצה לצ'אט עצמו ולא כעותק בתוך המסך */
@@ -1293,6 +1293,10 @@ function renderFormatChoice() {
     /* 11/11/2026: לא במעבר עכבר (קפיצה על כל שורה), רק כשפותחים פורמט */
     item.addEventListener('toggle', () => { if (item.open) pose(); else if (!screenEl().querySelector('.cosmic-accordion-item[data-format][open]')) setMayaPose('hug'); });
   });
+  /* 11/11/2026 (ניתוח הדמות): חזרה למסך עם פורמט פתוח הראתה קודם חיבוק
+     ומיד אחר כך את האביזר. עכשיו היא מופיעה ישר עם האביזר. */
+  const openFormat = screenEl().querySelector('.cosmic-accordion-item[data-format][open]');
+  if (openFormat) setMayaPose(poseForFormat(openFormat.dataset.format));
   screenEl().querySelectorAll('[data-format-examples]').forEach((btn) => {
     btn.addEventListener('click', (e) => {
       e.preventDefault();
@@ -1606,7 +1610,7 @@ function reelOnPaste(id) {
   let was = el.value.trim().length > 0;
   el.addEventListener('input', () => {
     const now = el.value.trim().length > 0;
-    if (now && !was) flashMaya('is-reel', 1500);
+    void now;
     was = now;
   });
 }
@@ -1614,8 +1618,6 @@ function reelOnPaste(id) {
 function wireCopyButtons(root) {
   root.querySelectorAll('[data-copy-text]').forEach((btn) => {
     btn.addEventListener('click', async () => {
-      /* 10/11/2026: במסך ההוק הדמות זורקת את החכה כשמעתיקים */
-      flashMaya('is-cast', 1300);
       const text = decodeURIComponent(btn.getAttribute('data-copy-text'));
       try {
         await navigator.clipboard.writeText(text);
