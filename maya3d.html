@@ -70,7 +70,7 @@ function rig(material) {
 }
 
 let model = null;
-new GLTFLoader().load('assets/maya/maya3d.glb?v=1', (gltf) => {
+new GLTFLoader().load('assets/maya/maya3d.glb?v=2', (gltf) => {
   model = new THREE.Group();
   gltf.scene.traverse((o) => {
     if (o.isMesh) {
@@ -115,8 +115,9 @@ function aim(cx, cy) {
   const nx = (cx / window.innerWidth) * 2 - 1;
   const ny = (cy / window.innerHeight) * 2 - 1;
   /* היא עומדת מולך: האצבע מימין למסך = שמאל שלה */
-  target.yaw = THREE.MathUtils.clamp(nx * 0.55, -0.5, 0.5);
-  target.pitch = THREE.MathUtils.clamp(ny * 0.3 - 0.05, -0.25, 0.28);
+  /* 11/11/2026 (מאיה: "כשהיא זזה מצד לצד הפרצוף מעוות"): סיבוב קטן וטבעי, בערך 12 מעלות */
+  target.yaw = THREE.MathUtils.clamp(nx * 0.26, -0.22, 0.22);
+  target.pitch = THREE.MathUtils.clamp(ny * 0.16 - 0.02, -0.12, 0.14);
   lastMove = performance.now();
 }
 window.addEventListener('pointermove', (e) => aim(e.clientX, e.clientY));
@@ -148,8 +149,8 @@ function tick(now) {
     let ty = target.yaw, tp = target.pitch;
     if (now - lastMove > 3500) {
       /* מסתכלת סביב לאט כשאף אחד לא מזיז */
-      ty = Math.sin(t * 0.37) * 0.32 + Math.sin(t * 0.13) * 0.12;
-      tp = Math.sin(t * 0.29 + 1.3) * 0.08;
+      ty = Math.sin(t * 0.37) * 0.14 + Math.sin(t * 0.13) * 0.05;
+      tp = Math.sin(t * 0.29 + 1.3) * 0.05;
     }
     const k = reduce ? 1 : 0.07;
     cur.yaw += (ty - cur.yaw) * k;
@@ -159,7 +160,7 @@ function tick(now) {
     U.uRoll.value = reduce ? 0 : Math.sin(t * 0.5) * 0.035 - cur.yaw * 0.08;
     U.uBreath.value = reduce ? 0 : Math.sin(t * 1.7) * 0.5 + 0.5;
     /* הגוף מסתובב קצת אחרי הראש, ומעביר משקל מרגל לרגל */
-    cur.body += (cur.yaw * 0.3 - cur.body) * 0.04;
+    cur.body += (cur.yaw * 0.45 - cur.body) * 0.04;
     model.rotation.y = cur.body;
     model.rotation.z = reduce ? 0 : Math.sin(t * 0.8) * 0.012;
     /* קפיצה קטנה כשנוגעים בה */
