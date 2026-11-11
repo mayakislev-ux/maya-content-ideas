@@ -18,6 +18,7 @@ const webpush = {
   },
 };
 const { buildFormatRecommendPrompt, parseFormatPicks } = require('./format-recommend');
+const { buildMayaNotePrompt, cleanMayaNote } = require('./maya-note');
 const { buildSystemPrompt, ADMIN_OPEN_MODE } = require('./system-prompt');
 const { buildOngoingWarmingPrompt, buildPresaleWarmingPrompt, capExistingIdeas } = require('./warming-system-prompt');
 const { buildContentPlanPrompt } = require('./content-plan-system-prompt');
@@ -102,6 +103,8 @@ const DAILY_LIMITS = {
      ואצל מאיה פעם לכל לקוחה שהיא נכנסת אליה, ולכן 20 ולא 3. */
   guessClientDomain: 20,
   suggestSearchKeywords: 40,
+  /* 11/11/2026: הערה אחת בקול של מאיה כשעוצרים לרגע בכתיבה בעוזר. Sonnet קצר, פחות מסנט. */
+  mayaNote: 60,
 };
 
 // checkIdea/classifyIdea/generateWarmingPlan/generateContentPlan עד עכשיו רק
@@ -1432,6 +1435,29 @@ exports.recommendFormatsForIdea = onCall({ secrets: [anthropicApiKey], region: '
   const picks = parseFormatPicks(getResponseText(data));
   if (!picks.length) throw new HttpsError('internal', 'לא הצלחתי להמליץ על פורמט');
   return { picks };
+});
+
+/* 11/11/2026 (מאיה: "היא לא את"): הערה אחת חדה בקול של מאיה על מה שנכתב.
+   ראה functions/maya-note.js. */
+exports.mayaNote = onCall({ secrets: [anthropicApiKey], region: 'us-central1', timeoutSeconds: 30 }, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'יש להתחבר כדי להשתמש בתכונה הזו');
+  }
+  await enforceAllowlist(request.auth.token.email, { allowRefs: true });
+  const d = request.data || {};
+  const pick = (k, max) => { const v = String(d[k] || '').trim(); assertMaxLength(v, max, k); return v; };
+  const text = pick('text', 4000);
+  if (text.split(/\s+/).filter(Boolean).length < 12) throw new HttpsError('invalid-argument', 'קצר מדי');
+  const input = { text, screen: pick('screen', 60), domain: pick('domain', 200), pronoun: pick('pronoun', 10) };
+  await enforceRateLimit(request.auth.uid, 'mayaNote');
+  const data = await callAnthropic(
+    anthropicApiKey.value(),
+    { model: 'claude-sonnet-5-5', max_tokens: 2000, messages: [{ role: 'user', content: buildMayaNotePrompt(input) }] },
+    'mayaNote'
+  );
+  const note = cleanMayaNote(getResponseText(data));
+  if (!note) throw new HttpsError('internal', 'אין הערה');
+  return { note };
 });
 
 // "מאגר להשראה" - tags a batch of not-yet-tagged videos with a FORMAT tag

@@ -14,6 +14,7 @@ const guessClientDomainFn = httpsCallable(functions, 'guessClientDomain');
 const suggestSearchKeywordsFn = httpsCallable(functions, 'suggestSearchKeywords');
 const extractOpeningHookFn = httpsCallable(functions, 'extractOpeningHook');
 const recommendFormatsForIdeaFn = httpsCallable(functions, 'recommendFormatsForIdea', { timeout: 30000 });
+const mayaNoteFn = httpsCallable(functions, 'mayaNote', { timeout: 30000 });
 const classifyIdeaFn = httpsCallable(functions, 'classifyIdea');
 /* 04/11/2026: ג'מיני צופה בסרטון שלם, 20-60 שניות ולפעמים יותר. ברירת
    המחדל של הקריאה היא 70 שניות, ואז היא הייתה נכשלת בזמן שהשרת עוד עובד. */
@@ -92,6 +93,12 @@ export async function suggestSearchKeywords(idea) {
 // ChatGPT פשוט שכפל חזרה את כל הפסקה במקום לייצר 30 הוקים חדשים).
 // מזהה רק את המשפט/ים הפותחים (עד שמגיעים לנימוק/הרחבה) - ראה
 // renderPrompt1 ב-video-assistant.js.
+/* 11/11/2026: הערה אחת בקול של מאיה על מה שנכתב עכשיו */
+export async function mayaNote(payload) {
+  const result = await mayaNoteFn(payload);
+  return String((result.data && result.data.note) || '');
+}
+
 /* 09/11/2026: המלצת פורמט שקוראת את הרעיון, המסר והאריזה. [{name, why}] */
 export async function recommendFormatsForIdea(payload) {
   const result = await recommendFormatsForIdeaFn(payload);

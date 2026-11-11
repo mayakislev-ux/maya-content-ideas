@@ -17,6 +17,7 @@ export const POSES = ['hug', 'dance', 'camera', 'mic', 'chairs', 'coffee', 'fish
    ומנדנדת רגליים, נשענת בגב, נכנסת בהליכה, ועוברת מצד לצד בין המסכים.
    בלי פעילות: שעון אחרי דקה, פיהוק אחרי שתיים. לחיצה עליה: בועה בלבד
    (בלי החלפת תנוחה). וכפתור להסתיר אותה. */
+import { holidayFor, hanukkiahSvg } from './va-holidays.js';
 const WRITING_SCREENS = new Set(['idea-sharpen', 'type-idea', 'transcribe', 'content-basics', 'footage-speech-sharpen', 'scratch-distill', 'prompt2']);
 const SIDE_ROTATION = ['swing', 'backlean', 'hug'];
 export const IDLE_FIRST_MS = 60 * 1000;
@@ -153,6 +154,9 @@ const ALT = {
   wink: 'מאיה קורצת',
   laugh: 'מאיה צוחקת',
 };
+/* 11/11/2026: חגים, קורי עכביש ושטיח אדום */
+const HOLIDAY_POSES = ['cobweb', 'oscar', 'candle', 'yomkippur', 'roshhashana', 'sukkot', 'simchattorah', 'tubishvat',
+  'purim', 'pesach', 'atzmaut', 'lagbaomer', 'shavuot', 'tubeav', 'christmas', 'newyear'];
 
 let lastPose = null;
 let preloaded = false;
@@ -246,6 +250,8 @@ export function mountMaya(card, screen) {
   }
   /* תנוחת הברכה היא התנוחה של המסך הזה, כדי ששינוי גודל חלון לא יחליף אותה */
   intendedPose = pose;
+  /* 11/11/2026: בערב הבכורה היא כבר על השטיח האדום, בלי דמות שנייה */
+  if (card.querySelector('.va-premiere')) { onScreenMoment(screen); return; }
   mountFigure(card, pose);
   onScreenMoment(screen);
   preloadPoses();
@@ -258,10 +264,18 @@ function mountFigure(card, pose) {
   fig.setAttribute('aria-hidden', 'true');
   const img = document.createElement('img');
   img.src = mayaSrc(head ? 'head' : pose);
-  img.alt = head ? 'מאיה' : ALT[pose];
+  img.alt = head ? 'מאיה' : (ALT[pose] || 'מאיה');
   img.decoding = 'async';
   img.draggable = false;
   fig.appendChild(img);
+  /* 11/11/2026 (מאיה: "חנוכה... הדלקת נרות"): כל ערב נר נוסף בחנוכייה שלידה */
+  const hol = typeof document !== 'undefined' ? holidayFor(israelDay()) : null;
+  if (hol && hol.key === 'hanukkah') {
+    const hk = document.createElement('div');
+    hk.className = 'va-hanukkiah';
+    hk.innerHTML = hanukkiahSvg(hol.candles);
+    fig.appendChild(hk);
+  }
   if (head) card.prepend(fig); else card.appendChild(fig);
   fadeInWhenReady(fig, img, head ? lastPose !== 'head' : lastPose !== pose);
   /* 10/11/2026 (מאיה: "כשלוחצים על הדמות לא אהבתי שהיא פתאום משתנה, זה
@@ -368,7 +382,7 @@ export function setMayaPose(pose) {
   const waiting = fig.classList.contains('is-wait');
   fig.className = `va-maya va-maya--${pose}`;
   img.src = mayaSrc(pose);
-  img.alt = ALT[pose];
+  img.alt = ALT[pose] || 'מאיה';
   /* גם אם הקודמת עוד לא הופיעה: מחכים מחדש, לתמונה החדשה */
   void waiting;
   fadeInWhenReady(fig, img, true);
@@ -420,7 +434,7 @@ export const LONG_MEGILLAH_WORDS = 250;
 
 /** "ממיר": גשם של שטרות והיא רוקדת, מעל כל מסך (גם בצ'אט). נעלם לבד. */
 export function moneyDance() {
-  if (typeof document === 'undefined' || document.querySelector('.va-money-show') || mayaHidden()) return;
+  if (typeof document === 'undefined' || document.querySelector('.va-money-show') || mayaHidden() || quietToday()) return;
   preload();
   const show = document.createElement('div');
   show.className = 'va-money-show';
@@ -464,7 +478,7 @@ export const STAGE_TEXT = {
 
 /** רגע שיא על כל המסך: תנוחה גדולה + בועה, נעלם לבד */
 export function stageShow(pose, text, ms = 3200) {
-  if (typeof document === 'undefined' || !POSES.includes(pose) || mayaHidden()) return false;
+  if (typeof document === 'undefined' || !POSES.includes(pose) || mayaHidden() || quietToday()) return false;
   document.querySelectorAll('.va-stage-show').forEach((el) => el.remove());
   const show = document.createElement('div');
   show.className = `va-stage-show va-stage--${pose}`;
@@ -541,7 +555,9 @@ function showBubble(text, ms = 2600) {
 }
 
 /** תגובה רגעית: תנוחה + בועה, ואז חוזרת לתנוחה של המסך */
-export function react(pose, text, { force = false, ms = 2600 } = {}) {
+export function react(pose, text, { force = false, ms = 2600, solemn = false } = {}) {
+  /* ביום זיכרון או צום: רק שורת הפתיחה, בלי בועות ובדיחות */
+  if (!solemn && quietToday()) return false;
   const now = Date.now();
   if (!force && now - lastReactAt < COOLDOWN_MS) return false;
   const fig = figEl();
@@ -561,6 +577,48 @@ function armQuiet(el) {
   clearTimeout(quietTimer);
 }
 
+/* 11/11/2026 (מאיה: "היא לא את"): כשעוצרים לרגע אחרי שכתבו מספיק, היא
+   קוראת את מה שנכתב ואומרת משהו אחד ספציפי, במילים שלך (השרת: mayaNote).
+   עד שתי הערות לתיבה, ורק כשנוספו לפחות 15 מילים מאז ההערה הקודמת. */
+let noteSource = null;
+export function setMayaNoteSource(fn) { noteSource = typeof fn === 'function' ? fn : null; }
+const NOTE_SCREENS = new Set([...WRITING_SCREENS, ...MEGILLAH_SCREENS]);
+export const NOTE_MIN_WORDS = 25;
+const notedFor = new WeakMap();
+let noteTimer = null;
+let noteBusy = false;
+/** האם מגיעה הערה עכשיו: מספיק מילים, לא יותר משתיים לתיבה, ומספיק חדש */
+export function noteDue(words, rec) {
+  const r = rec || { words: 0, count: 0 };
+  return words >= NOTE_MIN_WORDS && r.count < 2 && words - r.words >= 15;
+}
+function armNote(el) {
+  clearTimeout(noteTimer);
+  if (!noteSource || !NOTE_SCREENS.has(prevScreen)) return;
+  noteTimer = setTimeout(() => { askNote(el); }, 4500);
+  if (noteTimer && noteTimer.unref) noteTimer.unref();
+}
+async function askNote(el) {
+  if (noteBusy || !el.isConnected || !figEl() || mayaHidden() || quietToday()) return;
+  const words = wordCount(el.value);
+  const rec = notedFor.get(el);
+  if (!noteDue(words, rec)) return;
+  noteBusy = true;
+  notedFor.set(el, { words, count: ((rec && rec.count) || 0) + 1 });
+  const screen = prevScreen;
+  try {
+    const note = await noteSource({ screen, text: el.value.slice(0, 4000) });
+    if (note && el.isConnected && prevScreen === screen) {
+      clappedFor.add(el);
+      react(null, note, { force: true, ms: 9000 });
+    }
+  } catch (err) {
+    console.warn('mayaNote failed:', err);
+  } finally {
+    noteBusy = false;
+  }
+}
+
 let reactionsWired = false;
 export function wireReactions() {
   if (reactionsWired || typeof document === 'undefined') return;
@@ -576,6 +634,7 @@ export function wireReactions() {
     const el = e.target;
     if (!inView(el)) return;
     armQuiet(el);
+    armNote(el);
     const before = prevOf.has(el) ? prevOf.get(el) : '';
     const now = el.value;
     prevOf.set(el, now);
@@ -605,6 +664,7 @@ export function wireReactions() {
    "התגעגעתי" אחרי שבוע, בדיחה בלחיצה כפולה, מחק כשמוחקים הרבה, סולם חבלים
    (בלי סולם: היא לא אוהבת שינוי פתאומי). */
 POSES.push('wave', 'winter', 'summer', 'hanukkah', 'medal', 'trophy', 'missyou', 'dizzy', 'pencil');
+POSES.push(...HOLIDAY_POSES);
 Object.assign(ALT, {
   wave: 'מאיה מנפנפת לשלום', winter: 'מאיה בבגדי חורף עם שוקו', summer: 'מאיה בבגדי קיץ עם אייס קפה',
   hanukkah: 'מאיה עם סופגנייה וסביבון', medal: 'מאיה עם מדליה', trophy: 'מאיה מרימה גביע',
@@ -630,14 +690,22 @@ export function israelDay(date = new Date()) {
   return `${get('year')}-${get('month')}-${get('day')}`;
 }
 
-const HANUKKAH = [['2026-12-04', '2026-12-12'], ['2027-12-24', '2028-01-01'], ['2028-12-12', '2028-12-20']];
-/** עונה או חג לברכה: hanukkah / winter / summer / null */
+/** עונה או חנוכה: hanukkah / winter / summer / null (שאר החגים: holidayFor) */
 export function seasonPose(day) {
-  if (HANUKKAH.some(([a, b]) => day >= a && day <= b)) return 'hanukkah';
+  const hol = holidayFor(day);
+  if (hol && hol.key === 'hanukkah') return 'hanukkah';
   const md = day.slice(5);
   if (md >= '12-01' || md <= '02-28') return 'winter';
   if (md >= '06-01' && md <= '09-15') return 'summer';
   return null;
+}
+
+let quietCache = { day: '', on: false };
+/** יום זיכרון או צום בישראל (נבדק פעם אחת ביום) */
+export function quietToday(now = new Date()) {
+  const day = israelDay(now);
+  if (quietCache.day !== day) { const h = holidayFor(day); quietCache = { day, on: Boolean(h && h.quiet) }; }
+  return quietCache.on;
 }
 
 /** ברכה לפי שעה */
@@ -687,12 +755,21 @@ export function registerVisit(prev, today) {
 
 /** מה היא אומרת כשהעוזר נפתח: התגעגעתי > מדליה > חג/עונה > נפנוף */
 export function openingMoment({ gap, streak, isNewDay, hour, day, first }) {
-  if (isNewDay && gap != null && gap >= 7) return { pose: 'missyou', text: `התגעגעתי${first ? `, ${first}` : ''}! 🥹 איפה היית?` };
+  /* 11/11/2026: יום זיכרון או צום קודם לכל: נר, בלי חגיגה */
+  const hol = holidayFor(day);
+  if (hol && hol.quiet) return { pose: hol.pose || 'hug', text: hol.line, quiet: true };
+  /* 11/11/2026 (מאיה: "קורי עכביש. חזק"): מי שנעלמה לשבוע מוצאת אותה
+     יושבת מכוסה בקורים */
+  if (isNewDay && gap != null && gap >= 7) return { pose: 'cobweb', text: `חיכיתי לך${first ? `, ${first}` : ''}... 🕸️ יאללה, מנערים את האבק` };
   if (isNewDay && streak >= 3) return { pose: 'medal', text: `${streak} ימים ברצף! מגיעה לך מדליה 🏅` };
+  if (hol && hol.pose) return { pose: hol.pose, text: `${greetingText(hour, first)} · ${hol.line}` };
   const season = seasonPose(day);
   if (season) return { pose: season, text: `${greetingText(hour, first)} · ${SEASON_LINE[season]}` };
   return { pose: 'wave', text: greetingText(hour, first) };
 }
+
+/** כמה סרטונים הסתיימו במכשיר הזה */
+export function videosDone() { return Number(readVisits().videos) || 0; }
 
 export const TROPHY_AT = [1, 3, 5, 10, 20, 30, 50, 75, 100];
 
@@ -721,7 +798,7 @@ function onScreenMoment(screen) {
     /* ההודעה נבנית רק כשהיא מוצגת, אחרי שהשם כבר נטען מהפרופיל */
     const t = setTimeout(() => {
       const m = openingMoment({ ...r, hour: israelHour(now), day: israelDay(now), first: person.first });
-      react(null, m.text, { force: true, ms: 4200 });
+      react(null, m.text, { force: true, ms: 4200, solemn: true });
     }, 900);
     if (t && t.unref) t.unref();
     return;
@@ -733,6 +810,12 @@ function onScreenMoment(screen) {
     const v = readVisits();
     v.videos = (v.videos || 0) + 1;
     writeVisits(v);
+    /* 11/11/2026: בערב הבכורה הפסלון כבר על המסך. רק המספר נכנס ללוחית */
+    const prem = document.querySelector('.va-premiere-count');
+    if (prem) {
+      if (v.videos > 1) prem.textContent = `סרטון מספר ${v.videos} 🏆`;
+      return;
+    }
     if (TROPHY_AT.includes(v.videos)) {
       const t = setTimeout(() => stageShow('trophy', v.videos === 1 ? 'התסריט הראשון שלך מוכן! 🏆' : `תסריט מספר ${v.videos}! 🏆`, 3800), 900);
       if (t && t.unref) t.unref();

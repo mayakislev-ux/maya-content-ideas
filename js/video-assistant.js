@@ -32,7 +32,7 @@ import { languageName } from './inspiration-readability.js';
 import {
   fetchIdeas, fetchInspirationBank, getSavedDomain, guessDomain, saveDomain, saveSession, loadSession,
   saveScript, listScripts, deleteScript, setScriptKind,
-  extractOpeningHook, classifyContentType, recommendFormatsForIdea,
+  extractOpeningHook, classifyContentType, recommendFormatsForIdea, mayaNote,
   transcribeReference,
 } from './video-assistant-store.js';
 import { uploadForTranscription, discardUpload } from './transcribe-upload.js';
@@ -41,7 +41,8 @@ import {
 } from './reference-transcribe.js';
 import { getProfile, saveProfile } from './user-profile.js';
 import { audienceOptions, pickedAudience, audienceChipLabel, audienceEditUpdate, audienceAddUpdate, audienceDeleteUpdate } from './audience-pick.js';
-import { mountMaya, mayaVisibleFor, setMayaPose, setMayaNod, poseForFormat, setSignText, stageShow, setMayaPerson } from './va-maya.js';
+import { mountMaya, mayaVisibleFor, setMayaPose, setMayaNod, poseForFormat, setSignText, stageShow, setMayaPerson, videosDone, setMayaNoteSource } from './va-maya.js';
+import { premiereHtml, premiereTitle, wirePremiere } from './va-premiere.js';
 const mayaOn = () => mayaVisibleFor(auth.currentUser && auth.currentUser.email);
 const BRAND_CONFETTI = ['#263ea8', '#8b98d9', '#ff2ea8', '#ff7ac8', '#ffd23f', '#ffffff'];
 /* 04/11/2026: צ'אט דיוק הרעיון חזר, כקפיצה לצ'אט עצמו ולא כעותק בתוך המסך */
@@ -536,7 +537,16 @@ function cosmicCard(innerHtml, { showProgress = true } = {}) {
   if (mayaOn()) {
     /* שלב 4: השם והלשון לברכה ולביטויים (נקרא פעם אחת) */
     if (state.screen === 'opening') mayaPersonLoaded = false;
-    if (!mayaPersonLoaded) { mayaPersonLoaded = true; getProfile().then(setMayaPerson).catch(() => {}); }
+    if (!mayaPersonLoaded) {
+      mayaPersonLoaded = true;
+      getProfile().then(setMayaPerson).catch(() => {});
+      /* 11/11/2026: ההערה בקול של מאיה (השרת mayaNote) */
+      setMayaNoteSource(async ({ screen, text }) => {
+        const profile = (await getProfile()) || {};
+        const domain = String((await myDomain()) || '').slice(0, 200);
+        return mayaNote({ screen, text, domain, pronoun: profile.pronoun || '' });
+      });
+    }
     /* תקלה בדמות לא שוברת את המסך (הכפתורים מחוברים אחרי השורה הזו) */
     try { mountMaya(document.getElementById('va-card'), state.screen); } catch (err) { console.error('mountMaya failed:', err); }
   }
@@ -3100,7 +3110,10 @@ function renderSummary() {
   const stepsHtml = steps.map((s, i) => `<li><span class="cosmic-summary-num">${i + 1}</span><div>${escapeHtml(s)}</div></li>`).join('');
   const script = finalScriptText();
   const elapsed = elapsedSinceStart();
+  /* 11/11/2026: ערב הבכורה על השטיח האדום (רק כשהדמות מוצגת) */
+  const premiere = mayaOn() ? premiereTitle(state, script) : null;
   const card = cosmicCard(`
+    ${premiere !== null ? premiereHtml(premiere) : ''}
     <h2>🎬 מוכן! הנה בדיוק מה קרה</h2>
     ${elapsed ? `<div class="cosmic-today-challenge"><div class="cosmic-today-challenge__icon">⏱️</div><div>בנית את זה תוך <strong>${elapsed}</strong>!</div></div>` : ''}
     <ul class="cosmic-summary-list">${stepsHtml}</ul>
@@ -3125,6 +3138,7 @@ function renderSummary() {
   /* שלב 3: קונפטי בצבעי המותג (בינתיים רק כשהדמות מוצגת) */
   burstConfetti(card, mayaOn() ? BRAND_CONFETTI : undefined);
   if (script) wireCopyButtons(screenEl());
+  if (premiere !== null) wirePremiere(screenEl(), premiere, { getCount: videosDone, toast: showToast });
   wireSummaryTools(screenEl(), {
     getState: () => state,
     patch: (changes) => { state = { ...state, ...changes }; saveAll().catch((err) => console.error('saveSession failed:', err)); },

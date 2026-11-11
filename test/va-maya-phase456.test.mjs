@@ -43,7 +43,7 @@ describe('שלב 5: מצב רוח ומשחק', () => {
     assert.equal(again.isNewDay, false, 'אותו יום לא סופר שוב');
     const back = registerVisit(r.v, '2026-11-20');
     assert.equal(back.streak, 1);
-    assert.equal(openingMoment({ ...back, hour: 9, day: '2026-11-20', first: 'נועה' }).pose, 'missyou');
+    assert.equal(openingMoment({ ...back, hour: 9, day: '2026-11-20', first: 'נועה' }).pose, 'cobweb');
   });
   test('גביע על הסרטון הראשון, ובדיחות', () => {
     assert.ok(TROPHY_AT.includes(1));
