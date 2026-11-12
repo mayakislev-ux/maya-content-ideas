@@ -1140,8 +1140,24 @@ const SCENE_CODE_LINE = `
 
 מילת הקוד להנעה לפעולה (אם יש): [תיקח מההנעה לפעולה שכבר בתסריט. אם יש בה מילת קוד, היא נשארת בדיוק אותו דבר]`;
 
-export function buildSceneRewritePrompt({ script, audience, domain, creative, ctaType }) {
-  const out = buildSceneRewriteText({ script, audience, domain, creative });
+/* 12/11/2026 (מאיה: "בפרומט הסופי של להפוך את התסריט לחד חסר משפט של לא לגעת
+   בהוק ובחיזוק הוק"). המשפט נכנס מיד אחרי "המשימה שלך", עם ההוק והחיזוק
+   שנבחרו, וגובר על "פתיחה מתוך הסצנה" שבנוסח. */
+const SCENE_TASK_LINE = 'שכתב את התסריט לפי מודל "השלכה לתוך סצנה" (Scene-First), כך שיישמע כמו מונולוג אמת ישיר, חד וקולנועי.';
+
+export function sceneKeepHookLine(hook, hookReinforcement) {
+  const h = String(hook || '').trim();
+  const r = String(hookReinforcement || '').trim();
+  const parts = [h ? `ההוק: "${h}"` : '', r ? `חיזוק ההוק: "${r}"` : ''].filter(Boolean);
+  return `
+
+חשוב מאוד: אל תיגע בהוק ובחיזוק ההוק. הם נשארים בפתיחת התסריט בדיוק כמו שהם, מילה במילה, והשכתוב חל רק על מה שבא אחריהם (זה גובר על "פתיחה מתוך הסצנה" שלמטה).${parts.length ? `
+${parts.join('\n')}` : ''}`;
+}
+
+export function buildSceneRewritePrompt({ script, audience, domain, creative, ctaType, hook, hookReinforcement }) {
+  const out = buildSceneRewriteText({ script, audience, domain, creative })
+    .replace(SCENE_TASK_LINE, `${SCENE_TASK_LINE}${sceneKeepHookLine(hook, hookReinforcement)}`);
   const cta = String(ctaType || '').trim();
   if (cta === NO_CTA) {
     return out.replace(SCENE_CTA_LINE, 'בלי הנעה לפעולה: בסרטון הזה בחרו במכוון שלא תהיה הנעה לפעולה. אל תוסיף הנעה לפעולה בשום צורה (לא "תגיבו", לא "תעקבו", לא "שלחו הודעה"), ואם יש כזאת בתסריט, תוריד אותה. הסרטון נגמר במסר חזק, חד ובלתי נשכח, שסוגר את הסיפור.')

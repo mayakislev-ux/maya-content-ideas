@@ -87,7 +87,7 @@ test('כל המסכים במסלול מ-0 שולחים את הקריאייטיב
   assert.match(between('async function renderScratchHook', 'async function renderScratchHookReinforce'), /buildHookFindingPrompt\(\{[^}]*creative, suggestedHook: detected \}\)/);
   assert.match(between('async function renderScratchHookReinforce', 'const CTA_TYPES'), /buildHookReinforcementPrompt\(\{[^}]*creative \}\)/);
   assert.match(between('async function renderScratchDistill', 'async function renderScratchScene'), /carousel: isCarousel\(state\), dynamicText: isDynamicText\(state\), creative,/);
-  assert.match(between('async function renderScratchScene', '// ===== מסך הסיכום הסופי'), /buildSceneRewritePrompt\(\{[^}]*creative \}\)/);
+  assert.match(between('async function renderScratchScene', '// ===== מסך הסיכום הסופי'), /buildSceneRewritePrompt\(\{[^}]*creative, hook: state\.hook, hookReinforcement: state\.hookReinforcement \}\)/);
   /* בשכפול אין קריאייטיב, והמסכים שלו לא נגעו בו */
   assert.ok(!between('async function renderPrompt1', 'async function renderPrompt2').includes('creative'));
 });
