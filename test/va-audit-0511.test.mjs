@@ -33,8 +33,9 @@ const BUILT = {
 };
 
 test('קריאייטיב: נכנס לכל פרומפט במסלול מ-0 חוץ מההוק, עם הוראה להיצמד אליו', () => {
-  /* 10/11/2026 (מאיה): פרומפט ההוק בלי הקריאייטיב, "תמחקי את הקטע הזה" */
-  assert.ok(!BUILT.hook(CREATIVE).includes(CREATIVE), 'הקריאייטיב חזר לפרומפט ההוק');
+  /* 12/11/2026 (מאיה): הקריאייטיב חוזר לפרומפט ההוק, אבל רק כנתון ובלי הוראת ההיצמדות */
+  assert.ok(BUILT.hook(CREATIVE).includes(`האריזה הקריאייטיבית שבחרתי לסרטון\n[${CREATIVE}]`), 'הקריאייטיב חסר בפרומפט ההוק');
+  assert.ok(!BUILT.hook(CREATIVE).includes('חובה להיצמד אליו'), 'הוראת ההיצמדות חזרה לפרומפט ההוק');
   for (const [name, build] of Object.entries(BUILT)) {
     if (name === 'hook') continue;
     const p = build(CREATIVE);
@@ -354,8 +355,8 @@ describe('ביקורת 05/11 בעוזר (jsdom)', { skip: hasJsdom ? false : 'js
     assert.match($('.va-creative-reminder').textContent, /הקריאייטיב שבחרת:/);
     assert.ok($('.va-creative-reminder').textContent.includes(CREATIVE));
     const copied = decodeURIComponent($('.va-copy-btn').getAttribute('data-copy-text'));
-    /* 10/11/2026: מוצג במסך כתזכורת, אבל לא נכנס לפרומפט ההוק */
-    assert.ok(!copied.includes(CREATIVE));
+    /* 12/11/2026 (מאיה): הקריאייטיב שנבחר נכנס לפרומפט ההוק שמועתק */
+    assert.ok(copied.includes(CREATIVE));
     assert.match($('.va-copy-btn').textContent, /ChatGPT/);
     assert.ok(!$('.va-copy-btn').textContent.includes("ג'מיני"));
   });

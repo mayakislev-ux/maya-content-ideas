@@ -119,7 +119,7 @@ function withoutHistory(state) {
 /* מה שהיא מדביקה או כותבת בכל מסך של שלב הכתיבה, וסדר המסכים בכל מסלול.
    חזרה אחורה לא מוחקת אותם (ראה BACK). */
 const PASTED_ON = {
-  prompt1: 'hook', 'her-words': 'herWords', prompt2: 'finalScript',
+  prompt1: 'hook', 'her-words': 'herWords', prompt2: 'finalScript', 'format-choice': 'selectedFormat',
   'scratch-dump': 'rawDump', 'creative-packaging': 'packaging', 'scratch-hook': 'hook', 'scratch-hook-reinforce': 'hookReinforcement', 'scratch-distill': 'draftScript',
 };
 const WRITING_ORDER = {
@@ -155,7 +155,8 @@ export function nextStep(state, action) {
     /* 10/11/2026: לא עד מסך הפתיחה. משם בוחרים מסלול חדש (רפרנס, קטע
        שצולם), והרעיון של הסרטון הנטוש היה ממשיך לתיאור ולשם של הסרטון החדש. */
     if (back.screen !== 'opening') {
-      for (const key of ['ideaTopic', 'ideaPunchline', 'ideaAngle']) {
+      /* 12/11/2026 (מאיה: "שכל פעם שחוזרים שלב אחורה זה לא ימחק"): גם נקודת היציאה וסוג התוכן */
+      for (const key of ['ideaTopic', 'ideaPunchline', 'ideaAngle', 'startingPoint', 'contentType']) {
         if (back[key] == null && state[key] != null) back[key] = state[key];
       }
     }

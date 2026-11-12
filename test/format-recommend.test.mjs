@@ -165,13 +165,14 @@ describe('השרת: הפרומפט והניקוי של התשובה (09/11/2026)
    לא לפי החוקים ולא לפי התבנית שלי. תמחקי את הקטע הזה מהפרומפט". הבלוק של
    09/11 שהצמיד את ההוקים לקריאייטיב ירד. */
 describe('פרומפט ההוקים בלי הקריאייטיב (10/11/2026)', () => {
-  test('עם קריאייטיב או בלי, הפרומפט זהה: בלי ההוראה ובלי התזכורת בסוף', async () => {
+  /* 12/11/2026 (מאיה): הקריאייטיב חוזר, אבל רק כנתון אחד בין הנתונים בסוף */
+  test('הקריאייטיב נכנס כנתון בלבד: בלי ההוראה של 09/11 ובלי התזכורת בסוף', async () => {
     const { buildHookFindingPrompt } = await import('../js/video-assistant-content.js');
     const creative = 'את יושבת וחותכת תותים באופן טבעי, ומתחילה לדבר תוך כדי הפעולה.';
     const args = { idea: 'פערי מעמדות', script: 'תסריט', audience: 'בעלות עסקים', domain: 'שיווק' };
     const withC = buildHookFindingPrompt({ ...args, creative });
-    assert.equal(withC, buildHookFindingPrompt({ ...args, creative: '' }));
-    assert.ok(!withC.includes('תותים'));
+    assert.ok(withC.includes(`האריזה הקריאייטיבית שבחרתי לסרטון\n[${creative}]`));
+    assert.ok(!buildHookFindingPrompt({ ...args, creative: '' }).includes('תותים'));
     assert.ok(!withC.includes('כל הוק עושה שני דברים יחד'));
     assert.ok(!withC.includes('תזכורת אחרונה'));
   });
