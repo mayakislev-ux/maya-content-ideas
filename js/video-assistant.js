@@ -42,7 +42,7 @@ import {
 import { getProfile, getMyCohort, saveProfile } from './user-profile.js';
 import { audienceOptions, pickedAudience, audienceChipLabel, audienceEditUpdate, audienceAddUpdate, audienceDeleteUpdate } from './audience-pick.js';
 import { mountMaya, mayaVisibleFor, setMayaPose, setMayaNod, poseForFormat, setSignText, stageShow, setMayaPerson, videosDone, setMayaNoteSource, quietToday, mayaHidden, setMaya3dAllowed, rememberVideo, setMayaCohort, mayaBirthday, setMayaBirthday } from './va-maya.js';
-import { premiereHtml, premiereTitle, wirePremiere } from './va-premiere.js';
+import { premiereTitle } from './va-premiere.js';
 const mayaOn = () => mayaVisibleFor(auth.currentUser && auth.currentUser.email);
 const BRAND_CONFETTI = ['#263ea8', '#8b98d9', '#ff2ea8', '#ff7ac8', '#ffd23f', '#ffffff'];
 /* 04/11/2026: צ'אט דיוק הרעיון חזר, כקפיצה לצ'אט עצמו ולא כעותק בתוך המסך */
@@ -3182,9 +3182,9 @@ function renderSummary() {
   const elapsed = elapsedSinceStart();
   /* 11/11/2026: ערב הבכורה על השטיח האדום (רק כשהדמות מוצגת) */
   /* לא ביום זיכרון או צום, ולא כשהסתירו את הדמות */
-  const premiere = mayaOn() && !mayaHidden() && !quietToday() ? premiereTitle(state, script) : null;
+  /* 12/11/2026 (מאיה: "הקרנת הבכורה של התסריט, מה זה מכוערת, איך באלי שתעיפי את זה"): ירד */
+  const showMaya = mayaOn() && !mayaHidden() && !quietToday();
   const card = cosmicCard(`
-    ${premiere !== null ? premiereHtml(premiere) : ''}
     <h2>🎬 מוכן! הנה בדיוק מה קרה</h2>
     ${elapsed ? `<div class="cosmic-today-challenge"><div class="cosmic-today-challenge__icon">⏱️</div><div>בנית את זה תוך <strong>${elapsed}</strong>!</div></div>` : ''}
     <ul class="cosmic-summary-list">${stepsHtml}</ul>
@@ -3210,10 +3210,9 @@ function renderSummary() {
   /* 11/11/2026: ביום זיכרון או צום בלי קונפטי, לכולם */
   if (!quietToday()) burstConfetti(card, mayaOn() ? BRAND_CONFETTI : undefined);
   if (script) wireCopyButtons(screenEl());
-  if (premiere !== null) wirePremiere(screenEl(), premiere, { getCount: videosDone, toast: showToast });
   /* 11/11/2026: היא זוכרת את הסרטון ושואלת עליו בפעם הבאה */
   if (mayaOn()) rememberVideo(premiereTitle(state, script));
-  if (premiere !== null) wireBirthdayAsk(card);
+  if (showMaya) wireBirthdayAsk(card);
   wireSummaryTools(screenEl(), {
     getState: () => state,
     patch: (changes) => { state = { ...state, ...changes }; saveAll().catch((err) => console.error('saveSession failed:', err)); },

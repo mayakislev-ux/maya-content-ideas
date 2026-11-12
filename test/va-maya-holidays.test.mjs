@@ -79,7 +79,8 @@ test('ערב הבכורה: שם הסרטון, לוחית, וכפתור סטור�
   const lines = wrapLines((t) => t.length, 'אחת שתיים שלוש ארבע חמש', 10, 2);
   assert.equal(lines.length, 2);
   assert.ok(lines[1].endsWith('…'));
-  assert.ok(VA.includes('premiereHtml(premiere)') && VA.includes('!quietToday() ? premiereTitle'), 'הבכורה לא במסך הסיכום או לא רק כשהדמות מוצגת');
+  /* 12/11/2026 (מאיה): ערב הבכורה ירד ממסך הסיכום. השם עדיין משמש לזיכרון הסרטון */
+  assert.ok(!VA.includes('premiereHtml(') && !VA.includes('wirePremiere('), 'ערב הבכורה חזר למסך הסיכום');
   assert.ok(M.includes("card.querySelector('.va-premiere')"), 'דמות כפולה בבכורה');
 });
 
@@ -107,7 +108,7 @@ test('יום עברי מתחיל בערב: הנר הראשון כבר בערב, 
 });
 
 test('בכורה וקונפטי: לא ביום שקט, לא כשהסתירו את הדמות', () => {
-  assert.ok(VA.includes('mayaOn() && !mayaHidden() && !quietToday() ? premiereTitle'));
+  assert.ok(VA.includes('const showMaya = mayaOn() && !mayaHidden() && !quietToday();') && VA.includes('if (showMaya) wireBirthdayAsk(card);'));
   assert.ok(VA.includes('if (!quietToday()) burstConfetti(card'));
   const P = readFileSync(new URL('../js/va-premiere.js', import.meta.url), 'utf8');
   assert.ok(P.includes("if (!e || e.name !== 'AbortError') download(blob);"), 'שיתוף שנכשל לא מוריד במקום');
