@@ -2531,13 +2531,22 @@ function returnFromAngleChat(result) {
 async function renderCreativePackaging() {
   const t = ++renderSeq;
   /* 06/11/2026: הזווית מהצ'אט נכנסת גם לפרומפט האריזה */
-  const idea = state.ideaTopic && state.ideaPunchline
-    ? withAngle(ideaWithMessage(state.ideaTopic, state.ideaPunchline), state.ideaAngle)
+  /* 12/11/2026: בנוסח החדש (במאי קריאייטיב) הרעיון והמסר הם שני שדות נפרדים.
+     סשן ישן בלי נושא ומסר נפרדים שולח את מה שיש בשדה הרעיון. */
+  const split = Boolean(state.ideaTopic || state.ideaPunchline);
+  const idea = split
+    ? withAngle(state.ideaTopic || '', state.ideaAngle)
     : (state.ideaBeforePackaging || state.ideaDescription || '');
+  /* 10/11/2026 (מור אדרי): כשהרעיון והמסר הם אותו משפט, הוא נכנס פעם אחת */
+  const message = split && !sameIdeaAndMessage(state.ideaTopic || '', state.ideaPunchline || '') ? (state.ideaPunchline || '') : '';
   const audience = await myAudience();
   const domain = await myDomain();
   if (t !== renderSeq) return;
-  const prompt = buildCreativePackagingPrompt({ domain, audience, idea, megillah: state.rawDump || '' });
+  const prompt = buildCreativePackagingPrompt({
+    domain, audience, idea, message,
+    startingPoint: state.startingPoint || '', contentType: state.contentType || '',
+    megillah: state.rawDump || '',
+  });
   if (state.screen === 'creative-packaging') seedDraft('va-packaging-input', state.packaging);
   /* 28/10/2026 (מאיה: "תעשי מה שחכם ונוח יותר"). נקודת היציאה הייתה
      מסך נפרד בין האריזה לפורמט, ועכשיו היא יושבת כאן. 29/10/2026 (מאיה):
@@ -2550,7 +2559,7 @@ async function renderCreativePackaging() {
     <p>איך מגישים את המסר בצורה מעניינת ולא בנאלית. להעתיק לג'מיני, לבחור מתוך ה-20 את הכיוון שהכי מדליק, ולהדביק אותו כאן.</p>
     <p class="cosmic-hint">הכיוון שבוחרים כאן ייכנס לבד להוק ולתסריט שנכתבים אחר כך.</p>
     <button type="button" class="va-text-link" id="va-what-creative-link">מה זה בעצם קריאייטיב?</button>
-    ${promptPeek(highlightPlaceholders(prompt, [domain, audience, idea, state.startingPoint || '']))}
+    ${promptPeek(highlightPlaceholders(prompt, [domain, audience, idea, message, state.startingPoint || '']))}
     ${copyBtn(prompt, "להעתיק פרומפט לג'מיני")}
     <textarea class="cosmic-textarea" id="va-packaging-input" placeholder="להדביק כאן את הכיוון שבחרת..." style="margin-top:14px"></textarea>
     ${withBasics ? `

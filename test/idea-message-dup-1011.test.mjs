@@ -17,7 +17,8 @@ test('רעיון ומסר שונים: שניהם נכנסים, כל אחד עם 
 test('המסך חוסם המשך כשבשתי התיבות אותו משפט', () => {
   const src = readFileSync(new URL('../js/video-assistant.js', import.meta.url), 'utf8');
   assert.match(src, /sameIdeaAndMessage\(box\.value, punchBox\.value\)/);
-  assert.match(src, /withAngle\(ideaWithMessage\(state\.ideaTopic, state\.ideaPunchline\), state\.ideaAngle\)/);
+  /* 12/11/2026: בנוסח במאי הקריאייטיב הרעיון והמסר בשדות נפרדים, ומשפט זהה לא נכנס פעמיים */
+  assert.match(src, /sameIdeaAndMessage\(state\.ideaTopic \|\| '', state\.ideaPunchline \|\| ''\)/);
 });
 
 /* סריקה מעמיקה, 10/11/2026 */

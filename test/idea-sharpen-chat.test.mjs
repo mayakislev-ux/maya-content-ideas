@@ -258,27 +258,32 @@ describe('האריזה הקריאייטיבית במקום הצ׳אט', () => {
     assert.ok(!SHARPEN.includes('va-chat-wrap'), 'תיבת הצ׳אט חזרה למסך');
   });
 
-  test('הפרומפט לג׳מיני הוא הנוסח שלה, מילה במילה, ועוד שורת ההוק הויזואלי', async () => {
-    const { buildCreativePackagingPrompt, CREATIVE_VISUAL_LINE, CREATIVE_WORLD_LINE, CREATIVE_LAST_LINE } = await import('../js/video-assistant-prompts.js');
-    assert.equal(
-      buildCreativePackagingPrompt({ domain: 'החלקות', audience: 'נשים 30+', idea: 'החלקה. המסר: אפשר בלי לשרוף' }),
-      ['התחום שלי זה: החלקות', '', 'קהל היעד שלי זה: נשים 30+', '',
-        'זה הרעיון שלי לתוכן והמסר: החלקה. המסר: אפשר בלי לשרוף', '',
-        "אני רוצה שתמצא לי 20 פורמטי הנגשה מעניינים ולא בנאליים, לסרטון הזה לרילסים לאינסטגרם ולטיקטוק לפי מה שעובד היום חזק, מאוד מיוחדים/מושכים תשומת לב/מקוריים/חכמים וממירים אבל הכי חשוב? מתאימים לרעיון ולמסר",
-        "הכי חשוב שזה יהיה פורמטים כמה שיותר אותנטיים/ריאליסטיים - משהו שבאמת אנשים צורכים ומתחברים", '',
-        CREATIVE_VISUAL_LINE, '', CREATIVE_WORLD_LINE, '', CREATIVE_LAST_LINE].join(String.fromCharCode(10)));
-    assert.ok(CREATIVE_VISUAL_LINE.includes('הוק ויזואלי עוצר גלילה'));
+  /* 12/11/2026 (מאיה): הנוסח החדש, "במאי קריאייטיב", מילה במילה. רק "פרטי התוכן שלי" מתמלא */
+  test('הפרומפט לג׳מיני הוא נוסח במאי הקריאייטיב שלה, ופרטי התוכן מתמלאים מהסרטון', async () => {
+    const { buildCreativePackagingPrompt } = await import('../js/video-assistant-prompts.js');
+    const { CREATIVE_DIRECTOR_PROMPT } = await import('../js/va-creative-prompt.js');
+    const p = buildCreativePackagingPrompt({ domain: 'החלקות', audience: 'נשים 30+', idea: 'החלקה בלי פורמלין',
+      message: 'אפשר בלי לשרוף', startingPoint: 'סיפור לקוח', megillah: 'לקוחה שהגיעה עם שיער שרוף והלכה עם חיוך' });
+    assert.ok(p.startsWith(CREATIVE_DIRECTOR_PROMPT), 'הנוסח שלה לא בראש הפרומפט');
+    assert.ok(CREATIVE_DIRECTOR_PROMPT.startsWith('# פרומפט – במאי קריאייטיב לרילס ולטיקטוק'));
+    assert.ok(CREATIVE_DIRECTOR_PROMPT.includes('אם אין 20 רעיונות טובים באמת, הצג פחות והסבר למה.'));
+    assert.ok(CREATIVE_DIRECTOR_PROMPT.endsWith('## פרטי התוכן שלי'));
+    const NL = String.fromCharCode(10);
+    for (const [label, value] of [['**תחום העיסוק:**', 'החלקות'], ['**קהל היעד הספציפי:**', 'נשים 30+'],
+      ['**סוג התוכן:**', 'תזהה לבד'], ['**נקודת היציאה:**', 'סיפור לקוח'], ['**הרעיון המרכזי:**', 'החלקה בלי פורמלין'],
+      ['**המסר שאני רוצה להעביר:**', 'אפשר בלי לשרוף'], ['**מגילת אסתר – כל חומר הגלם שלי:**', 'לקוחה שהגיעה עם שיער שרוף והלכה עם חיוך']]) {
+      assert.ok(p.includes(label + NL + value), label + ' לא מולא');
+    }
+    assert.ok(!p.includes('[להכניס כאן]'), 'נשאר שדה לא ממולא');
   });
 
-  /* 11/11/2026 (מאיה): רק המגילה נוספת. בלי רשימת פורמטים ובלי נקודת יציאה. */
-  test('הפרומפט לג׳מיני מקבל את המגילה, ובלי ההסבר על הפורמטים', async () => {
+  test('בלי נקודת יציאה וסוג תוכן: "תזהה לבד", ובלי מגילה זה נאמר במפורש', async () => {
     const { buildCreativePackagingPrompt } = await import('../js/video-assistant-prompts.js');
-    const p = buildCreativePackagingPrompt({ domain: 'החלקות', audience: 'נשים 30+', idea: 'החלקה',
-      megillah: 'לקוחה שהגיעה עם שיער שרוף והלכה עם חיוך' });
-    assert.ok(p.includes('לקוחה שהגיעה עם שיער שרוף והלכה עם חיוך'), 'המגילה לא בפרומפט');
-    assert.ok(!p.includes('6-10 שניות'), 'ההסבר על הפורמטים חזר');
-    assert.ok(!p.includes('- דיבור למצלמה:'), 'רשימת הפורמטים חזרה');
-    assert.ok(!p.includes('נקודת היציאה'), 'נקודת היציאה חזרה');
+    const p = buildCreativePackagingPrompt({ domain: 'החלקות', audience: 'נשים 30+', idea: 'החלקה', message: 'מסר' });
+    const NL = String.fromCharCode(10);
+    assert.ok(p.includes('**נקודת היציאה:**' + NL + 'תזהה לבד'));
+    assert.ok(p.includes('**סוג התוכן:**' + NL + 'תזהה לבד'));
+    assert.ok(p.includes('אין לי מגילה לסרטון הזה'));
   });
 
   test('מסך האריזה: פרומפט להעתקה, תיבה לכיוון שנבחר, ובלי כיוון לא ממשיכים', () => {
