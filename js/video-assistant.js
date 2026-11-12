@@ -1283,7 +1283,8 @@ function applyFormatPicks(picks) {
 function renderFormatChoice() {
   const { picks, loading } = formatPicksNow();
   const { recommended, tagHtml, whyHtml, hint } = formatPickParts(picks, loading);
-  const itemsHtml = FORMATS.map((f, i) => `
+  /* 12/11/2026: בשכפול כותבים סרטון לפי מנגנון של סרטון, ולכן אין בו קרוסלה */
+  const itemsHtml = FORMATS.map((f, i) => (state.formatFor === 'reference' && f.name === 'פוסט קרוסלה' ? '' : `
     <details class="cosmic-accordion-item${recommended.has(f.name) ? ' is-recommended' : ''}" data-format="${escapeHtml(f.name)}" ${state.selectedFormat === f.name ? 'open' : ''}>
       <summary><span><span class="cosmic-format-icon">${FORMAT_ICONS[f.name] || '🎬'}</span>${escapeHtml(f.name)}${tagHtml(f.name)}</span></summary>
       <div class="cosmic-accordion-body">
@@ -1293,7 +1294,7 @@ function renderFormatChoice() {
         <button type="button" class="cosmic-pick-btn" data-pick-format="${i}">הפורמט שלי</button>
       </div>
     </details>
-  `).join('');
+  `)).join('');
   cosmicCard(`
     <h2>בוחרים פורמט הנגשה</h2>
     <p>לכל רעיון יכולים להתאים כמה פורמטים - לפתוח כל אחד לקרוא על מה מדובר, ולבחור את מה שהכי מרגיש נכון.</p>
@@ -2245,7 +2246,7 @@ async function renderPrompt2() {
   const domain = await myDomain();
   const audience = await myAudience();
   if (t !== renderSeq) return;
-  const prompt = buildScriptPrompt({ hook, herWords: state.herWords, originalScript: state.transcript || '', domain, audience });
+  const prompt = buildScriptPrompt({ hook, herWords: state.herWords, originalScript: state.transcript || '', domain, audience, format: state.selectedFormat });
   /* 04/11: התסריט שהודבק חוזר לתיבה כשחוזרים מ"להקריא בקול" */
   if (state.screen === 'prompt2') seedDraft('va-prompt2-script-input', state.finalScript);
   cosmicCard(`
@@ -3068,6 +3069,7 @@ function buildSummarySteps() {
     steps.push('מצאת רפרנס מוכן במאגר שלך.');
     steps.push('תימללת את הרפרנס.');
     steps.push(`בחרת הוק: "${state.hook || ''}".`);
+    if (state.selectedFormat) steps.push(`בחרת פורמט: "${state.selectedFormat}".`);
     steps.push('הוספת את המילים שלך לתסריט.');
     steps.push('קראת את התסריט בקול וידעת שהוא מוכן.');
     steps.push('עכשיו: ללכת לצלם לפי התסריט למטה, ואז לערוך.');

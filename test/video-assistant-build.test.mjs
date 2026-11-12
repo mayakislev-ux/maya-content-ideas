@@ -49,7 +49,10 @@ test('שכפול: הרפרנס, ההוק והמילים שלה', () => {
   let s = nextStep(INITIAL_STATE, { type: 'CHOOSE_REFERENCE' });
   s = { ...s, screen: 'transcribe', transcript: 'תמלול של רפרנס', referenceLink: 'https://x.com/v' };
   s = nextStep(s, { type: 'CONFIRM_DONE' });
-  assert.deepEqual(pick(buildParts(s)), ['הרפרנס:done', 'ההוק:now', 'מה יש לך להגיד:wait', 'התסריט:wait']);
+  assert.deepEqual(pick(buildParts(s)), ['הרפרנס:done', 'ההוק:now', 'הפורמט:wait', 'מה יש לך להגיד:wait', 'התסריט:wait']);
+  /* 12/11/2026: בשכפול בוחרים פורמט אחרי ההוק */
+  s = nextStep(s, { type: 'HOOK_CHOSEN', hook: 'הוק' });
+  assert.deepEqual(pick(buildParts(s)), ['הרפרנס:done', 'ההוק:done', 'הפורמט:now', 'מה יש לך להגיד:wait', 'התסריט:wait']);
 });
 
 test('במסך הסיכום לא מציגים, הוא מציג הכל בעצמו', () => {

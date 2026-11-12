@@ -288,13 +288,19 @@ test('reverse duplication is gone: its action no longer exists (06/11)', () => {
   assert.throws(() => nextStep(base, { type: 'CHOOSE_REVERSE_DUPLICATION' }));
 });
 
-test('regular reference duplication: transcribe -> prompt1 -> her-words -> prompt2 -> read-aloud -> summary', () => {
-  const base = { ...INITIAL_STATE, screen: 'transcribe' };
+/* 12/11/2026: לקוחה ביקשה לבחור בשכפול וויס אובר או ויזואלי, ולא לקבל
+   אוטומטית דיבור למצלמה. מאיה אישרה מסך פורמט אחרי ההוק. */
+test('regular reference duplication: transcribe -> prompt1 -> format-choice -> her-words -> prompt2 -> read-aloud -> summary', () => {
+  const base = { ...INITIAL_STATE, screen: 'transcribe', branch: 'reference' };
   let s = nextStep(base, { type: 'CONFIRM_DONE' });
   assert.equal(s.screen, 'prompt1');
   s = nextStep(s, { type: 'HOOK_CHOSEN', hook: 'ההוק שבחרה' });
-  assert.equal(s.screen, 'her-words');
+  assert.equal(s.screen, 'format-choice');
   assert.equal(s.hook, 'ההוק שבחרה');
+  s = nextStep(s, { type: 'FORMAT_SELECTED', format: 'וויס אובר' });
+  assert.equal(s.screen, 'her-words', 'בשכפול הפורמט לא מוביל ל"צריך תסריט?"');
+  assert.equal(s.selectedFormat, 'וויס אובר');
+  assert.equal(s.branch, 'reference');
   s = nextStep(s, { type: 'HER_WORDS_SUBMITTED', text: 'מה שיש לה להגיד' });
   assert.equal(s.screen, 'prompt2');
   assert.equal(s.herWords, 'מה שיש לה להגיד');

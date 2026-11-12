@@ -38,11 +38,16 @@ export function buildDuplicationPrompt({ audience, domain, hook }) {
 /* 02/11/2026 (מאיה: "אם לא מילאו כלום אז בפורמט תמחקי רק את החלק הזה").
    בשכפול רגיל התוספת שלה לא חובה. כשהיא ריקה יורדות השורה שלה וההפניה
    אליה במשפט שאחריה, וכל השאר נשאר מילה במילה. */
-export function buildScriptPrompt({ hook, herWords, originalScript, domain, audience }) {
+/* 12/11/2026 (מאיה אישרה): הפורמט שבחרה בשכפול נכנס כשורה אחת אחרי ההוק,
+   כדי שהתסריט ייכתב לפורמט שלה ולא לפורמט של הסרטון המקורי. בלי פורמט
+   (סרטון ישן שנשמר לפני השינוי) השורה לא מופיעה. */
+export function buildScriptPrompt({ hook, herWords, originalScript, domain, audience, format }) {
   const words = String(herWords || '').trim();
+  const fmt = String(format || '').trim();
   return `${contextHeader({ domain, audience })}התסריט המקורי: ${originalScript}
 זה ההוק שבחרתי: ${hook}
-${words ? `זה מה שיש לי להגיד: ${words}
+${fmt ? `הפורמט של הסרטון שלי: ${fmt}
+` : ''}${words ?`זה מה שיש לי להגיד: ${words}
 אני רוצה עכשיו שתקח את ההוק שלי תלביש אותו בתסריט המקורי יחד עם כל מה
 שיש לי להגיד` : 'אני רוצה עכשיו שתקח את ההוק שלי תלביש אותו בתסריט המקורי'} אבל הכי חשוב? תשמור על מנגנון התסריט 1:1, את האורך אותו
 אורך, אל תעשה יותר ארוך, אותו מבנה, אותו מנגנון רק הכל מותאם לקהל שלי

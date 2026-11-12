@@ -88,7 +88,7 @@ const BY_BRANCH = {
   idea: ['idea', 'message', 'angle', 'dump', 'packaging', 'format', 'script'],
   scratch: ['idea', 'message', 'angle', 'dump', 'packaging', 'format', 'hook', 'reinforce', 'script'],
   footage: ['message', 'packaging', 'format', 'script'],
-  reference: ['reference', 'hook', 'herWords', 'script'],
+  reference: ['reference', 'hook', 'format', 'herWords', 'script'],
   'idea-search': ['idea', 'message', 'angle', 'packaging', 'format', 'reference', 'herWords', 'hook', 'script'],
 };
 

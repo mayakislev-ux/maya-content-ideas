@@ -57,6 +57,8 @@ describe('1. השכפול ההפוך ירד', () => {
     assert.equal(old.branch, 'idea-search', 'המקור לא שונה');
     /* וממשיכים ממנו בלי שגיאה */
     let n = nextStep(s, { type: 'HOOK_CHOSEN', hook: 'הוק חדש' });
+    assert.equal(n.screen, 'format-choice');
+    n = nextStep(n, { type: 'FORMAT_SELECTED', format: 'וויס אובר' });
     assert.equal(n.screen, 'her-words');
     n = nextStep(n, { type: 'HER_WORDS_SUBMITTED', text: 'מגילה' });
     assert.equal(n.screen, 'prompt2');

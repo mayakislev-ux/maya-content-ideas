@@ -123,7 +123,7 @@ const PASTED_ON = {
   'scratch-dump': 'rawDump', 'creative-packaging': 'packaging', 'scratch-hook': 'hook', 'scratch-hook-reinforce': 'hookReinforcement', 'scratch-distill': 'draftScript',
 };
 const WRITING_ORDER = {
-  reference: ['transcribe', 'prompt1', 'her-words', 'prompt2', 'read-aloud'],
+  reference: ['transcribe', 'prompt1', 'format-choice', 'her-words', 'prompt2', 'read-aloud'],
   scratch: ['scratch-dump', 'scratch-hook', 'scratch-hook-reinforce', 'scratch-distill', 'scratch-scene'],
   /* 10/11/2026: בסדר החדש המגילה נכתבת כשהמסלול עוד 'idea' (לפני האריזה) */
   /* 11/11/2026 (סוכני בדיקה): חזרה עד מסך הרעיון מחקה את המגילה, וחזרה
@@ -328,6 +328,8 @@ function step(state, action) {
     case 'FORMAT_SELECTED':
       /* 11/11/2026: בסדר החדש (מגילה לפני הקריאייטיב) השאלה "צריך תסריט?"
          ירדה: אחרי הפורמט ממשיכים ישר להוק. סשן ישן בלי מגילה נשאר כמו קודם. */
+      /* 12/11/2026: בשכפול, אחרי הפורמט ממשיכים ל"מה יש לך להוסיף" */
+      if (state.formatFor === 'reference') return { ...state, selectedFormat: action.format, screen: 'her-words' };
       if (state.formatFor === 'idea' && state.rawDump) {
         return { ...state, selectedFormat: action.format, screen: 'scratch-hook', branch: 'scratch' };
       }
@@ -358,8 +360,11 @@ function step(state, action) {
       if (state.screen === 'read-aloud') return { ...state, screen: 'summary' };
       throw new Error(`CONFIRM_DONE not valid from screen "${state.screen}"`);
     case 'HOOK_CHOSEN':
-      // אחרי ההוק שואלים אותה מה יש לה להוסיף.
-      return { ...state, screen: 'her-words', hook: action.hook };
+      /* 12/11/2026 (לקוחה: "לא נותן לי לבחור איך אני רוצה שהסרטון יראה,
+         וויס אובר או סרטון חזותי יפה... זה אוטומטית נתן לי דיבור למצלמה";
+         מאיה אישרה). בשכפול לא היה מסך פורמט, והתסריט נכתב לפי הסרטון
+         המקורי. עכשיו אחרי ההוק בוחרים פורמט, ורק אז "מה יש לך להוסיף". */
+      return { ...state, screen: 'format-choice', formatFor: 'reference', hook: action.hook };
     case 'HER_WORDS_SUBMITTED':
       return { ...state, screen: 'prompt2', herWords: action.text };
     case 'SCRIPT_READY':

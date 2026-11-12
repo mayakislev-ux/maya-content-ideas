@@ -113,11 +113,20 @@ describe('חזרה אחורה לא מוחקת מה שהודבק (jsdom)', { skip
     await until(() => $('#va-hook-input'), 'מסך ההוק');
     type($('#va-hook-input'), 'הוק שהודבק');
     $('#va-hook-chosen-btn').click();
+    /* 12/11/2026: בשכפול בוחרים פורמט אחרי ההוק */
+    const pickVoiceOver = async () => {
+      await until(() => $('.cosmic-accordion-item[data-format="וויס אובר"] [data-pick-format]'), 'מסך הפורמט');
+      $('.cosmic-accordion-item[data-format="וויס אובר"] [data-pick-format]').click();
+    };
+    await pickVoiceOver();
     await until(() => $('#va-dupadd-input'), 'מסך מה להוסיף');
+    back();
+    await until(() => $('.cosmic-accordion-item[data-format]'), 'חזרה למסך הפורמט');
     back();
     await until(() => $('#va-hook-input'), 'חזרה למסך ההוק');
     assert.equal($('#va-hook-input').value, 'הוק שהודבק', 'ההוק נמחק בחזרה');
     $('#va-hook-chosen-btn').click();
+    await pickVoiceOver();
 
     /* מה להוסיף → תסריט → להקריא → חזרה */
     await until(() => $('#va-dupadd-input'), 'מסך מה להוסיף');
@@ -204,12 +213,27 @@ describe('חזרה אחורה לא מוחקת מה שהודבק (jsdom)', { skip
     await until(() => $('#va-scratch-hook-input') && $('.cosmic-resume-bar'), 'ציור מחדש');
     assert.equal($('#va-scratch-hook-input').value, '', 'הטיוטה הריקה נדרסה בהוק הישן');
   });
+
+  /* 12/11/2026: מסך הפורמט בשכפול, נבדק על המסך עצמו */
+    test('אין בו קרוסלה, יש בו וויס אובר ותוכן ויזואלי, והפורמט שנבחר מגיע לסיכום', async () => {
+      const start = walk({ ...INITIAL_STATE, history: [] }, [
+        { type: 'CHOOSE_REFERENCE' }, { type: 'CHOOSE_HAS_REFERENCE' }, { type: 'CONFIRM_DONE' }, { type: 'HOOK_CHOSEN', hook: 'הוק' },
+      ]);
+      await open({ ...start, transcript: 'תמלול' }, '.cosmic-accordion-item[data-format]');
+      const names = [...document.querySelectorAll('.cosmic-accordion-item[data-format]')].map((el) => el.dataset.format);
+      assert.ok(!names.includes('פוסט קרוסלה'), 'קרוסלה מוצעת בשכפול');
+      assert.ok(names.includes('וויס אובר') && names.includes('תוכן ויזואלי יפה'));
+      $('.cosmic-accordion-item[data-format="תוכן ויזואלי יפה"] [data-pick-format]').click();
+      await until(() => $('#va-dupadd-input'), 'מסך מה להוסיף');
+      assert.equal(store.get(SESSION).selectedFormat, 'תוכן ויזואלי יפה');
+    });
+
 });
 
 test('BACK במכונת המצבים: שומר מה שהודבק, מחליף בנוסח החדש, ולא סוחב לפתיחה', () => {
   let s = walk({ ...INITIAL_STATE, history: [] }, [
     { type: 'CHOOSE_REFERENCE' }, { type: 'CHOOSE_HAS_REFERENCE' },
-    { type: 'CONFIRM_DONE' }, { type: 'HOOK_CHOSEN', hook: 'הוק' }, { type: 'HER_WORDS_SUBMITTED', text: 'שלי' },
+    { type: 'CONFIRM_DONE' }, { type: 'HOOK_CHOSEN', hook: 'הוק' }, { type: 'FORMAT_SELECTED', format: 'וויס אובר' }, { type: 'HER_WORDS_SUBMITTED', text: 'שלי' },
     { type: 'SCRIPT_READY', text: 'א' },
   ]);
   s = nextStep(s, { type: 'BACK' });
@@ -218,7 +242,7 @@ test('BACK במכונת המצבים: שומר מה שהודבק, מחליף ב�
   s = nextStep(s, { type: 'SCRIPT_READY', text: 'ב' });
   s = nextStep(s, { type: 'BACK' });
   assert.equal(s.finalScript, 'ב', 'הנוסח הישן חזר במקום החדש');
-  s = walk(s, [{ type: 'BACK' }, { type: 'BACK' }]);
+  s = walk(s, [{ type: 'BACK' }, { type: 'BACK' }, { type: 'BACK' }]);
   assert.equal(s.screen, 'prompt1');
   assert.equal(s.hook, 'הוק');
   s = walk(s, [{ type: 'BACK' }, { type: 'BACK' }, { type: 'BACK' }, { type: 'BACK' }]);
@@ -242,10 +266,10 @@ test('BACK מהסיכום לשכתוב הסצנה: התסריט המקורי נ�
 test('BACK אל מחוץ לשלב הכתיבה לא סוחב הוק ותסריט', () => {
   let s = walk({ ...INITIAL_STATE, history: [] }, [
     { type: 'CHOOSE_REFERENCE' }, { type: 'CHOOSE_HAS_REFERENCE' },
-    { type: 'CONFIRM_DONE' }, { type: 'HOOK_CHOSEN', hook: 'הוק' }, { type: 'HER_WORDS_SUBMITTED', text: 'שלי' },
+    { type: 'CONFIRM_DONE' }, { type: 'HOOK_CHOSEN', hook: 'הוק' }, { type: 'FORMAT_SELECTED', format: 'וויס אובר' }, { type: 'HER_WORDS_SUBMITTED', text: 'שלי' },
     { type: 'SCRIPT_READY', text: 'תסריט' },
   ]);
-  s = walk(s, [{ type: 'BACK' }, { type: 'BACK' }, { type: 'BACK' }, { type: 'BACK' }]);
+  s = walk(s, [{ type: 'BACK' }, { type: 'BACK' }, { type: 'BACK' }, { type: 'BACK' }, { type: 'BACK' }]);
   assert.equal(s.screen, 'transcribe');
   assert.equal(s.finalScript, 'תסריט', 'בדיקת התמלול באמצע מחקה את התסריט');
   s = nextStep(s, { type: 'BACK' });
@@ -280,7 +304,7 @@ test('BACK אל מחוץ לשלב הכתיבה לא סוחב הוק ותסריט
 test('BACK: בשכפול, ריק שנשלח בכוונה נשאר ריק', () => {
   let r = walk({ ...INITIAL_STATE, history: [] }, [
     { type: 'CHOOSE_REFERENCE' }, { type: 'CHOOSE_HAS_REFERENCE' },
-    { type: 'CONFIRM_DONE' }, { type: 'HOOK_CHOSEN', hook: 'הוק' }, { type: 'HER_WORDS_SUBMITTED', text: 'A' },
+    { type: 'CONFIRM_DONE' }, { type: 'HOOK_CHOSEN', hook: 'הוק' }, { type: 'FORMAT_SELECTED', format: 'וויס אובר' }, { type: 'HER_WORDS_SUBMITTED', text: 'A' },
     { type: 'BACK' }, { type: 'HER_WORDS_SUBMITTED', text: '' }, { type: 'BACK' },
   ]);
   assert.equal(r.screen, 'her-words');
@@ -295,3 +319,4 @@ test('11/11/2026: קטע שצולם, חזרה מהפורמט לקריאייטי�
   assert.equal(s.screen, 'creative-packaging');
   assert.equal(s.packaging, 'קריאייטיב');
 });
+

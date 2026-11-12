@@ -22,3 +22,13 @@ test('buildScriptPrompt fills the chosen hook and her own words', () => {
   assert.match(prompt, /זה מה שיש לי להגיד: סיפרתי על הלקוחה הראשונה שלי/);
   assert.match(prompt, /אל תעשה יותר ארוך/);
 });
+
+/* 12/11/2026: בשכפול בוחרים פורמט, והוא נכנס לפרומפט התסריט כשורה אחת */
+test('buildScriptPrompt: הפורמט שנבחר בשכפול נכנס אחרי ההוק, ובלי פורמט אין שורה', () => {
+  const base = { hook: 'ההוק', herWords: '', originalScript: 'מקור', domain: 'ציפורניים', audience: 'מתחילות' };
+  const withFmt = buildScriptPrompt({ ...base, format: 'וויס אובר' });
+  assert.ok(withFmt.includes('זה ההוק שבחרתי: ההוק\nהפורמט של הסרטון שלי: וויס אובר\n'));
+  const without = buildScriptPrompt(base);
+  assert.ok(!without.includes('הפורמט של הסרטון שלי'));
+  assert.equal(without, buildScriptPrompt({ ...base, format: '  ' }));
+});
