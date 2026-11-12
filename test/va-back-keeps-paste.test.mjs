@@ -214,6 +214,30 @@ describe('חזרה אחורה לא מוחקת מה שהודבק (jsdom)', { skip
     assert.equal($('#va-scratch-hook-input').value, '', 'הטיוטה הריקה נדרסה בהוק הישן');
   });
 
+  /* 12/11/2026 (מאיה: "למה כל פעם שחוזרים אחורה צריך לסמן מהתחלה את המשפך") */
+  test('מ-0: המשפך שנבחר בזיקוק נשאר מסומן אחרי חזרה אחורה וחזרה קדימה, והפרומפט מוכן', async () => {
+    const start = walk({ ...INITIAL_STATE, history: [], branch: 'idea', screen: 'idea-sharpen', ideaDescription: 'x' }, [
+      { type: 'IDEA_SHARPENED', idea: 'x', topic: 'נושא', punchline: 'מסר', startingPoint: 'כללי' },
+      { type: 'SCRATCH_DUMP_READY', text: 'מגילה' },
+      { type: 'PACKAGING_CHOSEN', packaging: 'קריאייטיב' },
+      { type: 'FORMAT_SELECTED', format: 'דיבור למצלמה' },
+      { type: 'SCRATCH_HOOK_CHOSEN', hook: 'הוק' },
+      { type: 'SCRATCH_REINFORCEMENT_CHOSEN', text: 'חיזוק' },
+    ]);
+    await open(start, '#va-scratch-script-input');
+    $('#va-scratch-cta-row [data-cta="משפך"]').click();
+    type($('#va-scratch-funnel-input'), 'מדריך חינמי');
+    await until(() => store.get(SESSION).ctaFunnel === 'מדריך חינמי', 'המשפך לא נשמר בסשן');
+    back();
+    await until(() => $('#va-scratch-reinforce-input'), 'חזרה לחיזוק');
+    $('#va-scratch-reinforce-done-btn').click();
+    await until(() => $('#va-scratch-script-input'), 'שוב בזיקוק');
+    assert.ok($('#va-scratch-cta-row [data-cta="משפך"]').classList.contains('cosmic-chip-btn--on'), 'המשפך לא מסומן אחרי חזרה');
+    assert.equal($('#va-scratch-funnel-input').value, 'מדריך חינמי', 'המשפך שנכתב נמחק');
+    assert.equal($('#va-scratch-funnel-wrap').hidden, false);
+    assert.ok($('#va-scratch-distill-prompt-wrap .va-copy-btn'), 'הפרומפט לא מוכן להעתקה');
+  });
+
   /* 12/11/2026: מסך הפורמט בשכפול, נבדק על המסך עצמו */
     test('אין בו קרוסלה, יש בו וויס אובר ותוכן ויזואלי, והפורמט שנבחר מגיע לסיכום', async () => {
       const start = walk({ ...INITIAL_STATE, history: [] }, [

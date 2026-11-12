@@ -2956,7 +2956,20 @@ async function renderScratchDistill() {
      להזין, ואז הוא יוסיף את זה לפרומפט"). בלי זה ChatGPT המציא לאן לשלוח. */
   const funnelWrap = document.getElementById('va-scratch-funnel-wrap');
   const funnelInput = document.getElementById('va-scratch-funnel-input');
-  let cta = '';
+  /* 12/11/2026 (מאיה: "למה כל פעם שחוזרים אחורה צריך לסמן מהתחלה את המשפך").
+     הבחירה והמשפך נשמרים בסטייט מיד, וחוזרים מסומנים בכל כניסה למסך. */
+  let cta = state.ctaType || '';
+  if (state.ctaFunnel) funnelInput.value = state.ctaFunnel;
+  const markCta = () => {
+    document.querySelectorAll('#va-scratch-cta-row [data-cta]').forEach((o) => o.classList.toggle('cosmic-chip-btn--on', o.getAttribute('data-cta') === cta));
+    funnelWrap.hidden = cta !== 'משפך';
+  };
+  const keepCta = () => {
+    state.ctaType = cta || null;
+    state.ctaFunnel = cta === 'משפך' ? funnelInput.value.trim() : '';
+    saveAll().catch((err) => console.error('saveSession failed:', err));
+  };
+  markCta();
   function refreshPrompt() {
     if (!cta) {
       wrap.innerHTML = '<p class="cosmic-hint">הפרומפט יופיע כאן אחרי שבוחרים הנעה לפעולה.</p>';
@@ -2980,6 +2993,7 @@ async function renderScratchDistill() {
     b.classList.add('cosmic-chip-btn--on');
     cta = b.getAttribute('data-cta');
     funnelWrap.hidden = cta !== 'משפך';
+    keepCta();
     refreshPrompt();
     if (cta === 'משפך' && !funnelInput.value.trim()) funnelInput.focus();
   }));
@@ -2988,7 +3002,7 @@ async function renderScratchDistill() {
   let funnelTimer = null;
   funnelInput.addEventListener('input', () => {
     clearTimeout(funnelTimer);
-    funnelTimer = setTimeout(refreshPrompt, 400);
+    funnelTimer = setTimeout(() => { keepCta(); refreshPrompt(); }, 400);
   });
   refreshPrompt();
   document.getElementById('va-scratch-script-done-btn').addEventListener('click', () => {

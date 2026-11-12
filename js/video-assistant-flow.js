@@ -156,7 +156,7 @@ export function nextStep(state, action) {
        שצולם), והרעיון של הסרטון הנטוש היה ממשיך לתיאור ולשם של הסרטון החדש. */
     if (back.screen !== 'opening') {
       /* 12/11/2026 (מאיה: "שכל פעם שחוזרים שלב אחורה זה לא ימחק"): גם נקודת היציאה וסוג התוכן */
-      for (const key of ['ideaTopic', 'ideaPunchline', 'ideaAngle', 'startingPoint', 'contentType']) {
+      for (const key of ['ideaTopic', 'ideaPunchline', 'ideaAngle', 'startingPoint', 'contentType', 'ctaType', 'ctaFunnel']) {
         if (back[key] == null && state[key] != null) back[key] = state[key];
       }
     }

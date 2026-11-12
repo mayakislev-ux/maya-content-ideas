@@ -134,5 +134,6 @@ test('משפך: בלי לכתוב מה המשפך אין פרומפט להעתק
   const distill = between('async function renderScratchDistill', '// ===== מסך הסיכום הסופי');
   assert.match(distill, /cta === 'משפך' && funnel\.length < 2/);
   assert.match(distill, /funnelWrap\.hidden = cta !== 'משפך'/);
-  assert.match(distill, /funnelTimer = setTimeout\(refreshPrompt, 400\)/);
+  /* 12/11/2026: המשפך גם נשמר (keepCta), כדי שלא יימחק בחזרה אחורה */
+  assert.match(distill, /funnelTimer = setTimeout\(\(\) => \{ keepCta\(\); refreshPrompt\(\); \}, 400\)/);
 });

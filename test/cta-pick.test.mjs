@@ -15,7 +15,8 @@ const DISTILL = SRC.slice(SRC.indexOf('async function renderScratchDistill'), SR
 test('הנעה לפעולה: כפתורים, לא רשימה נפתחת שבחרה לבד', () => {
   assert.ok(!DISTILL.includes('<select'), 'חזרה הרשימה הנפתחת');
   assert.match(DISTILL, /data-cta=/, 'אין כפתורי בחירה');
-  assert.match(DISTILL, /let cta = '';/, 'משהו בחור מראש');
+  /* 12/11/2026: בסרטון חדש אין בחירה (ctaType ריק בהתחלה). בחזרה למסך הבחירה שלה נשארת */
+  assert.match(DISTILL, /let cta = state\.ctaType \|\| '';/, 'משהו בחור מראש');
 });
 
 test('הפרומפט מופיע רק אחרי שבוחרים', () => {
