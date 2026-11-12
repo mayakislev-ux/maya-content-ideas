@@ -72,7 +72,27 @@ test('הכפתור בראש העוזר מחובר לחלון', () => {
 test('אין יותר שורת "לשמור עכשיו", והשמירה כוללת את הפריט', () => {
   const va = read('js', 'video-assistant.js');
   assert.match(va, /save: \(\) => saveAll\(\)/);
-  assert.match(va, /function saveAll\(\) \{[\s\S]{0,400}saveScript\(state\.scriptId, scriptDoc\(state\)\)/);
+  assert.match(va, /function saveAll\(\) \{[\s\S]{0,600}saveScript\(state\.scriptId, scriptDoc\(state\)\)/);
+});
+
+/* 12/11/2026 (מאיה: "כתבתי את התסריט מהמובייל ועכשיו נכנסתי למחשב וזה היה באמצע
+   ולא נשמר"). חלון ישן לא דורס את מה שנכתב במכשיר אחר */
+test('כשחוזרים לחלון, גרסה חדשה יותר ממכשיר אחר נטענת, ועד אז לא שומרים', async () => {
+  const va = read('js', 'video-assistant.js');
+  assert.match(va, /document\.addEventListener\('visibilitychange'[^\n]*refreshFromCloud\(\)/);
+  assert.match(va, /window\.addEventListener\('focus', \(\) => refreshFromCloud\(\)\)/);
+  assert.match(va, /if \(refreshing\) return refreshing\.then\(\(\) => saveAll\(\)\);/);
+  assert.match(va, /saveSession\(state, \{ deviceId: DEVICE_ID \}\)/);
+  assert.ok(!/saveSession\(state\)\./.test(va), 'שמירה בלי זיהוי מכשיר');
+  /* הכלל עצמו */
+  const src = va.slice(va.indexOf('export function cloudIsNewer'), va.indexOf('async function refreshFromCloud'));
+  const cloudIsNewer = new Function(`${src.replace('export ', '')}; return cloudIsNewer;`)();
+  assert.equal(cloudIsNewer({ updatedAt: 200, deviceId: 'phone' }, 100, 'pc'), true, 'נכתב בטלפון אחרי שהמחשב שמר');
+  assert.equal(cloudIsNewer({ updatedAt: 200, deviceId: 'pc' }, 100, 'pc'), false, 'השמירה של החלון הזה עצמו');
+  assert.equal(cloudIsNewer({ updatedAt: 90, deviceId: 'phone' }, 100, 'pc'), false, 'ישן יותר ממה שיש בחלון');
+  assert.equal(cloudIsNewer({ updatedAt: 200 }, 100, 'pc'), false, 'סשן ישן בלי מכשיר');
+  const store = read('js', 'video-assistant-store.js');
+  assert.match(store, /export async function saveSession\(state, \{ deviceId = null \} = \{\}\)[\s\S]{0,200}return updatedAt;/);
 });
 
 test('עריכת הנושא או האריזה מגיעה גם למשפט שהפרומפטים קוראים', async () => {

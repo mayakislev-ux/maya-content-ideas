@@ -192,7 +192,52 @@ function dispatch(action) {
    שנכתב בו משהו. כישלון שלו לא מפיל את שמירת הסשן, שהיא מה שמונע אובדן
    עבודה באמצע. */
 let scriptErrorAt = 0;
+/* 12/11/2026 (מאיה: "כתבתי את התסריט מהמובייל ועכשיו נכנסתי למחשב, וזה היה באמצע
+   ולא נשמר"). המחשב החזיק בזיכרון את הסרטון מלפני שנכתב בטלפון, וכל שמירה שלו
+   דרסה בענן את מה שנכתב בטלפון. עכשיו כל חלון יודע מתי הוא עצמו שמר או טען
+   (syncedAt), וכשחוזרים אליו הוא קודם בודק אם בענן יש גרסה חדשה ממכשיר אחר,
+   ולוקח אותה. עד שהבדיקה נגמרת הוא לא שומר. */
+const DEVICE_ID = (() => {
+  const make = () => `d${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
+  try {
+    let v = sessionStorage.getItem('va-device-id');
+    if (!v) { v = make(); sessionStorage.setItem('va-device-id', v); }
+    return v;
+  } catch { return make(); }
+})();
+let syncedAt = 0;
+let refreshing = null;
+
+export function cloudIsNewer(saved, mySyncedAt, myDeviceId) {
+  return Boolean(saved && saved.updatedAt && saved.updatedAt > mySyncedAt && saved.deviceId && saved.deviceId !== myDeviceId);
+}
+
+async function refreshFromCloud() {
+  const view = typeof document !== 'undefined' && document.getElementById('video-assistant-view');
+  if (!view || view.hidden || document.hidden || refreshing || !syncedAt) return;
+  refreshing = (async () => {
+    try {
+      const saved = await loadSession();
+      if (!cloudIsNewer(saved, syncedAt, DEVICE_ID)) return;
+      state = migrateLegacyState(saved);
+      if (!state.history) state.history = [];
+      syncedAt = saved.updatedAt;
+      render();
+      showToast('נטען מה שנכתב במכשיר השני');
+    } catch (err) {
+      console.warn('refreshFromCloud failed:', err);
+    }
+  })();
+  try { await refreshing; } finally { refreshing = null; }
+}
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshFromCloud(); });
+  window.addEventListener('focus', () => refreshFromCloud());
+}
+
 function saveAll() {
+  /* בזמן שבודקים אם יש גרסה חדשה יותר בענן, לא דורסים אותה */
+  if (refreshing) return refreshing.then(() => saveAll());
   if (!state.scriptId && hasContent(state)) {
     state.scriptId = `s${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
     state.scriptCreatedAt = Date.now();
@@ -212,7 +257,10 @@ function saveAll() {
       console.warn('saveScript failed:', err);
     }
   }
-  return saveSession(state);
+  return saveSession(state, { deviceId: DEVICE_ID }).then((t) => {
+    if (t) syncedAt = Math.max(syncedAt, t);
+    return t;
+  });
 }
 
 function escapeHtml(str) {
@@ -650,7 +698,7 @@ const scriptsLibrary = createScriptsLibrary({
     currentPickId = null;
     sessionStartTs = Date.now();
     closeModal();
-    saveSession(state).catch((err) => console.error('saveSession failed:', err));
+    saveSession(state, { deviceId: DEVICE_ID }).then((t) => { if (t) syncedAt = Math.max(syncedAt, t); }).catch((err) => console.error('saveSession failed:', err));
     render();
   },
   /* עריכה ב"התסריטים שלי" של הסרטון שפתוח עכשיו: עוברת גם לעוזר, אחרת
@@ -658,7 +706,7 @@ const scriptsLibrary = createScriptsLibrary({
   applyLive: (changes) => {
     /* גם הטיוטות של השדות שנערכו, אחרת המסך מציג את הנוסח הישן */
     state = withLiveEdit(state, changes);
-    saveSession(state).catch((err) => console.error('saveSession failed:', err));
+    saveSession(state, { deviceId: DEVICE_ID }).then((t) => { if (t) syncedAt = Math.max(syncedAt, t); }).catch((err) => console.error('saveSession failed:', err));
     render();
   },
   /* 05/11/2026: סימון בדף הצילום של הסרטון הפתוח. בלי render, כדי שהמסך
@@ -672,7 +720,7 @@ const scriptsLibrary = createScriptsLibrary({
     state = { ...INITIAL_STATE, history: [] };
     currentPickId = null;
     sessionStartTs = Date.now();
-    saveSession(state).catch((err) => console.error('saveSession failed:', err));
+    saveSession(state, { deviceId: DEVICE_ID }).then((t) => { if (t) syncedAt = Math.max(syncedAt, t); }).catch((err) => console.error('saveSession failed:', err));
     render();
   },
 });
@@ -3395,6 +3443,8 @@ export function wireVideoAssistantView() {
        תמלול מדויק שעוד רץ לא שייך אליו. */
     if (!isResumable || (saved.scriptId || null) !== (state.scriptId || null)) resetAccurateRuns();
     state = isResumable ? migrateLegacyState(saved) : INITIAL_STATE;
+    /* 12/11/2026: נקודת הייחוס של החלון הזה מול הענן (ראה refreshFromCloud) */
+    syncedAt = (saved && saved.updatedAt) || Date.now();
 
     // 16/10/2026: סשנים ישנים שנשמרו לפני כפתור החזרה לא יכילו history -
     // בלי זה BACK על סשן ישן יקרוס על undefined.length.

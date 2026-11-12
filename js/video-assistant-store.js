@@ -120,8 +120,12 @@ export async function loadSession() {
 // והייתי צריכה להתחיל מחדש, כאילו זה לא שמר") - updatedAt הוא מה שמאפשר
 // להבחין בין סשן פעיל שהתרענן בטעות (לשחזר) לבין סשן ישן שהיא כבר לא
 // רוצה לחזור אליו (להתחיל ממנו מחדש) - ראה video-assistant.js, wireVideoAssistantView.
-export async function saveSession(state) {
-  await setDoc(doc(db, 'videoAssistantSessions', subjectUid(auth.currentUser.uid)), { ...state, updatedAt: Date.now() });
+/* 12/11/2026: deviceId ו-updatedAt שנכתבו חוזרים, כדי שמכשיר יידע אם הסשן בענן
+   חדש יותר ממה שהוא עצמו שמר (נכתב בטלפון בזמן שהמחשב היה פתוח). */
+export async function saveSession(state, { deviceId = null } = {}) {
+  const updatedAt = Date.now();
+  await setDoc(doc(db, 'videoAssistantSessions', subjectUid(auth.currentUser.uid)), { ...state, updatedAt, deviceId });
+  return updatedAt;
 }
 
 /* 29/10/2026 (מאיה): "התסריטים שלי". כל סרטון הוא מסמך משלו תחת המשתמשת,
