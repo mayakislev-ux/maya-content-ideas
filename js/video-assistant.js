@@ -306,6 +306,7 @@ function creativeNow() {
   return state.branch === 'scratch' && state.packaging ? String(state.packaging).trim() : '';
 }
 
+/* 12/11/2026 (מאיה: "היא צריכה להופיע רק בהוק וזהו, לא בזיקוק ולא בחיזוק, זה סתם מעמיס"). */
 function creativeReminderHtml() {
   const c = creativeNow();
   return c ? `<p class="cosmic-hint va-creative-reminder">🎬 הקריאייטיב שבחרת: <strong>${escapeHtml(c)}</strong></p>` : '';
@@ -2770,7 +2771,6 @@ function renderScratchDump() {
   if (state.screen === 'scratch-dump') seedDraft('va-scratch-dump-input', state.rawDump);
   cosmicCard(`
     <h2>מגילת אסתר</h2>
-    ${creativeReminderHtml()}
     <p>תשפכו כל מה שיש לכם להגיד, הסדר לא משנה. כל מה שעולה לכם לראש, לפרטי פרטים וכמה שיותר ספציפי, עם דוגמאות ומספרים. מומלץ להיעזר בפרומפט חילוץ התוכן בכפתור ה-SOS.</p>
     <button type="button" class="va-sos-big" id="va-scratch-help-btn">
       <span class="va-sos-big__icon" aria-hidden="true">🆘</span>
@@ -2876,7 +2876,6 @@ async function renderScratchHookReinforce() {
   cosmicCard(`
     <h2>חיזוק ההוק</h2>
     ${chatgptHookNote()}
-    ${creativeReminderHtml()}
     <p>המשפט השני, שנותן סיבה ברורה להישאר. להעתיק, להדביק ב-ChatGPT, ולחזור עם החיזוק שבחרת.</p>
     ${promptPeek(highlightPlaceholders(prompt, [state.ideaDescription, state.hook, state.rawDump, creative]))}
     ${copyBtn(prompt, 'להעתיק פרומפט ל-ChatGPT')}
@@ -2936,7 +2935,6 @@ async function renderScratchDistill() {
   `).join('');
   cosmicCard(`
     <h2>זיקוק התסריט הסופי</h2>
-    ${creativeReminderHtml()}
     ${isCarousel(state) ? '<p class="cosmic-hint">בחרת פוסט קרוסלה, אז הפרומפט כותב טקסט קצר לכל שקופית, עד 10 שקופיות.</p>' : ''}
     ${isDynamicText(state) ? '<p class="cosmic-hint">בחרת טקסט דינמי, אז הפרומפט כותב את התסריט לפי פריימים: פריים 1 ההוק, פריים 2 החיזוק, ומשם משפט אחד קצר וחד בכל פריים.</p>' : ''}
     <div class="va-cta-pick">
@@ -3024,7 +3022,6 @@ async function renderScratchScene() {
   seedDraft('va-scratch-scene-input', state.sceneRewrite);
   cosmicCard(`
     <h2>התסריט נשמע כמו הרצאה?</h2>
-    ${creativeReminderHtml()}
     <p>אם הוא יצא קצת מסביר ופחות סיפורי, הפרומפט הזה משכתב אותו לשפה של רשתות חברתיות. להעתיק, להדביק ב-ChatGPT, ולחזור עם הגרסה החדשה.</p>
     ${promptPeek(highlightPlaceholders(prompt, [script, audience, domain, creative]))}
 

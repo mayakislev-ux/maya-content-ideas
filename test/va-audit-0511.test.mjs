@@ -72,15 +72,16 @@ test('בלי קריאייטיב הפרומפטים זהים בדיוק למה ש
 
 /* ---------- בקוד של המסכים ---------- */
 
-test('כל המסכים במסלול מ-0 שולחים את הקריאייטיב ומראים אותו', () => {
+/* 12/11/2026 (מאיה): התזכורת על המסך רק במסך ההוק. הפרומפטים ממשיכים לקבל את הקריאייטיב */
+test('כל המסכים במסלול מ-0 שולחים את הקריאייטיב, ומראים אותו רק במסך ההוק', () => {
+  assert.match(between('async function renderScratchHook', 'async function renderScratchHookReinforce'), /creativeReminderHtml\(\)/);
   for (const [a, b] of [
     ['function renderScratchDump', 'async function renderScratchHook'],
-    ['async function renderScratchHook', 'async function renderScratchHookReinforce'],
     ['async function renderScratchHookReinforce', 'const CTA_TYPES'],
     ['async function renderScratchDistill', 'async function renderScratchScene'],
     ['async function renderScratchScene', '// ===== מסך הסיכום הסופי'],
   ]) {
-    assert.match(between(a, b), /creativeReminderHtml\(\)/, a);
+    assert.doesNotMatch(between(a, b), /creativeReminderHtml\(\)/, a);
   }
   assert.match(between('async function openExtractionHelperModal', 'function renderScratchDump'), /buildExtractionPrompt\(\{[^}]*creative \}\)/);
   assert.match(between('async function renderScratchHook', 'async function renderScratchHookReinforce'), /buildHookFindingPrompt\(\{[^}]*creative, suggestedHook: detected \}\)/);
@@ -359,5 +360,22 @@ describe('ביקורת 05/11 בעוזר (jsdom)', { skip: hasJsdom ? false : 'js
     assert.ok(copied.includes(CREATIVE));
     assert.match($('.va-copy-btn').textContent, /ChatGPT/);
     assert.ok(!$('.va-copy-btn').textContent.includes("ג'מיני"));
+  });
+
+  /* 12/11/2026 (מאיה): "היא צריכה להופיע רק בהוק וזהו, לא בזיקוק ולא בחיזוק" */
+  test('מ-0: תזכורת הקריאייטיב רק במסך ההוק, לא בחיזוק ולא בזיקוק', async () => {
+    const s = walk({ ...INITIAL_STATE, history: [], branch: 'idea', screen: 'idea-sharpen', ideaDescription: 'משכורת' }, [
+      { type: 'IDEA_SHARPENED', idea: 'משכורת' },
+      { type: 'SCRATCH_DUMP_READY', text: 'מגילה על המשכורת' },
+      { type: 'PACKAGING_CHOSEN', packaging: CREATIVE, startingPoint: 'סיפור אישי' },
+      { type: 'FORMAT_SELECTED', format: 'דיבור למצלמה' },
+      { type: 'SCRATCH_HOOK_CHOSEN', hook: 'הוק' },
+    ]);
+    assert.equal(s.screen, 'scratch-hook-reinforce');
+    await open(s, () => $('#va-scratch-reinforce-input'), 'מסך החיזוק');
+    assert.equal($('.va-creative-reminder'), null, 'התזכורת מופיעה במסך החיזוק');
+    const d = nextStep(s, { type: 'SCRATCH_REINFORCEMENT_CHOSEN', text: 'חיזוק' });
+    await open(d, () => $('#va-scratch-script-input'), 'מסך הזיקוק');
+    assert.equal($('.va-creative-reminder'), null, 'התזכורת מופיעה במסך הזיקוק');
   });
 });
