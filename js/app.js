@@ -882,6 +882,8 @@ onAuthChange(async (user) => {
     /* 04/11/2026: העוזר מצייר את עצמו רק בלחיצה על הכרטיס שלו, ולכן קישור
        מה-SOS בפורטל נחת על מסך כהה וריק. אותה לחיצה בדיוק, ולא רק showView. */
     if (view === 'video-assistant') document.getElementById('hub-link-video-assistant').click();
+    /* 17/11/2026: גם החימום, דרך אותה לחיצה, כדי שהטבלה תוצג ולא תוכנית ישנה */
+    else if (view === 'warming') document.getElementById('hub-link-warming').click();
     else showView(view);
     if (view === 'inspiration') openInspirationView();
   } else {

@@ -12,7 +12,9 @@
 /* 08/11/2026: גם תכנית התוכן. בפורטל, למחזור שסיים, הפופאפ "התהליך הסתיים,
    מה עושים מעכשיו?" נגמר בכפתור "לתכנית התוכן שלי במוח השיווקי". מנויות
    רפרנסים לא מגיעות לכאן בכלל (app.js מטפל בהן לפני הקישור). */
-export const DEEP_LINK_VIEWS = ['video-assistant', 'inspiration', 'guide', 'content-plan'];
+/* 17/11/2026: גם החימום בסטורי. דף הסיום של מחזור 6 בפורטל ("מה עושים מכאן
+   והלאה") שולח לשם בשלב 3, "תכנית חימום לסטורי כל שבועיים". */
+export const DEEP_LINK_VIEWS = ['video-assistant', 'inspiration', 'guide', 'content-plan', 'warming'];
 
 export function deepLinkView(search) {
   const value = new URLSearchParams(String(search || '')).get('view');
