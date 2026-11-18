@@ -25,7 +25,7 @@ test('11/11: טקסט דינמי רק לסיפור או לתחום ויזואל�
   const p = buildFormatRecommendPrompt({ packaging: 'x', domain: 'שיווק' });
   assert.ok(p.includes('התחום שלה: שיווק'));
   assert.ok(p.includes('לא ממליצים על טקסט דינמי'));
-  assert.ok(VA.includes('domain: String((domainInfo && domainInfo.domain) || myBusiness'));
+  /* 18/11/2026: ההמלצה ירדה מהמסך (מאיה: "מבלבל"), אז האפליקציה כבר לא שולחת את התחום */
 });
 
 test('11/11: רפרנס שהוגרל, הלינק נכנס והתמלול רץ לבד', () => {

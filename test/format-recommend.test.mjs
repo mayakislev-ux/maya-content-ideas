@@ -37,91 +37,31 @@ describe('המיפוי אריזה ← פורמטים', () => {
   });
 });
 
-describe('הכתום במסך הפורמטים (jsdom)', { skip: hasJsdom ? false : 'jsdom לא מותקן במחשב הזה' }, () => {
+describe('מסך הפורמטים (jsdom)', { skip: hasJsdom ? false : 'jsdom לא מותקן במחשב הזה' }, () => {
   let ui;
   before(async () => { ui = await setupAssistant(); });
 
-  /* 09/11/2026 (מאיה): ההמלצה באה מהשרת, שקורא רעיון + מסר + אריזה. */
-  test('ההמלצה מהשרת: 2 פורמטים מדורגים, הראשון "הכי מתאים", נימוק בפנים, וכל השאר נשארים ונבחרים', async () => {
+  /* 18/11/2026 (מאיה: "בחלק של פורמטים מומלצים תמחקי לגמרי, זה מבלבל") */
+  test('אין המלצה בכלל: בלי כתום, בלי תגיות ונימוקים, בלי קריאה לשרת, וכל הפורמטים נבחרים', async () => {
     const { $, $$, open, type } = ui;
-    let release;
-    const gate = new Promise((r) => { release = r; });
-    handlers.recommendFormatsForIdea = async () => { await gate; return { data: { picks: [
-      { name: 'דיבור למצלמה', why: 'זה סיפור אישי ודעה, והיא צריכה להיות על המסך' },
-      { name: 'ראיון / שיחה', why: 'אפשר לפתוח בשאלה "למה לא העלית מחיר?"' },
-    ] } }; };
-    await open({ branch: 'idea', screen: 'creative-packaging', ideaDescription: 'רעיון', ideaTopic: 'לא העליתי מחיר לפני שהשיווק שיקף אותי', ideaPunchline: 'מחיר שמשקף את הרשתות' }, '#va-packaging-input');
+    const before = calls.filter((c) => c.name === 'recommendFormatsForIdea').length;
+    await open({ branch: 'idea', screen: 'creative-packaging', ideaDescription: 'רעיון', ideaTopic: 'לא העליתי מחיר', ideaPunchline: 'מחיר שמשקף' }, '#va-packaging-input');
     type($('#va-packaging-input'), 'את מחזיקה עוגה ומוזגת קטשופ, מסתכלת למצלמה ושואלת. הוק (קריינות/דיבור)');
     $('[data-start="סיפור אישי"]').click();
     $('#va-packaging-done-btn').click();
     await until(() => $$('[data-pick-format]').length, 'מסך הפורמטים');
-
-    /* בזמן ההמתנה: אין כתום בכלל, רק "רגע, בודקים" */
+    await new Promise((r) => setTimeout(r, 1200));
     assert.equal($$('.is-recommended').length, 0);
-    assert.ok($('.cosmic-recommend-loading'));
-    const sent = calls.filter((c) => c.name === 'recommendFormatsForIdea').pop();
-    assert.equal(sent.payload.idea, 'לא העליתי מחיר לפני שהשיווק שיקף אותי');
-    assert.equal(sent.payload.message, 'מחיר שמשקף את הרשתות');
-    assert.equal(sent.payload.startingPoint, 'סיפור אישי');
-    assert.match(sent.payload.packaging, /קטשופ/);
-
-    /* פותחת פורמט לקריאה בזמן ההמתנה: כשההמלצה מגיעה הוא נשאר פתוח, אותו אלמנט */
-    const talkEl = $('[data-format="דיבור למצלמה"]');
-    talkEl.open = true;
-    release();
-    await until(() => $$('.is-recommended').length === 2, 'ההמלצה לא הגיעה');
-    assert.equal($('[data-format="דיבור למצלמה"]'), talkEl, 'המסך נבנה מחדש');
-    assert.equal(talkEl.open, true, 'הפורמט הפתוח נסגר');
-    const items = $$('.cosmic-accordion-item');
-    assert.equal(items.length, FORMATS.length, 'פורמט הוסתר');
-    assert.deepEqual($$('.is-recommended').map((d) => d.dataset.format), ['דיבור למצלמה', 'ראיון / שיחה']);
-    assert.deepEqual($$('.cosmic-recommend-tag').map((t) => t.textContent), ['הכי מתאים לרעיון הזה', 'מומלץ לאריזה הזו']);
-    assert.match($('[data-format="דיבור למצלמה"] .cosmic-recommend-why').textContent, /סיפור אישי ודעה/);
-    assert.equal($('.cosmic-recommend-loading'), null);
-    assert.match($('.cosmic-recommend-hint').textContent, /הראשון הכי חזק.*זו רק הצעה, אפשר לבחור כל פורמט אחר/);
-    assert.deepEqual(items.map((d) => d.dataset.format), FORMATS.map((f) => f.name));
-
-    const vo = items.find((d) => d.dataset.format === 'וויס אובר');
-    vo.querySelector('[data-pick-format]').click();
-    await until(() => store.get(SESSION).selectedFormat === 'וויס אובר', 'הפורמט שנבחר לא נשמר');
-    delete handlers.recommendFormatsForIdea;
-  });
-
-  /* 09/11/2026 (מאיה: הכתום מגיע בדיליי): הבקשה יוצאת כבר בזמן ההדבקה */
-  test('ההמלצה נשלחת כבר במסך האריזה, ובמסך הפורמטים היא מוכנה מיד', async () => {
-    const { $, $$, open, type } = ui;
-    handlers.recommendFormatsForIdea = async () => ({ data: { picks: [{ name: 'דיבור למצלמה', why: 'סיבה' }, { name: 'ראיון / שיחה', why: 'סיבה 2' }] } });
-    const before = calls.filter((c) => c.name === 'recommendFormatsForIdea').length;
-    await open({ branch: 'idea', screen: 'creative-packaging', ideaDescription: 'רעיון', ideaTopic: 'לידים קרים ודייט ראשון', ideaPunchline: 'קודם מחממים' }, '#va-packaging-input');
-    type($('#va-packaging-input'), 'את יושבת מול המצלמה עם כוס יין ושואלת: הייתם מתחתנים בדייט הראשון?');
-    await until(() => calls.filter((c) => c.name === 'recommendFormatsForIdea').length === before + 1, 'לא נשלח בזמן ההדבקה');
-    $('[data-start="סיפור אישי"]').click();
-    $('#va-packaging-done-btn').click();
-    await until(() => $$('[data-pick-format]').length, 'מסך הפורמטים');
-    assert.equal($('.cosmic-recommend-loading'), null, 'עדיין "בודקים"');
-    assert.deepEqual($$('.is-recommended').map((d) => d.dataset.format), ['דיבור למצלמה', 'ראיון / שיחה']);
-    assert.equal(calls.filter((c) => c.name === 'recommendFormatsForIdea').length, before + 1, 'נשלח פעמיים');
-    delete handlers.recommendFormatsForIdea;
-  });
-
-  test('השרת נכשל: חוזרים לחיפוש המילים ולא נתקעים על "בודקים"', async () => {
-    const { $, $$, open } = ui;
-    handlers.recommendFormatsForIdea = async () => { throw new Error('boom'); };
-    await open({ branch: 'idea', screen: 'format-choice', formatFor: 'idea', ideaDescription: 'רעיון אחר', packaging: 'POV, משחק תפקידים בין שתי דמויות' }, '[data-pick-format]');
-    await until(() => $$('.is-recommended').length === 1, 'לא חזר לחיפוש המילים');
-    assert.equal($('.is-recommended').dataset.format, 'משחק תפקידים');
-    assert.equal($('.cosmic-recommend-loading'), null);
+    assert.equal($$('.cosmic-recommend-tag').length, 0);
     assert.equal($('.cosmic-recommend-why'), null);
-    delete handlers.recommendFormatsForIdea;
-  });
-
-  test('בלי אריזה אין קריאה לשרת ואין כתום', async () => {
-    const { $, $$, open } = ui;
-    const before = calls.filter((c) => c.name === 'recommendFormatsForIdea').length;
-    await open({ branch: 'idea', screen: 'format-choice', formatFor: 'idea', ideaDescription: 'רעיון', packaging: '' }, '[data-pick-format]');
-    assert.equal($$('.is-recommended').length, 0);
     assert.equal($('.cosmic-recommend-hint'), null);
-    assert.equal(calls.filter((c) => c.name === 'recommendFormatsForIdea').length, before);
+    assert.equal($('.cosmic-recommend-loading'), null);
+    assert.ok(!/מומלץ|כתום/.test($('.cosmic-accordion').parentElement.textContent));
+    assert.equal(calls.filter((c) => c.name === 'recommendFormatsForIdea').length, before, 'נשלחה בקשת המלצה');
+    const items = $$('.cosmic-accordion-item');
+    assert.deepEqual(items.map((d) => d.dataset.format), FORMATS.map((f) => f.name));
+    items.find((d) => d.dataset.format === 'וויס אובר').querySelector('[data-pick-format]').click();
+    await until(() => store.get(SESSION).selectedFormat === 'וויס אובר', 'הפורמט שנבחר לא נשמר');
   });
 
   test('דוגמאות: טיקטוק מוטמע עם קישור מלא, ודוגמה חסומה מוצגת ככרטיס עם קישור', async () => {

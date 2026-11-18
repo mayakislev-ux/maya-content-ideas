@@ -1246,98 +1246,20 @@ const FORMAT_ICONS = {
 };
 
 // ===== בחירת פורמט הנגשה - אקורדיון אמיתי בתוך האפליקציה (16/10) =====
+/* 18/11/2026 (מאיה: "בחלק של פורמטים מומלצים תמחקי לגמרי, זה מבלבל"): אין יותר
+   סימון כתום, תגיות "מומלץ" ונימוקים. רק רשימת הפורמטים, והיא בוחרת. */
 /* 09/11/2026 (מאיה: "הוא בחר וויס אובר בלבד ... עדיף שתמיד ייתן כמה
    אופציות אבל רק מה שמתאים ... יותר חד ומדויק ולהפעיל הגיון").
    חיפוש המילים סימן וויס אובר רק כי באריזה הופיעה המילה "קריינות". עכשיו
    ההמלצה באה מהשרת (recommendFormatsForIdea), שקורא את הרעיון, המסר והאריזה
    ומחזיר 2-3 פורמטים מדורגים עם נימוק. עד שהיא מגיעה אין סימון בכלל (לא
    מראים המלצה שגויה לרגע), ואם היא נכשלת חוזרים לחיפוש המילים. */
-let formatRecCache = { key: '', picks: null, pending: false };
-
-function formatRecInput(packaging = state.packaging, startingPoint = state.startingPoint) {
-  return {
-    packaging: String(packaging || ''),
-    /* 10/11/2026: בלי נושא, המסר והזווית כבר נשלחים בשדות שלהם. הנפילה ל-
-       ideaBeforePackaging ("מסר. זווית") הייתה שולחת אותם פעמיים. */
-    idea: String(state.ideaTopic || (state.ideaPunchline ? '' : (state.ideaBeforePackaging || state.ideaDescription)) || ''),
-    message: String(state.ideaPunchline || ''),
-    angle: String(state.ideaAngle || ''),
-    startingPoint: String(startingPoint || ''),
-    /* 11/11/2026: התחום קובע אם טקסט דינמי מתאים (ביוטי כן, ערך מקצועי כבד לא) */
-    domain: String((domainInfo && domainInfo.domain) || myBusiness || '').slice(0, 200),
-  };
-}
-
-/* 09/11/2026 (מאיה: הסימון הכתום מגיע בדיליי). ההמלצה מתחילה כבר במסך
-   האריזה, בזמן שמדביקים ובוחרים נקודת יציאה, כך שכשמגיעים למסך הפורמטים
-   היא כבר מחכה שם. נקודת היציאה לא חלק מהמפתח: לחיצה על צ'יפ לא שולחת שוב. */
-function formatRecKey(input) {
-  return JSON.stringify([input.packaging.trim(), input.idea, input.message, input.angle]);
-}
-
-function requestFormatPicks(input) {
-  const key = formatRecKey(input);
-  if (formatRecCache.key === key && (formatRecCache.picks || formatRecCache.pending)) return key;
-  formatRecCache = { key, picks: null, pending: true };
-  recommendFormatsForIdea(input)
-    .then((picks) => (picks && picks.length ? picks : null))
-    .catch(() => null)
-    .then((picks) => {
-      if (formatRecCache.key !== key) return;
-      formatRecCache = { key, picks: picks || recommendFormats(input.packaging).map((name) => ({ name, why: '' })), pending: false };
-      /* לא בונים את המסך מחדש (זה סוגר פורמט פתוח ומקפיץ למעלה): רק
-         מוסיפים את הכתום, התוויות והנימוקים לרשימה שכבר על המסך. */
-      if (state.screen === 'format-choice') applyFormatPicks(formatRecCache.picks);
-    });
-  return key;
-}
-
-function formatPicksNow() {
-  if (!state.packaging) return { picks: [], loading: false };
-  const input = formatRecInput();
-  const key = formatRecKey(input);
-  if (formatRecCache.key === key && formatRecCache.picks) return { picks: formatRecCache.picks, loading: false };
-  requestFormatPicks(input);
-  return { picks: [], loading: true };
-}
-
-function formatPickParts(picks, loading) {
-  const pickBy = new Map(picks.map((p, i) => [p.name, { ...p, rank: i }]));
-  const recommended = new Set(pickBy.keys());
-  const tagFor = (name) => (pickBy.get(name).rank === 0 ? 'הכי מתאים לרעיון הזה' : 'מומלץ לאריזה הזו');
-  const tagHtml = (name) => (recommended.has(name) ? `<span class="cosmic-recommend-tag">${tagFor(name)}</span>` : '');
-  const whyHtml = (name) => (recommended.has(name) && pickBy.get(name).why ? `<p class="cosmic-recommend-why">למה זה מתאים לך: ${escapeHtml(pickBy.get(name).why)}</p>` : '');
-  const hint = loading
-    ? '<p class="cosmic-hint cosmic-recommend-hint cosmic-recommend-loading">רגע, בודקים אילו פורמטים הכי מתאימים לרעיון ולאריזה שלך...</p>'
-    : (recommended.size ? `<p class="cosmic-hint cosmic-recommend-hint">סימנו בכתום את הפורמטים שהכי מתאימים לרעיון ולאריזה שבחרת${recommended.size > 1 ? ', הראשון הכי חזק' : ''}. פותחים כל אחד כדי לראות למה. זו רק הצעה, אפשר לבחור כל פורמט אחר.</p>` : '');
-  return { recommended, tagHtml, whyHtml, hint };
-}
-
-function applyFormatPicks(picks) {
-  const root = screenEl();
-  const loadingEl = root && root.querySelector('.cosmic-recommend-loading');
-  if (!loadingEl) return;
-  const { recommended, tagHtml, whyHtml, hint } = formatPickParts(picks, false);
-  root.querySelectorAll('.cosmic-accordion-item').forEach((item) => {
-    const name = item.dataset.format;
-    if (!recommended.has(name)) return;
-    item.classList.add('is-recommended');
-    item.querySelector('summary > span').insertAdjacentHTML('beforeend', tagHtml(name));
-    item.querySelector('.cosmic-accordion-body').insertAdjacentHTML('afterbegin', whyHtml(name));
-  });
-  if (hint) loadingEl.insertAdjacentHTML('afterend', hint);
-  loadingEl.remove();
-}
-
 function renderFormatChoice() {
-  const { picks, loading } = formatPicksNow();
-  const { recommended, tagHtml, whyHtml, hint } = formatPickParts(picks, loading);
   /* 12/11/2026: בשכפול כותבים סרטון לפי מנגנון של סרטון, ולכן אין בו קרוסלה */
   const itemsHtml = FORMATS.map((f, i) => (state.formatFor === 'reference' && f.name === 'פוסט קרוסלה' ? '' : `
-    <details class="cosmic-accordion-item${recommended.has(f.name) ? ' is-recommended' : ''}" data-format="${escapeHtml(f.name)}" ${state.selectedFormat === f.name ? 'open' : ''}>
-      <summary><span><span class="cosmic-format-icon">${FORMAT_ICONS[f.name] || '🎬'}</span>${escapeHtml(f.name)}${tagHtml(f.name)}</span></summary>
+    <details class="cosmic-accordion-item" data-format="${escapeHtml(f.name)}" ${state.selectedFormat === f.name ? 'open' : ''}>
+      <summary><span><span class="cosmic-format-icon">${FORMAT_ICONS[f.name] || '🎬'}</span>${escapeHtml(f.name)}</span></summary>
       <div class="cosmic-accordion-body">
-        ${whyHtml(f.name)}
         <p style="margin:0">${escapeHtml(f.description)}</p>
         ${FORMAT_EXAMPLES[f.name] ? `<button type="button" class="cosmic-examples-btn" data-format-examples="${i}">👀 לראות דוגמה</button>` : ''}
         <button type="button" class="cosmic-pick-btn" data-pick-format="${i}">הפורמט שלי</button>
@@ -1347,7 +1269,6 @@ function renderFormatChoice() {
   cosmicCard(`
     <h2>בוחרים פורמט הנגשה</h2>
     <p>לכל רעיון יכולים להתאים כמה פורמטים - לפתוח כל אחד לקרוא על מה מדובר, ולבחור את מה שהכי מרגיש נכון.</p>
-    ${hint}
     ${state.selectedFormat ? `<div class="cosmic-selected-chip">✓ נבחר: ${escapeHtml(state.selectedFormat)}</div>` : ''}
     <div class="cosmic-accordion">${itemsHtml}</div>
   `);
@@ -2636,21 +2557,7 @@ async function renderCreativePackaging() {
   `));
   let startingPoint = state.startingPoint;
   wireChips('[data-start]', 'data-start', (v) => { startingPoint = v; });
-  /* מתחילים לבדוק פורמטים כבר עכשיו (ראה requestFormatPicks) */
-  const packagingInput = document.getElementById('va-packaging-input');
-  let prefetchTimer = null;
-  const prefetch = () => {
-    clearTimeout(prefetchTimer);
-    prefetchTimer = setTimeout(() => {
-      const text = packagingInput.value.trim();
-      if (text.length >= 20 && parseOptions(text).length < 2) requestFormatPicks(formatRecInput(text, startingPoint));
-    }, 900);
-  };
-  packagingInput.addEventListener('input', prefetch);
-  packagingInput.addEventListener('paste', prefetch);
-  if (packagingInput.value.trim()) prefetch();
   document.getElementById('va-packaging-done-btn').addEventListener('click', () => {
-    clearTimeout(prefetchTimer);
     const packaging = document.getElementById('va-packaging-input').value.trim();
     if (pastedManyOptions(packaging)) return;
     if (!packaging) {
