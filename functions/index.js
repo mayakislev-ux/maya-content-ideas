@@ -113,7 +113,7 @@ const DAILY_LIMITS = {
 // firestore.rules (לא רלוונטי - הפונקציות האלה משתמשות ב-Admin SDK, שעוקף
 // לגמרי את חוקי Firestore). זו הבדיקה האמיתית, בצד השרת, שמראה אותה לוגיקה
 // בדיוק כמו isAllowed() ב-firestore.rules.
-async function enforceAllowlist(email, { allowRefs = false } = {}) {
+async function enforceAllowlist(email, { allowRefs = false, refsFlag = null } = {}) {
   if (!email) {
     throw new HttpsError('permission-denied', 'יש להתחבר כדי להשתמש בתכונה הזו');
   }
@@ -128,7 +128,10 @@ async function enforceAllowlist(email, { allowRefs = false } = {}) {
   /* 15/10/2026: החיפוש במאגר ההשראה (matchInspirationQuery) קרא לבדיקה
      הזאת, ולכן נחסם בדיוק למנויות הרפרנסים, שזה הכלי היחיד שלהן. כלי
      המאגר מעבירים allowRefs, וכל השאר נשארים חסומים. */
-  if (data.plan === 'refs' && !allowRefs) {
+  /* 19/11/2026 (מאיה: "תפתחי למאיה לי פן את הצאט לבדיקת רעיון"): כלי בודד
+     שנפתח למנוית רפרנסים מסוימת, לפי דגל ברשומה שלה (למשל ideaChat). */
+  const flagOpen = Boolean(refsFlag) && data[refsFlag] === true;
+  if (data.plan === 'refs' && !allowRefs && !flagOpen) {
     throw new HttpsError('permission-denied', 'המנוי שלך כולל את מאגר ההשראה בלבד');
   }
   /* התאריך, ולא מתג. חיוב חודשי שנכשל סוגר את הגישה מעצמו. */
@@ -954,7 +957,7 @@ exports.checkIdea = onRequest(
     }
 
     try {
-      await enforceAllowlist(email);
+      await enforceAllowlist(email, { refsFlag: 'ideaChat' });
     } catch (err) {
       res.status(403).json({ error: err.message || 'אין הרשאה להשתמש בתכונה הזו' });
       return;

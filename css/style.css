@@ -6354,6 +6354,9 @@ body[data-plan="refs"] .va-back-refs { display: inline; }
    עם contentPlanGuide, ולא כל מנוי הרפרנסים. */
 .tab-cpguide-only { display: none !important; }
 body[data-plan="refs"][data-cp-guide="1"] .tab-cpguide-only { display: inline-flex !important; }
+/* 19/11/2026 (מאיה): הצ'אט לבדיקת רעיון, רק למי שמסומנת ב-allowlist עם ideaChat */
+.tab-ideachat-only { display: none !important; }
+body[data-plan="refs"][data-idea-chat="1"] .tab-ideachat-only { display: inline-flex !important; }
 
 /* בלי הכפתורים התחתונים אין טעם בסרגל התחתון כולו */
 body[data-plan="refs"] .bottom-nav { display: none !important; }

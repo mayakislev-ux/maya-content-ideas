@@ -16,7 +16,7 @@ import { wireMyDetails, openMyDetails } from './my-details.js';
 import { setRecorderRatings } from './idea-recorder.js';
 import { openAddModal, openEditModal, wireIdeaForm, setSimpleIdeaForm } from './idea-form.js';
 import { wireRandomIdeaModal, setRandomIdeaFromAll } from './random-idea-modal.js';
-import { wireIdeaChat } from './idea-chat.js';
+import { wireIdeaChat, startIdeaChatFromHub } from './idea-chat.js';
 import { wireFeedbackForm } from './feedback.js';
 import { wireContentPlanView } from './content-plan.js';
 import { wireConfirmDialog } from './confirm-dialog.js';
@@ -219,6 +219,8 @@ async function loadAccess(email) {
     renewOffer: data.renewOffer === true,
     /* 02/11/2026: המדריך "איך בונים תכנית תוכן" כלשונית, לבנות מרתון התוכן */
     contentPlanGuide: data.contentPlanGuide === true,
+    /* 19/11/2026: הצ'אט לבדיקת רעיון למנוית רפרנסים מסוימת (ideaChat ברשומה) */
+    ideaChat: data.ideaChat === true,
   };
 }
 
@@ -354,6 +356,8 @@ document.getElementById('hub-link-video-assistant').addEventListener('click', ()
 document.getElementById('tab-video-assistant').addEventListener('click', () => showView('video-assistant'));
 /* 02/11/2026: לשונית המדריך לבנות מרתון התוכן במנוי רפרנסים (ראו tab-cpguide-only) */
 document.getElementById('tab-content-plan').addEventListener('click', () => showView('content-plan'));
+/* 19/11/2026: לשונית הצ'אט לבדיקת רעיון למנוית רפרנסים עם ideaChat (ראו tab-ideachat-only) */
+document.getElementById('tab-idea-chat').addEventListener('click', () => startIdeaChatFromHub());
 document.getElementById('video-assistant-back-btn').addEventListener('click', () => {
   if (document.body.dataset.plan === 'refs') {
     showView('inspiration');
@@ -697,6 +701,7 @@ onAuthChange(async (user) => {
   /* מנוי רפרנסים: הגוף מסומן, וה-CSS מסתיר את כל מה שלא מאגר ההשראה */
   document.body.dataset.plan = access.refsOnly ? 'refs' : 'full';
   document.body.dataset.cpGuide = access.contentPlanGuide ? '1' : '';
+  document.body.dataset.ideaChat = access.ideaChat ? '1' : '';
 
   showSubscriptionCountdown(access);
 
@@ -725,6 +730,7 @@ onAuthChange(async (user) => {
         const snap = await getDoc(doc(db, 'allowlist', asEmail));
         const d = snap.exists() ? (snap.data() || {}) : {};
         document.body.dataset.cpGuide = d.contentPlanGuide === true ? '1' : '';
+        document.body.dataset.ideaChat = d.ideaChat === true ? '1' : '';
         showSubscriptionCountdown({
           showCountdown: d.showCountdown === true,
           renewOffer: d.renewOffer === true,
@@ -792,7 +798,10 @@ onAuthChange(async (user) => {
      נקבעת לפי הרשומה של הלקוחה, ולכן קוראים אותה גם כאן. */
   if (viewedNow && viewedNow.email) {
     getDoc(doc(db, 'allowlist', String(viewedNow.email).toLowerCase()))
-      .then((snap) => { document.body.dataset.cpGuide = snap.exists() && snap.data().contentPlanGuide === true ? '1' : ''; })
+      .then((snap) => {
+        document.body.dataset.cpGuide = snap.exists() && snap.data().contentPlanGuide === true ? '1' : '';
+        document.body.dataset.ideaChat = snap.exists() && snap.data().ideaChat === true ? '1' : '';
+      })
       .catch((err) => console.error('client view allowlist read failed:', err));
   }
   showPortalBackButton(user);

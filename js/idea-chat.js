@@ -749,7 +749,12 @@ export function startIdeaChatFromAssistant(seed = {}, { onBack } = {}) {
 
 /* 04/11/2026 (מאיה): כרטיס עצמאי במרכז הלמידה, למנוי המלא בלבד */
 export function startIdeaChatFromHub() {
-  if (document.body.dataset.plan === 'refs') return Promise.resolve();
+  if (document.body.dataset.plan === 'refs') {
+    /* 19/11/2026: מנוית רפרנסים עם ideaChat נכנסת מהלשונית שלה. אין לה מרכז
+       למידה לחזור אליו, והלשוניות למעלה הן הדרך החוצה. */
+    if (document.body.dataset.ideaChat !== '1') return Promise.resolve();
+    return openIdeaChat({}, {});
+  }
   return openIdeaChat({}, { onBack: () => showView('guide'), handoff: false, backLabel: '→ חזרה למרכז למידה' });
 }
 
