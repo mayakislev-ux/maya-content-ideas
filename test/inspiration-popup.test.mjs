@@ -23,7 +23,7 @@ test('פרמטרים בכתובת לא שוברים את הזיהוי', () => {
 
 test('טיקטוק מלא מקבל הטמעה', () => {
   assert.equal(embedUrlFor('https://www.tiktok.com/@user.name/video/7312345678901234567'),
-    'https://www.tiktok.com/embed/v2/7312345678901234567');
+    'https://www.tiktok.com/player/v1/7312345678901234567?rel=0&description=0&music_info=0');
 });
 
 test('קישור טיקטוק מקוצר מחזיר null, כדי שייפתח בחוץ ולא יישבר', () => {
@@ -117,7 +117,7 @@ test('קישור בלי הטמעה לא פותח פופאפ ריק', async () =>
 test('טיקטוק מקוצר נפתח כשיש מזהה שמור', () => {
   assert.equal(
     embedUrlFor('https://vt.tiktok.com/ZSqhxjNJ7/', { tiktokVideoId: '7238688201412578565' }),
-    'https://www.tiktok.com/embed/v2/7238688201412578565'
+    'https://www.tiktok.com/player/v1/7238688201412578565?rel=0&description=0&music_info=0'
   );
 });
 
@@ -135,7 +135,7 @@ test('מזהה פגום לא מיוצר לכתובת שבורה', () => {
 test('המזהה השמור גובר, גם על כתובת מלאה', () => {
   assert.equal(
     embedUrlFor('https://www.tiktok.com/@u/video/111', { tiktokVideoId: '222' }),
-    'https://www.tiktok.com/embed/v2/222'
+    'https://www.tiktok.com/player/v1/222?rel=0&description=0&music_info=0'
   );
 });
 
@@ -166,8 +166,12 @@ test('ההמתנה מבוטלת בסגירה, אחרת היא רצה על חלו
   assert.ok(POPSRC.includes('clearTimeout(fallbackTimer)'), 'הטיימר לא מבוטל');
 });
 
-test('ההודעה אומרת שזאת הגבלה של הפלטפורמה ולא תקלה אצלנו', () => {
-  assert.ok(/הגבלה של אינסטגרם וטיקטוק/.test(POPSRC), 'הניסוח מאשים את המערכת במקום להסביר');
+// 21/11/2026: אחרי 4 שניות ההודעה מחקה נגן שסתם נטען לאט, ותקין נראה שבור
+test('נגן איטי לא נמחק: ההודעה רק מכסה אותו ונעלמת כשהוא נטען', () => {
+  assert.ok(!/frameWrap\.innerHTML = ''/.test(POPSRC), 'ההודעה מוחקת את הנגן');
+  assert.ok(/cover\.remove\(\)/.test(POPSRC), 'ההודעה לא יורדת כשהנגן נטען');
+  assert.ok(/\}, 10000\)/.test(POPSRC), 'ההמתנה קצרה מדי');
+  assert.ok(!/loading = 'lazy'/.test(POPSRC), 'טעינה עצלה מעכבת את הנגן');
 });
 
 // 21/11/2026 (מאיה: "מלא סרטונים ברפרנסים לא נפתחים"): 70 סרטוני אינסטגרם

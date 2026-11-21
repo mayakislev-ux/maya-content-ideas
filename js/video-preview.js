@@ -68,6 +68,11 @@ const TT_ID = /tiktok\.com\/(?:.*\/)?video\/(\d+)/;
  * כתובת ההטמעה של סרטון, או null כשאין כזאת ואפשר רק לפתוח בחוץ.
  * מיוצא לבדיקות.
  */
+/** הנגן הרשמי של טיקטוק: מראה רק את הסרטון, עם כפתורי ניגון. */
+export function tiktokPlayerUrl(id) {
+  return `https://www.tiktok.com/player/v1/${id}?rel=0&description=0&music_info=0`;
+}
+
 export function embedUrlFor(url, video) {
   // 21/11/2026 (מאיה: "מלא סרטונים ברפרנסים לא נפתחים"). 70 מתוך 368 סרטוני
   // אינסטגרם חיים, אבל הנגן המוטמע לא מנגן אותם: בעל החשבון כיבה הטמעה,
@@ -82,14 +87,17 @@ export function embedUrlFor(url, video) {
   // המזהה פוענח פעם אחת דרך ה-oEmbed הרשמי ונשמר על הסרטון, כדי שהפתיחה
   // תהיה מיידית ולא תלויה בקריאת רשת מול הלקוחה.
   const saved = video && video.tiktokVideoId;
-  if (saved && /^\d+$/.test(String(saved))) return `https://www.tiktok.com/embed/v2/${saved}`;
+  // 21/11/2026 (מאיה שלחה צילום: "Unable to load player"). הנגן הישן של טיקטוק
+  // (embed/v2) נשבר אצל טיקטוק עצמה. עוברים לנגן הרשמי החדש, player/v1, שכבר
+  // עובד במצב הגלילה.
+  if (saved && /^\d+$/.test(String(saved))) return tiktokPlayerUrl(saved);
 
   const raw = String(url || '');
   const ig = raw.match(IG_CODE);
   if (ig) return `https://www.instagram.com/p/${ig[1]}/embed/`;
 
   const tt = raw.match(TT_ID);
-  if (tt) return `https://www.tiktok.com/embed/v2/${tt[1]}`;
+  if (tt) return tiktokPlayerUrl(tt[1]);
 
   const yt = extractYouTubeId(raw);
   if (yt) return `https://www.youtube.com/embed/${yt}`;
@@ -101,7 +109,7 @@ export function embedUrlFor(url, video) {
 
 /** יחס הגובה-רוחב של חלון ההטמעה. אינסטגרם וטיקטוק אנכיים. */
 export function embedShape(url, video) {
-  if ((video && video.tiktokVideoId) || /tiktok\.com/.test(String(url || ''))) return { w: 325, h: 760 };
+  if ((video && video.tiktokVideoId) || /tiktok\.com/.test(String(url || ''))) return { w: 340, h: 605 }; /* player/v1 הוא הסרטון בלבד, 9:16 */
   if (IG_CODE.test(String(url || ''))) return { w: 400, h: 700 };
   return { w: 560, h: 315 };
 }

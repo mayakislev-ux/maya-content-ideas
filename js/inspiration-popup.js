@@ -96,7 +96,6 @@ export function openVideoPopup(video) {
   const frame = document.createElement('iframe');
   frame.src = embed;
   frame.title = 'סרטון רפרנס';
-  frame.loading = 'lazy';
   frame.allow = 'autoplay; clipboard-write; encrypted-media; picture-in-picture';
   frame.allowFullscreen = true;
   frameWrap.appendChild(frame);
@@ -110,23 +109,32 @@ export function openVideoPopup(video) {
   // אי אפשר לדעת מבחוץ אם המסגרת נטענה, כי היא ממקור אחר. לכן מודדים זמן:
   // אם אחרי ארבע שניות אירוע הטעינה לא הגיע, מחליפים את המסגרת במסך ברור
   // עם כפתור גדול שפותח במקור. עדיף זה מאשר ריבוע שחור בלי הסבר.
+  // 21/11/2026 (מאיה: "עדיין בחלק מראה ככה"). אחרי 4 שניות ההודעה מחקה את
+  // הנגן, גם כשהוא סתם נטען לאט, וסרטון תקין נראה "לא מוכן להצגה". עכשיו:
+  // הנגן נשאר וממשיך להיטען, ההודעה רק מכסה אותו עד שהוא מגיע, ונעלמת כשהוא
+  // נטען. וגם מחכים יותר, 10 שניות.
   let loaded = false;
-  frame.addEventListener('load', () => { loaded = true; });
+  let cover = null;
+  frame.addEventListener('load', () => {
+    loaded = true;
+    if (cover) { cover.remove(); cover = null; }
+  });
   const fallbackTimer = setTimeout(() => {
     if (loaded) return;
-    frameWrap.innerHTML = '';
-    frameWrap.classList.add('ip-frame--blocked');
+    cover = document.createElement('div');
+    cover.className = 'ip-frame--blocked ip-cover';
     const msg = document.createElement('p');
     msg.className = 'ip-blocked__text';
-    msg.textContent = 'הסרטון הזה לא מוכן להצגה כאן, וזאת הגבלה של אינסטגרם וטיקטוק ולא תקלה אצלנו.';
+    msg.textContent = 'הסרטון עדיין נטען. אם הוא לא עולה, אפשר לפתוח אותו ישר במקור.';
     const go = document.createElement('a');
     go.className = 'ip-blocked__btn';
     go.href = video.url;
     go.target = '_blank';
     go.rel = 'noopener noreferrer';
     go.textContent = 'לצפות בסרטון ↗';
-    frameWrap.append(msg, go);
-  }, 4000);
+    cover.append(msg, go);
+    frameWrap.appendChild(cover);
+  }, 10000);
   // סגירה מבטלת את ההמתנה, אחרת היא תרוץ על חלון שכבר לא קיים
   x.addEventListener('click', () => clearTimeout(fallbackTimer));
 
