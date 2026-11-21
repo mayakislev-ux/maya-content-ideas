@@ -4,6 +4,7 @@ import { accuracyNoteOf, readabilityOf, languageName, readableTextOf } from './i
 import { openFeed } from './inspiration-feed.js';
 import { duplicateFromBank } from './video-assistant.js';
 import { showToast } from './toast.js';
+import { saveButton, copyLinkButton, isSaved, loadSaves, savedCount, onSavesChange } from './ref-saves.js';
 import { collection, doc, getDoc, getDocs } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
 import { serverErrorText } from './server-error.js';
@@ -273,6 +274,18 @@ let shownVideos = [];
 
 function setShownVideos(videos) {
   shownVideos = videos;
+  const savedBtn = document.getElementById('inspiration-saved-btn');
+  if (savedBtn) {
+    loadSaves();
+    onSavesChange(paintSavedFilter);
+    paintSavedFilter();
+    savedBtn.addEventListener('click', () => {
+      savedOnly = !savedOnly;
+      paintSavedFilter();
+      renderForDomain(select.value, subSelect.value);
+    });
+  }
+
   const feedBtn = document.getElementById('inspiration-feed-btn');
   if (feedBtn) {
     feedBtn.hidden = !videos.length;
@@ -372,6 +385,8 @@ function buildCard(video) {
 
     const thumbWrap = document.createElement('div');
     thumbWrap.className = 'inspiration-card-thumb';
+    /* 21/11/2026 (מאיה: "ליד כל סרטון כפתור של SAVE") */
+    thumbWrap.appendChild(saveButton(video, 'inspiration-card-save'));
     if (video.thumbnailUrl) {
       const img = document.createElement('img');
       img.src = video.thumbnailUrl;
@@ -412,6 +427,7 @@ function buildCard(video) {
     if ((video.angleTags || []).length) info.appendChild(angleChips(video, pickAngle));
     info.appendChild(cta);
     info.appendChild(duplicateButton(video));
+    info.appendChild(copyLinkButton(video, 'inspiration-card-link-btn'));
 
     // Readable text for the "שכפול" workflow - clients read the exact wording
     // instead of watching. Two sources, both pre-computed in advance (never
@@ -520,7 +536,26 @@ async function renderForDomain(domain, subCategory) {
   }
   rebuildAngleRow(filtered);
   if (activeAngle) filtered = filtered.filter((v) => (v.angleTags || []).includes(activeAngle));
+  if (savedOnly) {
+    filtered = (domain ? filtered : readable).filter((v) => isSaved(v.id));
+    if (!filtered.length) {
+      document.getElementById('inspiration-grid').innerHTML = '<p class="inspiration-loading">עוד לא שמרת סרטונים. לוחצים על ♡ שמירה בפינה של סרטון שאהבת, והוא יחכה לך כאן.</p>';
+      shownVideos = [];
+      return;
+    }
+  }
   renderCards(filtered);
+}
+
+/* 21/11/2026: "השמורים שלי". הכפתור מראה כמה נשמרו ומסנן רק אותם. */
+let savedOnly = false;
+function paintSavedFilter() {
+  const btn = document.getElementById('inspiration-saved-btn');
+  if (!btn) return;
+  const n = savedCount();
+  btn.textContent = savedOnly ? `✕ חזרה לכל הסרטונים` : `♥ השמורים שלי${n ? ` (${n})` : ''}`;
+  btn.setAttribute('aria-pressed', String(savedOnly));
+  btn.classList.toggle('is-on', savedOnly);
 }
 
 // "שכפול הפוך" - a client already has her own idea ("אני רוצה לשתף את סיפור

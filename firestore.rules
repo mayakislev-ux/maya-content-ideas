@@ -117,6 +117,10 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
     /* 21/11/2026: דיווח שקט אם נגן הרפרנס עלה. כותבים רק רשומה חדשה ועל עצמן, אף אחת לא קוראת. */
+    /* 21/11/2026: הרפרנסים השמורים של כל משתמשת. רק היא קוראת וכותבת. */
+    match /refSaves/{uid} {
+      allow read, write: if isAllowed() && notExpired() && request.auth.uid == uid;
+    }
     match /inspirationPlayLog/{id} {
       allow create: if isAllowed() && request.resource.data.uid == request.auth.uid
         && request.resource.data.keys().hasOnly(['videoId', 'platform', 'ok', 'code', 'uid', 'at'])

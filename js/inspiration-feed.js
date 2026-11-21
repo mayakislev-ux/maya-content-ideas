@@ -7,6 +7,7 @@
 //
 // אצבע על מסגרת ממקור אחר לא תמיד מגיעה לגלילה שלנו, ואין דרך לדעת מבחוץ. לכן
 // תמיד נשארים פס צד, הפסים למעלה ולמטה וחיצים, שאיתם אפשר לעבור הלאה.
+import { saveButton, copyLinkButton } from './ref-saves.js';
 import { embedUrlFor, embedBlockedText, TIKTOK_PLAYER_PARAMS, FRAME_ALLOW, FRAME_REFERRER } from './video-preview.js';
 import { accuracyNoteOf, audioKindOf, readableTextOf } from './inspiration-readability.js';
 import { lastSubtitleEnd, subtitleAt } from './inspiration-subtitles.js';
@@ -153,7 +154,7 @@ function fillSlide(i) {
   const video = list[i];
   if (!slide || !video || slide.firstChild) return;
   const top = el('div', 'feed-slide__top');
-  top.appendChild(outLink(video, 'feed-out'));
+  top.append(saveButton(video, 'feed-out feed-save'), copyLinkButton(video, 'feed-out', '🔗 קישור'), outLink(video, 'feed-out'));
 
   const stage = el('div', 'feed-stage');
   const poster = el('img', 'feed-poster');

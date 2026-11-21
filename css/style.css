@@ -3596,6 +3596,7 @@ textarea:focus-visible,
   aspect-ratio: 9 / 16;
   background: var(--surface);
   overflow: hidden;
+  position: relative;
 }
 
 .inspiration-card-thumb img {
@@ -9427,3 +9428,34 @@ body.va-stage-on #video-assistant-view .va-maya { opacity: 0; transition: opacit
 .va-bday-row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
 .va-bday-row select { min-height: 40px; border-radius: 10px; padding: 0 8px; font: inherit; }
 .va-bday-row .cosmic-btn { min-height: 40px; padding: 6px 14px; }
+
+/* 21/11/2026 (מאיה): שמירת רפרנסים והעתקת קישור */
+.inspiration-card-save {
+  position: absolute; top: 8px; inset-inline-start: 8px; z-index: 2;
+  min-height: 36px; padding: 6px 12px; border: 0; border-radius: 999px; cursor: pointer;
+  font: inherit; font-size: 0.8rem; font-weight: 800;
+  background: rgba(255,255,255,.94); color: #171b3a; box-shadow: 0 2px 8px rgba(0,0,0,.18);
+}
+.inspiration-card-save.is-saved { background: var(--warm-strong); color: #fff; }
+.inspiration-card-link-btn {
+  min-height: 40px; margin-top: 0.4rem; padding: 0.45rem 0.8rem; border-radius: 999px; cursor: pointer;
+  font: inherit; font-size: 0.78rem; font-weight: 700;
+  border: 1.5px solid var(--accent-300); background: transparent; color: var(--accent-strong);
+}
+.inspiration-saved-btn {
+  font: inherit; font-weight: 700; cursor: pointer; border-radius: 10px; padding: 10px 16px; white-space: nowrap;
+  border: 1.5px solid var(--accent-300); background: transparent; color: var(--accent-strong);
+}
+.inspiration-saved-btn.is-on { background: var(--warm-strong); border-color: var(--warm-strong); color: #fff; }
+.ip-act {
+  flex-shrink: 0; min-height: 36px; padding: 0 10px; border: 0; border-radius: 999px; cursor: pointer;
+  font: inherit; font-size: 12.5px; font-weight: 700; white-space: nowrap;
+  background: #f3eefb; color: #3b2a5c;
+}
+.ip-act.is-saved { background: #6134a8; color: #fff; }
+.feed-slide__top { gap: 8px; flex-wrap: wrap; }
+.feed-out { border: 0; font-family: inherit; cursor: pointer; }
+.feed-save.is-saved { background: #fff; color: #4b2390; }
+@media (max-width: 420px) {
+  .ip-title { display: none; }
+}

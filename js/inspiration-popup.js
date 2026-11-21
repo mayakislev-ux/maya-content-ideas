@@ -5,6 +5,7 @@
 // רפרנסים זה הורג את הזרימה: כל צפייה מוציאה אותה מהאפליקציה.
 //
 // הפופאפ מנגן בתוך המסך, ומשאיר את הקישור החוצה למי שרוצה לשמור או להגיב.
+import { saveButton, copyLinkButton } from './ref-saves.js';
 import { embedUrlFor, embedShape, tiktokMessage, FRAME_ALLOW, FRAME_REFERRER } from './video-preview.js';
 
 let host = null;
@@ -100,7 +101,8 @@ export function openVideoPopup(video) {
   x.textContent = '✕';
   x.addEventListener('click', close);
 
-  bar.append(title, out, x);
+  /* 21/11/2026 (מאיה): העתקת קישור ושמירה ישר מהחלון */
+  bar.append(title, copyLinkButton(video, 'ip-act', '🔗 קישור'), saveButton(video, 'ip-act ip-save'), out, x);
 
   const frameWrap = document.createElement('div');
   frameWrap.className = 'ip-frame';
