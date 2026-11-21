@@ -11,10 +11,12 @@
 const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { getFirestore, FieldValue } = require('firebase-admin/firestore');
-const { FAILS_TO_REMOVE, MAX_REMOVALS_PER_RUN, tiktokVerdict, pageVerdict, runIsTrustworthy, nextFailCount } = require('./inspiration-link-rules');
+const { FAILS_TO_REMOVE, MAX_REMOVALS_PER_RUN, MAX_EMBED_BLOCKED_SHARE, tiktokVerdict, pageVerdict, instagramEmbedVerdict, runIsTrustworthy, nextFailCount } = require('./inspiration-link-rules');
 
 const ADMIN_EMAIL = 'mayakislev@gmail.com';
 const PREVIEW_UA = 'facebookexternalhit/1.1';
+const PHONE_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
+const IG_CODE = /instagram\.com\/(?:reel|reels|p|tv)\/([A-Za-z0-9_-]+)/;
 const FETCH_TIMEOUT_MS = 20000;
 const TIME_BUDGET_MS = 25 * 60 * 1000;
 const GAP_MS = { tiktok: 800, instagram: 1500 };
@@ -41,7 +43,17 @@ async function checkTiktok(video) {
 
 async function checkInstagram(video) {
   const r = await get(video.url, PREVIEW_UA);
-  return { verdict: pageVerdict(r.status, r.text) };
+  const verdict = pageVerdict(r.status, r.text);
+  /* 21/11/2026: גם אם הפוסט חי, בודקים שהנגן שבתוך האפליקציה באמת מנגן אותו */
+  let embed = null;
+  const code = String(video.url || '').match(IG_CODE);
+  if (verdict === 'alive' && code) {
+    try {
+      const e = await get(`https://www.instagram.com/p/${code[1]}/embed/`, PHONE_UA);
+      embed = instagramEmbedVerdict(e.status, e.text);
+    } catch (err) { embed = null; }
+  }
+  return { verdict, embed };
 }
 
 async function checkPlatform(platform, docs, deadline) {
@@ -85,8 +97,14 @@ async function runLinkCheck({ dry = false, limit = 0 } = {}) {
     summary.platforms[platform] = { checked: results.length, alive: results.filter((r) => r.verdict === 'alive').length, dead: dead.length, unknown: results.filter((r) => r.verdict === 'unknown').length, trusted: trust };
     if (dry) {
       summary.platforms[platform].deadUrls = dead.slice(0, 40).map((r) => r.doc.data().url);
+      summary.platforms[platform].embedBlocked = results.filter((r) => r.embed).length;
       continue;
     }
+    /* הטמעה: כותבים רק כשהריצה סבירה, ואף פעם לא על סמך "לא יודעים" */
+    const embedKnown = results.filter((r) => r.embed !== undefined && r.embed !== null);
+    const embedBlocked = embedKnown.filter((r) => r.embed);
+    const embedTrust = embedKnown.length > 0 && embedBlocked.length / embedKnown.length <= MAX_EMBED_BLOCKED_SHARE;
+    if (platform === 'instagram') summary.platforms[platform].embedBlocked = embedBlocked.length;
     let batch = db.batch(); let n = 0;
     for (const r of results) {
       const v = r.doc.data();
@@ -101,6 +119,10 @@ async function runLinkCheck({ dry = false, limit = 0 } = {}) {
       } else {
         const u = { linkCheckedAt: now, linkFailCount: fails };
         if (r.videoId && !v.tiktokVideoId) { u.tiktokVideoId = r.videoId; summary.fixed += 1; }
+        if (embedTrust && r.embed !== undefined && r.embed !== null) {
+          if (r.embed) u.embedBlocked = r.embed;
+          else if (v.embedBlocked) u.embedBlocked = FieldValue.delete();
+        }
         batch.update(r.doc.ref, u);
         n += 1;
       }

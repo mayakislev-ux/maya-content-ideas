@@ -7,7 +7,7 @@
 //
 // אצבע על מסגרת ממקור אחר לא תמיד מגיעה לגלילה שלנו, ואין דרך לדעת מבחוץ. לכן
 // תמיד נשארים פס צד, הפסים למעלה ולמטה וחיצים, שאיתם אפשר לעבור הלאה.
-import { embedUrlFor } from './video-preview.js';
+import { embedUrlFor, embedBlockedText } from './video-preview.js';
 import { accuracyNoteOf, audioKindOf, readableTextOf } from './inspiration-readability.js';
 import { lastSubtitleEnd, subtitleAt } from './inspiration-subtitles.js';
 
@@ -31,6 +31,7 @@ function tiktokId(video) {
  * לרוץ לבד. באינסטגרם יש רק כתובת הטמעה. null = אפשר רק לפתוח בחוץ.
  */
 export function feedEmbedUrl(video) {
+  if (video && video.embedBlocked) return null;
   const id = tiktokId(video);
   if (id) return `https://www.tiktok.com/player/v1/${id}?autoplay=1&loop=1&rel=0&description=0&music_info=0`;
   return embedUrlFor(video && video.url, video);
@@ -354,7 +355,7 @@ function play(i) {
   clearStage(i);
   const src = feedEmbedUrl(video);
   if (!src) {
-    blockedBox(video, slide, 'את הסרטון הזה אפשר לראות רק באפליקציה שלו.');
+    blockedBox(video, slide, embedBlockedText(video) || 'את הסרטון הזה אפשר לראות רק באפליקציה שלו.');
     return;
   }
   const frame = el('iframe', 'feed-frame');

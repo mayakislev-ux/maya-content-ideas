@@ -10,6 +10,8 @@ const FAILS_TO_REMOVE = 3;
 const MAX_DEAD_SHARE = 0.1;
 const MIN_FOR_SHARE = 20;
 const MAX_REMOVALS_PER_RUN = 20;
+/* יותר מזה חסומים בהטמעה בריצה אחת = אינסטגרם חוסמת את הענן, לא את הסרטונים. 21/11 נמדד 19%. */
+const MAX_EMBED_BLOCKED_SHARE = 0.4;
 
 /** עמוד הסרטון בטיקטוק כשמבקשים תצוגה מקדימה. לסרטון חי יש התמונה שלו, ולסרטון
     שנמחק או נחסם יש תמונה כללית של טיקטוק (obj/eden-). oEmbed לא עוזר כאן: נכון
@@ -29,6 +31,23 @@ function pageVerdict(status, html) {
   return /property=["']og:image["']/.test(html || '') ? 'alive' : 'dead';
 }
 
+/** 21/11/2026 (מאיה: "מלא סרטונים ברפרנסים לא נפתחים"). פוסט חי עדיין לא
+    אומר שהנגן המוטמע מנגן אותו. נמדד על 368 סרטוני אינסטגרם: 41 עם מוזיקה
+    מוגנת (הנגן מראה רק תמונה ו"Watch on Instagram", בלי video_url) ו-29 שבעל
+    החשבון כיבה בהם הטמעה ("may be broken", בלי תמונה ובלי סרטון).
+    מחזיר '' כשהנגן מנגן, 'music' / 'disabled' כשלא, ו-null כשלא יודעים. */
+function instagramEmbedVerdict(status, html) {
+  if (status !== 200) return null;
+  const h = String(html || '');
+  if (h.length < 2000) return null;
+  if (/video_url/.test(h)) return '';
+  const hasMedia = /EmbeddedMediaImage/.test(h);
+  if (hasMedia && /GraphVideo|is_video\W+true/.test(h)) return 'music';
+  if (hasMedia) return ''; /* פוסט תמונה: התמונה עצמה מוצגת כמו שצריך */
+  if (/may be broken|EmbedBroken|EmbedIsBroken/.test(h)) return 'disabled';
+  return null;
+}
+
 /** האם לסמוך על הריצה הזו בפלטפורמה הזו. */
 function runIsTrustworthy(dead, checked) {
   if (checked < MIN_FOR_SHARE) return dead <= 3;
@@ -42,4 +61,4 @@ function nextFailCount(previous, verdict) {
   return previous || 0;
 }
 
-module.exports = { FAILS_TO_REMOVE, MAX_REMOVALS_PER_RUN, tiktokVerdict, pageVerdict, runIsTrustworthy, nextFailCount };
+module.exports = { FAILS_TO_REMOVE, MAX_REMOVALS_PER_RUN, MAX_EMBED_BLOCKED_SHARE, tiktokVerdict, pageVerdict, instagramEmbedVerdict, runIsTrustworthy, nextFailCount };

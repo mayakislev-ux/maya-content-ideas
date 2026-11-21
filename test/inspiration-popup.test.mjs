@@ -169,3 +169,18 @@ test('ההמתנה מבוטלת בסגירה, אחרת היא רצה על חלו
 test('ההודעה אומרת שזאת הגבלה של הפלטפורמה ולא תקלה אצלנו', () => {
   assert.ok(/הגבלה של אינסטגרם וטיקטוק/.test(POPSRC), 'הניסוח מאשים את המערכת במקום להסביר');
 });
+
+// 21/11/2026 (מאיה: "מלא סרטונים ברפרנסים לא נפתחים"): 70 סרטוני אינסטגרם
+// חיים שהנגן המוטמע לא מנגן. מסומנים embedBlocked ונפתחים ישר במקור.
+test('סרטון שאינסטגרם חוסמת בהטמעה לא נפתח בחלון שבור אלא במקור', async () => {
+  const { feedEmbedUrl } = await import('../js/inspiration-feed.js').catch(() => ({}));
+  const { embedBlockedText } = await import('../js/video-preview.js');
+  const url = 'https://www.instagram.com/reel/C8xYzAbCdEf/';
+  assert.equal(embedUrlFor(url, { url, embedBlocked: 'music' }), null);
+  assert.equal(embedUrlFor(url, { url, embedBlocked: 'disabled' }), null);
+  assert.equal(embedUrlFor(url, { url }), 'https://www.instagram.com/p/C8xYzAbCdEf/embed/');
+  if (feedEmbedUrl) assert.equal(feedEmbedUrl({ url, embedBlocked: 'music' }), null);
+  assert.match(embedBlockedText({ embedBlocked: 'music' }), /מוזיקה מוגנת/);
+  assert.match(embedBlockedText({ embedBlocked: 'disabled' }), /חסם/);
+  assert.equal(embedBlockedText({}), '');
+});

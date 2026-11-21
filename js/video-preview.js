@@ -69,6 +69,12 @@ const TT_ID = /tiktok\.com\/(?:.*\/)?video\/(\d+)/;
  * מיוצא לבדיקות.
  */
 export function embedUrlFor(url, video) {
+  // 21/11/2026 (מאיה: "מלא סרטונים ברפרנסים לא נפתחים"). 70 מתוך 368 סרטוני
+  // אינסטגרם חיים, אבל הנגן המוטמע לא מנגן אותם: בעל החשבון כיבה הטמעה,
+  // או שיש בסרטון מוזיקה מוגנת ואינסטגרם מציגה רק תמונה. הבדיקה הלילית
+  // (inspiration-link-check) מסמנת אותם embedBlocked, ואז פותחים ישר במקור
+  // במקום חלון שבור.
+  if (video && video.embedBlocked) return null;
   // 06/10/2026 (מאיה: "סרטון ראשון שמופיע במובייל לא נפתח בכלל"). מדידה על
   // כל 453 הסרטונים: כל 175 סרטוני הטיקטוק שמורים ככתובת מקוצרת
   // vt.tiktok.com שאין בה מזהה, ולכן אף טיקטוק לא נפתח בחלון. 39% מהמאגר.
@@ -98,4 +104,12 @@ export function embedShape(url, video) {
   if ((video && video.tiktokVideoId) || /tiktok\.com/.test(String(url || ''))) return { w: 325, h: 760 };
   if (IG_CODE.test(String(url || ''))) return { w: 400, h: 700 };
   return { w: 560, h: 315 };
+}
+
+/** למה הסרטון לא מנגן כאן (או '' כשהוא כן מנגן). */
+export function embedBlockedText(video) {
+  const r = video && video.embedBlocked;
+  if (!r) return '';
+  if (r === 'music') return 'בסרטון הזה יש מוזיקה מוגנת, ולכן אינסטגרם לא מאפשרת לנגן אותו מחוץ לאפליקציה שלה. לוחצים ונפתח ישר באינסטגרם.';
+  return 'בעל החשבון חסם הצגה של הסרטון מחוץ לאינסטגרם. לוחצים ונפתח ישר באינסטגרם.';
 }
