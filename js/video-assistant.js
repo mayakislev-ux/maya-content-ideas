@@ -176,7 +176,10 @@ function dispatch(action) {
   if (action.type === 'ACCEPT_PICK' && leaving === 'pulled-reference' && state.branch === 'reference'
       && state.pickedReferenceId && state.pickedReferenceId !== state.transcribedPickId) {
     resetAccurateRuns();
-    state = { ...state, transcript: null, referenceLink: null, openingHook: null,
+    /* 21/11/2026 (מאיה: "שיוסיף אוטומטית לתהליך שכפול את הלינק של הסרטון"):
+       הלינק של הרפרנס שאושר נכנס מיד, ולא רק כשהתמלול האוטומטי רץ עד הסוף. */
+    const pickedVideo = (videosCache || []).find((v) => v.id === state.pickedReferenceId);
+    state = { ...state, transcript: null, referenceLink: (pickedVideo && pickedVideo.url) || null, openingHook: null,
       transcribedPickId: state.pickedReferenceId, autoTranscribePending: state.pickedReferenceId,
       referenceBankId: state.pickedReferenceId };
     state.drafts = clearScreenDrafts(state.drafts || {}, 'transcribe');
@@ -1659,6 +1662,10 @@ function renderTranscribe() {
      התיבה גובר על הטיוטה (valueFor). עריכה שלהם, למשל תיקון של תמלול
      שהגיע מ"לשכפול הסרטון", נעלמה ברענון. עכשיו הם נכנסים דרך הטיוטה. */
   if (state.screen === 'transcribe') {
+    if (!state.referenceLink && state.pickedReferenceId && videosCache) {
+      const picked = videosCache.find((v) => v.id === state.pickedReferenceId);
+      if (picked && picked.url) state.referenceLink = picked.url;
+    }
     seedDraft('va-reference-link', state.referenceLink);
     seedDraft('va-transcript-input', state.transcript);
   }
