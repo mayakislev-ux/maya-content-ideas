@@ -10,8 +10,9 @@
  */
 const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
-const { getFirestore, FieldValue } = require('firebase-admin/firestore');
-const { FAILS_TO_REMOVE, MAX_REMOVALS_PER_RUN, MAX_EMBED_BLOCKED_SHARE, tiktokVerdict, pageVerdict, instagramEmbedVerdict, runIsTrustworthy, nextFailCount } = require('./inspiration-link-rules');
+const { getFirestore, FieldValue, Timestamp } = require('firebase-admin/firestore');
+const { defineSecret } = require('firebase-functions/params');
+const { playerLooksBroken, FAILS_TO_REMOVE, MAX_REMOVALS_PER_RUN, MAX_EMBED_BLOCKED_SHARE, tiktokVerdict, pageVerdict, instagramEmbedVerdict, runIsTrustworthy, nextFailCount } = require('./inspiration-link-rules');
 
 const ADMIN_EMAIL = 'mayakislev@gmail.com';
 const PREVIEW_UA = 'facebookexternalhit/1.1';
@@ -149,4 +150,59 @@ exports.checkInspirationLinksNow = onCall(
     }
     return runLinkCheck({ dry: request.data && request.data.dry !== false, limit: Number((request.data && request.data.limit) || 0) });
   },
+);
+
+/* 21/11/2026 (מאיה: "תוודאי שזה לא יקרה שוב"). טיקטוק שברה את הנגן שלה, ומאיה
+   גילתה את זה לבד, כי הבדיקה הלילית בודקת רק שהפוסט קיים. כל פתיחה ברפרנסים
+   מדווחת עכשיו ל-inspirationPlayLog אם הנגן באמת עלה. כל שעתיים סופרים את 6
+   השעות האחרונות, ואם נגן של פלטפורמה נראה שבור, מאיה מקבלת וואטסאפ למספר
+   הפרטי שלה. לכל היותר פעם ב-12 שעות לפלטפורמה. */
+const greenId = defineSecret('GREEN_API_ID_INSTANCE');
+const greenToken = defineSecret('GREEN_API_TOKEN_INSTANCE');
+const MAYA_PRIVATE = '972525533679@c.us';
+const PLATFORM_HE = { tiktok: 'טיקטוק', instagram: 'אינסטגרם' };
+
+async function runPlayWatch({ send = true } = {}) {
+  const db = getFirestore();
+  const since = Timestamp.fromMillis(Date.now() - 6 * 3600 * 1000);
+  const snap = await db.collection('inspirationPlayLog').where('at', '>=', since).get();
+  const count = { tiktok: { ok: 0, fail: 0 }, instagram: { ok: 0, fail: 0 } };
+  for (const d of snap.docs) {
+    const v = d.data();
+    const c = count[v.platform];
+    if (c) c[v.ok ? 'ok' : 'fail'] += 1;
+  }
+  const stateRef = db.collection('inspirationLinkLog').doc('_playAlert');
+  const state = (await stateRef.get()).data() || {};
+  const alerts = [];
+  for (const [p, c] of Object.entries(count)) {
+    if (!playerLooksBroken(c.ok, c.fail)) continue;
+    if (state[p] && Date.now() - state[p] < 12 * 3600 * 1000) continue;
+    alerts.push(p);
+  }
+  if (alerts.length && send) {
+    const id = greenId.value();
+    const lines = alerts.map((p) => `${PLATFORM_HE[p]}: ${count[p].fail} מתוך ${count[p].ok + count[p].fail} פתיחות ב-6 השעות האחרונות לא עלו`);
+    const message = ['התראה מהמוח השיווקי: נגן הרפרנסים לא עובד', '', ...lines, '', 'זאת כנראה תקלה אצל הפלטפורמה. הלקוחות רואות כפתור לצפייה במקור, אבל צריך לבדוק. תפתחי שיחה עם קלוד ותגידי "נגן הרפרנסים נשבר".'].join(String.fromCharCode(10));
+    try {
+      const res = await fetch(`https://${String(id).slice(0, 4)}.api.greenapi.com/waInstance${id}/SendMessage/${greenToken.value()}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chatId: MAYA_PRIVATE, message }), signal: AbortSignal.timeout(20000),
+      });
+      const body = await res.text();
+      if (body.includes('idMessage')) {
+        const upd = {};
+        alerts.forEach((p) => { upd[p] = Date.now(); });
+        await stateRef.set(upd, { merge: true });
+      }
+      console.log('play watch alert', alerts, body.slice(0, 200));
+    } catch (err) { console.error('play watch send failed', err.message); }
+  }
+  console.log('play watch', JSON.stringify(count), 'alerts', alerts);
+  return { count, alerts };
+}
+
+exports.inspirationPlayWatch = onSchedule(
+  { schedule: '0 */2 * * *', timeZone: 'Asia/Jerusalem', region: 'us-central1', timeoutSeconds: 120, secrets: [greenId, greenToken], retryCount: 0 },
+  async () => { await runPlayWatch(); },
 );

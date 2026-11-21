@@ -23,7 +23,7 @@ test('פרמטרים בכתובת לא שוברים את הזיהוי', () => {
 
 test('טיקטוק מלא מקבל הטמעה', () => {
   assert.equal(embedUrlFor('https://www.tiktok.com/@user.name/video/7312345678901234567'),
-    'https://www.tiktok.com/player/v1/7312345678901234567?rel=0&description=0&music_info=0');
+    'https://www.tiktok.com/player/v1/7312345678901234567?embed_from=oembed&music_info=1&description=1&autoplay=1&muted=1');
 });
 
 test('קישור טיקטוק מקוצר מחזיר null, כדי שייפתח בחוץ ולא יישבר', () => {
@@ -117,7 +117,7 @@ test('קישור בלי הטמעה לא פותח פופאפ ריק', async () =>
 test('טיקטוק מקוצר נפתח כשיש מזהה שמור', () => {
   assert.equal(
     embedUrlFor('https://vt.tiktok.com/ZSqhxjNJ7/', { tiktokVideoId: '7238688201412578565' }),
-    'https://www.tiktok.com/player/v1/7238688201412578565?rel=0&description=0&music_info=0'
+    'https://www.tiktok.com/player/v1/7238688201412578565?embed_from=oembed&music_info=1&description=1&autoplay=1&muted=1'
   );
 });
 
@@ -135,7 +135,7 @@ test('מזהה פגום לא מיוצר לכתובת שבורה', () => {
 test('המזהה השמור גובר, גם על כתובת מלאה', () => {
   assert.equal(
     embedUrlFor('https://www.tiktok.com/@u/video/111', { tiktokVideoId: '222' }),
-    'https://www.tiktok.com/player/v1/222?rel=0&description=0&music_info=0'
+    'https://www.tiktok.com/player/v1/222?embed_from=oembed&music_info=1&description=1&autoplay=1&muted=1'
   );
 });
 
@@ -158,7 +158,7 @@ const POPSRC = readPop(new URL('../js/inspiration-popup.js', import.meta.url), '
 
 test('יש רשת ביטחון כשההטמעה נחסמת', () => {
   assert.ok(POPSRC.includes("addEventListener('load'"), 'לא נמדד אם המסגרת נטענה');
-  assert.ok(/setTimeout\([\s\S]{0,400}?ip-frame--blocked/.test(POPSRC), 'אין מסך חלופי');
+  assert.ok(/showCover = [\s\S]{0,300}?ip-frame--blocked/.test(POPSRC) && /setTimeout\([\s\S]{0,200}?showCover\(/.test(POPSRC), 'אין מסך חלופי');
   assert.ok(POPSRC.includes('ip-blocked__btn'), 'אין כפתור לפתיחה במקור');
 });
 

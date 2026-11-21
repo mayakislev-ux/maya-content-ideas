@@ -116,6 +116,13 @@ service cloud.firestore {
       allow read: if isAllowed() && notExpired();
       allow write: if isAdmin();
     }
+    /* 21/11/2026: דיווח שקט אם נגן הרפרנס עלה. כותבים רק רשומה חדשה ועל עצמן, אף אחת לא קוראת. */
+    match /inspirationPlayLog/{id} {
+      allow create: if isAllowed() && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['videoId', 'platform', 'ok', 'code', 'uid', 'at'])
+        && request.resource.data.ok is bool && request.resource.data.at == request.time;
+      allow read, update, delete: if isAdmin();
+    }
     match /inspirationBank/{videoId} {
       allow read: if isAllowed() && notExpired();
       allow write: if isAdmin();

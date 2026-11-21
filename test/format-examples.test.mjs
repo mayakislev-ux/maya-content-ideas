@@ -36,5 +36,5 @@ test('06/11: TikTok links carry the @user, and the deleted post is gone', () => 
 });
 
 test('06/11: a TikTok link without @user still embeds', () => {
-  assert.equal(embedUrlFor('https://www.tiktok.com/video/7500635865677401362'), 'https://www.tiktok.com/player/v1/7500635865677401362?rel=0&description=0&music_info=0');
+  assert.equal(embedUrlFor('https://www.tiktok.com/video/7500635865677401362'), 'https://www.tiktok.com/player/v1/7500635865677401362?embed_from=oembed&music_info=1&description=1&autoplay=1&muted=1');
 });

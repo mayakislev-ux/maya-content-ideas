@@ -68,9 +68,22 @@ const TT_ID = /tiktok\.com\/(?:.*\/)?video\/(\d+)/;
  * כתובת ההטמעה של סרטון, או null כשאין כזאת ואפשר רק לפתוח בחוץ.
  * מיוצא לבדיקות.
  */
-/** הנגן הרשמי של טיקטוק: מראה רק את הסרטון, עם כפתורי ניגון. */
+/** 21/11/2026: בדיוק מה שה-oEmbed הרשמי של טיקטוק מחזיר היום (embed_from=oembed,
+    muted, רשימת ההרשאות המלאה). בלעדיהם הנגן מציג "Unable to load player". */
+export const TIKTOK_PLAYER_PARAMS = 'embed_from=oembed&music_info=1&description=1&autoplay=1&muted=1';
+export const FRAME_ALLOW = 'accelerometer; autoplay; clipboard-write; encrypted-media; fullscreen; gyroscope; picture-in-picture; web-share; storage-access';
+export const FRAME_REFERRER = 'strict-origin-when-cross-origin';
+
+/** הנגן הרשמי של טיקטוק. */
 export function tiktokPlayerUrl(id) {
-  return `https://www.tiktok.com/player/v1/${id}?rel=0&description=0&music_info=0`;
+  return `https://www.tiktok.com/player/v1/${id}?${TIKTOK_PLAYER_PARAMS}`;
+}
+
+/** הודעה מנגן טיקטוק (מחרוזת JSON או אובייקט), או null. */
+export function tiktokMessage(data) {
+  let msg = data;
+  if (typeof msg === 'string') { try { msg = JSON.parse(msg); } catch (err) { return null; } }
+  return msg && msg['x-tiktok-player'] ? msg : null;
 }
 
 export function embedUrlFor(url, video) {

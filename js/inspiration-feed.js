@@ -7,7 +7,7 @@
 //
 // אצבע על מסגרת ממקור אחר לא תמיד מגיעה לגלילה שלנו, ואין דרך לדעת מבחוץ. לכן
 // תמיד נשארים פס צד, הפסים למעלה ולמטה וחיצים, שאיתם אפשר לעבור הלאה.
-import { embedUrlFor, embedBlockedText } from './video-preview.js';
+import { embedUrlFor, embedBlockedText, TIKTOK_PLAYER_PARAMS, FRAME_ALLOW, FRAME_REFERRER } from './video-preview.js';
 import { accuracyNoteOf, audioKindOf, readableTextOf } from './inspiration-readability.js';
 import { lastSubtitleEnd, subtitleAt } from './inspiration-subtitles.js';
 
@@ -19,6 +19,11 @@ const FILL_AROUND = 3;
 const KEEP_AROUND = 8;
 
 /** מזהה הטיקטוק של הסרטון, או null כשזה קישור מקוצר בלי מזהה שמור. */
+/* דיווח שקט אם הנגן עלה. נטען בעצלתיים כדי שהגלילה לא תלויה בו. */
+function reportPlay(video, ok, code) {
+  import('./play-report.js').then((m) => m.reportPlay(video, ok, code)).catch(() => {});
+}
+
 function tiktokId(video) {
   const saved = video && video.tiktokVideoId;
   if (saved && /^\d+$/.test(String(saved))) return String(saved);
@@ -33,7 +38,7 @@ function tiktokId(video) {
 export function feedEmbedUrl(video) {
   if (video && video.embedBlocked) return null;
   const id = tiktokId(video);
-  if (id) return `https://www.tiktok.com/player/v1/${id}?autoplay=1&loop=1&rel=0&description=0&music_info=0`;
+  if (id) return `https://www.tiktok.com/player/v1/${id}?${TIKTOK_PLAYER_PARAMS}&loop=1&rel=0`;
   return embedUrlFor(video && video.url, video);
 }
 
@@ -318,6 +323,12 @@ function onPlayerMessage(e) {
   }
   if (!msg || !msg['x-tiktok-player']) return;
   if (msg.type === 'onPlayerReady') {
+    clearTimeout(timer);
+    if (slides[active]) {
+      slides[active].classList.remove('is-blocked');
+      slides[active].querySelectorAll('.feed-blocked').forEach((n) => n.remove());
+    }
+    reportPlay(list[active], true);
     tellPlayer(soundOn ? 'unMute' : 'mute');
     tellPlayer('play');
     showSoundButton(!soundOn);
@@ -336,6 +347,12 @@ function onPlayerMessage(e) {
     } else if (code === 1001 && slides[active]) {
       clearTimeout(timer);
       blockedBox(list[active], slides[active], 'הסרטון הזה כבר לא זמין. אפשר להמשיך לגלול.');
+      reportPlay(list[active], false, code);
+    } else if (slides[active]) {
+      /* 21/11/2026: כל שגיאה אחרת של הנגן ("Unable to load player") מקבלת כפתור נקי */
+      clearTimeout(timer);
+      blockedBox(list[active], slides[active], 'טיקטוק לא מצליחה לנגן את הסרטון הזה כאן. אפשר לפתוח אותו בטיקטוק, או להמשיך לגלול.');
+      reportPlay(list[active], false, code);
     }
   }
 }
@@ -361,10 +378,15 @@ function play(i) {
   const frame = el('iframe', 'feed-frame');
   frame.src = src;
   frame.title = 'סרטון רפרנס';
-  frame.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen';
+  frame.allow = FRAME_ALLOW;
+  frame.referrerPolicy = FRAME_REFERRER;
   frame.allowFullscreen = true;
+  const isTiktok = Boolean(tiktokId(video));
   frame.addEventListener('load', () => {
+    /* 21/11/2026: בטיקטוק גם מסך השגיאה "נטען". שם מחכים ל-onPlayerReady */
+    if (isTiktok) return;
     clearTimeout(timer);
+    reportPlay(video, true);
     /* טעינה איטית שהצליחה בסוף: ההודעה יורדת והסרטון נשאר */
     slide.classList.remove('is-blocked');
     slide.querySelectorAll('.feed-blocked').forEach((n) => n.remove());
@@ -377,7 +399,9 @@ function play(i) {
   /* אותו עיקרון כמו בפופאפ: חלון ממקור אחר שנחסם נראה כמו ריבוע שחור בלי הסבר.
      המסגרת נשארת מתחת להודעה, כי ברשת איטית היא עוד יכולה להיטען. */
   timer = setTimeout(() => {
-    if (active === i) blockedBox(video, slide, 'הסרטון לא נטען כאן. אפשר לפתוח אותו באפליקציה שלו, או להמשיך לגלול.');
+    if (active !== i) return;
+    blockedBox(video, slide, 'הסרטון לא נטען כאן. אפשר לפתוח אותו באפליקציה שלו, או להמשיך לגלול.');
+    reportPlay(video, false, 'timeout');
   }, LOAD_TIMEOUT_MS);
 }
 

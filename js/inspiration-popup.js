@@ -5,17 +5,30 @@
 // רפרנסים זה הורג את הזרימה: כל צפייה מוציאה אותה מהאפליקציה.
 //
 // הפופאפ מנגן בתוך המסך, ומשאיר את הקישור החוצה למי שרוצה לשמור או להגיב.
-import { embedUrlFor, embedShape } from './video-preview.js';
+import { embedUrlFor, embedShape, tiktokMessage, FRAME_ALLOW, FRAME_REFERRER } from './video-preview.js';
 
 let host = null;
 let lastFocus = null;
 let keyBound = false;
+let playerListener = null;
+
+function setPlayerListener(fn) {
+  if (playerListener) window.removeEventListener('message', playerListener);
+  playerListener = fn;
+  if (fn) window.addEventListener('message', fn);
+}
+
+/* דיווח שקט: האם הנגן באמת עלה. הבדיקה הלילית מסכמת ומתריעה כשפלטפורמה שלמה נשברת. */
+function reportPlay(video, ok, code) {
+  import('./play-report.js').then((m) => m.reportPlay(video, ok, code)).catch(() => {});
+}
 
 function close() {
   if (!host) return;
   // 05/10/2026, ממצא חוסם: הסתרה עם hidden לבדה נשענת על כלל CSS שאפשר
   // לדרוס בטעות, וזה בדיוק מה שקרה. מסירים את האלמנט מה-DOM, וככה גם אם
   // כלל סגנון ישתנה שוב, שום שכבה לא יכולה להישאר ולחסום את המסך.
+  setPlayerListener(null);
   host.innerHTML = '';
   host.hidden = true;
   host.remove();
@@ -96,7 +109,8 @@ export function openVideoPopup(video) {
   const frame = document.createElement('iframe');
   frame.src = embed;
   frame.title = 'סרטון רפרנס';
-  frame.allow = 'autoplay; clipboard-write; encrypted-media; picture-in-picture';
+  frame.allow = FRAME_ALLOW;
+  frame.referrerPolicy = FRAME_REFERRER;
   frame.allowFullscreen = true;
   frameWrap.appendChild(frame);
 
@@ -113,27 +127,51 @@ export function openVideoPopup(video) {
   // הנגן, גם כשהוא סתם נטען לאט, וסרטון תקין נראה "לא מוכן להצגה". עכשיו:
   // הנגן נשאר וממשיך להיטען, ההודעה רק מכסה אותו עד שהוא מגיע, ונעלמת כשהוא
   // נטען. וגם מחכים יותר, 10 שניות.
-  let loaded = false;
+  // 21/11/2026 (מאיה: "כמעט אף סרטון לא עובד", צילום של "Unable to load
+  // player"). בטיקטוק אירוע הטעינה של המסגרת לא אומר כלום: גם מסך השגיאה
+  // שלה "נטען". הנגן הרשמי מודיע בעצמו onPlayerReady או onPlayerError, ועל זה
+  // סומכים. שגיאה אמיתית = מכסים את מסך השגיאה שלה בכפתור נקי לצפייה במקור.
+  const isTiktok = /tiktok\.com\/player\//.test(embed);
+  let ready = false;
   let cover = null;
-  frame.addEventListener('load', () => {
-    loaded = true;
-    if (cover) { cover.remove(); cover = null; }
-  });
-  const fallbackTimer = setTimeout(() => {
-    if (loaded) return;
+  const showCover = (text) => {
+    if (cover || !frameWrap.isConnected) return;
     cover = document.createElement('div');
     cover.className = 'ip-frame--blocked ip-cover';
     const msg = document.createElement('p');
     msg.className = 'ip-blocked__text';
-    msg.textContent = 'הסרטון עדיין נטען. אם הוא לא עולה, אפשר לפתוח אותו ישר במקור.';
+    msg.textContent = text;
     const go = document.createElement('a');
     go.className = 'ip-blocked__btn';
     go.href = video.url;
     go.target = '_blank';
     go.rel = 'noopener noreferrer';
-    go.textContent = 'לצפות בסרטון ↗';
+    go.textContent = isTiktok ? 'לצפות בטיקטוק ↗' : 'לצפות בסרטון ↗';
     cover.append(msg, go);
     frameWrap.appendChild(cover);
+  };
+  const markReady = () => {
+    ready = true;
+    if (cover) { cover.remove(); cover = null; }
+  };
+  if (!isTiktok) frame.addEventListener('load', markReady);
+  else {
+    setPlayerListener((e) => {
+      if (e.source !== frame.contentWindow) return;
+      const m = tiktokMessage(e.data);
+      if (!m) return;
+      if (m.type === 'onPlayerReady' || m.type === 'onStateChange' && m.value === 1) markReady();
+      else if (m.type === 'onPlayerError' && !(m.value && m.value.errorCode === 3002)) {
+        ready = false;
+        showCover('טיקטוק לא מצליחה לנגן את הסרטון הזה כאן. בלחיצה הוא נפתח ישר בטיקטוק.');
+        reportPlay(video, false, m.value && m.value.errorCode);
+      }
+    });
+  }
+  const fallbackTimer = setTimeout(() => {
+    if (ready) { reportPlay(video, true); return; }
+    showCover('הסרטון עדיין נטען. אם הוא לא עולה, אפשר לפתוח אותו ישר במקור.');
+    reportPlay(video, false, 'timeout');
   }, 10000);
   // סגירה מבטלת את ההמתנה, אחרת היא תרוץ על חלון שכבר לא קיים
   x.addEventListener('click', () => clearTimeout(fallbackTimer));

@@ -27,7 +27,7 @@ import {
   buildSceneRewritePrompt, hookFromPackaging,
 } from './video-assistant-content.js';
 import { playReroll, playSuccess, setMuted, getMuted } from './video-assistant-sound.js';
-import { embedUrlFor, embedShape } from './video-preview.js';
+import { embedUrlFor, embedShape, FRAME_ALLOW, FRAME_REFERRER } from './video-preview.js';
 import { languageName } from './inspiration-readability.js';
 import {
   fetchIdeas, fetchInspirationBank, getSavedDomain, guessDomain, saveDomain, saveSession, loadSession,
@@ -1342,7 +1342,7 @@ function openFormatExamples(name) {
     }
     stage.innerHTML = `
       <div class="cosmic-examples-embed" style="aspect-ratio:${shape.w}/${shape.h};width:min(100%, calc(66vh * ${shape.w} / ${shape.h}))">
-        <iframe src="${escapeHtml(embed)}" title="דוגמה לפורמט ${escapeHtml(name)}" loading="lazy" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture" allowfullscreen></iframe>
+        <iframe src="${escapeHtml(embed)}" title="דוגמה לפורמט ${escapeHtml(name)}" allow="${FRAME_ALLOW}" referrerpolicy="${FRAME_REFERRER}" allowfullscreen></iframe>
       </div>
       <a href="${escapeHtml(ex.url)}" target="_blank" rel="noopener" class="cosmic-examples-out">לצפייה בפלטפורמה המקורית ↗</a>
     `;
@@ -1529,7 +1529,7 @@ async function renderPulledReference() {
       <h2 style="margin-top:0">תצוגה מקדימה</h2>
       <div id="va-ref-embed-wrap" style="width:100%;border-radius:14px;overflow:hidden;margin-bottom:14px;background:#000;${embed ? `aspect-ratio:${shape.w}/${shape.h}` : ''}">
         ${embed
-          ? `<iframe src="${escapeHtml(embed)}" title="סרטון רפרנס" loading="lazy" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture" allowfullscreen style="width:100%;height:100%;border:0;display:block"></iframe>`
+          ? `<iframe src="${escapeHtml(embed)}" title="סרטון רפרנס" allow="${FRAME_ALLOW}" referrerpolicy="${FRAME_REFERRER}" allowfullscreen style="width:100%;height:100%;border:0;display:block"></iframe>`
           : (video.thumbnailUrl ? `<img src="${escapeHtml(video.thumbnailUrl)}" alt="" style="width:100%;border-radius:14px">` : '<p style="padding:40px 16px;text-align:center;color:#fff">אין תמונה ממוזערת לסרטון הזה.</p>')}
       </div>
       ${langNote}

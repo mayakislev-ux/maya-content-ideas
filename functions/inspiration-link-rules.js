@@ -61,4 +61,12 @@ function nextFailCount(previous, verdict) {
   return previous || 0;
 }
 
-module.exports = { FAILS_TO_REMOVE, MAX_REMOVALS_PER_RUN, MAX_EMBED_BLOCKED_SHARE, tiktokVerdict, pageVerdict, instagramEmbedVerdict, runIsTrustworthy, nextFailCount };
+/** 21/11/2026: האם נגן של פלטפורמה שלמה שבור, לפי הדיווחים מהפתיחות האמיתיות.
+    לפחות 4 כישלונות וחצי מהפתיחות או יותר. סרטון בודד שנופל לא מקפיץ התראה. */
+const PLAY_ALERT_MIN_FAILS = 4;
+const PLAY_ALERT_SHARE = 0.5;
+function playerLooksBroken(ok, fail) {
+  return fail >= PLAY_ALERT_MIN_FAILS && fail / Math.max(1, ok + fail) >= PLAY_ALERT_SHARE;
+}
+
+module.exports = { playerLooksBroken, FAILS_TO_REMOVE, MAX_REMOVALS_PER_RUN, MAX_EMBED_BLOCKED_SHARE, tiktokVerdict, pageVerdict, instagramEmbedVerdict, runIsTrustworthy, nextFailCount };

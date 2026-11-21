@@ -48,3 +48,12 @@ test('instagram embed: plays, protected music, embedding off, fake id, overload'
   assert.equal(instagramEmbedVerdict(429, ''), null);
   assert.equal(instagramEmbedVerdict(200, '<html></html>'), null);
 });
+
+test('player watch: a broken platform alerts, a single bad video does not', async () => {
+  const { playerLooksBroken } = require('../functions/inspiration-link-rules.js');
+  assert.equal(playerLooksBroken(0, 6), true);
+  assert.equal(playerLooksBroken(4, 4), true);
+  assert.equal(playerLooksBroken(30, 3), false);
+  assert.equal(playerLooksBroken(0, 2), false);
+  assert.equal(playerLooksBroken(20, 5), false);
+});

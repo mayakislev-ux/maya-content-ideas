@@ -70,7 +70,7 @@ describe('מסך הפורמטים (jsdom)', { skip: hasJsdom ? false : 'jsdom ל
     const vo = $$('.cosmic-accordion-item').find((d) => d.dataset.format === 'וויס אובר');
     vo.querySelector('[data-format-examples]').click();
     await until(() => $('.cosmic-examples-stage iframe'), 'הדוגמה הראשונה');
-    assert.equal($('.cosmic-examples-stage iframe').getAttribute('src'), 'https://www.tiktok.com/player/v1/7475764014123977992?rel=0&description=0&music_info=0');
+    assert.equal($('.cosmic-examples-stage iframe').getAttribute('src'), 'https://www.tiktok.com/player/v1/7475764014123977992?embed_from=oembed&music_info=1&description=1&autoplay=1&muted=1');
     assert.equal($('.cosmic-examples-stage .cosmic-examples-out').getAttribute('href'), 'https://www.tiktok.com/@talia_clinic/video/7475764014123977992');
 
     $('[data-example="1"]').click();
