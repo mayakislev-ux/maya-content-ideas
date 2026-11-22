@@ -53,6 +53,7 @@ test('פתיחת מנוי קבוע: בלי תאריך סיום', async () => {
   await call({ action: 'open', email: 'New@X.com', name: 'דנה', mode: 'standing' });
   assert.equal(writes[0].e, 'new@x.com');
   assert.equal(writes[0].patch.billing, 'standing');
+  assert.equal(writes[0].patch.ideaChat, true);
   assert.equal(writes[0].patch.paidUntil, undefined);
   assert.ok(writes[0].opts.deleteFields.includes('paidUntil'));
 });

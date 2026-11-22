@@ -123,7 +123,9 @@ function createAppSubscriptionsHandler(deps) {
     if (action === 'open') {
       const mode = d.mode === 'trial' ? 'trial' : 'standing';
       const name = clean(d.name).slice(0, 80) || clean(existing && existing.name);
-      const patch = { plan: 'refs', name, updatedAt: now().toISOString(), openedBy: 'portal' };
+      /* 22/11/2026 (מאיה): "שלכולם יש את הצ'אט לחידוד רעיון, אבל לא לפתוח להם
+         דברים של התהליך". הדגל ideaChat פותח את הצ'אט בלבד. */
+      const patch = { plan: 'refs', name, ideaChat: true, updatedAt: now().toISOString(), openedBy: 'portal' };
       const deleteFields = ['closedAt'];
       if (!existing) patch.createdAt = now().toISOString();
       if (mode === 'trial') {
