@@ -2876,6 +2876,38 @@ exports.draftScriptFeedback = require('./draftScriptFeedback').draftScriptFeedba
 
 // 15/10/2026: מנוי רפרנסים חודשי שמחובר למורנינג. paidUntil מתעדכן כל בוקר
 exports.syncRefsSubscriptions = require('./refs-subscription').syncRefsSubscriptions;
+/* 22/11/2026: לשונית "אפליקציה מנויים" בפורטל הניהול (app-subscriptions.js). רק מאיה. */
+{
+  const rs = require('./refs-subscription');
+  let subsVerifyApp = null;
+  exports.portalAppSubscriptions = onCall({ region: 'us-central1', timeoutSeconds: 60, invoker: 'public', secrets: [rs.MORNING_API_ID, rs.MORNING_API_SECRET] }, require('./app-subscriptions').createAppSubscriptionsHandler({
+    HttpsError,
+    verifyPortalToken: (t) => {
+      if (!subsVerifyApp) subsVerifyApp = admin.initializeApp({ projectId: 'maya-client-portal' }, 'subs-verify');
+      return subsVerifyApp.auth().verifyIdToken(t);
+    },
+    listAllowlist: async () => (await admin.firestore().collection('allowlist').get()).docs.map((x) => ({ id: x.id, data: x.data() || {} })),
+    getAllowlist: async (email) => { const x = await admin.firestore().collection('allowlist').doc(email).get(); return x.exists ? x.data() : null; },
+    setAllowlist: (email, patch, { deleteFields = [] } = {}) => {
+      const p = { ...patch };
+      if (p.paidUntil instanceof Date) p.paidUntil = admin.firestore.Timestamp.fromDate(p.paidUntil);
+      deleteFields.forEach((f) => { p[f] = admin.firestore.FieldValue.delete(); });
+      return admin.firestore().collection('allowlist').doc(email).set(p, { merge: true });
+    },
+    receipts: async () => rs.recentReceipts(await rs.morningToken(rs.MORNING_API_ID.value(), rs.MORNING_API_SECRET.value())),
+    lastActive: async (email) => {
+      const u = await admin.auth().getUserByEmail(email).catch(() => null);
+      if (!u) return null;
+      const p = await admin.firestore().collection('profiles').doc(u.uid).get();
+      const t = p.exists && p.data().lastActiveAt;
+      return (t && t.toDate ? t.toDate() : null)?.toISOString() || u.metadata.lastSignInTime && new Date(u.metadata.lastSignInTime).toISOString() || null;
+    },
+    enableUser: async (email) => {
+      const u = await admin.auth().getUserByEmail(email).catch(() => null);
+      if (u && u.disabled) await admin.auth().updateUser(u.uid, { disabled: false });
+    },
+  }));
+}
 
 /* 05/11/2026 (מאיה): "✍️ תיאור לסרטון" במסך הסיכום של העוזר לסרטון. תיאור
    אחד ושלושה הוקים של טקסט על המסך, לפי הכללים שלה (בלי האשטגים ובלי קאבר).

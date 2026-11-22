@@ -169,4 +169,4 @@ const syncRefsSubscriptions = onSchedule(
   }
 );
 
-module.exports = { syncRefsSubscriptions, paidUntilFrom, lastPaidReceipt, trialStart };
+module.exports = { syncRefsSubscriptions, paidUntilFrom, lastPaidReceipt, trialStart, morningToken, recentReceipts, MORNING_API_ID, MORNING_API_SECRET };
