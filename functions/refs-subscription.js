@@ -37,19 +37,23 @@ function paidUntilFrom(isoDate, graceDays = GRACE_DAYS) {
     הניסיון והלאה, כדי שתשלום ישן על משהו אחר לא יפתח גישה. */
 function lastPaidReceipt(docs = [], { email, amount, name = null, since = null }) {
   const want = String(email || '').toLowerCase();
-  const wantName = String(name || '').replace(/\s+/g, ' ').trim();
-  const matches = (d) => {
-    if (((d.client && d.client.emails) || []).some((e) => String(e).toLowerCase() === want)) return true;
-    if (!wantName || wantName.length < 4) return false;
-    return String((d.client && d.client.name) || '').replace(/\s+/g, ' ').includes(wantName);
-  };
-  return docs
+  const norm = (v) => String(v || '').replace(/["'״׳`.,\-]/g, ' ').replace(/\s+/g, ' ').trim();
+  /* 22/11/2026 (בדיקת סוכן): התאמה לפי שם רק לשם מלא (שתי מילים לפחות) ושווה
+     לגמרי לשם בקבלה. קודם "נועה" תפס גם קבלה של "נועה כהן" ופתח מנוי לאחרת. */
+  const wantName = norm(name);
+  const nameOk = wantName.split(' ').length >= 2;
+  const byEmail = (d) => ((d.client && d.client.emails) || []).some((e) => String(e).toLowerCase() === want);
+  const byName = (d) => nameOk && norm(d.client && d.client.name) === wantName;
+  const pool = docs
     .filter((d) => d && RECEIPT_TYPES.includes(Number(d.type)))
     .filter((d) => Number(d.status) !== 4) // מבוטל
     .filter((d) => Math.abs(Number(d.amount) - Number(amount)) < 0.01)
-    .filter((d) => !since || String(d.documentDate) >= since)
-    .filter(matches)
-    .sort((a, b) => String(b.documentDate).localeCompare(String(a.documentDate)))[0] || null;
+    .filter((d) => !since || String(d.documentDate) >= since);
+  const latest = (arr) => arr.sort((a, b) => String(b.documentDate).localeCompare(String(a.documentDate)))[0] || null;
+  const e = latest(pool.filter(byEmail));
+  if (e) return e;
+  const n = latest(pool.filter(byName));
+  return n ? { ...n, matchedByName: true } : null;
 }
 
 /** תאריך פתיחת הניסיון כ-YYYY-MM-DD בישראל, או null. */
@@ -124,6 +128,7 @@ const syncRefsSubscriptions = onSchedule(
     if (subs.length === 0) return;
     const token = await morningToken(MORNING_API_ID.value(), MORNING_API_SECRET.value());
     const receipts = await recentReceipts(token);
+    let changed = 0;
     for (const sub of subs) {
       const data = sub.data() || {};
       const isTrial = data.billing === 'trial';
@@ -157,15 +162,26 @@ const syncRefsSubscriptions = onSchedule(
           convertedFromTrialAt: admin.firestore.FieldValue.serverTimestamp(),
         });
       }
+      /* 22/11/2026: קריאה מחדש בתוך טרנזקציה. אם מאיה סגרה את הניסיון בדקות
+         שבין הקריאה לכתיבה, לא פותחים אותו מחדש. */
       // eslint-disable-next-line no-await-in-loop
-      await sub.ref.set(upd, { merge: true });
+      const wrote = await db.runTransaction(async (tx) => {
+        const fresh = (await tx.get(sub.ref)).data() || {};
+        if (fresh.billing !== data.billing) return false;
+        tx.set(sub.ref, upd, { merge: true });
+        return true;
+      });
+      if (!wrote) continue;
+      changed += 1;
       console.log('syncRefsSubscriptions: הוארך', { email: sub.id, trial: isTrial, lastPaidAt: last.documentDate });
       if (isTrial) {
         const who = data.name || sub.id;
         // eslint-disable-next-line no-await-in-loop
-        await tellMaya([`${who} שילמה 79 ש"ח על המוח השיווקי (קבלה ${upd.lastPaidDoc}).`, 'הגישה שלה נפתחה לבד, בלי תאריך סיום, כמו כל לקוחה בהוראת קבע.', 'כשתרצי לבטל, תגידי לקלוד.'].join(String.fromCharCode(10)));
+        const byName = last.matchedByName ? `זוהתה לפי השם בקבלה ולא לפי המייל, כדאי לוודא שזו היא.` : '';
+        await tellMaya([`${who} שילמה 79 ש"ח על המוח השיווקי (קבלה ${upd.lastPaidDoc}).`, 'הגישה שלה נפתחה לבד, בלי תאריך סיום, כמו כל לקוחה בהוראת קבע.', byName, 'אפשר לראות ולסגור בפורטל, בלשונית "אפליקציה מנויים".'].filter(Boolean).join(String.fromCharCode(10)));
       }
     }
+    console.log('syncRefsSubscriptions: סיכום ריצה', { checked: subs.length, changed });
   }
 );
 

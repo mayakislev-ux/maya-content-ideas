@@ -12,6 +12,7 @@
    הרשאה: רק אסימון של הפורטל עם role owner, כלומר מאיה. */
 
 const OWNER_ROLE = 'owner';
+const OWNER_EMAIL = 'mayakislev@gmail.com';
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 const MAX_TRIAL_DAYS = 60;
 
@@ -42,19 +43,11 @@ function statusOf(data, now = new Date()) {
   return 'until'; // פתוח עד תאריך (חודש בודד ששולם, או חידוש ישן)
 }
 
-/** הקבלה האחרונה על 79 ש"ח לפי מייל או לפי שם. */
-function lastPayment(receipts, { email, name, amount = 79 }) {
-  const want = clean(email).toLowerCase();
-  const wantName = clean(name).replace(/\s+/g, ' ');
-  const hit = (receipts || [])
-    .filter((d) => d && Number(d.status) !== 4 && Math.abs(Number(d.amount) - amount) < 0.01)
-    .filter((d) => {
-      const c = d.client || {};
-      if ((c.emails || []).some((e) => clean(e).toLowerCase() === want)) return true;
-      return wantName.length >= 4 && clean(c.name).replace(/\s+/g, ' ').includes(wantName);
-    })
-    .sort((a, b) => String(b.documentDate).localeCompare(String(a.documentDate)))[0];
-  return hit ? { date: hit.documentDate, number: String(hit.number || '') } : null;
+/** הקבלה האחרונה על 79 ש"ח, באותו כלל התאמה של הסנכרון (מייל, ואז שם מלא זהה). */
+function lastPayment(receipts, { email, name, amount = 79, since = null }) {
+  const hit = require('./refs-subscription').lastPaidReceipt(
+    (receipts || []).map((d) => ({ type: 320, ...d })), { email, name, amount, since });
+  return hit ? { date: hit.documentDate, number: String(hit.number || ''), byName: Boolean(hit.matchedByName) } : null;
 }
 
 /** שורה אחת במסך. */
@@ -95,7 +88,7 @@ function createAppSubscriptionsHandler(deps) {
     } catch (err) {
       throw new HttpsError('unauthenticated', 'האימות מהפורטל נכשל');
     }
-    if (!decoded || decoded.role !== OWNER_ROLE) throw new HttpsError('permission-denied', 'רק מאיה');
+    if (!decoded || decoded.role !== OWNER_ROLE || String(decoded.email || '').toLowerCase() !== OWNER_EMAIL) throw new HttpsError('permission-denied', 'רק מאיה');
 
     const action = clean(d.action) || 'list';
 
@@ -106,7 +99,11 @@ function createAppSubscriptionsHandler(deps) {
       try { receipts = await deps.receipts(); } catch (err) { paymentsOk = false; console.error('appSubscriptions: morning', err.message); }
       const refs = all.filter((r) => (r.data || {}).plan === 'refs');
       const rows = await Promise.all(refs.map(async (r) => rowOf(r.id, r.data, {
-        lastPayment: lastPayment(receipts, { email: r.data.billingEmail || r.id, name: r.data.name, amount: Number(r.data.monthlyPrice) || 79 }),
+        lastPayment: lastPayment(receipts, {
+          email: r.data.billingEmail || r.id, name: r.data.name, amount: Number(r.data.monthlyPrice) || 79,
+          /* בניסיון: רק תשלום מיום הפתיחה, כמו בסנכרון */
+          since: r.data.billing === 'trial' ? require('./refs-subscription').trialStart(r.data) : null,
+        }),
         lastActiveAt: await deps.lastActive(r.id).catch(() => null),
       }, now())));
       return { rows, fullCount: all.length - refs.length, paymentsOk };
@@ -128,6 +125,9 @@ function createAppSubscriptionsHandler(deps) {
       const patch = { plan: 'refs', name, ideaChat: true, updatedAt: now().toISOString(), openedBy: 'portal' };
       const deleteFields = ['closedAt'];
       if (!existing) patch.createdAt = now().toISOString();
+      if (mode === 'trial' && existing && statusOf(existing, now()) === 'standing') {
+        throw new HttpsError('failed-precondition', 'יש לה כבר מנוי קבוע. כדי להחליף לניסיון צריך קודם לסגור');
+      }
       if (mode === 'trial') {
         const days = Math.round(Number(d.days));
         if (!Number.isFinite(days) || days < 1 || days > MAX_TRIAL_DAYS) {
@@ -142,7 +142,7 @@ function createAppSubscriptionsHandler(deps) {
       }
       await deps.setAllowlist(email, patch, { deleteFields });
       await deps.enableUser(email, name).catch((err) => console.error('appSubscriptions: enable', err.message));
-      return { ok: true, row: rowOf(email, { ...(existing || {}), ...patch, paidUntil: patch.paidUntil || null }, {}, now()) };
+      return { ok: true, row: rowOf(email, { ...(existing || {}), ...patch, paidUntil: patch.paidUntil || null, closedAt: null }, {}, now()) };
     }
 
     if (action === 'close') {
