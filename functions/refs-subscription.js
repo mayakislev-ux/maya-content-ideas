@@ -146,8 +146,11 @@ const syncRefsSubscriptions = onSchedule(
         syncedAt: admin.firestore.FieldValue.serverTimestamp(),
       };
       if (isTrial) {
+        /* 22/11/2026 (מאיה: "כל הלקוחות זה הוראת קבע עד שאני אומרת לך לבטל").
+           לקוחה ששילמה פתוחה בלי תאריך סיום, ונסגרת רק כשמאיה מבקשת. */
         Object.assign(upd, {
-          billing: 'morning',
+          billing: 'standing',
+          paidUntil: admin.firestore.FieldValue.delete(),
           monthlyPrice: data.monthlyPrice || 79,
           showCountdown: admin.firestore.FieldValue.delete(),
           renewOffer: admin.firestore.FieldValue.delete(),
@@ -159,9 +162,8 @@ const syncRefsSubscriptions = onSchedule(
       console.log('syncRefsSubscriptions: הוארך', { email: sub.id, trial: isTrial, lastPaidAt: last.documentDate });
       if (isTrial) {
         const who = data.name || sub.id;
-        const date = upd.paidUntil.toDate().toLocaleDateString('he-IL', { timeZone: 'Asia/Jerusalem' });
         // eslint-disable-next-line no-await-in-loop
-        await tellMaya([`${who} שילמה 79 ש"ח על המוח השיווקי (קבלה ${upd.lastPaidDoc}).`, `הגישה שלה נפתחה לבד, עד ${date}, ומעכשיו מתחדשת עם כל תשלום.`, 'לא צריך לעשות כלום.'].join(String.fromCharCode(10)));
+        await tellMaya([`${who} שילמה 79 ש"ח על המוח השיווקי (קבלה ${upd.lastPaidDoc}).`, 'הגישה שלה נפתחה לבד, בלי תאריך סיום, כמו כל לקוחה בהוראת קבע.', 'כשתרצי לבטל, תגידי לקלוד.'].join(String.fromCharCode(10)));
       }
     }
   }
